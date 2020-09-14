@@ -1,0 +1,3 @@
+[submodule "libs/XPSDK"]
+	path = libs/XPSDK
+	url = https://github.com/PhilippMuenzel/SDK.git
