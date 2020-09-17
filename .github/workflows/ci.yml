@@ -23,9 +23,9 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: pull atcbuild
-        run: docker pull ghcr.io/felix-b/atcbuild
+        run: echo $CR_PAT | docker login ghcr.io -u felix-b --password-stdin && docker pull ghcr.io/felix-b/atcbuild
         env:
-          GH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          CR_PAT: ${{secrets.CR_PAT}}
 
       - name: print GITHUB_WORKSPACE
         run: echo "$GITHUB_WORKSPACE"
