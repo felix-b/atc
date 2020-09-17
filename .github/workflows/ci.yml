@@ -28,10 +28,10 @@ jobs:
           CR_PAT: ${{secrets.CR_PAT}}
 
       - name: print GITHUB_WORKSPACE
-        run: echo "$GITHUB_WORKSPACE"
+        run: echo "$GITHUB_WORKSPACE" && ls -la
 
       - name: run atcbuild
-        run: docker run --rm -v ${GITHUB_WORKSPACE}/atc/src:/src ghcr.io/felix-b/atcbuild
+        run: docker run --rm -v ${GITHUB_WORKSPACE}/src:/src ghcr.io/felix-b/atcbuild lin win mac
 
       - name: create zips to download
         run: echo "not implemented"
