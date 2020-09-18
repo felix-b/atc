@@ -21,6 +21,8 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
+        with: 
+          submodules: 'recursive'
 
       - name: pull atcbuild
         run: echo $CR_PAT | docker login ghcr.io -u felix-b --password-stdin && docker pull ghcr.io/felix-b/atcbuild
@@ -33,5 +35,18 @@ jobs:
       - name: run atcbuild
         run: docker run --rm -v ${GITHUB_WORKSPACE}/src:/src --user $(id -u):$(id -g) ghcr.io/felix-b/atcbuild lin win mac
 
-      - name: create zips to download
-        run: echo "not implemented"
+      - name: create zip artifact
+        run: |
+          mkdir -p assets/64
+          cp build-lin/src/lin.xpl assets/64/
+          cp build-mac/src/mac.xpl assets/64/
+          cp build-win/src/win.xpl assets/64/
+          mv assets airTrafficAndControl
+          zip -r airTrafficAndControl.zip
+
+      - name: upload zip artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: airTrafficAndControl.zip
+          path: airTrafficAndControl.zip
+
