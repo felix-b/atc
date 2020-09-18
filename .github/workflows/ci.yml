@@ -42,7 +42,7 @@ jobs:
           cp build-mac/src/mac.xpl assets/64/
           cp build-win/src/win.xpl assets/64/
           mv assets airTrafficAndControl
-          zip -r airTrafficAndControl.zip
+          zip -r airTrafficAndControl airTrafficAndControl
 
       - name: upload zip artifact
         uses: actions/upload-artifact@v2
