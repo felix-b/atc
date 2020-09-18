@@ -33,7 +33,7 @@ jobs:
         run: echo "$GITHUB_WORKSPACE" && ls -la
 
       - name: run atcbuild
-        run: docker run --rm -v ${GITHUB_WORKSPACE}/src:/src --user $(id -u):$(id -g) ghcr.io/felix-b/atcbuild lin win mac
+        run: docker run --rm -v ${GITHUB_WORKSPACE}:/src --user $(id -u):$(id -g) ghcr.io/felix-b/atcbuild lin win mac
 
       - name: create zip artifact
         run: |
