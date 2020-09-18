@@ -51,8 +51,12 @@ jobs:
           path: airTrafficAndControl.zip
 
       - name: if master, publish zip as nightly release
-        if: github.ref == 'refs/heads/master'
-        run: |
-          echo "DRY-RUN> github.ref = ${{github.ref}}"
-          echo "DRY-RUN> publish zip as nightly release"
-  
+        #if: github.ref == 'refs/heads/master'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: https://uploads.github.com/repos/felix-b/atc/releases/31521929/assets
+          asset_path: ./airTrafficAndControl.zip
+          asset_name: airTrafficAndControl.zip
+          asset_content_type: application/zip
