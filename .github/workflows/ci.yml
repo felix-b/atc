@@ -37,20 +37,19 @@ jobs:
 
       - name: create version.txt
         run: |
-          echo $(date) > assets/version.txt
-          if ["$GH_HEAD_REF" != ""]; then
-            echo "PR # $GH_PR_ID - this is a pull request build!" >> assets/version.txt
-          fi
-          echo "build # $GH_RUN_NUMBER" >> assets/version.txt 
-          echo "commit $COMMIT_SHA" >> assets/version.txt
+          echo "build # $GH_RUN_NUMBER" > assets/version.txt 
+          echo "commit $GH_COMMIT_SHA" >> assets/version.txt
           echo "to $GH_REF" >> assets/version.txt
+          if ["$GH_REF" != "refs/heads/master"]; then
+            echo "*** this is a pull request build! ***" >> assets/version.txt
+          fi
+          echo $(date) >> assets/version.txt
         env:
           GH_RUN_NUMBER: ${{ github.run_number }}
           GH_COMMIT_SHA: ${{ github.sha }}
           GH_EVENT_NAME: ${{ github.event_name }}
           GH_REF: ${{ github.ref }}
           GH_HEAD_REF: ${{ github.head_ref }}
-          GH_PR_ID: ${{ github.event.number }}
 
       - name: create zip artifact
         run: |
