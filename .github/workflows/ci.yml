@@ -66,7 +66,33 @@ jobs:
           name: airTrafficAndControl.zip
           path: airTrafficAndControl.zip
 
-      - name: if master, publish zip as nightly release
+      - name: if master, find current nightly download
+        #if: github.ref == 'refs/heads/master'
+        uses: octokit/request-action@v2.x
+        id: get_old_release_asset
+        with:
+          route: GET /repos/:repository/releases/31521929/assets
+          repository: ${{ github.repository }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: if master, log found nightly download
+        #if: github.ref == 'refs/heads/master'
+        run: echo "$ASSET_JSON"
+        env:
+          ASSET_JSON: ${{ steps.get_old_release_asset.outputs.data }}
+
+      - name: if master, delete current nightly download
+        #if: github.ref == 'refs/heads/master'
+        uses: octokit/request-action@v2.x
+        with:
+          route: DELETE /repos/:repository/releases/assets/:old_asset_id
+          repository: ${{ github.repository }}
+          old_asset_id: ${{ fromJson(steps.get_old_release_asset.outputs.data)[0].id }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: if master, publish new nightly download
         #if: github.ref == 'refs/heads/master'
         uses: actions/upload-release-asset@v1
         env:
