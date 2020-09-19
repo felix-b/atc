@@ -3,4 +3,4 @@
 	url = https://github.com/PhilippMuenzel/SDK.git
 [submodule "libs/googletest"]
 	path = libs/googletest
-	url = https://github.com/google/googletest/
+	url = https://github.com/google/googletest.git
