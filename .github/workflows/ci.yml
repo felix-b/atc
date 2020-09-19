@@ -36,6 +36,7 @@ jobs:
         run: docker run --rm -v ${GITHUB_WORKSPACE}:/src --user $(id -u):$(id -g) ghcr.io/felix-b/atcbuild lin win mac
 
       - name: create version.txt
+        id: create_version_txt
         run: |
           echo "build # $GH_RUN_NUMBER" > assets/version.txt 
           echo "commit $GH_COMMIT_SHA" >> assets/version.txt
@@ -43,6 +44,7 @@ jobs:
           if ["$GH_REF" != "refs/heads/master"]; then
             echo "*** this is a pull request build! ***" >> assets/version.txt
           fi
+          echo "::set-output name=DATE_NOW::$(date)"
           echo $(date) >> assets/version.txt
         env:
           GH_RUN_NUMBER: ${{ github.run_number }}
@@ -102,3 +104,13 @@ jobs:
           asset_path: 'airTrafficAndControl.zip'
           asset_name: 'airTrafficAndControl.zip'
           asset_content_type: 'application/zip'
+
+      - name: if master, update nightly release text
+        #if: github.ref == 'refs/heads/master'
+        uses: octokit/request-action@v2.x
+        with:
+          route: PATCH /repos/:repository/releases/31521929
+          repository: ${{ github.repository }}
+          body: ${{ steps.create_version_txt.outputs.DATE_NOW }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
