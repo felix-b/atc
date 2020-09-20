@@ -9,3 +9,7 @@
 	path = libs/XPMP2
 	url = https://github.com/TwinFan/XPMP2.git
 	ignore = dirty
+[submodule "libs/PPL"]
+	path = libs/PPL
+	url = https://github.com/PhilippMuenzel/PPL
+	ignore = dirty
