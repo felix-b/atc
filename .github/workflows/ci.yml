@@ -63,8 +63,6 @@ jobs:
           echo "GITHUB_WORKSPACE=${env:GITHUB_WORKSPACE}"
           gcc --version
           cmake --version
-        env:
-          REPO_DIR
 
       - name: checkout
         uses: actions/checkout@v2
