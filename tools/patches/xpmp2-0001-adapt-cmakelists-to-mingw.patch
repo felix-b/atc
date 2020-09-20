@@ -1,0 +1,25 @@
+From cb27ca0e57f320e9ce00ae57113eabf3d1551c05 Mon Sep 17 00:00:00 2001
+From: felix-b <felixberman76@gmail.com>
+Date: Sun, 20 Sep 2020 22:48:35 +0300
+Subject: [PATCH] adapt cmakelists.txt to mingw
+
+---
+ CMakeLists.txt | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index ee3c78b..e30c9db 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -15,7 +15,7 @@ add_definitions(-DAPL=$<BOOL:${APPLE}> -DIBM=$<BOOL:${WIN32}> -DLIN=$<AND:$<BOOL
+ # Enable stricter warnings and then disable some we are not interested in.
+ # For XPMP2 compile, we don't need to be warned about our self-defined depreciations
+ if (WIN32)
+-    add_compile_options(/wd4996 /wd4068)
++    # add_compile_options(/wd4996 /wd4068)
+ else()
+     add_compile_options(-Wall -Wshadow -Wfloat-equal -Wextra -Wno-deprecated-declarations -Wno-unknown-pragmas)
+ 
+-- 
+2.26.2.windows.1
+
