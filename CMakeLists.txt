@@ -14,5 +14,6 @@ set(ATC_LIBS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 set(GTEST_INCLUDE_DIR "${ATC_LIBS_PATH}/googletest/googletest/include")
 set(GTEST_LIBRARY_PATH "${ATC_LIBS_PATH}/googletest/build/lib/")
 
-# add_subdirectory(libs/googletest)
+message (STATUS "CMAKE_CURRENT_BINARY_DIR" = ${CMAKE_CURRENT_BINARY_DIR})
+
 add_subdirectory(src)
