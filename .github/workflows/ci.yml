@@ -8,8 +8,11 @@ on:
 
 jobs:
 
-  build-linux:
-    runs-on: ubuntu-latest
+  build-linux-mac:
+    runs-on: runs-on: ${{ matrix.os }}
+    strategy:
+      os: [ubuntu-latest, macos-latest]
+
     steps:
 
       - name: print environment
