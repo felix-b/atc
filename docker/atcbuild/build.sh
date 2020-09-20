@@ -12,7 +12,7 @@ function build_platform() {
 
   local build_dir="$src_dir/build-$platform"
 
-  local flags=()
+  local flags=("-DATCBUILD_PLATFORM_BIN=build-$platform")
   local cmake="cmake"
   #local generator=""
   case "$platform" in
@@ -23,6 +23,8 @@ function build_platform() {
       #generator="-G 'MinGW Makefiles'"
       ;;
     mac)
+      #export CXX=/clang_9.0.0/bin/clang++
+      #export CC=/clang_9.0.0/bin/clang
       flags+=('-DCMAKE_TOOLCHAIN_FILE=/build/toolchain-ubuntu-osxcross-10.11.cmake')
       flags+=('-DCMAKE_FIND_ROOT_PATH=/usr/osxcross/SDK/MacOSX10.11.sdk/')
       ;;
@@ -34,14 +36,13 @@ function build_platform() {
   (
     export PATH="$PATH:/usr/osxcross/bin"
     mkdir -p "$build_dir" && cd "$build_dir"
-    rm -rf *
+    #rm -rf *
     "$cmake" "${flags[@]}" ..
     make
 
-    case "$platform" in
+    case "$platform" in 
       lin)
-        echo "DRY-RUN> make test"
-        # make test
+        make test
         ;;
     esac
   )

@@ -1,4 +1,4 @@
-#include "dummy.h"
+#include "libworld.h"
 #include "gtest/gtest.h"
 
 TEST(Dummy, libWorldFunc) {

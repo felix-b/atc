@@ -1,19 +1,25 @@
-FROM ubuntu:16.04
+FROM kunitoki/clang-9:latest
+
+# ENV CXX=/clang_9.0.0/bin/clang++
+# ENV CC=/clang_9.0.0/bin/clang
+
+### --- BEIGN INSERT FROM XCHECKLIST --- ###
 
 RUN sed -i -e 's/http:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubuntu.com\/mirrors.txt/' /etc/apt/sources.list && apt-get update
 
 # Install Linux toolchain (GCC).
-RUN apt-get install -y --no-install-recommends build-essential ninja-build sudo bash coreutils ca-certificates curl bison flex \
-  && apt-get clean \
-  && curl -sSL https://cmake.org/files/v3.12/cmake-3.12.3-Linux-x86_64.tar.gz \
-     | tar -xz -C /usr/local/ --strip-components=1
+RUN apt-get install -y --no-install-recommends sudo bash coreutils bison flex \
+  && apt-get clean 
+ ## \
+ ## && curl -sSL https://cmake.org/files/v3.12/cmake-3.12.3-Linux-x86_64.tar.gz \
+ ##    | tar -xz -C /usr/local/ --strip-components=1
 
 # Install Windows cross-compiling toolchain (MinGW).
 RUN apt-get install -y --no-install-recommends mingw-w64 g++-mingw-w64 && apt-get clean
 
 # Install OS X cross-compiling toolchain (clang).
 
-RUN apt-get install -y --no-install-recommends clang-8 curl bison flex && apt-get clean
+## RUN apt-get install -y --no-install-recommends clang-8 curl bison flex && apt-get clean
 #Build arguments
 ARG osxcross_repo="tpoechtrager/osxcross"
 ARG osxcross_revision="f4ba4facae996b3b14d89eb62c0384564f7368b5"
@@ -42,13 +48,15 @@ RUN mkdir -p "/tmp/osxcross" \
 
 # Install dependency libraries under Linux.
 RUN apt-get install -y --no-install-recommends freeglut3-dev libudev-dev libopenal-dev g++-multilib gcc-multilib libspeechd-dev && apt-get clean
+RUN apt-get install -y --no-install-recommends python && apt-get clean
+
+### --- END INSERT FROM XCHECKLIST --- ###
 
 RUN echo "" | adduser --uid 1000 --disabled-password  --gecos "" builduser && adduser builduser sudo
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 VOLUME /src
 
-# ADD toolchain-mingw-w64-i686.cmake /build/
 ADD toolchain-mingw-w64-x86-64.cmake /build/
 ADD toolchain-ubuntu-osxcross-10.11.cmake /build/
 ADD build.sh /usr/bin/build.sh
