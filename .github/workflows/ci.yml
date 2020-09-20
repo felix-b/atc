@@ -9,7 +9,7 @@ on:
 jobs:
 
   build-linux-mac:
-    runs-on: runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       os: [ubuntu-latest, macos-latest]
 
