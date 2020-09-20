@@ -8,3 +8,4 @@
 [submodule "libs/XPMP2"]
 	path = libs/XPMP2
 	url = https://github.com/TwinFan/XPMP2.git
+	ignore = dirty
