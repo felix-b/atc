@@ -1,0 +1,50 @@
+{
+    "env":  {
+        "defaultIncludes": [
+            "${workspaceFolder}/libs/XPSDK/CHeaders/**",
+            "${workspaceFolder}/libs/googletest/googletest/include",
+            "${workspaceFolder}/src/**"
+        ],
+        "defaultDefines": [
+            "XPLM200=1",
+            "XPLM210=1",
+            "XPLM300=1",
+            "XPLM301=1"
+        ]
+    },
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${defaultIncludes}"
+            ],
+            "defines": [
+                "${defaultDefines}",
+                "APL=1"
+            ],
+            "macFrameworkPath": [],
+            "compilerPath": "/usr/bin/clang++",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "clang-x64"
+        },
+        {
+            "name": "Win32",
+            "includePath": [
+                "${defaultIncludes}",
+                "C:\\Program Files\\mingw-w64\\x86_64-8.1.0-posix-seh-rt_v6-rev0\\mingw64\\x86_64-w64-mingw32\\include"
+            ],
+            "defines": [
+                "${defaultDefines}",
+                "IBM=1",
+                "_WEBSOCKETPP_CPP11_THREAD_=1"
+            ],
+            "windowsSdkVersion": "10.0.18362.0",
+            "compilerPath": "C:/Program Files/mingw-w64/x86_64-8.1.0-posix-seh-rt_v6-rev0/mingw64/bin/g++.exe",
+            "cStandard": "c11",
+            "cppStandard": "c++14",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}

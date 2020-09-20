@@ -1,3 +1,15 @@
 [submodule "libs/XPSDK"]
 	path = libs/XPSDK
 	url = https://github.com/PhilippMuenzel/SDK.git
+[submodule "libs/googletest"]
+	path = libs/googletest
+	url = https://github.com/google/googletest.git
+	ignore = dirty
+[submodule "libs/XPMP2"]
+	path = libs/XPMP2
+	url = https://github.com/TwinFan/XPMP2.git
+	ignore = dirty
+[submodule "libs/PPL"]
+	path = libs/PPL
+	url = https://github.com/PhilippMuenzel/PPL
+	ignore = dirty

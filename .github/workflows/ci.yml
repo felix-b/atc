@@ -1,116 +1,137 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
 on:
   push:
     branches: [ master ]
   pull_request:
     branches: [ master ]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
+  build-linux-mac:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+
+      - name: print environment
+        run: |
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          gcc --version
+          cmake --version
+
+      - name: checkout
+        uses: actions/checkout@v2
         with: 
           submodules: 'recursive'
 
-      - name: pull atcbuild
-        run: echo $CR_PAT | docker login ghcr.io -u felix-b --password-stdin && docker pull ghcr.io/felix-b/atcbuild
-        env:
-          CR_PAT: ${{secrets.CR_PAT}}
-
-      - name: print GITHUB_WORKSPACE
-        run: echo "$GITHUB_WORKSPACE" && ls -la
-
-      - name: run atcbuild
-        run: docker run --rm -v ${GITHUB_WORKSPACE}:/src --user $(id -u):$(id -g) ghcr.io/felix-b/atcbuild lin win mac
-
-      - name: create version.txt
-        id: create_version_txt
+      - name: build googletest
         run: |
-          echo "build # $GH_RUN_NUMBER" > assets/version.txt 
-          echo "commit $GH_COMMIT_SHA" >> assets/version.txt
-          echo "to $GH_REF" >> assets/version.txt
-          if ["$GH_REF" != "refs/heads/master"]; then
-            echo "*** this is a pull request build! ***" >> assets/version.txt
-          fi
-          echo "::set-output name=DATE_NOW::$(date)"
-          echo $(date) >> assets/version.txt
-        env:
-          GH_RUN_NUMBER: ${{ github.run_number }}
-          GH_COMMIT_SHA: ${{ github.sha }}
-          GH_EVENT_NAME: ${{ github.event_name }}
-          GH_REF: ${{ github.ref }}
-          GH_HEAD_REF: ${{ github.head_ref }}
-
-      - name: create zip artifact
+          cd ${GITHUB_WORKSPACE}/libs/googletest
+          ls -la
+          mkdir build && cd build
+          cmake ..
+          make
+      
+      - name: build PPL
         run: |
-          mkdir -p assets/64
-          cp build-lin/src/lin.xpl assets/64/
-          cp build-mac/src/mac.xpl assets/64/
-          cp build-win/src/win.xpl assets/64/
-          mv assets airTrafficAndControl
-          zip -r airTrafficAndControl airTrafficAndControl
+          cd ${GITHUB_WORKSPACE}/libs/PPL
+          git apply ../../tools/patches/ppl-0001-adapt-cmakelists.patch
+          cp -R ../../tools/patches/glew/include include/glew/
+          echo "-----1-----"
+          ls -la include/glew/
+          echo "-----2-----"
+          ls -la include/glew/include/
+          echo "-----3-----"
+          ls -la include/glew/include/GL
+          echo "-----4-----"
+          mkdir build && cd build
+          cmake ..
+          make
+          
+      - name: build XPMP2
+        run: |
+          cd ${GITHUB_WORKSPACE}/libs/XPMP2
+          ls -la
+          mkdir build && cd build
+          cmake ..
+          make
 
-      - name: upload zip artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: airTrafficAndControl.zip
-          path: airTrafficAndControl.zip
+      - name: build the plugin
+        run: |
+          cd ${GITHUB_WORKSPACE}
+          ls -la
+          mkdir build && cd build
+          cmake ..
+          make
+          make test
 
-      - name: if master, find current nightly download
-        if: github.ref == 'refs/heads/master'
-        uses: octokit/request-action@v2.x
-        id: get_old_release_asset
-        with:
-          route: GET /repos/:repository/releases/31521929/assets
-          repository: ${{ github.repository }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: run unit tests
+        run: |
+          cd ${GITHUB_WORKSPACE}/build
+          ls -la
+          make test
 
-      - name: if master, log found nightly download
-        if: github.ref == 'refs/heads/master'
-        run: echo "$ASSET_JSON"
-        env:
-          ASSET_JSON: ${{ steps.get_old_release_asset.outputs.data }}
+  build-windows:
+    runs-on: windows-latest
+    steps:
 
-      - name: if master, delete current nightly download
-        if: github.ref == 'refs/heads/master'
-        uses: octokit/request-action@v2.x
-        with:
-          route: DELETE /repos/:repository/releases/assets/:old_asset_id
-          repository: ${{ github.repository }}
-          old_asset_id: ${{ fromJson(steps.get_old_release_asset.outputs.data)[0].id }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: print environment
+        run: |
+          echo "GITHUB_WORKSPACE=${env:GITHUB_WORKSPACE}"
+          gcc --version
+          cmake --version
 
-      - name: if master, publish new nightly download
-        if: github.ref == 'refs/heads/master'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: 'https://uploads.github.com/repos/felix-b/atc/releases/31521929/assets?name=airTrafficControl.zip'
-          asset_path: 'airTrafficAndControl.zip'
-          asset_name: 'airTrafficAndControl.zip'
-          asset_content_type: 'application/zip'
+      - name: checkout
+        uses: actions/checkout@v2
+        with: 
+          submodules: 'recursive'
 
-      - name: if master, update nightly release text
-        if: github.ref == 'refs/heads/master'
-        uses: octokit/request-action@v2.x
-        with:
-          route: PATCH /repos/:repository/releases/31521929
-          repository: ${{ github.repository }}
-          body: ${{ steps.create_version_txt.outputs.DATE_NOW }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: build googletest
+        run: |
+          cd ${env:GITHUB_WORKSPACE}\libs\googletest
+          dir
+          mkdir build
+          cd build
+          cmake .. -G "MinGW Makefiles"
+          make
+
+      - name: build PPL
+        run: |
+          cd ${env:GITHUB_WORKSPACE}\libs\PPL
+          dir
+          git apply ..\..\tools\patches\ppl-0001-adapt-cmakelists.patch
+          Copy-Item -Force -Recurse ..\..\tools\patches\glew\include ..\..\libs\PPL\include\glew\
+          mkdir build
+          cd build
+          cmake .. -G "MinGW Makefiles"
+          make
+          
+      - name: build XPMP2
+        run: |
+          cd ${env:GITHUB_WORKSPACE}\libs\XPMP2
+          dir
+          git apply ..\..\tools\patches\xpmp2-0001-adapt-cmakelists-to-mingw.patch
+          mkdir build
+          cd build
+          cmake .. -G "MinGW Makefiles"
+          make
+      
+      - name: build the plugin
+        run: |
+          cd ${env:GITHUB_WORKSPACE}
+          dir
+          mkdir build
+          cd build
+          cmake .. -G "MinGW Makefiles"
+          make
+          make test
+
+      - name: run unit tests
+        run: |
+          cd ${env:GITHUB_WORKSPACE}\build
+          dir
+          make test
+
