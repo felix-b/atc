@@ -9,5 +9,5 @@ TEST(WorldTest, libWorldFunc) {
 
 TEST(DataXPTest, libDataXPFunc) {
     int value = libDataXPFunc();
-    EXPECT_EQ(value, 456);
+    EXPECT_EQ(value, 123 + 456);
 }

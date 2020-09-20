@@ -9,5 +9,5 @@ TEST(WorldTest, libWorldFunc) {
 
 TEST(AITest, libAIFunc) {
     int value = libAIFunc();
-    EXPECT_EQ(value, 789);
+    EXPECT_EQ(value, 123 + 789);
 }
