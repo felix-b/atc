@@ -82,6 +82,7 @@ jobs:
         run: |
           cd ${env:GITHUB_WORKSPACE}\libs\XPMP2
           dir
+          git apply ..\..\tools\patches\xpmp2-0001-adapt-cmakelists-to-mingw.patch
           mkdir build
           cd build
           cmake .. -G "MinGW Makefiles"
