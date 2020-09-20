@@ -1,0 +1,58 @@
+From 656bedbaa28efdab269df208b9c4d2e3f317177b Mon Sep 17 00:00:00 2001
+From: Felix Berman <felixberman76@gmail.com>
+Date: Mon, 21 Sep 2020 00:05:09 +0300
+Subject: [PATCH] adapt cmakelists to mingw
+
+---
+ CMakeLists.txt | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index c0a654f..1524a6d 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 14)
+ set(CMAKE_CXX_STANDARD_REQUIRED ON)
+ set(CMAKE_VERBOSE_MAKEFILE ON)
+ 
+-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${CMAKE_SOURCE_DIR}/lib)
+-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_SOURCE_DIR}/lib)
++set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${CMAKE_CURRENT_SOURCE_DIR}/lib)
++set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+ 
+ if(NOT CMAKE_DEBUG_POSTFIX)
+   set(CMAKE_DEBUG_POSTFIX d)
+@@ -19,7 +19,7 @@ endif()
+ if(UNIX)
+     set(PLATFORM_COMPILE_OPTIONS -Wall -Wextra -Wfloat-equal -pedantic)
+ else()
+-    set(PLATFORM_COMPILE_OPTIONS /W3 /wd4996)
++    # set(PLATFORM_COMPILE_OPTIONS /W3 /wd4996)
+ endif()
+ 
+ if(APPLE)
+@@ -52,8 +52,8 @@ else()
+         include/glew/include
+         include/openal-soft/include
+         include/freetype2/include)
+-    set(PLATFORM_DEBUG_OPTIONS "-MTd")
+-    set(PLATFORM_RELEASE_OPTIONS "-MT")
++    #set(PLATFORM_DEBUG_OPTIONS "-MTd")
++    #set(PLATFORM_RELEASE_OPTIONS "-MT")
+ endif()
+ endif()
+ 
+@@ -64,8 +64,8 @@ set(DEFINITIONS
+     XPLM301=1
+     ${PLATFORM_CORE_DEFINITIONS})
+ 
+-include_directories(${CMAKE_SOURCE_DIR}/../SDK/CHeaders/XPLM
+-                    ${CMAKE_SOURCE_DIR}/../SDK/CHeaders/Widgets
++include_directories(${CMAKE_SOURCE_DIR}/include/SDK/CHeaders/XPLM
++                    ${CMAKE_SOURCE_DIR}/include/SDK/CHeaders/Widgets
+                     ${CMAKE_SOURCE_DIR}/include/simpleini
+                     ${PLATFORM_INCLUDE_DIRECTORIES})
+ 
+-- 
+2.26.2.windows.1
+
