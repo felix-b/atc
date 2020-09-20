@@ -7,6 +7,12 @@
 
 cmake_minimum_required(VERSION 3.9)
 
-set(ATC_LIBS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs")
+include(CTest)
+enable_testing()
 
+set(ATC_LIBS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/libs")
+set(GTEST_INCLUDE_DIR "${ATC_LIBS_PATH}/googletest/googletest/include")
+set(GTEST_LIBRARY_PATH "${ATC_LIBS_PATH}/googletest/build/lib/")
+
+# add_subdirectory(libs/googletest)
 add_subdirectory(src)

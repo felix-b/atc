@@ -2,6 +2,7 @@
     "env":  {
         "defaultIncludes": [
             "${workspaceFolder}/libs/XPSDK/CHeaders/**",
+            "${workspaceFolder}/libs/googletest/googletest/include",
             "${workspaceFolder}/src/**"
         ],
         "defaultDefines": [

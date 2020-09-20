@@ -35,8 +35,6 @@ function build_platform() {
     export PATH="$PATH:/usr/osxcross/bin"
     mkdir -p "$build_dir" && cd "$build_dir"
     rm -rf *
-    #echo "DRY-RUN> $cmake $generator ${flags[@]} .."
-    #echo "DRY-RUN> make"
     "$cmake" "${flags[@]}" ..
     make
 
@@ -46,9 +44,6 @@ function build_platform() {
         # make test
         ;;
     esac
-
-    #"$cmake" -G Ninja "${flags[@]}" ..
-    #ninja -v    
   )
 }
 
