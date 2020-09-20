@@ -60,7 +60,7 @@ jobs:
 
       - name: print environment
         run: |
-          echo "GITHUB_WORKSPACE=%GITHUB_WORKSPACE%"
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
           gcc --version
           cmake --version
 
@@ -71,7 +71,7 @@ jobs:
 
       - name: build googletest
         run: |
-          cd %GITHUB_WORKSPACE%\libs\googletest
+          cd ${GITHUB_WORKSPACE}\libs\googletest
           dir
           mkdir build
           cd build
@@ -80,7 +80,7 @@ jobs:
       
       - name: build XPMP2
         run: |
-          cd %GITHUB_WORKSPACE%\libs\XPMP2
+          cd ${GITHUB_WORKSPACE}\libs\XPMP2
           dir
           mkdir build
           cd build
@@ -89,7 +89,7 @@ jobs:
       
       - name: build the plugin
         run: |
-          cd %GITHUB_WORKSPACE%
+          cd ${GITHUB_WORKSPACE}
           dir
           mkdir build
           cd build
@@ -99,7 +99,7 @@ jobs:
 
       - name: run unit tests
         run: |
-          cd %GITHUB_WORKSPACE%\build
+          cd ${GITHUB_WORKSPACE}\build
           dir
           make test
 
