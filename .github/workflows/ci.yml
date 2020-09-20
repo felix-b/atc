@@ -40,7 +40,13 @@ jobs:
           cd ${GITHUB_WORKSPACE}/libs/PPL
           git apply ../../tools/patches/ppl-0001-adapt-cmakelists.patch
           cp -R ../../tools/patches/glew/include include/glew/
+          echo "-----1-----"
           ls -la include/glew/
+          echo "-----2-----"
+          ls -la include/glew/include/
+          echo "-----3-----"
+          ls -la include/glew/include/GL
+          echo "-----4-----"
           mkdir build && cd build
           cmake ..
           make
