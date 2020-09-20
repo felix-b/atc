@@ -32,6 +32,7 @@ jobs:
       - name: build googletest
         run: |
           cd ${GITHUB_WORKSPACE}/libs/googletest
+          ls -la
           mkdir build && cd build
           cmake ..
           make
@@ -39,13 +40,15 @@ jobs:
       - name: build XPMP2
         run: |
           cd ${GITHUB_WORKSPACE}/libs/XPMP2
+          ls -la
           mkdir build && cd build
           cmake ..
           make
       
       - name: build the plugin
         run: |
-          cd ${GITHUB_WORKSPACE}/src
+          cd ${GITHUB_WORKSPACE}
+          ls -la
           mkdir build && cd build
           cmake ..
           make
