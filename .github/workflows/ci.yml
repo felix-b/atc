@@ -35,6 +35,16 @@ jobs:
           cmake ..
           make
       
+      - name: build PPL
+        run: |
+          cd ${GITHUB_WORKSPACE}/libs/PPL
+          ls -la
+          git apply ../../tools/patches/ppl-0001-adapt-cmakelists.patch
+          cp -R ../../tools/patches/glew/include ../../libs/PPL/include/glew/
+          mkdir build && cd build
+          cmake ..
+          make
+          
       - name: build XPMP2
         run: |
           cd ${GITHUB_WORKSPACE}/libs/XPMP2
@@ -42,7 +52,7 @@ jobs:
           mkdir build && cd build
           cmake ..
           make
-      
+
       - name: build the plugin
         run: |
           cd ${GITHUB_WORKSPACE}
@@ -81,7 +91,18 @@ jobs:
           cd build
           cmake .. -G "MinGW Makefiles"
           make
-      
+
+      - name: build PPL
+        run: |
+          cd ${env:GITHUB_WORKSPACE}\libs\PPL
+          dir
+          git apply ..\..\tools\patches\ppl-0001-adapt-cmakelists.patch
+          Copy-Item -Force -Recurse ..\..\tools\patches\glew\include ..\..\libs\PPL\include\glew\
+          mkdir build
+          cd build
+          cmake .. -G "MinGW Makefiles"
+          make
+          
       - name: build XPMP2
         run: |
           cd ${env:GITHUB_WORKSPACE}\libs\XPMP2
