@@ -36,6 +36,18 @@ jobs:
           chmod +x build-all.sh
           ./build-all.sh
 
+      - name: upload lin.xpl
+        uses: actions/upload-artifact@v2
+        with:
+          name: lin_xpl
+          path: build/lib/lin.xpl
+
+      - name: upload plugin assets
+        uses: actions/upload-artifact@v2
+        with:
+          name: plugin_assets
+          path: assets
+
   build-mac:
     runs-on: macos-latest
     steps:
@@ -59,6 +71,12 @@ jobs:
           chmod +x build-all.sh
           ./build-all.sh
 
+      - name: upload mac.xpl
+        uses: actions/upload-artifact@v2
+        with:
+          name: mac_xpl
+          path: build/bin/mac.xpl
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -76,3 +94,81 @@ jobs:
 
       - name: build all
         run: tasks\build-all.cmd
+
+      - name: upload win.xpl
+        uses: actions/upload-artifact@v2
+        with:
+          name: win_xpl
+          path: build\lib\win.xpl
+
+  create-download-zip:
+    needs: [build-linux, build-mac, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: download artifacts
+        uses: actions/download-artifact@v2
+
+      - name: print structure of downloaded files
+        run: ls -R
+
+      - name: create version.txt
+        id: create_version_txt
+        run: |
+          echo "build # $GH_RUN_NUMBER" > plugin_assets/version.txt 
+          echo "commit $GH_COMMIT_SHA" >> plugin_assets/version.txt
+          echo "to $GH_REF" >> plugin_assets/version.txt
+          if ["$GH_REF" != "refs/heads/master"]; then
+            echo "*** this is a pull request build! ***" >> plugin_assets/version.txt
+          fi
+          echo $(date) >> plugin_assets/version.txt
+        env:
+          GH_RUN_NUMBER: ${{ github.run_number }}
+          GH_COMMIT_SHA: ${{ github.sha }}
+          GH_EVENT_NAME: ${{ github.event_name }}
+          GH_REF: ${{ github.ref }}
+          GH_HEAD_REF: ${{ github.head_ref }}
+
+      - name: create plugin zip
+        run: |
+          mkdir plugin_assets/64
+          cp lin_xpl/lin.xpl plugin_assets/64/
+          cp mac_xpl/mac.xpl plugin_assets/64/
+          cp win_xpl/win.xpl plugin_assets/64/
+          mv plugin_assets airTrafficAndControl
+
+      - name: upload plugin zip
+        uses: actions/upload-artifact@v2
+        with:
+          name: airTrafficAndControl
+          path: airTrafficAndControl
+
+  publish-bleeding-edge:
+    needs: [create-download-zip]
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: airTrafficAndControl
+          path: airTrafficAndControl
+
+      - name: create zip
+        run: zip -r airTrafficAndControl airTrafficAndControl
+
+      - name: create/update release
+        uses: meeDamian/github-release@2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: bleeding-edge
+          allow_override: true
+          commitish: master
+          prerelease: true
+          body: "The very latest changes that weren't yet released and weren't thoroughly tested (expect dragons!). Download [airTrafficAndControl.zip](https://github.com/felix-b/atc/releases/download/bleeding-edge/airTrafficAndControl.zip)"
+          files: airTrafficAndControl.zip
+          gzip: false
