@@ -8,71 +8,56 @@ on:
 
 jobs:
 
-  build-linux-mac:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-
+  build-linux:
+    runs-on: ubuntu-latest
     steps:
 
       - name: print environment
         run: |
-          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          uname -a
           gcc --version
           cmake --version
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+
+      - name: install deps
+        run: |
+          sudo sed -i -e 's/http:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubuntu.com\/mirrors.txt/' /etc/apt/sources.list && sudo apt-get update
+          sudo apt-get install -y --no-install-recommends freeglut3-dev
 
       - name: checkout
         uses: actions/checkout@v2
         with: 
           submodules: 'recursive'
 
-      - name: build googletest
+      - name: build all
         run: |
-          cd ${GITHUB_WORKSPACE}/libs/googletest
+          cd ${GITHUB_WORKSPACE}/tasks
           ls -la
-          mkdir build && cd build
-          cmake ..
-          make
-      
-      - name: build PPL
-        run: |
-          cd ${GITHUB_WORKSPACE}/libs/PPL
-          git apply ../../tools/patches/ppl-0001-adapt-cmakelists.patch
-          cp -R ../../tools/patches/glew/include include/glew/
-          echo "-----1-----"
-          ls -la include/glew/
-          echo "-----2-----"
-          ls -la include/glew/include/
-          echo "-----3-----"
-          ls -la include/glew/include/GL
-          echo "-----4-----"
-          mkdir build && cd build
-          cmake ..
-          make
-          
-      - name: build XPMP2
-        run: |
-          cd ${GITHUB_WORKSPACE}/libs/XPMP2
-          ls -la
-          mkdir build && cd build
-          cmake ..
-          make
+          chmod +x build-all.sh
+          ./build-all.sh
 
-      - name: build the plugin
-        run: |
-          cd ${GITHUB_WORKSPACE}
-          ls -la
-          mkdir build && cd build
-          cmake ..
-          make
-          make test
+  build-mac:
+    runs-on: macos-latest
+    steps:
 
-      - name: run unit tests
+      - name: print environment
         run: |
-          cd ${GITHUB_WORKSPACE}/build
+          uname -a
+          gcc --version
+          cmake --version
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+
+      - name: checkout
+        uses: actions/checkout@v2
+        with: 
+          submodules: 'recursive'
+
+      - name: build all
+        run: |
+          cd ${GITHUB_WORKSPACE}/tasks
           ls -la
-          make test
+          chmod +x build-all.sh
+          ./build-all.sh
 
   build-windows:
     runs-on: windows-latest
@@ -89,49 +74,5 @@ jobs:
         with: 
           submodules: 'recursive'
 
-      - name: build googletest
-        run: |
-          cd ${env:GITHUB_WORKSPACE}\libs\googletest
-          dir
-          mkdir build
-          cd build
-          cmake .. -G "MinGW Makefiles"
-          make
-
-      - name: build PPL
-        run: |
-          cd ${env:GITHUB_WORKSPACE}\libs\PPL
-          dir
-          git apply ..\..\tools\patches\ppl-0001-adapt-cmakelists.patch
-          Copy-Item -Force -Recurse ..\..\tools\patches\glew\include ..\..\libs\PPL\include\glew\
-          mkdir build
-          cd build
-          cmake .. -G "MinGW Makefiles"
-          make
-          
-      - name: build XPMP2
-        run: |
-          cd ${env:GITHUB_WORKSPACE}\libs\XPMP2
-          dir
-          git apply ..\..\tools\patches\xpmp2-0001-adapt-cmakelists-to-mingw.patch
-          mkdir build
-          cd build
-          cmake .. -G "MinGW Makefiles"
-          make
-      
-      - name: build the plugin
-        run: |
-          cd ${env:GITHUB_WORKSPACE}
-          dir
-          mkdir build
-          cd build
-          cmake .. -G "MinGW Makefiles"
-          make
-          make test
-
-      - name: run unit tests
-        run: |
-          cd ${env:GITHUB_WORKSPACE}\build
-          dir
-          make test
-
+      - name: build all
+        run: tasks\build-all.cmd

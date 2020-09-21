@@ -18,6 +18,12 @@ git reset --hard
 rm -rf build
 popd
 
+echo "------ cleaning openal ------"
+pushd libs/PPL/include/openal-soft
+git reset --hard
+rm -rf build
+popd
+
 echo "------ cleaning XPMP2 ------"
 pushd libs/XPMP2
 git reset --hard

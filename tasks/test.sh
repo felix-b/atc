@@ -6,12 +6,9 @@ set -e
 thisScriptDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 pushd "$thisScriptDir/.."
 
-echo "------ building the plugin ------"
-mkdir build || true && cd build
-cmake ..
-make
+tasks/build.sh
 echo "------ running unit tests ------"
 make test
 
 popd
-echo "------ build: success ------"
+echo "------ test: success ------"

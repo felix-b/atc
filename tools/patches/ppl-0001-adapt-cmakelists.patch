@@ -1,12 +1,22 @@
-From 1113d2655b69c331dabb70bf40427acd4412cb7a Mon Sep 17 00:00:00 2001
+From f974b8fb02f5ca3f517607fae7ebfcacf7cb800e Mon Sep 17 00:00:00 2001
 Subject: [PATCH] adapt cmakelists
 
 ---
- CMakeLists.txt | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+ .gitignore     |  1 +
+ CMakeLists.txt | 22 +++++++++++++---------
+ 2 files changed, 14 insertions(+), 9 deletions(-)
 
+diff --git a/.gitignore b/.gitignore
+index 9b53814..576c4c8 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -4,3 +4,4 @@ objects/
+ ppl.pro.user
+ lib/libppl.a
+ lib/libppld.a
++build/
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c0a654f..f5da2c0 100644
+index c0a654f..42aeb08 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 14)
@@ -29,25 +39,29 @@ index c0a654f..f5da2c0 100644
  endif()
  
  if(APPLE)
-@@ -29,7 +29,7 @@ if(APPLE)
+@@ -29,7 +29,9 @@ if(APPLE)
          LIN=0
          IBM=0)
      set(PLATFORM_INCLUDE_DIRECTORIES
 -        /usr/X11/include/freetype2)
++        include/glew/include
++        include/openal-soft/include
 +        include/freetype2/include)
  else()
  if(LINUX)
      set(PLATFORM_CORE_DEFINITIONS
-@@ -37,7 +37,7 @@ if(LINUX)
+@@ -37,7 +39,9 @@ if(LINUX)
          LIN=1
          IBM=0)
      set(PLATFORM_INCLUDE_DIRECTORIES
 -        /usr/include/freetype2)
++        include/glew/include
++        include/openal-soft/include
 +        include/freetype2/include)
  else()
      set(PLATFORM_CORE_DEFINITIONS
          APL=0
-@@ -52,8 +52,8 @@ else()
+@@ -52,8 +56,8 @@ else()
          include/glew/include
          include/openal-soft/include
          include/freetype2/include)
@@ -58,7 +72,7 @@ index c0a654f..f5da2c0 100644
  endif()
  endif()
  
-@@ -64,8 +64,8 @@ set(DEFINITIONS
+@@ -64,8 +68,8 @@ set(DEFINITIONS
      XPLM301=1
      ${PLATFORM_CORE_DEFINITIONS})
  
