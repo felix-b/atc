@@ -1,6 +1,4 @@
 From cb27ca0e57f320e9ce00ae57113eabf3d1551c05 Mon Sep 17 00:00:00 2001
-From: felix-b <felixberman76@gmail.com>
-Date: Sun, 20 Sep 2020 22:48:35 +0300
 Subject: [PATCH] adapt cmakelists.txt to mingw
 
 ---
