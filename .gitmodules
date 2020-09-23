@@ -13,3 +13,7 @@
 	path = libs/PPL
 	url = https://github.com/PhilippMuenzel/PPL
 	ignore = dirty
+[submodule "libs/concurrentqueue"]
+	path = libs/concurrentqueue
+	url = https://github.com/cameron314/concurrentqueue.git
+	ignore = dirty

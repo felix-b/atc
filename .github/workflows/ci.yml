@@ -8,71 +8,74 @@ on:
 
 jobs:
 
-  build-linux-mac:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-
+  build-linux:
+    runs-on: ubuntu-latest
     steps:
 
       - name: print environment
         run: |
-          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          uname -a
           gcc --version
           cmake --version
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+
+      - name: install deps
+        run: |
+          sudo sed -i -e 's/http:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubuntu.com\/mirrors.txt/' /etc/apt/sources.list && sudo apt-get update
+          sudo apt-get install -y --no-install-recommends freeglut3-dev
 
       - name: checkout
         uses: actions/checkout@v2
         with: 
           submodules: 'recursive'
 
-      - name: build googletest
+      - name: build all
         run: |
-          cd ${GITHUB_WORKSPACE}/libs/googletest
+          cd ${GITHUB_WORKSPACE}/tasks
           ls -la
-          mkdir build && cd build
-          cmake ..
-          make
-      
-      - name: build PPL
-        run: |
-          cd ${GITHUB_WORKSPACE}/libs/PPL
-          git apply ../../tools/patches/ppl-0001-adapt-cmakelists.patch
-          cp -R ../../tools/patches/glew/include include/glew/
-          echo "-----1-----"
-          ls -la include/glew/
-          echo "-----2-----"
-          ls -la include/glew/include/
-          echo "-----3-----"
-          ls -la include/glew/include/GL
-          echo "-----4-----"
-          mkdir build && cd build
-          cmake ..
-          make
-          
-      - name: build XPMP2
-        run: |
-          cd ${GITHUB_WORKSPACE}/libs/XPMP2
-          ls -la
-          mkdir build && cd build
-          cmake ..
-          make
+          chmod +x build-all.sh
+          ./build-all.sh
 
-      - name: build the plugin
-        run: |
-          cd ${GITHUB_WORKSPACE}
-          ls -la
-          mkdir build && cd build
-          cmake ..
-          make
-          make test
+      - name: upload lin.xpl
+        uses: actions/upload-artifact@v2
+        with:
+          name: lin_xpl
+          path: build/lib/lin.xpl
 
-      - name: run unit tests
+      - name: upload plugin assets
+        uses: actions/upload-artifact@v2
+        with:
+          name: plugin_assets
+          path: assets
+
+  build-mac:
+    runs-on: macos-latest
+    steps:
+
+      - name: print environment
         run: |
-          cd ${GITHUB_WORKSPACE}/build
+          uname -a
+          gcc --version
+          cmake --version
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+
+      - name: checkout
+        uses: actions/checkout@v2
+        with: 
+          submodules: 'recursive'
+
+      - name: build all
+        run: |
+          cd ${GITHUB_WORKSPACE}/tasks
           ls -la
-          make test
+          chmod +x build-all.sh
+          ./build-all.sh
+
+      - name: upload mac.xpl
+        uses: actions/upload-artifact@v2
+        with:
+          name: mac_xpl
+          path: build/bin/mac.xpl
 
   build-windows:
     runs-on: windows-latest
@@ -89,49 +92,89 @@ jobs:
         with: 
           submodules: 'recursive'
 
-      - name: build googletest
-        run: |
-          cd ${env:GITHUB_WORKSPACE}\libs\googletest
-          dir
-          mkdir build
-          cd build
-          cmake .. -G "MinGW Makefiles"
-          make
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v1.0.1
+        
+      - name: build all
+        run: tasks\build-all.cmd
 
-      - name: build PPL
-        run: |
-          cd ${env:GITHUB_WORKSPACE}\libs\PPL
-          dir
-          git apply ..\..\tools\patches\ppl-0001-adapt-cmakelists.patch
-          Copy-Item -Force -Recurse ..\..\tools\patches\glew\include ..\..\libs\PPL\include\glew\
-          mkdir build
-          cd build
-          cmake .. -G "MinGW Makefiles"
-          make
-          
-      - name: build XPMP2
-        run: |
-          cd ${env:GITHUB_WORKSPACE}\libs\XPMP2
-          dir
-          git apply ..\..\tools\patches\xpmp2-0001-adapt-cmakelists-to-mingw.patch
-          mkdir build
-          cd build
-          cmake .. -G "MinGW Makefiles"
-          make
-      
-      - name: build the plugin
-        run: |
-          cd ${env:GITHUB_WORKSPACE}
-          dir
-          mkdir build
-          cd build
-          cmake .. -G "MinGW Makefiles"
-          make
-          make test
+      - name: upload win.xpl
+        uses: actions/upload-artifact@v2
+        with:
+          name: win_xpl
+          path: |
+            build\lib\win.xpl
+            libs\libspeechwin\build\Release\libspeechwin.dll
 
-      - name: run unit tests
-        run: |
-          cd ${env:GITHUB_WORKSPACE}\build
-          dir
-          make test
+  create-download-zip:
+    needs: [build-linux, build-mac, build-windows]
+    runs-on: ubuntu-latest
+    steps:
 
+      - name: download artifacts
+        uses: actions/download-artifact@v2
+
+      - name: print structure of downloaded files
+        run: ls -R
+
+      - name: create version.txt
+        id: create_version_txt
+        run: |
+          echo "build # $GH_RUN_NUMBER" > plugin_assets/version.txt 
+          echo "commit $GH_COMMIT_SHA" >> plugin_assets/version.txt
+          echo "to $GH_REF" >> plugin_assets/version.txt
+          if ["$GH_REF" != "refs/heads/master"]; then
+            echo "*** this is a pull request build! ***" >> plugin_assets/version.txt
+          fi
+          echo $(date) >> plugin_assets/version.txt
+        env:
+          GH_RUN_NUMBER: ${{ github.run_number }}
+          GH_COMMIT_SHA: ${{ github.sha }}
+          GH_EVENT_NAME: ${{ github.event_name }}
+          GH_REF: ${{ github.ref }}
+          GH_HEAD_REF: ${{ github.head_ref }}
+
+      - name: create plugin zip
+        run: |
+          mkdir plugin_assets/64
+          cp lin_xpl/lin.xpl plugin_assets/64/
+          cp mac_xpl/mac.xpl plugin_assets/64/
+          cp win_xpl/build/lib/win.xpl plugin_assets/64/
+          cp win_xpl/libs/libspeechwin/build/Release/libspeechwin.dll plugin_assets/64/
+          mv plugin_assets airTrafficAndControl
+
+      - name: upload plugin zip
+        uses: actions/upload-artifact@v2
+        with:
+          name: airTrafficAndControl
+          path: airTrafficAndControl
+
+  publish-bleeding-edge:
+    needs: [create-download-zip]
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: airTrafficAndControl
+          path: airTrafficAndControl
+
+      - name: create zip
+        run: zip -r airTrafficAndControl airTrafficAndControl
+
+      - name: create/update release
+        uses: meeDamian/github-release@2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: bleeding-edge
+          allow_override: true
+          commitish: master
+          prerelease: true
+          body: "The very latest changes that weren't yet released and weren't thoroughly tested (expect dragons!). Download [airTrafficAndControl.zip](https://github.com/felix-b/atc/releases/download/bleeding-edge/airTrafficAndControl.zip)"
+          files: airTrafficAndControl.zip
+          gzip: false
