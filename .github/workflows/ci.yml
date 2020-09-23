@@ -102,7 +102,9 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: win_xpl
-          path: build\lib\win.xpl
+          path: |
+            build\lib\win.xpl
+            libs\libspeechwin\build\Release\libspeechwin.dll
 
   create-download-zip:
     needs: [build-linux, build-mac, build-windows]
@@ -137,7 +139,8 @@ jobs:
           mkdir plugin_assets/64
           cp lin_xpl/lin.xpl plugin_assets/64/
           cp mac_xpl/mac.xpl plugin_assets/64/
-          cp win_xpl/win.xpl plugin_assets/64/
+          cp win_xpl/build/lib/win.xpl plugin_assets/64/
+          cp win_xpl/libs/libspeechwin/build/Release/libspeechwin.dll plugin_assets/64/
           mv plugin_assets airTrafficAndControl
 
       - name: upload plugin zip

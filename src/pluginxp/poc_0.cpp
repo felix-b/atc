@@ -5,11 +5,11 @@
 // Standard C headers
 //#include <cstdio>
 //#include <cstdarg>
-//#include <cstring>
 //#include <cmath>
 #include <iostream>
 #include <functional>
 #include <cmath>
+#include <cstring>
 
 // X-Plane SDK
 //#include "XPLMDataAccess.h"

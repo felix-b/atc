@@ -9,3 +9,7 @@ add_library(libdataxp STATIC
 set_property(TARGET libdataxp PROPERTY CXX_STANDARD 14)
 target_include_directories(libdataxp PUBLIC ../libworld)
 target_link_libraries(libdataxp libworld) 
+
+if (UNIX)
+    target_compile_options(libdataxp PUBLIC -fPIC)
+endif()

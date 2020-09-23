@@ -38,3 +38,7 @@ add_library(libworld STATIC
 )
 
 set_property(TARGET libworld PROPERTY CXX_STANDARD 14)
+
+if (UNIX)
+    target_compile_options(libworld PUBLIC -fPIC)
+endif()

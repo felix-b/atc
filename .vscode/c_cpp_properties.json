@@ -3,6 +3,10 @@
         "defaultIncludes": [
             "${workspaceFolder}/libs/XPSDK/CHeaders/**",
             "${workspaceFolder}/libs/googletest/googletest/include",
+            "${workspaceFolder}/libs/concurrentqueue",
+            "${workspaceFolder}/libs/PPL/src",
+            "${workspaceFolder}/libs/XPMP2/inc",
+            "${workspaceFolder}/libs/PPL/include/openal-soft/include",
             "${workspaceFolder}/src/**"
         ],
         "defaultDefines": [
@@ -20,7 +24,9 @@
             ],
             "defines": [
                 "${defaultDefines}",
-                "APL=1"
+                "APL=1",
+                "IBM=0",
+                "LIN=0"
             ],
             "macFrameworkPath": [],
             "compilerPath": "/usr/bin/clang++",
@@ -37,6 +43,8 @@
             "defines": [
                 "${defaultDefines}",
                 "IBM=1",
+                "APL=0",
+                "LIN=0",
                 "_WEBSOCKETPP_CPP11_THREAD_=1"
             ],
             "windowsSdkVersion": "10.0.18362.0",

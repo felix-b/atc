@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.12.0)
 project(libspeechwin CXX)
+set(CMAKE_BUILD_TYPE "RELEASE")
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS 1)
 set(BUILD_SHARED_LIBS 1)
@@ -23,9 +24,9 @@ target_link_libraries(libspeechwin sapi)
 set_property(TARGET libspeechwin PROPERTY CXX_STANDARD 14)
 set_property(TARGET libspeechwin PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
-add_custom_command(TARGET libspeechwin POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}\\build\\Debug\\libspeechwin.dll ${CMAKE_CURRENT_SOURCE_DIR}\\..\\..\\build\\lib\\
-)
-add_custom_command(TARGET libspeechwin POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}\\build\\Debug\\libspeechwin.lib ${CMAKE_CURRENT_SOURCE_DIR}\\..\\..\\build\\lib\\
-)
+#add_custom_command(TARGET libspeechwin POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}\\build\\Debug\\libspeechwin.dll ${CMAKE_CURRENT_SOURCE_DIR}\\..\\..\\build\\lib\\
+#)
+#add_custom_command(TARGET libspeechwin POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}\\build\\Debug\\libspeechwin.lib ${CMAKE_CURRENT_SOURCE_DIR}\\..\\..\\build\\lib\\
+#)

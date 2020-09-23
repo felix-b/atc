@@ -4,6 +4,8 @@
 // 
 #include <iostream>
 #include <functional>
+#include <string>
+#include <cstring>
 
 // SDK
 #include "XPLMPlugin.h"
@@ -38,15 +40,29 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
 {
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
 
-    //PluginPath::setPluginAbsoluteDirectory(GetThisDllDirectory());
-    PluginPath::setPluginDirectoryName("TrafficAndControl");
-    LogWriter::getLogger().setLogFile(PluginPath::prependPluginPath("tncpoc0_log.txt"));
+    PluginPath::setPluginDirectoryName("airTrafficAndControl");
+    LogWriter::getLogger().setLogFile(PluginPath::prependPluginPath("atnc_log.txt"));
 
     Log() << Log::Info << "XPluginStart" << Log::endl;
 
-    strcpy(outName, "Traffic & Control");
-    strcpy(outSig, "felix-b.traffic-and-control");
-    strcpy(outDesc, "Local virtual world of traffic and ATC");
+    PrintDebugString(
+        "TNC> XPluginStart, build=[%s], plugin directory=[%s]\n", 
+        #if APL
+            "APL"
+        #endif
+        #if IBM
+            "IBM"
+        #endif
+        #if LIN
+            "LIN"
+        #endif
+        , 
+        getPluginDirectory().c_str()
+    );
+
+    strcpy(outName, "Air Traffic & Control");
+    strcpy(outSig, "felix-b.atc");
+    strcpy(outDesc, "Offline virtual world of air traffic and ATC");
 
     return 1;
 }

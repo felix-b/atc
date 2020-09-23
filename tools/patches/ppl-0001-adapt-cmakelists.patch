@@ -1,10 +1,10 @@
-From f974b8fb02f5ca3f517607fae7ebfcacf7cb800e Mon Sep 17 00:00:00 2001
+From 47f758019bc769293e74b67476fd3ea7cbc93830 Mon Sep 17 00:00:00 2001
 Subject: [PATCH] adapt cmakelists
 
 ---
  .gitignore     |  1 +
- CMakeLists.txt | 22 +++++++++++++---------
- 2 files changed, 14 insertions(+), 9 deletions(-)
+ CMakeLists.txt | 24 ++++++++++++++----------
+ 2 files changed, 15 insertions(+), 10 deletions(-)
 
 diff --git a/.gitignore b/.gitignore
 index 9b53814..576c4c8 100644
@@ -16,7 +16,7 @@ index 9b53814..576c4c8 100644
  lib/libppld.a
 +build/
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index c0a654f..42aeb08 100644
+index c0a654f..127f003 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 14)
@@ -30,9 +30,12 @@ index c0a654f..42aeb08 100644
  
  if(NOT CMAKE_DEBUG_POSTFIX)
    set(CMAKE_DEBUG_POSTFIX d)
-@@ -19,7 +19,7 @@ endif()
+@@ -17,9 +17,9 @@ set(LINUX TRUE)
+ endif()
+ 
  if(UNIX)
-     set(PLATFORM_COMPILE_OPTIONS -Wall -Wextra -Wfloat-equal -pedantic)
+-    set(PLATFORM_COMPILE_OPTIONS -Wall -Wextra -Wfloat-equal -pedantic)
++    set(PLATFORM_COMPILE_OPTIONS -Wall -Wextra -Wfloat-equal -pedantic -fPIC)
  else()
 -    set(PLATFORM_COMPILE_OPTIONS /W3 /wd4996)
 +    # set(PLATFORM_COMPILE_OPTIONS /W3 /wd4996)
@@ -84,5 +87,5 @@ index c0a654f..42aeb08 100644
                      ${PLATFORM_INCLUDE_DIRECTORIES})
  
 -- 
-2.17.2 (Apple Git-113)
+2.26.2.windows.1
 

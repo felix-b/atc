@@ -40,7 +40,7 @@ mkdir build
 mkdir "%repoRootPath%\build\lib"
 cd build || goto :error
 cmake .. || goto :error
-msbuild ALL_BUILD.vcxproj || goto :error
+msbuild ALL_BUILD.vcxproj /property:Configuration=Release || goto :error
 
 echo ------ building the plugin ------
 cd "%repoRootPath%"

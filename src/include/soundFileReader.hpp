@@ -35,7 +35,11 @@ public:
             str << "Error loading sound. "
                 << errorMessage
                 << " at [" 
+#if LIN
+                << (fgetpos(file, &position) == 0 ? to_string(position.__pos) : string("??"))
+#else
                 << (fgetpos(file, &position) == 0 ? to_string(position) : string("??"))
+#endif
                 << "] in file [" 
                 << filePath
                 << "]";

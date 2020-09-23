@@ -14,3 +14,7 @@ add_library(libai STATIC
 set_property(TARGET libai PROPERTY CXX_STANDARD 14)
 target_include_directories(libai PUBLIC ../libworld)
 target_link_libraries(libai libworld)
+
+if (UNIX)
+    target_compile_options(libai PUBLIC -fPIC)
+endif()

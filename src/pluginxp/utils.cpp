@@ -2,6 +2,7 @@
 // This file is part of AT&C project which simulates virtual world of air traffic and ATC.
 // Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
 // 
+#include <cstdarg>
 #include <string>
 #include <fstream>
 #include <streambuf>
@@ -31,9 +32,7 @@ std::string getPluginDirectory()
     char description[256];
     XPLMGetPluginInfo(XPLMGetMyID(), name, filePath, signature, description);
     XPLMExtractFileAndPath(filePath);
-#ifndef APL
     XPLMExtractFileAndPath(filePath);
-#endif
     
     return std::string(filePath);
 }

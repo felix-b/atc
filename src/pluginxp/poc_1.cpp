@@ -4,6 +4,8 @@
 // 
 #define _USE_MATH_DEFINES
 
+#include <cstring>
+#include <cstdarg>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -559,49 +561,28 @@ private:
         const auto addInboundFlight = [this, airport, &callSignByAirline](
             const string& model, const string& airline, int flightId, const string& origin, time_t arrivalTime, shared_ptr<ParkingStand> gate
         ) {
-            m_host->writeLog("addInboundFlight - 1");
+            m_host->writeLog("adding inbound flight id=%d", flightId);
 
             string callSign = getValueOrThrow(callSignByAirline, airline);
-            m_host->writeLog("addInboundFlight - 1b");
             auto flightPlan = shared_ptr<FlightPlan>(new FlightPlan(arrivalTime - 60 * 60 * 3, arrivalTime, origin, airport->header().icao()));
-            m_host->writeLog("addInboundFlight - 1c");
             flightPlan->setArrivalGate(gate->name());
-            m_host->writeLog("addInboundFlight - 1d");
             flightPlan->setArrivalRunway("13L");
-
-            m_host->writeLog("addInboundFlight - 2");
 
             auto flight = shared_ptr<Flight>(new Flight(m_host, flightId, Flight::RulesType::IFR, airline, to_string(flightId), callSign + " " + to_string(flightId), flightPlan));
             int aircraftId = 1000 + flightId;
             
-            m_host->writeLog("addInboundFlight - 3");
-
             auto aircraft = shared_ptr<world::Aircraft>(new world::Aircraft(m_host, aircraftId, model, airline, to_string(flightId), world::Aircraft::Category::Jet));
             flight->setAircraft(aircraft);
-
-            m_host->writeLog("addInboundFlight - 4");
 
             auto pilot = m_host->createAIPilot(flight);
             flight->setPilot(pilot);
 
-            m_host->writeLog("addInboundFlight - 5");
-
-
-            m_host->writeLog("addInboundFlight - 6");
-
             m_world->deferUntil(arrivalTime, [=](){
-                m_host->writeLog("addInboundFlight - 8");
                 const auto& landingRunwayEnd = m_world->getRunwayEnd(airport->header().icao(), "13L");
-                m_host->writeLog("addInboundFlight - 8a - landingRunwayEnd=%s heading=%f", landingRunwayEnd.name().c_str(), landingRunwayEnd.heading());
                 m_world->addFlight(flight);
-                m_host->writeLog("addInboundFlight - 8b");
                 aircraft->setOnFinal(landingRunwayEnd);
-                m_host->writeLog("addInboundFlight - 8c");
                 aircraft->setManeuver(pilot->getFinalToGate(landingRunwayEnd));
-                m_host->writeLog("addInboundFlight - 9");
             });
-
-            m_host->writeLog("addInboundFlight - 7");
         };
 
         vector<shared_ptr<ParkingStand>> gates;
