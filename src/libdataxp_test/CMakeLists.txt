@@ -6,11 +6,12 @@ include(GoogleTest)
 enable_testing()
 
 add_executable(libdataxp_test 
-    libdataxp_test.cpp
+    cppTest.cpp
+    xpAirportReaderTest.cpp
 )
 
 set_property(TARGET libdataxp_test PROPERTY CXX_STANDARD 14)
-target_include_directories(libdataxp_test PUBLIC ../libworld ../libdataxp)
+target_include_directories(libdataxp_test PUBLIC ../libworld ../libdataxp ../libworld_test)
 target_link_libraries(libdataxp_test libdataxp libworld GTest::GTest GTest::Main)
 
 if (ATCBUILD_CAN_RUN_TESTS)

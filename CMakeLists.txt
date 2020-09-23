@@ -50,4 +50,6 @@ message ("CMAKE_RUNTIME_OUTPUT_DIRECTORY" = ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 message ("------ atcbuild: end of environment ------")
 
+#add_subdirectory(libs/PPL)
+#add_subdirectory(libs/XPMP2)
 add_subdirectory(src)

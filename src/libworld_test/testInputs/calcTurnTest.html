@@ -1,0 +1,320 @@
+<html>
+    <head>
+        <script>
+            const TEST_CASES = [
+                'showtaxi([40,10,20,10],[20,10,20,3],3)',
+                'showtaxi([40,10,20,10],[20,10,20,30],3)',
+                'showtaxi([000,10,20,10],[20,10,20,30],3)',
+                'showtaxi([000,10,20,10],[20,10,20,3],3)',
+                'showtaxi([0,0,20,20],[20,20,40,0],3)',
+                'showtaxi([0,0,20,20],[20,20,10,0],3)',
+                'showtaxi([10,0,20,20],[20,20,0,0],3)',
+                'showtaxi([40,0,20,20],[20,20,30,0],3)',
+                'showtaxi([30,0,20,20],[20,20,40,0],3)',
+                'showtaxi([30,40,20,20],[20,20,40,40],3)',
+                'showtaxi([40,40,20,20],[20,20,30,40],3)',
+                'showtaxi([0,40,20,20],[20,20,10,40],3)',
+                'showtaxi([10,40,20,20],[20,20,0,40],3)',
+                'showtaxi([10,40,20,20],[20,20,30,40],3)',
+                'showtaxi([30,40,20,20],[20,20,10,40],3)',
+                'showtaxi([30,10,20,20],[20,20,30,30],3)',
+                'showtaxi([30,30,20,20],[20,20,30,10],3)',
+                'showtaxi([30,10,20,20],[20,20,10,10],3)',
+                'showtaxi([10,10,20,20],[20,20,30,10],3)',
+                'showtaxi([10,10,20,20],[20,20,10,30],3)',
+                'showtaxi([10,30,20,20],[20,20,30,30],3)',
+                'showtaxi([10,10,20,20],[20,20,10,30],3)',
+                'showtaxi([10,30,20,20],[20,20,10,10],3)',
+                'showtaxi([10,10,20,20],[20,20,30,25],3)',
+                'showtaxi([10,10,20,20],[20,20,30,25],6)',
+                'showtaxi([10,10,20,20],[20,20,30,35],6)',
+                'showtaxi([40,40,20,20],[20,20,0,10],6)',
+                'showtaxi([40,40,20,20],[20,20,0,5],6)',
+                'showtaxi([40,40,20,20],[20,20,10,5],6)',
+                'showtaxi([40,0,20,20],[20,20,0,5],6)',
+                'showtaxi([40,0,20,20],[20,20,0,45],6)',
+                'showtaxi([40,0,20,20],[20,20,10,45],6)',
+                'showtaxi([40,0,20,20],[20,20,10,35],6)',
+                'showtaxi([40,0,20,20],[20,20,10,25],6)'
+            ];
+            let nextTestCaseIndex = 0;
+
+            function calcAngle(e) {
+                const angleRad = Math.atan2(e.p1.lat - e.p0.lat, e.p1.lon - e.p0.lon);
+                return Object.assign(Object.assign({}, e), { angleRad });
+            }
+            function toRadians(degrees) {
+                return degrees * Math.PI / 180;
+            }
+            function toDegrees(radians) {
+                return radians * 180 / Math.PI;
+            }
+            function toTurnAngle(radians) {
+                if (radians > Math.PI)
+                    return 2 * Math.PI - radians;
+                if (radians < -Math.PI)
+                    return -2 * Math.PI - radians;
+                return radians;
+            }
+
+            function normalizeAngle(a) {
+                const twoPI = 2 * Math.PI;
+                while (a <= -Math.PI) {
+                    a += twoPI;
+                }
+                while (a > Math.PI) {
+                    a -= twoPI;
+                }
+                return a;
+            }
+
+            function isClockwise(a0, a1) {
+                if (a0 >= 0 && a1 >= 0) {
+                    return (a0 >= a1);
+                }
+                if (a0 < 0 && a1 < 0) {
+                    return (a0 >= a1);
+                }
+                if (a0 >= 0 && a1 < 0) {
+                    d = a0 + Math.abs(a1);
+                    return (d < Math.PI);
+                }
+                if (a0 < 0 && a1 >= 0) {
+                    d = Math.abs(a0) + a1;
+                    return (d >= Math.PI);
+                }
+            }
+
+            //-1.1071487177940904,2.356194490192345
+            function getMinDeltaAngle(a0, a1) {
+                if (a0 * a1 >= 0) {
+                    return a1 - a0;
+                }
+                if (a0 >= 0 && a1 < 0) {
+                    d = a0 + Math.abs(a1);
+                    return (d < Math.PI ? -d : 2 * Math.PI - d);
+                }
+                if (a0 < 0 && a1 >= 0) {
+                    d = Math.abs(a0) + a1;
+                    return (d < Math.PI ? d : -(2 * Math.PI - d));
+                }
+                throw new Error('this cannot happen');
+            }
+
+            window.calcTaxi = (e1, e2, inRadius) => {
+                // function calcAngle(e1: Edge, e2: Edge): number
+                // {
+                //   const angle1 = Math.atan2(
+                //     e1.p0.lat - e1.p1.lat,
+                //     e1.p0.lon - e1.p1.lon);
+                //   const angle2 = Math.atan2(
+                //     e2.p0.lat - e2.p1.lat,
+                //     e2.p0.lon - e2.p1.lon);
+                //   const degrees = (angle1 - angle2) * 180 / Math.PI;
+                //   return Math.abs(degrees > 180 ? 360 - degrees : degrees);
+                // }
+                function calcAngleBetweenEdges(e1, e2) {
+                    const d1x = e1.p0.lon - e1.p1.lon;
+                    const d1y = e1.p0.lat - e1.p1.lat;
+                    const d2x = e2.p1.lon - e2.p0.lon;
+                    const d2y = e2.p1.lat - e2.p0.lat;
+                    const angle = Math.atan2(d1x * d2y - d1y * d2x, d1x * d2x + d1y * d2y);
+                    return angle;
+                }
+                function internalCalcTurnArc(e1, e2, radius) {
+                    //console.log('INPUT> ', e1, e2, radius);
+
+                    const angleBetweenEdges = calcAngleBetweenEdges(e1, e2);
+                    //console.log('angleBetweenEdges', angleBetweenEdges);
+                    
+                    const edgeShortenDistance = Math.abs(radius / Math.tan(angleBetweenEdges / 2));
+                    //console.log('edgeShortenDistance', edgeShortenDistance);
+                    
+                    const arcStartPoint = {
+                        lat: e1.p1.lat + (edgeShortenDistance * Math.sin(e1.angleRad + Math.PI)),
+                        lon: e1.p1.lon + (edgeShortenDistance * Math.cos(e1.angleRad + Math.PI))
+                    };
+                    //console.log('arcStartPoint', arcStartPoint.lat, arcStartPoint.lon);
+
+                    const arcEndPoint = {
+                        lat: e2.p0.lat + (edgeShortenDistance * Math.sin(e2.angleRad)),
+                        lon: e2.p0.lon + (edgeShortenDistance * Math.cos(e2.angleRad))
+                    };
+                    //console.log('arcEndPoint', arcEndPoint.lat, arcEndPoint.lon);
+
+                    const e1NormalToCenterAngle = (angleBetweenEdges > 0
+                        ? e1.angleRad - Math.PI / 2
+                        : e1.angleRad + Math.PI / 2);
+                    //console.log('e1NormalToCenterAngle', e1NormalToCenterAngle);
+
+                    const e2NormalToCenterAngle = (angleBetweenEdges > 0
+                        ? e2.angleRad - Math.PI / 2
+                        : e2.angleRad + Math.PI / 2);
+                    //console.log('e2NormalToCenterAngle', e1NormalToCenterAngle);
+
+                    const arcCenterPoint = {
+                        lat: arcStartPoint.lat + (radius * Math.sin(e1NormalToCenterAngle)),
+                        lon: arcStartPoint.lon + (radius * Math.cos(e1NormalToCenterAngle))
+                    };
+                    //console.log('arcCenterPoint', e1NormalToCenterAngle);
+
+                    // console.log('edgeShortenDistance', edgeShortenDistance);
+                    // console.log('intersectionToCenterDistance', intersectionToCenterDistance);
+                    // console.log('arcStartPoint', arcStartPoint);
+                    // console.log('arcEndPoint', arcEndPoint);
+                    // console.log('e1NormalToCenterAngle', toDegrees(e1NormalToCenterAngle));
+                    // console.log('arcCenterPoint', arcCenterPoint);
+
+                    const arcStartAngle = normalizeAngle(e1NormalToCenterAngle + Math.PI);
+                    const arcEndAngle = normalizeAngle(e2NormalToCenterAngle + Math.PI);
+                    const clockwise = isClockwise(arcStartAngle, arcEndAngle);
+                    const arcMinDeltaAngle = getMinDeltaAngle(arcStartAngle, arcEndAngle);
+
+                        // arcStartAngle > Math.PI / 2 && arcStartAngle <= Math.PI && arcEndAngle < -Math.PI / 2 && arcEndAngle >= -Math.PI
+                        // ? Math.PI - arcStartAngle + arcEndAngle + Math.PI
+                        // : arcEndAngle - arcStartAngle);
+
+                    return {
+                        p0: arcStartPoint,
+                        p1: arcEndPoint,
+                        center: arcCenterPoint,
+                        a0: arcStartAngle,
+                        a1: arcEndAngle,
+                        radius,
+                        clockwise: clockwise,
+                        deltaA: arcMinDeltaAngle
+                    };
+                }
+
+                const res = internalCalcTurnArc(e1, e2, inRadius);
+                const badDeltaA = Math.abs(res.deltaA) > Math.PI;
+                console.log(
+                    `runCase({${e1.p0.lat},${e1.p0.lon}},{${e1.p1.lat},${e1.p1.lon}},{${e2.p0.lat},${e2.p0.lon}},{${e2.p1.lat},${e2.p1.lon}},${inRadius},` + 
+                    ' /**/ ' + 
+                    `{${res.p0.lat},${res.p0.lon}},{${res.p1.lat},${res.p1.lon}},{${res.center.lat},${res.center.lon}},${res.a0},${res.a1},${res.clockwise},${res.deltaA});${(badDeltaA ? '//BAD!!!' : '')}`
+                );
+                return res;
+            } 
+
+            window.example_e1  = [100, 100, 200, 100];
+            window.example_e2  = [200, 100, 200, 200];
+            //console.log(JSON.stringify(calcTurnArc(e1, e2, 5), null, 2));
+            //console.log("angle(e1)", toDegrees(e1.angleRad), "angle(e2)", toDegrees(e2.angleRad));
+            //console.log(toDegrees(toTurnAngle(toRadians(-1)))
+            //console.log("angle(e1-e2)", toDegrees(calcAngleBetweenEdges(e1, e2)));
+            //console.log("angle(e2-e1)", toDegrees(calcAngleBetweenEdges(e2, e1)));
+
+            window.showtaxi = (e1, e2, radius) => {
+                e1 = calcAngle({ p0:{lat:e1[0],lon:e1[1]}, p1:{lat:e1[2],lon:e1[3]} });
+                e2 = calcAngle({ p0:{lat:e2[0],lon:e2[1]}, p1:{lat:e2[2],lon:e2[3]} }); 
+
+                const taxi = calcTaxi(e1, e2, radius);
+                //console.log(JSON.stringify(taxi, null, 2));
+
+                const canvas = document.getElementById('canvas');
+                const ctx = canvas.getContext('2d');
+
+                //ctx.transform(1, 0, 0, -1, 0, canvas.height);
+                ctx.clearRect(0, 0, 599, 599);
+
+                ctx.beginPath();
+                ctx.lineWidth = 0.2;
+                ctx.strokeStyle = "gray";
+                ctx.moveTo(e1.p0.lon, e1.p0.lat);
+                ctx.lineTo(e1.p1.lon, e1.p1.lat);
+                ctx.moveTo(e2.p0.lon, e2.p0.lat);
+                ctx.lineTo(e2.p1.lon, e2.p1.lat);
+                ctx.stroke();
+
+
+                ctx.beginPath();
+                ctx.lineWidth = 0.5;
+                ctx.strokeStyle = "green";
+                ctx.moveTo(e1.p0.lon, e1.p0.lat);
+                ctx.lineTo(taxi.p0.lon, taxi.p0.lat);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.lineWidth = 0.5;
+                ctx.strokeStyle = "orange";
+                ctx.moveTo(taxi.p1.lon, taxi.p1.lat);
+                ctx.lineTo(e2.p1.lon, e2.p1.lat);
+                ctx.stroke();
+
+                //const flipAngles = false;//Math.abs(taxi.a1 - taxi.a0) > Math.PI;
+                //const a0 = flipAngles ? taxi.a1 : taxi.a0;
+                //const a1 = flipAngles ? taxi.a0 : taxi.a1;
+
+                ctx.beginPath();
+                ctx.lineWidth = 0.5;
+                ctx.strokeStyle = "magenta";
+                ctx.arc(
+                    taxi.center.lon, 
+                    taxi.center.lat, 
+                    taxi.radius, 
+                    taxi.a0,
+                    taxi.a1,
+                    isClockwise(taxi.a0, taxi.a1)
+                );
+                ctx.stroke();
+
+                // ctx.moveTo(100, 100);
+                // ctx.lineTo(100, 160);
+                // ctx.moveTo(140, 200);
+                // ctx.lineTo(200, 200);
+                // ctx.arc(140, 160, 40, Math.PI / 2, Math.PI);
+
+                // ctx.arc(75, 75, 50, 0, Math.PI * 2, true); // Outer circle
+                // ctx.moveTo(110, 75);
+                // ctx.arc(75, 75, 35, 0, Math.PI, false);  // Mouth (clockwise)
+                // ctx.moveTo(65, 65);
+                // ctx.arc(60, 65, 5, 0, Math.PI * 2, true);  // Left eye
+                // ctx.moveTo(95, 65);
+                // ctx.arc(90, 65, 5, 0, Math.PI * 2, true);  // Right eye
+
+            };
+            window.clrtaxi = () => {
+                var canvas = document.getElementById('canvas');
+                var ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, 599, 599);
+            };
+
+            window.runNextTestCase = () => {
+                const testCase =  TEST_CASES[nextTestCaseIndex % TEST_CASES.length];
+                nextTestCaseIndex++;
+
+                document.getElementById('test-case').innerText = testCase;
+                //console.log('------------TEST CASE------------');
+                eval(testCase);
+
+                if (nextTestCaseIndex >= TEST_CASES.length) {
+                    alert("DONE ALL TEST CASES");
+                    console.log('------------DONE ALL TEST CASES------------');
+                }
+            };
+
+            // console.log(JSON.stringify(example_e1, null, 2));
+            // console.log(JSON.stringify(example_e2, null, 2));
+
+            setTimeout(() => {
+                (function(){
+                    const canvas = document.getElementById('canvas');
+                    const ctx = canvas.getContext('2d');
+                    ctx.transform(10, 0, 0, -10, 0, canvas.height);
+                })();
+            }, 500);
+
+        </script>
+    </head>
+    <body>
+        <div style="display:fixed; height:20px;">
+            <div style="float:left">
+                <button onclick="runNextTestCase()">Run Next Test Case</button>
+            </div>
+            <div style="float:right;font-family:monospace" id="test-case">
+            </div>
+        </div>
+        <hr/>
+        <canvas id="canvas" width="600" height="600"></canvas>
+    </body>
+</html>

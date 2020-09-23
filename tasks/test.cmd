@@ -5,7 +5,7 @@ cd /D "%repoRootPath%"
 call tasks\build.cmd || goto :error
 echo ------ running unit tests ------
 cd "%repoRootPath%\build"
-call make test || goto :error
+make test || goto :error
 
 echo ------ test: SUCCESS ------
 cd "%repoRootPath%"

@@ -6,11 +6,12 @@ include(GoogleTest)
 enable_testing()
 
 add_executable(libai_test 
-    libai_test.cpp
+    maneuverFactoryTest.cpp
+    workflowTest.cpp
 )
 
 set_property(TARGET libai_test PROPERTY CXX_STANDARD 14)
-target_include_directories(libai_test PUBLIC ../libworld ../libai)
+target_include_directories(libai_test PUBLIC ../libworld ../libai ../libworld_test)
 target_link_libraries(libai_test libai libworld GTest::GTest GTest::Main)
 
 if (ATCBUILD_CAN_RUN_TESTS)

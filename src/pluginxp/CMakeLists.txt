@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.9)
 project(atc VERSION 0.1.0 DESCRIPTION "AT&C X-Plane plugin")
+cmake_policy(SET CMP0079 NEW)
 
 # Set up the imported targets for X-Plane plugin libraries:
 
@@ -30,13 +31,17 @@ ELSEIF(UNIX)
 	add_library(xplm INTERFACE)
 	add_library(xpwidgets INTERFACE)
 ENDIF()
-SET(XPLM_LIBRARY "${XPLM_LIBRARY}" PARENT_SCOPE)
-SET(XPWIDGETS_LIBRARY "${XPWIDGETS_LIBRARY}" PARENT_SCOPE)
+
+message("XPLM_LIBRARY" = ${XPLM_LIBRARY})
+message("XPWIDGETS_LIBRARY" = ${XPWIDGETS_LIBRARY})
+
+#SET(XPLM_LIBRARY "${XPLM_LIBRARY}" PARENT_SCOPE)
+#SET(XPWIDGETS_LIBRARY "${XPWIDGETS_LIBRARY}" PARENT_SCOPE)
 
 # For some reason this doesn't work. It's not worth wasting more time on fixing it, so
 # I'll manually include the directories below
-SET_PROPERTY(TARGET xplm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ATC_LIBS_PATH}/XPSDK/CHeaders/XPLM" "${ATC_LIBS_PATH}/XPSDK/CHeaders/Wrappers")
-SET_PROPERTY(TARGET xpwidgets APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ATC_LIBS_PATH}/XPSDK/CHeaders/XPLM" "${ATC_LIBS_PATH}/XPSDK/CHeaders/Widgets" "${ATC_LIBS_PATH}/XPSDK/CHeaders/Wrappers")
+#SET_PROPERTY(TARGET xplm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ATC_LIBS_PATH}/XPSDK/CHeaders/XPLM" "${ATC_LIBS_PATH}/XPSDK/CHeaders/Wrappers")
+#SET_PROPERTY(TARGET xpwidgets APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ATC_LIBS_PATH}/XPSDK/CHeaders/XPLM" "${ATC_LIBS_PATH}/XPSDK/CHeaders/Widgets" "${ATC_LIBS_PATH}/XPSDK/CHeaders/Wrappers")
 
 FUNCTION(add_xplane_sdk_definitions library_name library_version) 
     IF(APPLE)
@@ -102,6 +107,61 @@ FUNCTION(add_xplane_plugin library_name library_version ...)
     TARGET_INCLUDE_DIRECTORIES(${library_name} PUBLIC "${XPLANE_INCLUDES_PATH}/XPLM" "${XPLANE_INCLUDES_PATH}/Widgets" "${XPLANE_INCLUDES_PATH}/Wrappers")
 ENDFUNCTION(add_xplane_plugin)
 
-add_xplane_plugin(atc 301 
-    dummy_plugin.cpp
+add_xplane_plugin(pluginxp 301 
+    multiplayerInitializer.hpp
+    nativeTextToSpeechService.hpp
+    pluginInstance.hpp
+    pluginxp.cpp
+    poc.h
+    poc_0.cpp
+    poc_1.cpp
+    sound.cpp
+    speechSoundBuffer.hpp
+    utils.cpp
+    utils.h
 )
+
+set_property(TARGET pluginxp PROPERTY CXX_STANDARD 14)
+
+target_include_directories(pluginxp PUBLIC 
+    ${ATC_LIBS_PATH}/PPL/src
+    ${ATC_LIBS_PATH}/XPMP2/inc
+    ${ATC_LIBS_PATH}/concurrentqueue
+    ${ATC_LIBS_PATH}/PPL/include/openal-soft/include
+    ../include
+    ../libworld
+    ../libdataxp
+    ../libai
+)
+
+target_link_libraries(libXPMP2 PUBLIC INTERFACE ${XPLM_LIBRARY} ${XPWIDGETS_LIBRARY})
+
+if (APPLE)
+    find_library(IOKIT_LIBRARY IOKit)
+    find_library(CORE_FOUNDATION_LIBRARY CoreFoundation)
+    find_library(COCOA_LIBRARY Cocoa)
+
+    target_link_libraries(pluginxp PUBLIC
+        ${PPL_LIBRARY}
+        ${XPMP2_LIBRARY}
+        libworld
+        libdataxp
+        libai
+        ${SPEECH_LIBRARY}
+        ${OPENAL_LIBRARY}
+        ${IOKIT_LIBRARY} 
+        ${CORE_FOUNDATION_LIBRARY} 
+        ${COCOA_LIBRARY} 
+        ${OpenGL_LIBRARY} 
+    )
+else()
+    target_link_libraries(pluginxp PUBLIC 
+        ${PPL_LIBRARY}
+        libXPMP2 #${XPMP2_LIBRARY}
+        libworld
+        libdataxp
+        libai
+        ${SPEECH_LIBRARY}
+        ${OPENAL_LIBRARY}
+    )
+endif ()

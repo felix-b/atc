@@ -22,6 +22,11 @@ cd "%repoRootPath%\libs\XPMP2"
 git reset --hard || goto :error
 if EXIST build rmdir /q/s build || goto :error
 
+echo ------ cleaning libspeechwin ------
+cd "%repoRootPath%\libs\libspeechwin"
+git reset --hard || goto :error
+if EXIST build rmdir /q/s build || goto :error
+
 echo ------ cleaning the plugin ------
 cd "%repoRootPath%"
 rem here we don't git reset --hard!

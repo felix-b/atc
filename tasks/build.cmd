@@ -7,7 +7,7 @@ cd "%repoRootPath%"
 mkdir build 
 cd build || goto :error
 cmake .. -G "MinGW Makefiles" || goto :error
-call make || goto :error
+make || goto :error
 
 echo ------ build: SUCCESS ------
 cd "%repoRootPath%"

@@ -2,6 +2,7 @@
 
 set echo off
 set -e
+osName="$(uname -s)"
 
 thisScriptDir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 pushd "$thisScriptDir/.."
@@ -27,6 +28,7 @@ pushd libs/PPL/include/openal-soft
 mkdir build || true && cd build
 cmake ..
 make
+ls -la
 popd
 
 echo ------ building XPMP2 ------
@@ -36,6 +38,26 @@ mkdir build || true && cd build
 cmake ..
 make
 popd
+
+case "${osName}" in
+    Linux*)
+        echo ------ building libspeechlin ------
+        pushd libs/libspeechlin
+        mkdir build || true && cd build
+        cmake ..
+        make
+        ls -la 
+        popd
+        ;;
+    Darwin*)
+        echo ------ building libspeechmac ------
+        pushd libs/libspeechmac
+        mkdir build || true && cd build
+        cmake ..
+        make
+        popd
+        ;;
+esac
 
 echo ------ building the plugin ------
 mkdir build || true && cd build

@@ -34,6 +34,14 @@ cd build || goto :error
 cmake .. -G "MinGW Makefiles" || goto :error
 make || goto :error
 
+echo ------ building libspeechwin ------
+cd "%repoRootPath%\libs\libspeechwin"
+mkdir build 
+mkdir "%repoRootPath%\build\lib"
+cd build || goto :error
+cmake .. || goto :error
+msbuild ALL_BUILD.vcxproj || goto :error
+
 echo ------ building the plugin ------
 cd "%repoRootPath%"
 mkdir build 
