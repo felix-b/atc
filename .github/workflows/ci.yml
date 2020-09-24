@@ -105,6 +105,9 @@ jobs:
           path: |
             build\lib\win.xpl
             libs\libspeechwin\build\Release\libspeechwin.dll
+            tasks\redist\win\libgcc_s_seh-1.dll
+            tasks\redist\win\libstdc++-6.dll
+            tasks\redist\win\libwinpthread-1.dll
 
   create-download-zip:
     needs: [build-linux, build-mac, build-windows]
@@ -141,6 +144,9 @@ jobs:
           cp mac_xpl/mac.xpl plugin_assets/64/
           cp win_xpl/build/lib/win.xpl plugin_assets/64/
           cp win_xpl/libs/libspeechwin/build/Release/libspeechwin.dll plugin_assets/64/
+          cp win_xpl/tasks/redist/win/libgcc_s_seh-1.dll plugin_assets/64/
+          cp win_xpl/tasks/redist/win/libstdc++-6.dll plugin_assets/64/
+          cp win_xpl/tasks/redist/win/libwinpthread-1.dll plugin_assets/64/
           mv plugin_assets airTrafficAndControl
 
       - name: upload plugin zip
@@ -178,3 +184,4 @@ jobs:
           body: "The very latest changes that weren't yet released and weren't thoroughly tested (expect dragons!). Download [airTrafficAndControl.zip](https://github.com/felix-b/atc/releases/download/bleeding-edge/airTrafficAndControl.zip)"
           files: airTrafficAndControl.zip
           gzip: false
+
