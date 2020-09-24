@@ -2,3 +2,4 @@ build/
 build-lin/
 build-mac/
 build-win/
+cmake-build-debug/
