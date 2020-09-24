@@ -69,6 +69,19 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
 
 PLUGIN_API int XPluginEnable(void)
 {
+    char name[256];
+    char filePath[256];
+    char signature[256];
+    char description[256];
+
+    int myPluginId =  XPLMGetMyID();
+    XPLMGetPluginInfo(myPluginId, name, filePath, signature, description);
+
+    XPLMDebugString("TNC> XPluginEnable\n");
+    PrintDebugString(
+        "TNC> XPLMGetPluginInfo(pluginId=%d) -> name=[%s] filePath=[%s] signature=[%s] description=[%s]\n",
+        myPluginId, name, filePath, signature, description);
+
     Log() << Log::Info << "XPluginEnable" << Log::endl;
     pInstance = new PluginInstance();
     return 1;
