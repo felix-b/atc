@@ -38,6 +38,9 @@ static PluginInstance* pInstance = nullptr;
 
 PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
 {
+    strcpy(outName, "Air Traffic & Control");
+    strcpy(outSig, "felix-b.atc");
+    strcpy(outDesc, "Offline virtual world of air traffic and ATC");
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
 
     PluginPath::setPluginDirectoryName("airTrafficAndControl");
@@ -46,7 +49,7 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
     Log() << Log::Info << "XPluginStart" << Log::endl;
 
     PrintDebugString(
-        "TNC> XPluginStart, build=[%s], plugin directory=[%s]\n", 
+        "TNC> XPluginStart, platform-build=[%s], plugin-directory=[%s]\n",
         #if APL
             "APL"
         #endif
@@ -59,10 +62,6 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
         , 
         getPluginDirectory().c_str()
     );
-
-    strcpy(outName, "Air Traffic & Control");
-    strcpy(outSig, "felix-b.atc");
-    strcpy(outDesc, "Offline virtual world of air traffic and ATC");
 
     return 1;
 }
