@@ -77,7 +77,7 @@ async function deleteOldRelease(releaseId) {
     await client.repos.deleteRelease({
         owner,
         repo,
-        releaseId
+        release_id: releaseId
     });
 
     core.info(`ADVANCE-RELEASE> deleted old release.`);
