@@ -56,17 +56,17 @@ async function tryFindOldReleaseId() {
     const releases = await client.repos.listReleases({
         owner,
         repo,
-    })?.data;
+    }).data;
 
     core.info(`ADVANCE-RELEASE> listReleases returned data type [${typeof releases}] with length=[${releases?.length}]`);
     
-    const allMatchedReleases = releases?.filter(r => r.tag_name.indexOf(tagBase) === 0);
+    const allMatchedReleases = releases.filter(r => r.tag_name.indexOf(tagBase) === 0);
     const firstMatchedRelease = allMatchedReleases ? allMatchedReleases[0] : undefined;
 
-    core.info(`ADVANCE-RELEASE> matched releases: length=[${allMatchedReleases?.length || 'N/A'}]`);
-    core.info(`ADVANCE-RELEASE> first matched release id=[${matchedRelease?.id || 'N/A'}]`);
+    core.info(`ADVANCE-RELEASE> matched releases: length=[${allMatchedReleases.length || 'N/A'}]`);
+    core.info(`ADVANCE-RELEASE> first matched release id=[${firstMatchedRelease ? firstMatchedRelease.id : 'N/A'}]`);
 
-    return firstMatchedRelease?.id;
+    return firstMatchedRelease ? firstMatchedRelease.id : undefined;
 }
 
 async function deleteOldRelease(releaseId) {
