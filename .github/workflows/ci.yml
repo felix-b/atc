@@ -171,17 +171,33 @@ jobs:
           path: airTrafficAndControl
 
       - name: create zip
-        run: zip -r airTrafficAndControl airTrafficAndControl
+        id: create_zip
+        run: |
+          export ZIP_NAME=airTrafficAndControl.build${BUILD_NUMBER}.zip
+          echo ZIP_NAME=$ZIP_NAME
+          zip -r $ZIP_NAME airTrafficAndControl
+          echo "::set-output name=zip_name::$ZIP_NAME"
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
 
-      - name: create/update release
+      - name: recycle old release
+        id: recycle_release
+        uses: ./.github/actions/recycle-release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_base: bleeding-edge
+          release_notes: ${{ github.event.head_commit.message }}
+          download_asset_name: ${{ steps.create_zip.outputs.zip_name }}
+
+      - name: create new release
         uses: meeDamian/github-release@2.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: bleeding-edge
+          tag: ${{ steps.recycle_release.outputs.new_tag }}
+          name: ${{ github.event.head_commit.message }}
           allow_override: true
           commitish: master
           prerelease: true
-          body: "The very latest changes that weren't yet released and weren't thoroughly tested (expect dragons!). Download [airTrafficAndControl.zip](https://github.com/felix-b/atc/releases/download/bleeding-edge/airTrafficAndControl.zip)"
-          files: airTrafficAndControl.zip
+          body: ${{ steps.recycle_release.outputs.new_release_body }}
+          files: ${{ steps.create_zip.outputs.zip_name }}
           gzip: false
-
