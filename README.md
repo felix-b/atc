@@ -1,10 +1,10 @@
-# Welcome to virtual world of air traffic and control simulation<br/><small>[early development]</small>
+# Welcome to virtual world of air traffic and control simulation [early development]
 
 Our goal is to create the most comprehensive and most accurate ATC (air traffic control) simulation. We simulate both air traffic and the ATC units as two halves of a whole. The platform for user interaction is the [X-Plane flight simulator](https://www.x-plane.com/), where AT&C loads as a plugin and lets the user choose between 1st-person pilot or 1st-person controller experience. The project aims at adding both educational and entertainment value for X-Plane users. 
 
 # How to use
 
-We provide the "bleeding edge" download which we automatically update with every addition or bugfix. As the name suggests, it isn't thoroughly tested. 
+We provide the ["bleeding edge" build](https://github.com/felix-b/atc/releases) for download, which we automatically update with every addition or bugfix. As the name suggests, it isn't thoroughly tested. 
 
 ## We value early testing by potential users
 
@@ -14,9 +14,9 @@ We appreciate feedback and suggestions. If you would like certain features to be
 
 ## Getting started
 
-1. Go to the [bleeding edge release](https://github.com/felix-b/atc/releases/tag/bleeding-edge) and download **airTrafficAndControl.zip**
+1. Go to the [bleeding edge build](https://github.com/felix-b/atc/releases) and download **airTrafficAndControl.buildNN.zip**
 1. Make sure X-Plane is not running
-1. Unpack **airTrafficAndControl.zip** under the X-Plane **plugins** folder. Your directory structure should be like this:
+1. Unpack **airTrafficAndControl.buildNN.zip** under the X-Plane **plugins** folder. Your directory structure should be like this:
    ```
    X-Plane 11
      |
@@ -56,15 +56,17 @@ Please discuss with us! and with other potential users! Visit
   - Attach **Log.txt** from the X-Plane directory (note: it's overwritten every time you start X-Plane).
   - State expected behavior, step by step
   - State actual behavior, step by step
-
+  
+Note: in order to comment or create issues, you need a free [GitHub account](https://github.com/join). If you don't have a GitHub account and you don't want to sign up, please just post [in the forum thread](https://forums.x-plane.org/index.php?/forums/topic/224703-developing-a-comprehensive-atc-thoughts-and-demos/) instead.
 
 # Current status and roadmap
 
-[UPDATE 25-Sep-2020] We are currently working on the minimal viable product (MVP) release, which we expect to happen in upcoming week(s). You can track the progress in our Kanban board.
+**[UPDATE 25-Sep-2020] We are currently working on the minimal viable product (MVP) release, which we expect to happen in upcoming week(s). You can track the progress in [this Kanban board](https://github.com/felix-b/atc/projects/1).**
 
 AT&C is a long term project in the early development phase. Reaching the ultimate goal will take time, and our strategy is to continuously provide the most valuable functions through frequent incremental releases. 
 
-Essential roadmap highlights in no particular order:
+### Essential roadmap highlights in no particular order
+
 - Cross-platform: Windows, macOS, Linux
 - Player experience: 1-st person pilot, 1-st person controller
 - Operations: IFR/airline, VFR/GA, IFR/GA, Cargo, Helicopters, Military 
