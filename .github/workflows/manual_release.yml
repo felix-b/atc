@@ -1,0 +1,52 @@
+name: ManualRelease
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  publish-bleeding-edge:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: download artifacts mock
+        run: |
+          mv assets airTrafficAndControl
+
+      - name: create zip
+        id: create_zip
+        run: |
+          export ZIP_NAME=airTrafficAndControl.build${BUILD_NUMBER}.zip
+          echo ZIP_NAME=$ZIP_NAME
+          zip -r $ZIP_NAME airTrafficAndControl
+          echo "::set-output name=zip_name::$ZIP_NAME"
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+
+      - name: recycle old release
+        id: recycle_release
+        uses: ./.github/actions/recycle-release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_base: bleeding-edge
+          release_notes: ${{ github.event.head_commit.message }}
+          download_asset_name: ${{ steps.create_zip.outputs.zip_name }}
+
+      - name: create new release
+        uses: meeDamian/github-release@2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ steps.recycle_release.outputs.new_tag }}
+          name: ${{ github.event.head_commit.message }}
+          allow_override: true
+          commitish: master
+          prerelease: true
+          body: ${{ steps.recycle_release.outputs.new_release_body }}
+          files: ${{ steps.create_zip.outputs.zip_name }}
+          gzip: false
