@@ -7,6 +7,9 @@ inputs:
   tag_base:
     description: 'the prefix of the tag name'
     required: true
+  build_number:
+    description: 'build number'
+    required: true
   release_notes:
     description: 'the release notes text for the new release'
     required: true

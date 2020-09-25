@@ -6,7 +6,7 @@ const github = require('@actions/github');
 
 const owner = github.context.repo.owner;
 const repo = github.context.repo.repo;
-const buildNumber = github.context.run_number;
+const buildNumber = core.getInput('build_number', {required: true});
 const token = core.getInput('token', {required: true});
 const tagBase = core.getInput('tag_base', {required: true});
 const commitSha = github.context.sha;
@@ -43,7 +43,7 @@ async function run() {
         
         await createNewTag();
 
-        core.setOutput('new_tag_name', newTagName);
+        core.setOutput('new_tag', newTagName);
         core.setOutput('new_release_body', formatBody());
     } catch (error) {
         core.error(error);
