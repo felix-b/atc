@@ -96,12 +96,13 @@ async function createNewTag() {
 
 function formatBody() {
     return (
-        `## Build #${buildNumber} Release Notes\n\n` +
-        `${releaseNotes}\n\n` +
-        `### IMPORTANT!\n\n` +
-        `This build contains the very latest changes that weren't yet released and weren't thoroughly tested (expect dragons!).\n\n` +
+        `## Build # ${buildNumber} - Release Notes\n\n` +
+        `Last change included in this build: ${releaseNotes}\n\n` +
+        `#### Important!\n\n` +
+        `This build contains the very latest changes that weren't yet released and weren't thoroughly tested (expect dragons!).\n` +
         `Make sure you backup your current version in case you'll want to revert to it.\n\n` +
-        `Download this build: [${downloadAssetName}](https://github.com/${owner}/${repo}/releases/download/${newTagName}/${downloadAssetName})\n\n`
+        `### Download build # ${buildNumber} !\n\n` +
+        `**[${downloadAssetName}](https://github.com/${owner}/${repo}/releases/download/${newTagName}/${downloadAssetName})**\n\n`
     );
 }
 

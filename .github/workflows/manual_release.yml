@@ -44,7 +44,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ steps.recycle_release.outputs.new_tag }}
-          name: ${{ github.event.head_commit.message }}
+          name: 'latest bleeding-edge build'
           allow_override: true
           commitish: master
           prerelease: true
