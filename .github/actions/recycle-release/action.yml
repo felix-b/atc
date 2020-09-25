@@ -1,0 +1,23 @@
+name: 'Recycle Release'
+description: 'Deletes old release and creates a new tag'
+inputs:
+  token:
+    description: 'github token'
+    required: true
+  tag_base:
+    description: 'the prefix of the tag name'
+    required: true
+  release_notes:
+    description: 'the release notes text for the new release'
+    required: true
+  download_asset_name:
+    description: 'file name of asset to downlod for the new release'
+    required: true
+outputs:
+  new_tag:
+    description: 'the new tag name to set on the new release'
+  new_release_body:
+    description: 'the body contents for the new release to be created'
+runs:
+  using: 'node12'
+  main: 'index.js'
