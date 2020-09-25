@@ -1,6 +1,6 @@
 // 
 // This file is part of AT&C project which simulates virtual world of air traffic and ATC.
-// Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
+// Code licensing terms are available at https://github.com/felix-b/atc/blob/master/COPYING
 // 
 #pragma once
 
@@ -262,10 +262,12 @@ private:
             "SYNTH: synthesizing speech [request id=%d][speaker=%p]: %s", 
             message.requestId, message.speaker.get(),  message.transmission->verbalizedUtterance()->plainText().c_str());
 
+        string speechFilePath = m_host->getResourceFilePath({ "speech", "temp.wav" });
+
         SpeechSynthesisRequest request;
         request.size = sizeof(request);
         request.text = message.transmission->verbalizedUtterance()->plainText().c_str();
-        request.outputFilePath = "D:\\sptmp.wav";
+        request.outputFilePath = speechFilePath.c_str();
         
         const auto& style = message.speaker->speechStyle();
 
@@ -286,11 +288,11 @@ private:
             return;
         }
 
+        m_host->writeLog("SYNTH: successfully synthesized speech");
         this_thread::sleep_for(chrono::milliseconds(500));
 
-        m_host->writeLog("SYNTH: successfully synthesizing speech");
         m_activeRequestId = message.requestId;
-        m_currentSpeech = make_shared<SpeechSoundBuffer>("D:\\sptmp.wav", true, message.radioStyle.highPassFrequency);
+        m_currentSpeech = make_shared<SpeechSoundBuffer>(speechFilePath, true, message.radioStyle.highPassFrequency);
 
         if (message.speaker && style.platformVoiceId.length() == 0 && reply.platformVoiceId)
         {

@@ -1,6 +1,6 @@
 // 
 // This file is part of AT&C project which simulates virtual world of air traffic and ATC.
-// Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
+// Code licensing terms are available at https://github.com/felix-b/atc/blob/master/COPYING
 // 
 #include <iostream>
 #include <functional>
@@ -38,6 +38,9 @@ static PluginInstance* pInstance = nullptr;
 
 PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
 {
+    strcpy(outName, "Air Traffic & Control");
+    strcpy(outSig, "felix-b.atc");
+    strcpy(outDesc, "Offline virtual world of air traffic and ATC");
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
 
     PluginPath::setPluginDirectoryName("airTrafficAndControl");
@@ -46,7 +49,7 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
     Log() << Log::Info << "XPluginStart" << Log::endl;
 
     PrintDebugString(
-        "TNC> XPluginStart, build=[%s], plugin directory=[%s]\n", 
+        "TNC> XPluginStart, platform-build=[%s], plugin-directory=[%s]\n",
         #if APL
             "APL"
         #endif
@@ -60,15 +63,24 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
         getPluginDirectory().c_str()
     );
 
-    strcpy(outName, "Air Traffic & Control");
-    strcpy(outSig, "felix-b.atc");
-    strcpy(outDesc, "Offline virtual world of air traffic and ATC");
-
     return 1;
 }
 
 PLUGIN_API int XPluginEnable(void)
 {
+    char name[256];
+    char filePath[256];
+    char signature[256];
+    char description[256];
+
+    int myPluginId =  XPLMGetMyID();
+    XPLMGetPluginInfo(myPluginId, name, filePath, signature, description);
+
+    XPLMDebugString("TNC> XPluginEnable\n");
+    PrintDebugString(
+        "TNC> XPLMGetPluginInfo(pluginId=%d) -> name=[%s] filePath=[%s] signature=[%s] description=[%s]\n",
+        myPluginId, name, filePath, signature, description);
+
     Log() << Log::Info << "XPluginEnable" << Log::endl;
     pInstance = new PluginInstance();
     return 1;
