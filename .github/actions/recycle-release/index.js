@@ -53,10 +53,11 @@ async function run() {
 
 async function tryFindOldReleaseId() {
     core.info(`ADVANCE-RELEASE> looking for old release`);
-    const releases = await client.repos.listReleases({
+    const releasesReply = await client.repos.listReleases({
         owner,
         repo,
-    });//.data;
+    });
+    const releases = releasesReply.data;
 
     //core.info(`ADVANCE-RELEASE> listReleases returned data type [${typeof releases}] with length=[${releases.length}]`);
     core.info(`ADVANCE-RELEASE> listReleases returned [${JSON.stringify(releases, null, 2)}]`);
