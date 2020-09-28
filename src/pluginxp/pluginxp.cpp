@@ -9,6 +9,8 @@
 
 // SDK
 #include "XPLMPlugin.h"
+#include "XPLMNavigation.h"
+
 #if !XPLM300
 #error This plugin requires version 300 of the SDK
 #endif
@@ -24,6 +26,7 @@
 #include "menuitem.h"
 #include "action.h"
 #include "pluginpath.h"
+#include "owneddata.h"
 
 // tnc
 #include "utils.h"
@@ -88,11 +91,31 @@ PLUGIN_API int XPluginEnable(void)
 
 PLUGIN_API void XPluginReceiveMessage(XPLMPluginID fromId, long inMsg, void*)
 {
-    Log() << Log::Info << "XPluginReceiveMessage(inMsg=" << (int32_t)inMsg << ")" << Log::endl;
+    char name[256];
+    char filePath[256];
+    char signature[256];
+    char description[256];
+    XPLMGetPluginInfo(fromId, name, filePath, signature, description);
+
+    PrintDebugString("TNC> XPluginReceiveMessage(fromId=[%d|%s], inMsg=[%ld])\n", fromId, name, inMsg);
+
+    DataRef<double> userAircraftLatitude("sim/flightmodel/position/latitude", PPL::ReadOnly);
+    DataRef<double> userAircraftLongitude("sim/flightmodel/position/longitude", PPL::ReadOnly);
+    float userLat = userAircraftLatitude;
+    float userLon = userAircraftLongitude;
+    char icaoCode[10] = { 0 };
+    XPLMNavRef navRef = XPLMFindNavAid( nullptr, nullptr, &userLat, &userLon, nullptr, xplm_Nav_Airport);
+    if (navRef != XPLM_NAV_NOT_FOUND)
+    {
+        XPLMGetNavAidInfo(navRef, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, icaoCode, nullptr, nullptr);
+    }
+
+    PrintDebugString("     > user@(%f,%f) -> ICAO[%s]\n", userLat, userLon, strlen(icaoCode) > 0 ? icaoCode : "N/A");
 }
 
 PLUGIN_API void XPluginDisable(void)
 {
+    XPLMDebugString("TNC> XPluginDisable\n");
     Log() << Log::Info << "XPluginDisable" << Log::endl;
     if (pInstance)
     {
@@ -103,5 +126,6 @@ PLUGIN_API void XPluginDisable(void)
 
 PLUGIN_API void	XPluginStop(void)
 {
+    XPLMDebugString("TNC> XPluginStop\n");
     Log() << Log::Info << "XPluginStop" << Log::endl;
 }

@@ -4,6 +4,7 @@
 // 
 #include <memory>
 #include <iostream>
+#include <utility>
 #include "stlhelpers.h"
 #include "libworld.h"
 #include "libdataxp.h"
@@ -15,6 +16,7 @@ static const unordered_map<string, ParkingStand::Type> parkingStandTypeLookup = 
     {"gate", ParkingStand::Type::Gate},
     {"hangar", ParkingStand::Type::Hangar},
     {"tie_down", ParkingStand::Type::Remote},
+    {"misc", ParkingStand::Type::Unknown},
 };
 
 static const unordered_map<string, Aircraft::Category> aircraftCategoryLookup = {
@@ -33,6 +35,8 @@ static const unordered_map<string, Aircraft::OperationType> aircraftOperationTyp
     {"cargo", Aircraft::OperationType::Cargo},
     {"military", Aircraft::OperationType::Military},
 };
+
+static constexpr int DATUM_UNSPECIFIED = -10000;
 
 static void parseSeparatedList(
     const string& listText, 
@@ -63,28 +67,31 @@ static void parseSeparatedList(
     }
 }
 
-XPAirportReader::XPAirportReader(const shared_ptr<HostServices> _host) :
-    m_host(_host), 
-    m_unparsedLineCode(-1),
+XPAirportReader::XPAirportReader(
+    shared_ptr<HostServices> _host,
+    int _unparsedLineCode,
+    QueryAirspaceCallback _onQueryAirspace,
+    FilterAirportCallback _onFilterAirport
+) : m_host(std::move(_host)),
+    m_onQueryAirspace(std::move(_onQueryAirspace)),
+    m_onFilterAirport(std::move(_onFilterAirport)),
+    m_unparsedLineCode(_unparsedLineCode),
     m_nextEdgeId(1001),
     m_nextParkingStandId(301),
-    m_datumLatitude(0),
-    m_datumLongitude(0),
-    m_elevation(0)
+    m_datumLatitude(DATUM_UNSPECIFIED),
+    m_datumLongitude(DATUM_UNSPECIFIED),
+    m_elevation(0),
+    m_skippingAirport(false),
+    m_headerWasRead(false),
+    m_filterWasQueried(false)
 {
 }
 
-void XPAirportReader::readAptDat(istream& input)
+void XPAirportReader::readAirport(istream& input)
 {
     readAptDatInContext(input, [&](int lineCode) {
-        rootContextParser(lineCode, input);
-        return true;
+        return rootContextParser(lineCode, input);
     });
-}
-
-void XPAirportReader::setAirspace(shared_ptr<ControlledAirspace> airspace)
-{
-    m_airspace = airspace;
 }
 
 bool XPAirportReader::validate(vector<string>& diagnostics)
@@ -94,7 +101,17 @@ bool XPAirportReader::validate(vector<string>& diagnostics)
 
 shared_ptr<Airport> XPAirportReader::getAirport()
 {
-    Airport::Header header(m_icao, m_name, GeoPoint(m_datumLatitude, m_datumLongitude), m_elevation);
+    if (m_skippingAirport)
+    {
+        return nullptr;
+    }
+
+    GeoPoint datum(
+        m_datumLatitude != DATUM_UNSPECIFIED ? m_datumLatitude : 0,
+        m_datumLongitude != DATUM_UNSPECIFIED ? m_datumLongitude : 0);
+
+    Airport::Header header(m_icao, m_name, datum, m_elevation);
+    m_airspace = m_onQueryAirspace(header);
     
     shared_ptr<ControlFacility> tower = m_airspace
         ? WorldBuilder::assembleAirportTower(m_host, header, m_airspace, m_controllerPositions)
@@ -114,47 +131,81 @@ shared_ptr<Airport> XPAirportReader::getAirport()
 
 void XPAirportReader::readAptDatInContext(istream& input, ContextualParser parser)
 {   
-    const auto extractNextLineCode = [&]() {
-        while (!input.eof() && input.peek() >= 0)
-        {
-            string firstToken = readFirstToken(input);
-            if (firstToken.length() == 0 || firstToken[0] < '0' || firstToken[0] > '9')
-            {
-                getline(input, firstToken);
-                continue;
-            }
-            return stoi(firstToken);
-        }
-        return -1;
-    };
-
-    while (true)
+    while (!input.eof() && !input.bad())
     {
-        int lineCode = m_unparsedLineCode >= 0 
-            ? m_unparsedLineCode 
-            : extractNextLineCode();
+        int saveLineCode = m_unparsedLineCode;
+        streampos saveInputPosition = input.tellg();
 
-        if (lineCode < 0)
+        try
         {
-            break;
+            if (!readAptDatLineInContext(input, parser))
+            {
+                break;
+            }
         }
-
-        m_unparsedLineCode = -1;
-        bool accepted = parser(lineCode);
-        if (!accepted)
+        catch (const exception& e)
         {
-            m_unparsedLineCode = lineCode;
-            break;
+            throw runtime_error(formatErrorMessage(input, saveInputPosition, saveLineCode, e.what()));
         }
     }
 }
 
+bool XPAirportReader::readAptDatLineInContext(istream &input, XPAirportReader::ContextualParser parser)
+{
+    int lineCode = m_unparsedLineCode >= 0
+       ? m_unparsedLineCode
+       : extractNextLineCode(input);
+
+    if (lineCode < 0)
+    {
+        return false;
+    }
+
+    m_unparsedLineCode = -1;
+    bool accepted = parser(lineCode);
+    if (!accepted)
+    {
+        m_unparsedLineCode = lineCode;
+        return false;
+    }
+
+    return true;
+}
+
 bool XPAirportReader::rootContextParser(int lineCode, istream& input)
 {
+    if (m_skippingAirport)
+    {
+        if (lineCode == 1)
+        {
+            return false;
+        }
+        skipToNextLine(input);
+        return true;
+    }
+
+    if (m_headerWasRead)
+    {
+        if (lineCode == 1)
+        {
+            return false; // we're at the beginning of the next airport
+        }
+        if (lineCode != 1302 && !m_filterWasQueried)
+        {
+            m_skippingAirport = !invokeFilterCallback();
+            m_filterWasQueried = true;
+            if (!m_skippingAirport)
+            {
+                m_host->writeLog("XPAirportReader: will load airport [%s]", m_icao.c_str());
+            }
+        }
+    }
+
     switch (lineCode)
     {
     case 1:
         parseHeader1(input);
+        m_headerWasRead = true;
         break;
     case 100:
         parseRunway100(input);
@@ -194,6 +245,8 @@ void XPAirportReader::parseHeader1(istream &input)
     int deprecated;
     input >> m_elevation >> deprecated >> deprecated >> m_icao;
     m_name = readToEndOfLine(input);
+
+    Airport::Header header(m_icao, m_name, GeoPoint::empty, m_elevation);
 }
 
 void XPAirportReader::parseRunway100(istream& input)
@@ -445,11 +498,12 @@ void XPAirportReader::parseControlFrequency(int lineCode, istream &input)
     if (positionType != ControllerPosition::Type::Unknown)
     {
         int khz;
-        input >> khz; 
+        string callSign;
+        input >> khz >> callSign;
         
         if (tryInsertKey(m_parsedFrequencyKhz, khz))
         {
-            ControllerPosition::Structure position = { positionType, khz, GeoPolygon::empty() };
+            ControllerPosition::Structure position = { positionType, khz, GeoPolygon::empty(), callSign };
             m_controllerPositions.push_back(position);
             m_parsedFrequencyLineCodes.insert(lineCode);
         }
@@ -572,6 +626,38 @@ string XPAirportReader::readToEndOfLine(istream& input)
     return s;
 }
 
+int XPAirportReader::extractNextLineCode(istream &input)
+{
+    while (!input.eof() && input.peek() >= 0)
+    {
+        string firstToken = readFirstToken(input);
+        if (firstToken.length() == 0 || firstToken[0] < '0' || firstToken[0] > '9')
+        {
+            getline(input, firstToken);
+            continue;
+        }
+        return stoi(firstToken);
+    }
+    return -1;
+}
+
+string XPAirportReader::formatErrorMessage(istream &input, const streampos& position, int extractedLineCode, const char *what)
+{
+    stringstream message;
+    message << "FAILED to read apt.dat [" << what << "] line > ";
+    if (extractedLineCode >= 0)
+    {
+        message << "code[" << extractedLineCode << "] > ";
+    }
+
+    input.seekg(position);
+    string line;
+    getline(input, line);
+    message << line;
+
+    return message.str();
+}
+
 void XPAirportReader::skipToNextLine(istream& input)
 {
     bool atEndOfLine = false;
@@ -593,5 +679,48 @@ void XPAirportReader::skipToNextLine(istream& input)
             atEndOfLine = true;
         }
     }
+}
+
+shared_ptr<ControlledAirspace> XPAirportReader::noopQueryAirspace(const Airport::Header& header)
+{
+    return nullptr;
+}
+
+bool XPAirportReader::noopFilterAirport(const Airport::Header &header)
+{
+    return true;
+}
+
+bool XPAirportReader::invokeFilterCallback()
+{
+    Airport::Header header(m_icao, m_name, GeoPoint(m_datumLatitude, m_datumLongitude), m_elevation);
+    return m_onFilterAirport(header);
+}
+
+XPAptDatReader::XPAptDatReader(shared_ptr<HostServices> _host) :
+    m_host(std::move(_host))
+{
+}
+
+void XPAptDatReader::readAptDat(
+    istream &input,
+    const XPAirportReader::QueryAirspaceCallback& onQueryAirspace,
+    const XPAirportReader::FilterAirportCallback& onFilterAirport,
+    const XPAptDatReader::AirportLoadedCallback& onAirportLoaded)
+{
+    int unparsedLineCode = -1;
+
+    do {
+        XPAirportReader airportReader(m_host, unparsedLineCode, onQueryAirspace, onFilterAirport);
+        airportReader.readAirport(input);
+        unparsedLineCode = airportReader.unparsedLineCode();
+
+        auto airport = airportReader.getAirport();
+        if (airport)
+        {
+            m_host->writeLog("Airport loaded: %s", airport->header().icao().c_str());
+            onAirportLoaded(airport);
+        }
+    } while (unparsedLineCode == 1);
 }
 

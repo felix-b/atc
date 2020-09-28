@@ -735,6 +735,7 @@ namespace world
             Type type;
             int frequencyKhz;
             GeoPolygon scopeLimit;
+            string callSign;
         };
     private:
         shared_ptr<HostServices> m_host;
@@ -2044,7 +2045,7 @@ namespace world
     public:
         static shared_ptr<World> assembleSampleWorld(
             shared_ptr<HostServices> host, 
-            shared_ptr<Airport> airport);
+            const vector<shared_ptr<Airport>>& airports);
 
         static shared_ptr<Airport> assembleAirport(
             const Airport::Header& header,
@@ -2072,6 +2073,8 @@ namespace world
             const string& icaoCode,
             const string& centerName,
             const string& name);
+
+        static shared_ptr<ControlledAirspace> assembleSampleAirportControlZone(const Airport::Header& header);
 
         static void addActiveZone(
             shared_ptr<TaxiEdge> edge, 
@@ -2157,6 +2160,7 @@ namespace world
         virtual shared_ptr<Controller> createAIController(shared_ptr<ControllerPosition> position) = 0;
         virtual shared_ptr<Pilot> createAIPilot(shared_ptr<Flight> flight) = 0;
         virtual string getResourceFilePath(const vector<string>& relativePathParts) = 0;
+        virtual string getHostFilePath(int numFoldersUp, const vector<string>& downPathParts) = 0;
         virtual shared_ptr<istream> openFileForRead(const string& filePath) = 0;
         virtual void writeLog(const char* format, ...) = 0;
     };

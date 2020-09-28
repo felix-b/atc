@@ -14,21 +14,24 @@ namespace world
 {
     shared_ptr<World> WorldBuilder::assembleSampleWorld(
         shared_ptr<HostServices> host, 
-        shared_ptr<Airport> airport)
+        const vector<shared_ptr<Airport>>& airports)
     {
         auto world = shared_ptr<World>(new World(
             host, 
             chrono::system_clock::to_time_t(chrono::system_clock::now())
         ));
 
-        world->m_airports.push_back(airport);
-        world->m_airportByIcao.insert({ airport->header().icao(), airport });
-        if (airport->tower())
+        for (const auto& airport : airports)
         {
-            auto airspace = airport->tower()->airspace();
-            world->m_airspaces.push_back(airspace);
-            world->m_airspaceById.insert({ airspace->id(), airspace });
-            world->m_controlFacilities.push_back(airport->tower());
+            world->m_airports.push_back(airport);
+            world->m_airportByIcao.insert({airport->header().icao(), airport});
+            if (airport->tower())
+            {
+                auto airspace = airport->tower()->airspace();
+                world->m_airspaces.push_back(airspace);
+                world->m_airspaceById.insert({airspace->id(), airspace});
+                world->m_controlFacilities.push_back(airport->tower());
+            }
         }
 
         return world;
@@ -70,8 +73,8 @@ namespace world
     {
         auto tower = make_shared<ControlFacility>();
 
-        const auto getPositionCallSign = [&](ControllerPosition::Type type) {
-            switch (type)
+        const auto getPositionCallSign = [&](const ControllerPosition::Structure& init) {
+            switch (init.type)
             {
                 case ControllerPosition::Type::ClearanceDelivery:
                     return tower->callSign() + " Clearance";
@@ -92,7 +95,7 @@ namespace world
                 host,
                 init.frequencyKhz,
                 header.datum(), //TODO: use tower location
-                10.0            //TODO: real-life antenna radius?
+                10.0  //TODO: real-life antenna radius?
             ));
             auto radarScope = shared_ptr<RadarScope>(new RadarScope(
                 airspace,
@@ -102,7 +105,7 @@ namespace world
                 host,
                 init.type,
                 tower,
-                getPositionCallSign(init.type),
+                getPositionCallSign(init),
                 frequency,
                 radarScope
             ));
@@ -111,7 +114,7 @@ namespace world
             return position;
         };
 
-        tower->m_callSign = "Kennedy"; //TODO: get from airport
+        tower->m_callSign = header.icao().substr(1); //TODO: this will sound unrealistically. Manual configuration?
         tower->m_name = header.icao() + " Tower";
         tower->m_type = ControlFacility::Type::Tower;
         tower->m_airspace = airspace;
@@ -129,6 +132,24 @@ namespace world
         }
 
         return tower;
+    }
+
+    shared_ptr<ControlledAirspace> WorldBuilder::assembleSampleAirportControlZone(const Airport::Header& header)
+    {
+        //TODO: use airspace actual data
+        auto airspace = WorldBuilder::assembleSimpleAirspace(
+            AirspaceClass::ClassB,
+            ControlledAirspace::Type::ControlZone,
+            header.datum(),
+            10,
+            ALTITUDE_GROUND,
+            18000,
+            header.icao(),
+            header.icao(),
+            header.name(),
+            header.icao()
+        );
+        return airspace;
     }
 
     void WorldBuilder::addActiveZone(

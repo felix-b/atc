@@ -4,6 +4,8 @@
 // 
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <unordered_set>
 #include "gtest/gtest.h"
 #include "libworld.h"
 #include "libdataxp.h"
@@ -25,6 +27,11 @@ using namespace std;
 stringstream makeAptDat(const vector<string>& lines);
 shared_ptr<HostServices> makeHost();
 shared_ptr<ControlledAirspace> makeAirspace(double centerLat, double centerLon, float radiusNm, const string& name);
+void openTestInputStream(const string& fileName, ifstream& str);
+void assertRunwaysExist(shared_ptr<Airport> airport, const vector<string>& names);
+void assertGatesExist(shared_ptr<Airport> airport, const vector<string>& names);
+void assertTaxiEdgesExist(shared_ptr<Airport> airport, const unordered_set<string>& names);
+
 // void writeAirportJson(shared_ptr<const Airport> airport, ostream& output);
 // void writeTaxiPathJson(shared_ptr<const TaxiPath> taxiPath, ostream& output);
 
@@ -42,7 +49,7 @@ TEST(XPAirportReaderTest, readAptDat_header) {
     XPAirportReader builder(makeHost());
     stringstream aptDat = makeAptDat({"1 123 0 0 KBFI Boeing Field King Co Intl"});
 
-    builder.readAptDat(aptDat);
+    builder.readAirport(aptDat);
 
     const auto airport = builder.getAirport();
 
@@ -60,7 +67,7 @@ TEST(XPAirportReaderTest, readAptDat_metadata) {
         "1302 icao_code KSEA",
     });
 
-    builder.readAptDat(aptDat);
+    builder.readAirport(aptDat);
 
     const auto airport = builder.getAirport();
 
@@ -75,7 +82,7 @@ TEST(XPAirportReaderTest, readAptDat_singleTaxiNode) {
     XPAirportReader builder(makeHost());
     stringstream aptDat = makeAptDat({"1201  32.1234  034.5678 both 231 K3_stop"});
 
-    builder.readAptDat(aptDat);
+    builder.readAirport(aptDat);
     const auto airport = builder.getAirport();
 
     const auto taxiNet = airport->taxiNet();
@@ -95,7 +102,7 @@ TEST(XPAirportReaderTest, readAptDat_singleTaxiEdge) {
         "1202  231  233  twoway  taxiway  K3 E1"
     });
 
-    builder.readAptDat(aptDat);
+    builder.readAirport(aptDat);
     const auto airport = builder.getAirport();
 
     const auto taxiNet = airport->taxiNet();
@@ -132,7 +139,7 @@ TEST(XPAirportReaderTest, readAptDat_singleTaxiAndGroundEdge) {
         "1206  233  234  twoway  GR12"
     });
 
-    builder.readAptDat(aptDat);
+    builder.readAirport(aptDat);
     const auto airport = builder.getAirport();
 
     const auto taxiNet = airport->taxiNet();
@@ -159,7 +166,7 @@ TEST(XPAirportReaderTest, readAptDat_runways) {
         "100 60.00 2 0 0.00 1 3 0 04L  40.2345 -073.5678 140  0 3 0 0 1 22R  40.6505 -073.7633 1044  0 3 0 0 0",
     });
 
-    builder.readAptDat(aptDat);
+    builder.readAirport(aptDat);
     const auto airport = builder.getAirport();
 
     const auto& runways = airport->runways();
@@ -248,7 +255,7 @@ TEST(XPAirportReaderTest, readAptDat_runwayEdges) {
         "1204 arrival 06,22,14,32",
     });
 
-    builder.readAptDat(aptDat);
+    builder.readAirport(aptDat);
     const auto airport = builder.getAirport();
     const auto taxiNet = airport->taxiNet();
     
@@ -318,7 +325,7 @@ TEST(XPAirportReaderTest, readAptDat_parkingStands) {
         "1301 E cargo",
     });
 
-    reader.readAptDat(aptDat);
+    reader.readAirport(aptDat);
     const auto airport = reader.getAirport();
     const vector<shared_ptr<ParkingStand>>& parkingStands = airport->parkingStands();
 
@@ -372,7 +379,7 @@ TEST(XPAirportReaderTest, readAptDat_skipUnrecognizedLines) {
         ""
     });
 
-    builder.readAptDat(aptDat);
+    builder.readAirport(aptDat);
     const auto airport = builder.getAirport();
     const auto taxiNet = airport->taxiNet();
 
@@ -382,16 +389,14 @@ TEST(XPAirportReaderTest, readAptDat_skipUnrecognizedLines) {
 TEST(XPAirportReaderTest, readAptDat_realKJFK) {
     XPAirportReader reader(makeHost());
     ifstream aptDat;
-    aptDat.exceptions(ifstream::failbit | ifstream::badbit);
-    aptDat.open("../../src/libdataxp_test/testInputs/apt_kjfk.dat");
-    ofstream jsonOutput;
-    jsonOutput.exceptions(ofstream::failbit | ofstream::badbit);
-    jsonOutput.open("../../src/libdataxp_test/testOutputs/kjfk.json", std::ios_base::out | std::ios_base::trunc);
+    openTestInputStream("apt_kjfk.dat", aptDat);
 
-    reader.readAptDat(aptDat);
+    reader.readAirport(aptDat);
     const auto airport = reader.getAirport();
 
-    //writeAirportJson(airport, jsonOutput);
+    assertRunwaysExist(airport, { "04L", "04R", "13L", "13R", "31L", "31R", "22L", "22R" });
+    assertGatesExist(airport, { "DelEx Cargo 1", "Korea Cargo", "T8 12", "Prologis Cargo 2", "T4 55" });
+    assertTaxiEdgesExist(airport, { "P", "F", "PF", "VA", "W", "MB", "K2", "Z", "TA", "TB" });
 }
 
 TEST(XPAirportReaderTest, findTaxiPath_KJFK_1) {
@@ -399,7 +404,7 @@ TEST(XPAirportReaderTest, findTaxiPath_KJFK_1) {
     ifstream aptDat;
     aptDat.exceptions(ifstream::failbit | ifstream::badbit);
     aptDat.open("../../src/libdataxp_test/testInputs/apt_kjfk.dat");
-    reader.readAptDat(aptDat);
+    reader.readAirport(aptDat);
     ofstream jsonOutput;
     jsonOutput.exceptions(ofstream::failbit | ofstream::badbit);
     jsonOutput.open("../../src/libdataxp_test/testOutputs/taxi_kjfk_79_378.json", std::ios_base::out | std::ios_base::trunc);
@@ -419,7 +424,7 @@ TEST(XPAirportReaderTest, findTaxiPath_KJFK_2) {
     ifstream aptDat;
     aptDat.exceptions(ifstream::failbit | ifstream::badbit);
     aptDat.open("../../src/libdataxp_test/testInputs/apt_kjfk.dat");
-    reader.readAptDat(aptDat);
+    reader.readAirport(aptDat);
     ofstream jsonOutput;
     jsonOutput.exceptions(ofstream::failbit | ofstream::badbit);
     jsonOutput.open("../../src/libdataxp_test/testOutputs/taxi_kjfk_79_581.json", std::ios_base::out | std::ios_base::trunc);
@@ -432,6 +437,34 @@ TEST(XPAirportReaderTest, findTaxiPath_KJFK_2) {
         taxiNet->getNodeById(581));
 
     //writeTaxiPathJson(taxiPath, jsonOutput);
+}
+
+TEST(XPAirportReaderTest, readAptDat_realKMIA) {
+    XPAirportReader reader(makeHost());
+    ifstream aptDat;
+    openTestInputStream("apt_kmia.dat", aptDat);
+
+    reader.readAirport(aptDat);
+    auto airport = reader.getAirport();
+
+    assertRunwaysExist(airport, { "12", "30", "09", "27", "08R", "08L", "26L", "26R" });
+    assertGatesExist(airport, { "F19", "D4", "J49", "N7", "Western U Cargo 70" });
+    assertTaxiEdgesExist(airport, { "S", "U", "V", "M", "Z", "K", "M10", "JJ", "S2" });
+}
+
+TEST(XPAirportReaderTest, readAptDat_realKORD) {
+    XPAirportReader reader(makeHost());
+    ifstream aptDat;
+    openTestInputStream("apt_kord.dat", aptDat);
+
+    reader.readAirport(aptDat);
+    auto airport = reader.getAirport();
+
+    assertRunwaysExist(airport, {
+        "10L", "10C", "10R", "28L", "28C", "28R", "22L", "22R", "04L", "04R", "09L", "09R", "27L", "27R"
+    });
+    assertGatesExist(airport, { "Terminal 1 Gate B5", "Suparna Cargo", "Terminal 5 M25" });
+    assertTaxiEdgesExist(airport, { "CC", "DD", "W", "PP", "TT", "R", "B", "A7", "RR", "AA" });
 }
 
 TEST(XPAirportReaderTest, readToEndOfLine) {
@@ -475,7 +508,7 @@ TEST(XPAirportReaderTest, skipToNextLine) {
 }
 
 TEST(XPAirportReaderTest, readAptDat_assembleTower) {
-    XPAirportReader builder(makeHost());
+    auto airspace = makeAirspace(40.63, -73.77, 10.0, "KJFK");
     stringstream aptDat = makeAptDat({
         "1    13 0 0 KJFK John F Kennedy Intl",
         "1302 datum_lat 40.63",
@@ -497,10 +530,10 @@ TEST(XPAirportReaderTest, readAptDat_assembleTower) {
         "1056 134350 NEW YORK DEP",
         "1056 135900 NEW YORK DEP"
     });
-    auto airspace = makeAirspace(40.63, -73.77, 10.0, "KJFK");
-
-    builder.readAptDat(aptDat);
-    builder.setAirspace(airspace);
+    XPAirportReader builder(makeHost(), -1, [&](const Airport::Header& header) {
+        return airspace;
+    });
+    builder.readAirport(aptDat);
 
     const auto airport = builder.getAirport();
     const auto tower = airport->tower();
@@ -508,30 +541,88 @@ TEST(XPAirportReaderTest, readAptDat_assembleTower) {
     ASSERT_TRUE(!!tower);
     EXPECT_EQ(airport->tower().get(), tower.get());
     EXPECT_EQ(tower->type(), ControlFacility::Type::Tower);
-    EXPECT_EQ(tower->callSign(), "Kennedy");
+    EXPECT_EQ(tower->callSign(), "JFK"); //TODO: Kennedy
     EXPECT_EQ(tower->airport().get(), airport.get());
     EXPECT_EQ(tower->airspace().get(), airspace.get());
     ASSERT_EQ(tower->positions().size(), 5);
 
     EXPECT_EQ(tower->positions()[0]->type(), ControllerPosition::Type::ClearanceDelivery);
     EXPECT_EQ(tower->positions()[0]->frequency()->khz(), 135050);
-    EXPECT_EQ(tower->positions()[0]->callSign(), "Kennedy Clearance");
+    EXPECT_EQ(tower->positions()[0]->callSign(), "JFK Clearance"); //TODO: "Kennedy Clearance"
 
     EXPECT_EQ(tower->positions()[1]->type(), ControllerPosition::Type::Ground);
     EXPECT_EQ(tower->positions()[1]->frequency()->khz(), 121650);
-    EXPECT_EQ(tower->positions()[1]->callSign(), "Kennedy Ground");
+    EXPECT_EQ(tower->positions()[1]->callSign(), "JFK Ground"); //TODO: "Kennedy Ground"
 
     EXPECT_EQ(tower->positions()[2]->type(), ControllerPosition::Type::Local);
     EXPECT_EQ(tower->positions()[2]->frequency()->khz(), 119100);
-    EXPECT_EQ(tower->positions()[2]->callSign(), "Kennedy Tower");
+    EXPECT_EQ(tower->positions()[2]->callSign(), "JFK Tower"); //TODO: "Kennedy Tower"
 
     EXPECT_EQ(tower->positions()[3]->type(), ControllerPosition::Type::Approach);
     EXPECT_EQ(tower->positions()[3]->frequency()->khz(), 123700);
-    EXPECT_EQ(tower->positions()[3]->callSign(), "Kennedy Approach");
+    EXPECT_EQ(tower->positions()[3]->callSign(), "JFK Approach"); //TODO: "New York Approach"
 
     EXPECT_EQ(tower->positions()[4]->type(), ControllerPosition::Type::Departure);
     EXPECT_EQ(tower->positions()[4]->frequency()->khz(), 124750);
-    EXPECT_EQ(tower->positions()[4]->callSign(), "Kennedy Departure");
+    EXPECT_EQ(tower->positions()[4]->callSign(), "JFK Departure"); //TODO: "New York Departure"
+}
+
+TEST(XPAptDatReaderTest, readAptDat_allAirports)
+{
+    ifstream input;
+    openTestInputStream("apt_many.dat", input);
+    XPAptDatReader reader(makeHost());
+    vector<shared_ptr<Airport>> output;
+
+    reader.readAptDat(
+        input,
+        XPAirportReader::noopQueryAirspace,
+        XPAirportReader::noopFilterAirport,
+        [&](shared_ptr<Airport> airport) {
+            output.push_back(airport);
+        }
+    );
+
+    ASSERT_EQ(output.size(), 4);
+
+    EXPECT_EQ(output[0]->header().icao(), "ABCD");
+    EXPECT_EQ(output[0]->getParkingStandOrThrow("A1")->name(), "A1");
+
+    EXPECT_EQ(output[1]->header().icao(), "EFGH");
+    EXPECT_EQ(output[1]->getParkingStandOrThrow("B1")->name(), "B1");
+
+    EXPECT_EQ(output[2]->header().icao(), "IJKL");
+    EXPECT_EQ(output[2]->getParkingStandOrThrow("C1")->name(), "C1");
+
+    EXPECT_EQ(output[3]->header().icao(), "MNOP");
+    EXPECT_EQ(output[3]->getParkingStandOrThrow("D1")->name(), "D1");
+}
+
+TEST(XPAptDatReaderTest, readAptDat_filterAirports)
+{
+    ifstream input;
+    openTestInputStream("apt_many.dat", input);
+    XPAptDatReader reader(makeHost());
+    vector<shared_ptr<Airport>> output;
+
+    reader.readAptDat(
+        input,
+        XPAirportReader::noopQueryAirspace,
+        [&](const Airport::Header& header) {
+            return (header.icao() == "EFGH" || header.icao() == "MNOP");
+        },
+        [&](shared_ptr<Airport> airport) {
+            output.push_back(airport);
+        }
+    );
+
+    ASSERT_EQ(output.size(), 2);
+
+    EXPECT_EQ(output[0]->header().icao(), "EFGH");
+    EXPECT_EQ(output[0]->getParkingStandOrThrow("B1")->name(), "B1");
+
+    EXPECT_EQ(output[1]->header().icao(), "MNOP");
+    EXPECT_EQ(output[1]->getParkingStandOrThrow("D1")->name(), "D1");
 }
 
 shared_ptr<HostServices> makeHost()
@@ -573,6 +664,72 @@ stringstream makeAptDat(const vector<string>& lines)
 
     output.seekg(0);
     return output;
+}
+
+void openTestInputStream(const string& fileName, ifstream& str)
+{
+    string fullPath = "../../src/libdataxp_test/testInputs/" + fileName;
+    str.exceptions(ifstream::failbit | ifstream::badbit);
+    str.open(fullPath.c_str());
+}
+
+void assertRunwaysExist(shared_ptr<Airport> airport, const vector<string>& names)
+{
+    for (const string& name : names)
+    {
+        try
+        {
+            auto runway = airport->getRunwayOrThrow(name);
+            runway->getEndOrThrow(name);
+        }
+        catch (const exception& e)
+        {
+            stringstream message;
+            message << "assertRunwaysExist FAILED name [" << name << "] error [" << e.what() << "]";
+            throw runtime_error(message.str());
+        }
+    }
+}
+
+void assertGatesExist(shared_ptr<Airport> airport, const vector<string>& names)
+{
+    for (const string& name : names)
+    {
+        try
+        {
+            airport->getParkingStandOrThrow(name);
+        }
+        catch (const exception& e)
+        {
+            stringstream message;
+            message << "assertGatesExist FAILED name [" << name << "] error [" << e.what() << "]";
+            throw runtime_error(message.str());
+        }
+    }
+}
+
+void assertTaxiEdgesExist(shared_ptr<Airport> airport, const unordered_set<string>& names)
+{
+    unordered_set<string> remainingNames = names;
+
+    for (auto edge : airport->taxiNet()->edges())
+    {
+        if (edge->type() == TaxiEdge::Type::Taxiway)
+        {
+            remainingNames.erase(edge->name());
+        }
+    }
+
+    if (!remainingNames.empty())
+    {
+        stringstream message;
+        message << "assertTaxiEdgesExist FAILED missing:";
+        for (const auto& name : remainingNames)
+        {
+            message << " [" << name << "]";
+        }
+        throw runtime_error(message.str());
+    }
 }
 
 // void writeAirportJson(shared_ptr<const Airport> airport, ostream& output)
