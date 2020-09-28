@@ -22,6 +22,7 @@
 #include "XPLMPlugin.h"
 #include "XPLMGraphics.h"
 #include "XPLMProcessing.h"
+#include "XPLMNavigation.h"
 
 #include "XPCAircraft.h"
 #include "XPMPAircraft.h"
@@ -126,6 +127,29 @@ public:
         }
         return fullPath;
     }
+    string getHostFilePath(int numFoldersUp, const vector<string>& downPathParts) override
+    {
+        char name[256];
+        char filePath[256];
+        char signature[256];
+        char description[256];
+        XPLMGetPluginInfo(XPLMGetMyID(), name, filePath, signature, description);
+
+        for (int i = 0 ; i < 2 + numFoldersUp ; i++)
+        {
+            XPLMExtractFileAndPath(filePath);
+        }
+
+        string resultPath = string(filePath);
+        for (const string& part : downPathParts)
+        {
+            resultPath.append(m_directorySeparator);
+            resultPath.append(part);
+        }
+
+        return resultPath;
+    }
+
     shared_ptr<istream> openFileForRead(const string& filePath) override
     {
         auto file = shared_ptr<ifstream>(new ifstream());
@@ -425,10 +449,14 @@ private:
     vector<shared_ptr<Poc1Aircraft>> m_simAircraft;
     shared_ptr<World::ChangeSet> m_lastChangeSet;
     uint64_t m_timeFactor;
+    DataRef<double> m_userAircraftLatitude;
+    DataRef<double> m_userAircraftLongitude;
 public:
     TncPoc1(shared_ptr<PluginHostServices> _host) :
         m_host(_host),
-        m_timeFactor(1)
+        m_timeFactor(1),
+        m_userAircraftLatitude("sim/flightmodel/position/latitude", PPL::ReadOnly),
+        m_userAircraftLongitude("sim/flightmodel/position/longitude", PPL::ReadOnly)
     {
     }
     virtual ~TncPoc1()
@@ -440,12 +468,18 @@ public:
         m_host->writeLog("Starting POC # 1");
         m_lastTickTime = getNow();
 
-        auto kjfkAirport = loadKjfkAirport();
-        m_world = WorldBuilder::assembleSampleWorld(m_host, kjfkAirport);
+
+        vector<shared_ptr<Airport>> airports;
+        string userAirportIcao = getUserAirportIcao();
+        loadAirports(airports, userAirportIcao);
+
+        m_world = WorldBuilder::assembleSampleWorld(m_host, airports);
         m_host->useWorld(m_world);
         m_host->writeLog("World initialized");
 
-        initDemoFlights(kjfkAirport, 10, m_world->startTime() + 190, m_world->startTime() + 10);
+        auto userAirport = m_world->getAirport(userAirportIcao);
+
+        initDemoFlights(userAirport, 10, m_world->startTime() + 190, m_world->startTime() + 10);
         m_host->writeLog("AI flights initialized");
 
         XPLMRegisterFlightLoopCallback(&worldFlightLoopCallback, 0.5, this);
@@ -514,20 +548,53 @@ private:
     {
         return std::chrono::time_point_cast<std::chrono::microseconds>(chrono::high_resolution_clock::now());
     }
-    shared_ptr<Airport> loadKjfkAirport()
+    string getUserAirportIcao()
     {
-        string kjfkFilePath = m_host->getResourceFilePath({ "airports", "kjfk.apt.dat" });
-        m_host->writeLog("KJFK file path [%s]", kjfkFilePath.c_str());
+        char airportIcaoId[10] = { 0 };
+        float lat = m_userAircraftLatitude;
+        float lon = m_userAircraftLongitude;
+        m_host->writeLog("User airport lookup: user aircraft is at (%f,%f)", lat, lon);
 
-        shared_ptr<istream> kjfkFile = m_host->openFileForRead(kjfkFilePath);
-        XPAirportReader airportReader(m_host);
+        XPLMNavRef navRef = XPLMFindNavAid( nullptr, nullptr, &lat, &lon, nullptr, xplm_Nav_Airport);
+        if (navRef != XPLM_NAV_NOT_FOUND)
+        {
+            XPLMGetNavAidInfo(navRef, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, airportIcaoId, nullptr, nullptr);
+        }
 
-        airportReader.setAirspace(createKjfkAirspace());
-        airportReader.readAptDat(*kjfkFile);
-        auto kjfkAirport = airportReader.getAirport();
+        if (strlen(airportIcaoId) > 0)
+        {
+            m_host->writeLog("User airport lookup: FOUND [%s]", airportIcaoId);
+            return airportIcaoId;
+        }
 
-        m_host->writeLog("KJFK airport loaded");
-        return kjfkAirport;
+        m_host->writeLog("User airport lookup: NOT FOUND! - assuming KJFK");
+        return "KJFK";
+    }
+    void loadAirports(vector<shared_ptr<Airport>>& airports, const string& userAirport)
+    {
+        // X-Plane 11\Resources\default scenery\default apt dat\Earth nav data\apt.dat
+        string globalAptDatFilePath = m_host->getHostFilePath(2, {
+            "default scenery", "default apt dat", "Earth nav data", "apt.dat"
+        });
+        m_host->writeLog("global apt.dat file path [%s]", globalAptDatFilePath.c_str());
+
+        shared_ptr<istream> aptDatFile = m_host->openFileForRead(globalAptDatFilePath);
+        XPAptDatReader aptDatReader(m_host);
+
+        m_host->writeLog("--- begin load airports ---");
+
+        aptDatReader.readAptDat(
+            *aptDatFile,
+            WorldBuilder::assembleSampleAirportControlZone,
+            [&](const Airport::Header header) {
+                return (header.icao() == userAirport); //"KJFK" || header.icao() == "KMIA");
+            },
+            [this, &airports](shared_ptr<Airport> airport) {
+                airports.push_back(airport);
+            }
+        );
+
+        m_host->writeLog("--- end load airports ---");
     }
     void initDemoFlights(shared_ptr<Airport> airport, int count, time_t firstDepartureTime, time_t firstArrivalTime)
     {
@@ -537,13 +604,15 @@ private:
             { "SWA", "Southwest" },
         };
 
-        const auto addOutboundFlight = [this, airport, &callSignByAirline](
+        string activeRunwayName = airport->runways()[0]->end1().name();
+
+        const auto addOutboundFlight = [this, airport, &callSignByAirline, &activeRunwayName](
             const string& model, const string& airline, int flightId, const string& destination, time_t departureTime, shared_ptr<ParkingStand> gate
         ) {
             string callSign = getValueOrThrow(callSignByAirline, airline);
             auto flightPlan = shared_ptr<FlightPlan>(new FlightPlan(departureTime, departureTime + 60 * 60 * 3, airport->header().icao(), destination));
             flightPlan->setDepartureGate(gate->name());
-            flightPlan->setDepartureRunway("13R");
+            flightPlan->setDepartureRunway(activeRunwayName);
 
             auto flight = shared_ptr<Flight>(new Flight(m_host, flightId, Flight::RulesType::IFR, airline, to_string(flightId), callSign + " " + to_string(flightId), flightPlan));
             int aircraftId = 1000 + flightId;
@@ -558,7 +627,7 @@ private:
             m_world->addFlightColdAndDark(flight);
         };
 
-        const auto addInboundFlight = [this, airport, &callSignByAirline](
+        const auto addInboundFlight = [this, airport, &callSignByAirline, &activeRunwayName](
             const string& model, const string& airline, int flightId, const string& origin, time_t arrivalTime, shared_ptr<ParkingStand> gate
         ) {
             m_host->writeLog("adding inbound flight id=%d", flightId);
@@ -566,7 +635,7 @@ private:
             string callSign = getValueOrThrow(callSignByAirline, airline);
             auto flightPlan = shared_ptr<FlightPlan>(new FlightPlan(arrivalTime - 60 * 60 * 3, arrivalTime, origin, airport->header().icao()));
             flightPlan->setArrivalGate(gate->name());
-            flightPlan->setArrivalRunway("13L");
+            flightPlan->setArrivalRunway(activeRunwayName);
 
             auto flight = shared_ptr<Flight>(new Flight(m_host, flightId, Flight::RulesType::IFR, airline, to_string(flightId), callSign + " " + to_string(flightId), flightPlan));
             int aircraftId = 1000 + flightId;
@@ -578,7 +647,7 @@ private:
             flight->setPilot(pilot);
 
             m_world->deferUntil(arrivalTime, [=](){
-                const auto& landingRunwayEnd = m_world->getRunwayEnd(airport->header().icao(), "13L");
+                const auto& landingRunwayEnd = m_world->getRunwayEnd(airport->header().icao(), activeRunwayName);
                 m_world->addFlight(flight);
                 aircraft->setOnFinal(landingRunwayEnd);
                 aircraft->setManeuver(pilot->getFinalToGate(landingRunwayEnd));
@@ -613,7 +682,7 @@ private:
                 {
                     time_t arrivalTime = nextArrivalTime;
                     nextArrivalTime += 45;
-                    addInboundFlight(model, airline, flightId, "KJFK", arrivalTime, gate);
+                    addInboundFlight(model, airline, flightId, airport->header().icao(), arrivalTime, gate);
                 }
             }
             catch(const std::exception& e)
@@ -660,21 +729,21 @@ private:
         }
         return -1;
     }
-    static shared_ptr<ControlledAirspace> createKjfkAirspace()
-    {
-        auto airspace = WorldBuilder::assembleSimpleAirspace(
-            AirspaceClass::ClassB,
-            ControlledAirspace::Type::TerminalControlArea,
-            GeoPoint(40.639925000, -73.778694444),
-            10, 
-            ALTITUDE_GROUND,
-            18000,
-            "USA",
-            "K6",
-            "JFK",
-            "JFK");
-        return airspace;
-    }
+//    static shared_ptr<ControlledAirspace> createKjfkAirspace()
+//    {
+//        auto airspace = WorldBuilder::assembleSimpleAirspace(
+//            AirspaceClass::ClassB,
+//            ControlledAirspace::Type::TerminalControlArea,
+//            GeoPoint(40.639925000, -73.778694444),
+//            10,
+//            ALTITUDE_GROUND,
+//            18000,
+//            "USA",
+//            "K6",
+//            "JFK",
+//            "JFK");
+//        return airspace;
+//    }
 };
 
 shared_ptr<TncPoc> createPoc1()

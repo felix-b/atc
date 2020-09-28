@@ -20,8 +20,16 @@ class XPAirportReader
 {
 private:
     typedef function<bool(int lineCode)> ContextualParser;
+public:
+    typedef function<bool(const Airport::Header& header)> FilterAirportCallback;
+    typedef function<shared_ptr<ControlledAirspace>(const Airport::Header& header)> QueryAirspaceCallback;
 private:
     const shared_ptr<HostServices> m_host;
+    const QueryAirspaceCallback m_onQueryAirspace;
+    const FilterAirportCallback m_onFilterAirport;
+    bool m_headerWasRead;
+    bool m_filterWasQueried;
+    bool m_skippingAirport;
     int m_unparsedLineCode;
     int m_nextEdgeId;
     int m_nextParkingStandId;
@@ -40,13 +48,20 @@ private:
     unordered_set<int> m_parsedFrequencyLineCodes;
     shared_ptr<ControlledAirspace> m_airspace;
 public:
-    XPAirportReader(const shared_ptr<HostServices> _host);
-    void readAptDat(istream &input);
-    void setAirspace(shared_ptr<ControlledAirspace> airspace);
+    explicit XPAirportReader(
+        shared_ptr<HostServices> _host,
+        int _unparsedLineCode = -1,
+        QueryAirspaceCallback _onQueryAirspace = noopQueryAirspace,
+        FilterAirportCallback _onFilterAirport = noopFilterAirport);
+public:
+    int unparsedLineCode() const { return m_unparsedLineCode; }
+public:
+    void readAirport(istream &input);
     bool validate(vector<string> &diagnostics);
     shared_ptr<Airport> getAirport();
 private:
     void readAptDatInContext(istream &input, ContextualParser parser);
+    bool readAptDatLineInContext(istream &input, ContextualParser parser);
     bool rootContextParser(int lineCode, istream &input);
     void parseHeader1(istream &input);
     void parseRunway100(istream &input);
@@ -58,8 +73,29 @@ private:
     void parseMetadata1302(istream &input);
     void parseControlFrequency(int lineCode, istream &input);
     bool isControlFrequencyLine(int lineCode);
+    bool invokeFilterCallback();
 public:
     static string readFirstToken(istream &input);
     static string readToEndOfLine(istream &input);
+    static int extractNextLineCode(istream &input);
+    static string formatErrorMessage(istream &input, fpos_t position, int extractedLineCode, const char *what);
     static void skipToNextLine(istream &input);
+    static shared_ptr<ControlledAirspace> noopQueryAirspace(const Airport::Header& header);
+    static bool noopFilterAirport(const Airport::Header& header);
+};
+
+class XPAptDatReader
+{
+public:
+    typedef function<void(shared_ptr<Airport> airport)> AirportLoadedCallback;
+private:
+    const shared_ptr<HostServices> m_host;
+public:
+    explicit XPAptDatReader(shared_ptr<HostServices> _host);
+public:
+    void readAptDat(
+        istream &input,
+        const XPAirportReader::QueryAirspaceCallback& onQueryAirspace,
+        const XPAirportReader::FilterAirportCallback& onFilterAirport,
+        const AirportLoadedCallback& onAirportLoaded);
 };

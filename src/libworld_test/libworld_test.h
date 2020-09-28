@@ -99,6 +99,20 @@ namespace world
             }
             return fullPath;
         }
+        string getHostFilePath(int numFoldersUp, const vector<string>& downPathParts) override
+        {
+            string fullPath = "PLUGIN_DIR";
+            for (int i = 0 ; i < numFoldersUp ; i++)
+            {
+                fullPath.append("/..");
+            }
+            for (const string& part : downPathParts)
+            {
+                fullPath.append("/");
+                fullPath.append(part);
+            }
+            return fullPath;
+        }
         shared_ptr<istream> openFileForRead(const string& filePath) override
         {
             return shared_ptr<istream>(new stringstream());
