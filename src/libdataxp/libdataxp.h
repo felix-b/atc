@@ -78,7 +78,7 @@ public:
     static string readFirstToken(istream &input);
     static string readToEndOfLine(istream &input);
     static int extractNextLineCode(istream &input);
-    static string formatErrorMessage(istream &input, fpos_t position, int extractedLineCode, const char *what);
+    static string formatErrorMessage(istream &input, const streampos& position, int extractedLineCode, const char *what);
     static void skipToNextLine(istream &input);
     static shared_ptr<ControlledAirspace> noopQueryAirspace(const Airport::Header& header);
     static bool noopFilterAirport(const Airport::Header& header);

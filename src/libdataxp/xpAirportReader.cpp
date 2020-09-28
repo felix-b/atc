@@ -134,7 +134,7 @@ void XPAirportReader::readAptDatInContext(istream& input, ContextualParser parse
     while (!input.eof() && !input.bad())
     {
         int saveLineCode = m_unparsedLineCode;
-        fpos_t saveInputPosition = input.tellg();
+        streampos saveInputPosition = input.tellg();
 
         try
         {
@@ -641,7 +641,7 @@ int XPAirportReader::extractNextLineCode(istream &input)
     return -1;
 }
 
-string XPAirportReader::formatErrorMessage(istream &input, fpos_t position, int extractedLineCode, const char *what)
+string XPAirportReader::formatErrorMessage(istream &input, const streampos& position, int extractedLineCode, const char *what)
 {
     stringstream message;
     message << "FAILED to read apt.dat [" << what << "] line > ";
