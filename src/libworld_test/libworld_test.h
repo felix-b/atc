@@ -17,7 +17,7 @@ namespace world
         public HostServices, 
         public enable_shared_from_this<TestHostServices>
     {
-    private:
+    public:
         class TestAIController : public Controller
         {
         public:
@@ -33,11 +33,81 @@ namespace world
             {
             }
         };
+        class TestAIPilot : public Pilot
+        {
+        public:
+            TestAIPilot(shared_ptr<HostServices> _host, int _id, const string& _name, shared_ptr<Flight> _flight) :
+                Pilot(_host, _id, Actor::Gender::Male, _flight)
+            {
+            }
+        public:
+            void progressTo(chrono::microseconds timestamp) override
+            {
+            }
+            shared_ptr<Maneuver> getFlightCycle() override
+            {
+                return nullptr;
+            }
+            shared_ptr<Maneuver> getFinalToGate(const Runway::End& landingRunway) override
+            {
+                return nullptr;
+            }
+        };
+        class TestAircraftObjectService : public AircraftObjectService
+        {
+        private:
+            shared_ptr<World::ChangeSet> m_lastChangeSet;
+            int m_callCount_clearAll = 0;
+        public:
+            void processEvents(shared_ptr<World::ChangeSet> changeSet) override
+            {
+                m_lastChangeSet = changeSet;
+            }
+            void clearAll() override
+            {
+                m_callCount_clearAll++;
+            }
+        public:
+            shared_ptr<World::ChangeSet> lastChangeSet() const { return m_lastChangeSet; }
+            int callCount_clearAll() const { return m_callCount_clearAll; }
+        };
+        class TestTtsService : public TextToSpeechService
+        {
+        private:
+            vector<shared_ptr<Transmission>> m_transmissionHistory;
+            int m_callCount_clearAll = 0;
+        public:
+            QueryCompletion vocalizeTransmission(shared_ptr<Frequency> frequency, shared_ptr<Transmission> transmission) override
+            {
+                m_transmissionHistory.push_back(transmission);
+                return []{
+                    return true;
+                };
+            }
+            void clearAll() override
+            {
+                m_callCount_clearAll++;
+            }
+        public:
+            vector<shared_ptr<Transmission>> takeTransmissionHistory()
+            {
+                vector<shared_ptr<Transmission>> result = m_transmissionHistory;
+                m_transmissionHistory.clear();
+                return result;
+            }
+        public:
+            const vector<shared_ptr<Transmission>>& transmissionHistory() const { return m_transmissionHistory; }
+            int callCount_clearAll() const { return m_callCount_clearAll; }
+        };
     private:
         function<float(double geo)> m_geoToLocal;
         function<double(float local)> m_localToGeo;
         int m_nextAIControllerId = 1;
-        vector<shared_ptr<Controller>> m_createdAIControllers;
+        int m_nextAIPilotId = 1;
+        shared_ptr<TestAircraftObjectService> m_aircraftObjectService;
+        shared_ptr<TestTtsService> m_textToSpeechService;
+        vector<shared_ptr<TestAIController>> m_createdAIControllers;
+        vector<shared_ptr<TestAIPilot>> m_createdAIPilots;
         shared_ptr<World> m_world;
     public:
         TestHostServices() :
@@ -74,17 +144,25 @@ namespace world
         {
             return 123;
         }
+        float queryTerrainElevationAt(const GeoPoint& location) override
+        {
+            return 123;
+        }
         shared_ptr<Controller> createAIController(shared_ptr<ControllerPosition> position) override
         {
             int id = m_nextAIControllerId++;
             string name = "ai-controller-" + to_string(id);
-            auto controller = shared_ptr<Controller>(new TestAIController(shared_from_this(), id, name, position));
+            auto controller = shared_ptr<TestAIController>(new TestAIController(shared_from_this(), id, name, position));
             m_createdAIControllers.push_back(controller);
             return controller;
         }
         shared_ptr<Pilot> createAIPilot(shared_ptr<Flight> flight) override
         {
-            throw runtime_error("TestHostServices::createAIPilot is not implemented");
+            int id = m_nextAIPilotId++;
+            string name = "ai-pilot-" + to_string(id);
+            auto pilot = shared_ptr<TestAIPilot>(new TestAIPilot(shared_from_this(), id, name, flight));
+            m_createdAIPilots.push_back(pilot);
+            return pilot;
         }
         void writeLog(const char* format, ...) override
         {
@@ -121,15 +199,35 @@ namespace world
         void useWorld(shared_ptr<World> _world)
         {
             m_world = _world;
+            m_world->onQueryTerrainElevation([](const GeoPoint& location){
+                return 123.0;
+            });
         }
-        const vector<shared_ptr<Controller>>& createdAIControllers() const 
+        const vector<shared_ptr<TestAIController>>& createdAIControllers() const
         { 
             return m_createdAIControllers; 
+        }
+        const vector<shared_ptr<TestAIPilot>>& createdAIPilots() const
+        {
+            return m_createdAIPilots;
+        }
+    public:
+        shared_ptr<TestAircraftObjectService> aircraftObjectService() const { return m_aircraftObjectService; }
+        shared_ptr<TestTtsService> textToSpeechService() const { return m_textToSpeechService; }
+    private:
+        void initializeServices(shared_ptr<TestHostServices> me)
+        {
+            m_aircraftObjectService = make_shared<TestAircraftObjectService>();
+            m_textToSpeechService = make_shared<TestTtsService>();
+            services().use<AircraftObjectService>(m_aircraftObjectService);
+            services().use<TextToSpeechService>(m_textToSpeechService);
         }
     public:
         static shared_ptr<TestHostServices> create()
         {
-            return make_shared<TestHostServices>();
+            auto testHost = make_shared<TestHostServices>();
+            testHost->initializeServices(testHost);
+            return testHost;
         }
     private:
         static float defaultGeoToLocal(double geo) 

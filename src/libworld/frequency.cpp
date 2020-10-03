@@ -111,4 +111,11 @@ namespace world
             beginTransmission(nextTransmission, timestamp);
         }
     }
+
+    void Frequency::clearTransmissions()
+    {
+        m_pendingTransmissions = queue<shared_ptr<Transmission>>();
+        m_transmissionInProgress.reset();
+        m_queryTransmissionCompletion = TextToSpeechService::noopQueryCompletion;
+    }
 }

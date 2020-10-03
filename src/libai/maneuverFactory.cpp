@@ -98,7 +98,8 @@ namespace ai
             vector<shared_ptr<Maneuver>>& steps,
             GeoMath::TurnData& turnData,
             GeoMath::TurnArc& turnArc,
-            shared_ptr<TaxiEdge> edge, 
+            shared_ptr<TaxiEdge> prevEdge,
+            shared_ptr<TaxiEdge> edge,
             shared_ptr<TaxiEdge> nextEdge,
             bool exitRoundTurn,
             bool& enterRoundTurn
@@ -114,7 +115,7 @@ namespace ai
                  << (edge->activeZones().hasAny() ? " [AZ!]" : "") << endl;
             m_host->writeLog(logstr.str().c_str());
 
-            if (edge->activeZones().hasAny())
+            if (edge->activeZones().hasAny() && (!prevEdge || !prevEdge->activeZones().hasAny()))
             {
                 auto holdShortManeuver = onHoldingShort(edge);
                 if (holdShortManeuver)
@@ -172,7 +173,8 @@ namespace ai
                 steps, 
                 turnData,
                 turnArc,
-                edges[i], 
+                i > 0 ? edges[i-1] : nullptr,
+                edges[i],
                 i < edges.size() - 1 ? edges[i+1] : nullptr,
                 exitingRoundTurn,
                 enteredRoundTurn);

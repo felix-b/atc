@@ -39,7 +39,7 @@ namespace ai
             case ControllerPosition::Type::Local:
             case ControllerPosition::Type::Approach:
             case ControllerPosition::Type::Departure:
-                m_host->writeLog("Creating AI controller for position: %s", position->callSign().c_str());
+                //m_host->writeLog("Creating AI controller for position: %s", position->callSign().c_str());
                 return shared_ptr<Controller>(new DummyAIController(m_host, newControllerId, newControllerGender, position));
             }
 

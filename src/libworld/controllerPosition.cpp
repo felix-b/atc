@@ -17,6 +17,14 @@ namespace world
         }
     }
 
+    void ControllerPosition::clearFlights()
+    {
+        if (m_frequency)
+        {
+            m_frequency->clearTransmissions();
+        }
+    }
+
     void ControllerPosition::startListenOnFrequency()
     {
         m_frequency->addListener([=](shared_ptr<Intent> intent) {

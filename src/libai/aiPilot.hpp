@@ -149,6 +149,9 @@ namespace ai
                 case GroundDepartureTaxiReplyIntent::IntentCode:
                     newClearance = dynamic_pointer_cast<GroundDepartureTaxiReplyIntent>(intent)->clearance();
                     break;
+                case GroundRunwayCrossClearanceIntent::IntentCode:
+                    newClearance = dynamic_pointer_cast<GroundRunwayCrossClearanceIntent>(intent)->clearance();
+                    break;
                 case GroundSwitchToTowerIntent::IntentCode:
                     m_departureTowerKhz = dynamic_pointer_cast<GroundSwitchToTowerIntent>(intent)->towerKhz();
                     break;
@@ -225,27 +228,53 @@ namespace ai
                     "", 
                     0,
                     1.0,
-                    chrono::seconds(15),
+                    chrono::seconds(10),
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
                     },
                     [=](const double& value, double progress) {
                         aircraft->setGearState(value);
                     }
+                )),
+                shared_ptr<Maneuver>(new AnimationManeuver<double>(
+                    "",
+                    -2.0,
+                    0.0,
+                    chrono::seconds(3),
+                    [](const double& from, const double& to, double progress, double& value) {
+                        value = from + (to - from) * progress;
+                    },
+                    [=](const double& value, double progress) {
+                        aircraft->setAttitude(aircraft->attitude().withPitch(value));
+                    }
                 ))
             });
-            auto flaps40 = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                "", 
-                0.15,
-                0.4,
-                chrono::seconds(10),
-                [](const double& from, const double& to, double progress, double& value) {
-                    value = from + (to - from) * progress; 
-                },
-                [=](const double& value, double progress) {
-                    aircraft->setFlapState(value);
-                }
-            ));
+            auto flaps40 = M.parallel(Maneuver::Type::Unspecified, "", {
+                shared_ptr<Maneuver>(new AnimationManeuver<double>(
+                    "",
+                    0.15,
+                    0.4,
+                    chrono::seconds(10),
+                    [](const double &from, const double &to, double progress, double &value) {
+                        value = from + (to - from) * progress;
+                    },
+                    [=](const double &value, double progress) {
+                        aircraft->setFlapState(value);
+                    }
+                )),
+                shared_ptr<Maneuver>(new AnimationManeuver<double>(
+                    "",
+                    0.0,
+                    1.5,
+                    chrono::seconds(5),
+                    [](const double& from, const double& to, double progress, double& value) {
+                        value = from + (to - from) * progress;
+                    },
+                    [=](const double& value, double progress) {
+                        aircraft->setAttitude(aircraft->attitude().withPitch(value));
+                    }
+                ))
+            });
 
             auto landingPoint = m_helper.getLandingPoint(flight());
             
@@ -278,9 +307,9 @@ namespace ai
             auto preFlare = M.parallel(Maneuver::Type::ArrivalLanding, "", {
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
                     "", 
-                    -2.0,
-                    1.0,
-                    chrono::seconds(3),
+                    1.5,
+                    3.0,
+                    chrono::milliseconds(3500),
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
                     },
@@ -292,7 +321,7 @@ namespace ai
                     "", 
                     -1000,
                     -500,
-                    chrono::seconds(3),
+                    chrono::milliseconds(3500),
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
                     },
@@ -304,8 +333,8 @@ namespace ai
             auto flare = M.parallel(Maneuver::Type::ArrivalLanding, "", {
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
                     "", 
-                    1.0,
-                    5.0,
+                    3.0,
+                    5.5,
                     chrono::seconds(3),
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
@@ -315,17 +344,43 @@ namespace ai
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
-                    -500,
-                    -100,
+                    "",
+                    145,
+                    135,
                     chrono::seconds(3),
                     [](const double& from, const double& to, double progress, double& value) {
-                        value = from + (to - from) * progress; 
+                        value = from + (to - from) * progress;
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setVerticalSpeedFpm(value);
+                        aircraft->setGroundSpeedKt(value);
                     }
-                ))
+                )),
+                M.sequence(Maneuver::Type::Unspecified, "", {
+                    shared_ptr<Maneuver>(new AnimationManeuver<double>(
+                        "",
+                        -500,
+                        -50,
+                        chrono::seconds(2),
+                        [](const double &from, const double &to, double progress, double &value) {
+                            value = from + (to - from) * progress;
+                        },
+                        [=](const double &value, double progress) {
+                            aircraft->setVerticalSpeedFpm(value);
+                        }
+                    )),
+                    shared_ptr<Maneuver>(new AnimationManeuver<double>(
+                        "",
+                        -50,
+                        -100,
+                        chrono::seconds(1),
+                        [](const double &from, const double &to, double progress, double &value) {
+                            value = from + (to - from) * progress;
+                        },
+                        [=](const double &value, double progress) {
+                            aircraft->setVerticalSpeedFpm(value);
+                        }
+                    ))
+                })
             });
             auto touchDownAndDeccelerate = M.parallel(Maneuver::Type::ArrivalLandingRoll, "", {
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -342,7 +397,7 @@ namespace ai
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
                     "", 
-                    5.0,
+                    5.5,
                     0.0,
                     chrono::seconds(6),
                     [](const double& from, const double& to, double progress, double& value) {
@@ -354,8 +409,8 @@ namespace ai
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
                     "", 
-                    140,
-                    45,
+                    135,
+                    40,
                     chrono::seconds(20),
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
@@ -368,7 +423,7 @@ namespace ai
 
             return M.sequence(Maneuver::Type::ArrivalLanding, "", {
                 M.await(Maneuver::Type::Unspecified, "", [=]() {
-                    return (aircraft->altitude().type() == Altitude::Type::AGL && aircraft->altitude().feet() <= 70);
+                    return (aircraft->altitude().type() == Altitude::Type::AGL && aircraft->altitude().feet() <= 55);
                 }),
                 preFlare,
                 M.await(Maneuver::Type::Unspecified, "", [=]() {
@@ -538,7 +593,11 @@ namespace ai
             };
 
             const auto onHoldingShort = [=](shared_ptr<TaxiEdge> holdShortEdge) {
-                shared_ptr<Maneuver> holdShortManeuver = maneuverDepartureAwaitLineup(holdShortEdge);
+                auto departureRunway = m_departureAirport->getRunwayOrThrow(m_flightPlan->departureRunway());
+                bool isHoldingShortDepartureRunway = holdShortEdge->activeZones().departue.has(departureRunway);
+                shared_ptr<Maneuver> holdShortManeuver = isHoldingShortDepartureRunway
+                    ? maneuverDepartureAwaitLineup(m_flightPlan->departureRunway(), holdShortEdge)
+                    : maneuverAwaitCrossRunway(m_departureAirport, holdShortEdge);
                 return holdShortManeuver;
             };
 
@@ -564,10 +623,10 @@ namespace ai
             });
         }
 
-        shared_ptr<Maneuver> maneuverDepartureAwaitLineup(shared_ptr<TaxiEdge> holdShortEdge)
+        shared_ptr<Maneuver> maneuverDepartureAwaitLineup(const string& runwayName, shared_ptr<TaxiEdge> holdShortEdge)
         {
             return M.sequence(Maneuver::Type::DepartureLineUpAndWait, "", {
-                M.transmitIntent(flight(), I.pilotReportHoldingShort(flight(), /*flight()->plan()->departureRunway()*/"", holdShortEdge->name())),
+                M.transmitIntent(flight(), I.pilotReportHoldingShort(flight(), runwayName, holdShortEdge->name())),
                 M.await(Maneuver::Type::Unspecified, "", [this](){
                     return (m_departureTowerKhz > 0);
                 }),
@@ -589,6 +648,21 @@ namespace ai
                     flight()->aircraft()->setLights(Aircraft::LightBits::BeaconLandingNavStrobe);
                 }),
                 M.delay(chrono::seconds(5)),
+            });
+        }
+
+        shared_ptr<Maneuver> maneuverAwaitCrossRunway(shared_ptr<Airport> airport, shared_ptr<TaxiEdge> holdShortEdge)
+        {
+            auto runway = getActiveZoneRunway(airport, holdShortEdge);
+            string runwayName = runway ? runway->end1().name() : "";
+
+            return M.sequence(Maneuver::Type::TaxiHoldShort, "", {
+                M.transmitIntent(flight(), I.pilotReportHoldingShort(flight(), runwayName, holdShortEdge->name())),
+                M.awaitClearance(flight(), Clearance::Type::RunwayCrossClearance),
+                M.deferred([=]() {
+                    auto clearance = flight()->findClearanceOrThrow<RunwayCrossClearance>(Clearance::Type::RunwayCrossClearance);
+                    return M.transmitIntent(flight(), I.pilotAffirmation(flight(), clearance->header().issuedBy));
+                })
             });
         }
 
@@ -730,6 +804,35 @@ namespace ai
                     })
                 });
             });
+        }
+
+        shared_ptr<Runway> getActiveZoneRunway(shared_ptr<Airport> airport, shared_ptr<TaxiEdge> activeZoneEdge)
+        {
+            host()->writeLog(
+                "AIPILO|getActiveZoneRunway: edge [%d|%s] departure-mask [%d] arrival-mask [%d] ils-mask [%d]",
+                activeZoneEdge->id(),
+                activeZoneEdge->name().c_str(),
+                activeZoneEdge->activeZones().departue.runwaysMask(),
+                activeZoneEdge->activeZones().arrival.runwaysMask(),
+                activeZoneEdge->activeZones().ils.runwaysMask());
+
+            for (const auto& runway : airport->runways())
+            {
+                host()->writeLog(
+                    "AIPILO|getActiveZoneRunway: checking runway [%s/%s], maskbit [%d]",
+                    runway->end1().name().c_str(), runway->end2().name().c_str(), runway->maskBit());
+
+                if (activeZoneEdge->activeZones().departue.has(runway) ||
+                    activeZoneEdge->activeZones().arrival.has(runway) ||
+                    activeZoneEdge->activeZones().ils.has(runway))
+                {
+                    host()->writeLog("AIPILO|getActiveZoneRunway: FOUND");
+                    return runway;//runwayName = runway->end1().name();
+                }
+            }
+
+            host()->writeLog("AIPILO|getActiveZoneRunway: RUNWAY NOT FOUND");
+            return nullptr;
         }
     };
 }

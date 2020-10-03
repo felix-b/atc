@@ -89,9 +89,9 @@ namespace world
         }
 
         m_speechStyle.platformVoiceId = "";
-        m_host->writeLog(
-            "initRandomSpeechStyle voice[%d] rate[%d] rqlt[%d] Pdis[%f] Pcor[%f]", 
-            m_speechStyle.voice, m_speechStyle.rate, m_speechStyle.radioQuality, m_speechStyle.disfluencyProbability, m_speechStyle.selfCorrectionProbability);
+        // m_host->writeLog(
+        //    "initRandomSpeechStyle voice[%d] rate[%d] rqlt[%d] Pdis[%f] Pcor[%f]",
+        //    m_speechStyle.voice, m_speechStyle.rate, m_speechStyle.radioQuality, m_speechStyle.disfluencyProbability, m_speechStyle.selfCorrectionProbability);
     }
 
     const Actor::SpeechStyle& Actor::getDefaultSpeechStyle()

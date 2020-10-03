@@ -107,15 +107,16 @@ FUNCTION(add_xplane_plugin library_name library_version ...)
     TARGET_INCLUDE_DIRECTORIES(${library_name} PUBLIC "${XPLANE_INCLUDES_PATH}/XPLM" "${XPLANE_INCLUDES_PATH}/Widgets" "${XPLANE_INCLUDES_PATH}/Wrappers")
 ENDFUNCTION(add_xplane_plugin)
 
-add_xplane_plugin(pluginxp 301 
-    multiplayerInitializer.hpp
+add_xplane_plugin(pluginxp 301
     nativeTextToSpeechService.hpp
+    xplmSpeakStringTtsService.hpp
+    xpmp2AircraftObjectService.hpp
+    pluginHostServices.hpp
+    pluginMenu.hpp
     pluginInstance.hpp
-    pluginxp.cpp
-    poc.h
-    poc_0.cpp
-    poc_1.cpp
-    sound.cpp
+    entryPoint.cpp
+    pluginWorldLoader.hpp
+    pluginScheduleLoader.hpp
     speechSoundBuffer.hpp
     utils.cpp
     utils.h

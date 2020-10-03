@@ -92,9 +92,40 @@ namespace ai
                 );
                 break;
             case PilotReportHoldingShortIntent::IntentCode:
-                reply = m_intentFactory->groundSwitchToTower(
-                    intent->subjectFlight()
-                );
+                {
+                    host()->writeLog("AICONT|PilotReportHoldingShortIntent flight[%s]", intent->subjectFlight()->callSign().c_str());
+
+                    auto typedIntent = dynamic_pointer_cast<PilotReportHoldingShortIntent>(intent);
+                    if (typedIntent)
+                    {
+                        auto flightPlan = intent->subjectFlight()->plan();
+                        bool isDeparting = flightPlan->departureAirportIcao() == airport()->header().icao();
+                        host()->writeLog(
+                            "AICONT|PilotReportHoldingShortIntent, isDeparting: [%s] == [%s] ? %d",
+                            flightPlan->departureAirportIcao().c_str(),
+                            airport()->header().icao().c_str(),
+                            isDeparting);
+                        auto departureRunway = isDeparting
+                            ? airport()->getRunwayOrThrow(flightPlan->departureRunway())
+                            : nullptr;
+                        bool isDepartureRunway =
+                            isDeparting && departureRunway && (
+                                typedIntent->runway() == departureRunway->end1().name() ||
+                                typedIntent->runway() == departureRunway->end2().name());
+                        host()->writeLog(
+                            "AICONT|PilotReportHoldingShortIntent, isDepartureRunway: [%s] == [%s]||[%s] ? %d",
+                             typedIntent->runway().c_str(),
+                             departureRunway->end1().name().c_str(),
+                             departureRunway->end2().name().c_str(),
+                             isDepartureRunway);
+                        reply = isDepartureRunway
+                            ? m_intentFactory->groundSwitchToTower(intent->subjectFlight())
+                            : m_intentFactory->groundCrossRunwayClearance(m_clearanceFactory->runwayCrossCleaeance(
+                                  typedIntent->subjectFlight(),
+                                  typedIntent->runway()
+                              ));
+                    }
+                }
                 break;
             case PilotCheckInWithTowerIntent::IntentCode:
                 reply = m_intentFactory->towerLineUp(
@@ -102,28 +133,30 @@ namespace ai
                 );
                 break;
             case PilotLineUpReadbackIntent::IntentCode:
-                host()->getWorld()->deferBy(chrono::seconds(20), [=]() {
-                    auto airport = host()->getWorld()->getAirport(intent->subjectFlight()->plan()->departureAirportIcao());
-                    auto runway = airport->getRunwayOrThrow(intent->subjectFlight()->plan()->departureRunway());
-                    const auto& runwayEnd = runway->getEndOrThrow(intent->subjectFlight()->plan()->departureRunway());
-                    float initialHeading = runwayEnd.heading() + m_departureInitialTurn;
-                    auto clearance = m_clearanceFactory->takeoffClearance(
-                        intent->subjectFlight(),
-                        initialHeading,
-                        false
-                    );
-                    position()->frequency()->enqueueTransmission(
-                        m_intentFactory->towerClearedForTakeoff(clearance)
-                    );
-                    m_departureInitialTurn = (m_departureInitialTurn < 60 ? m_departureInitialTurn + 15 : 15);
-                });
+                host()->getWorld()->deferBy(
+                    "takeOffClearance/" + intent->subjectFlight()->callSign(),
+                    chrono::seconds(20),
+                    [=]() {
+                        auto runway = airport()->getRunwayOrThrow(intent->subjectFlight()->plan()->departureRunway());
+                        const auto& runwayEnd = runway->getEndOrThrow(intent->subjectFlight()->plan()->departureRunway());
+                        float initialHeading = runwayEnd.heading() + m_departureInitialTurn;
+                        auto clearance = m_clearanceFactory->takeoffClearance(
+                            intent->subjectFlight(),
+                            initialHeading,
+                            false
+                        );
+                        position()->frequency()->enqueueTransmission(
+                            m_intentFactory->towerClearedForTakeoff(clearance)
+                        );
+                        m_departureInitialTurn = (m_departureInitialTurn < 60 ? m_departureInitialTurn + 15 : 15);
+                    }
+                );
                 break;
             case PilotReportFinalIntent::IntentCode:
                 {
-                    auto airport = host()->getWorld()->getAirport(intent->subjectFlight()->plan()->arrivalAirportIcao());
-                    auto runway = airport->getRunwayOrThrow(intent->subjectFlight()->plan()->arrivalRunway());
+                    auto runway = airport()->getRunwayOrThrow(intent->subjectFlight()->plan()->arrivalRunway());
                     const auto& runwayEnd = runway->getEndOrThrow(intent->subjectFlight()->plan()->arrivalRunway());
-                    auto ground = airport->groundAt(runwayEnd.centerlinePoint().geo());
+                    auto ground = airport()->groundAt(runwayEnd.centerlinePoint().geo());
                     auto clearance = m_clearanceFactory->landingClearance(
                         intent->subjectFlight(),
                         runwayEnd.name(),

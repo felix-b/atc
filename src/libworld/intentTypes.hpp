@@ -298,6 +298,28 @@ namespace world
         const string& holdingPoint() const { return m_holdingPoint; }
     };
 
+    class GroundRunwayCrossClearanceIntent : public Intent
+    {
+    public:
+        static const int IntentCode = 1105;
+    private:
+        shared_ptr<RunwayCrossClearance> m_clearance;
+    public:
+        GroundRunwayCrossClearanceIntent(shared_ptr<RunwayCrossClearance> _clearance) :
+            Intent(
+                Direction::ControllerToPilot,
+                Type::Clearance,
+                IntentCode,
+                _clearance->header().issuedBy,
+                _clearance->header().issuedTo
+            ),
+            m_clearance(_clearance)
+        {
+        }
+    public:
+        const shared_ptr<RunwayCrossClearance> clearance() const { return m_clearance; }
+    };
+
     class GroundSwitchToTowerIntent : public Intent
     {
     public:

@@ -30,7 +30,6 @@
 
 // tnc
 #include "utils.h"
-#include "poc.h"
 #include "libworld.h"
 #include "pluginInstance.hpp"
 
@@ -47,22 +46,13 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
     XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
 
     PluginPath::setPluginDirectoryName("airTrafficAndControl");
-    LogWriter::getLogger().setLogFile(PluginPath::prependPluginPath("atnc_log.txt"));
-
+    LogWriter::getLogger().setLogFile(PluginPath::prependPluginPath("atc_log.txt"));
     Log() << Log::Info << "XPluginStart" << Log::endl;
 
+    initLogStartTime();
     PrintDebugString(
-        "TNC> XPluginStart, platform-build=[%s], plugin-directory=[%s]\n",
-        #if APL
-            "APL"
-        #endif
-        #if IBM
-            "IBM"
-        #endif
-        #if LIN
-            "LIN"
-        #endif
-        , 
+        "ENTRYP|XPluginStart, platform-build=[%s], plugin-directory=[%s]\n",
+        getBuildPlatformId(),
         getPluginDirectory().c_str()
     );
 
@@ -76,15 +66,14 @@ PLUGIN_API int XPluginEnable(void)
     char signature[256];
     char description[256];
 
-    int myPluginId =  XPLMGetMyID();
+    int myPluginId = XPLMGetMyID();
     XPLMGetPluginInfo(myPluginId, name, filePath, signature, description);
 
-    XPLMDebugString("TNC> XPluginEnable\n");
+    PrintDebugString("ENTRYP|XPluginEnable");
     PrintDebugString(
-        "TNC> XPLMGetPluginInfo(pluginId=%d) -> name=[%s] filePath=[%s] signature=[%s] description=[%s]\n",
+        "ENTRYP|XPLMGetPluginInfo(pluginId=%d) -> name=[%s] filePath=[%s] signature=[%s] description=[%s]",
         myPluginId, name, filePath, signature, description);
 
-    Log() << Log::Info << "XPluginEnable" << Log::endl;
     pInstance = new PluginInstance();
     return 1;
 }
@@ -97,25 +86,28 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID fromId, long inMsg, void*)
     char description[256];
     XPLMGetPluginInfo(fromId, name, filePath, signature, description);
 
-    PrintDebugString("TNC> XPluginReceiveMessage(fromId=[%d|%s], inMsg=[%ld])\n", fromId, name, inMsg);
-
-    DataRef<double> userAircraftLatitude("sim/flightmodel/position/latitude", PPL::ReadOnly);
-    DataRef<double> userAircraftLongitude("sim/flightmodel/position/longitude", PPL::ReadOnly);
-    float userLat = userAircraftLatitude;
-    float userLon = userAircraftLongitude;
-    char icaoCode[10] = { 0 };
-    XPLMNavRef navRef = XPLMFindNavAid( nullptr, nullptr, &userLat, &userLon, nullptr, xplm_Nav_Airport);
-    if (navRef != XPLM_NAV_NOT_FOUND)
+    PrintDebugString("ENTRYP|XPluginReceiveMessage(fromId=[%d|%s], inMsg=[%ld])\n", fromId, name, inMsg);
+    if (inMsg == XPLM_MSG_AIRPORT_LOADED)
     {
-        XPLMGetNavAidInfo(navRef, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, icaoCode, nullptr, nullptr);
+        pInstance->notifyAirportLoaded();
     }
 
-    PrintDebugString("     > user@(%f,%f) -> ICAO[%s]\n", userLat, userLon, strlen(icaoCode) > 0 ? icaoCode : "N/A");
+//    DataRef<double> userAircraftLatitude("sim/flightmodel/position/latitude", PPL::ReadOnly);
+//    DataRef<double> userAircraftLongitude("sim/flightmodel/position/longitude", PPL::ReadOnly);
+//    float userLat = userAircraftLatitude;
+//    float userLon = userAircraftLongitude;
+//    char icaoCode[10] = { 0 };
+//    XPLMNavRef navRef = XPLMFindNavAid( nullptr, nullptr, &userLat, &userLon, nullptr, xplm_Nav_Airport);
+//    if (navRef != XPLM_NAV_NOT_FOUND)
+//    {
+//        XPLMGetNavAidInfo(navRef, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, icaoCode, nullptr, nullptr);
+//    }
+//    PrintDebugString("     > user@(%f,%f) -> ICAO[%s]\n", userLat, userLon, strlen(icaoCode) > 0 ? icaoCode : "N/A");
 }
 
 PLUGIN_API void XPluginDisable(void)
 {
-    XPLMDebugString("TNC> XPluginDisable\n");
+    XPLMDebugString("ENTRYP|XPluginDisable\n");
     Log() << Log::Info << "XPluginDisable" << Log::endl;
     if (pInstance)
     {
@@ -126,6 +118,6 @@ PLUGIN_API void XPluginDisable(void)
 
 PLUGIN_API void	XPluginStop(void)
 {
-    XPLMDebugString("TNC> XPluginStop\n");
+    XPLMDebugString("ENTRYP|XPluginStop\n");
     Log() << Log::Info << "XPluginStop" << Log::endl;
 }

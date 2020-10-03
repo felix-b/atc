@@ -5,6 +5,14 @@
 #pragma once
 
 #include <string>
+#include <chrono>
 
-void PrintDebugString(const char* format, ...);
-std::string getPluginDirectory();
+using namespace std;
+
+typedef chrono::time_point<chrono::high_resolution_clock, chrono::milliseconds> LogTimePoint;
+
+const char *getBuildPlatformId();
+void initLogStartTime();
+LogTimePoint getLogStartTime();
+void PrintDebugString(const char* format, ...); //TODO: camelCase
+string getPluginDirectory();

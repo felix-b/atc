@@ -5,6 +5,7 @@
 #include "gtest/gtest.h"
 #include "libworld.h"
 #include "libworld_test.h"
+#include "airportTest.h"
 
 using namespace world;
 
@@ -19,7 +20,7 @@ TEST(WorldBuilderTest, buildTaxiNet_singleEdge)
     auto n2 = shared_ptr<TaxiNode>(new TaxiNode(222, UniPoint::fromLocal(host, {20, GROUND, 20})));
     auto e1 = shared_ptr<TaxiEdge>(new TaxiEdge(1001, "E1", 111, 222));
     
-    auto airport = WorldBuilder::assembleAirport(testHeader, {}, {}, { n1, n2 }, { e1 });
+    auto airport = WorldBuilder::assembleAirport(host, testHeader, {}, {}, { n1, n2 }, { e1 });
     auto net = airport->taxiNet();
 
     EXPECT_EQ(net->nodes().size(), 2);
@@ -50,7 +51,7 @@ TEST(WorldBuilderTest, buildTaxiNet_triangle)
     auto e23 = shared_ptr<TaxiEdge>(new TaxiEdge(1002, "E23", 222, 333));
     auto e13 = shared_ptr<TaxiEdge>(new TaxiEdge(1003, "E13", 111, 333));
 
-    auto airport = WorldBuilder::assembleAirport(testHeader, {}, {}, { n1, n2, n3 }, { e12, e23, e13 });
+    auto airport = WorldBuilder::assembleAirport(host, testHeader, {}, {}, { n1, n2, n3 }, { e12, e23, e13 });
     auto net = airport->taxiNet();
 
     EXPECT_EQ(net->nodes().size(), 3);
@@ -111,6 +112,7 @@ TEST(WorldBuilderTest, assembleAirport_taxiNetAndRunways)
     WorldBuilder::addActiveZone(e2r, "18/36", false, true, true);
 
     auto airport = WorldBuilder::assembleAirport(
+        host,
         testHeader, 
         { rwy1836 }, 
         {},
@@ -148,3 +150,29 @@ TEST(WorldBuilderTest, assembleAirport_taxiNetAndRunways)
     EXPECT_EQ(er12->runway(), rwy1836);
     EXPECT_EQ(er12->runway(), rwy1836);
 }
+
+TEST(WorldBuilderTest, tidyAirportElevations_runways) {
+    auto host = TestHostServices::create();
+    Airport::Header header("ABCD", "Test", GeoPoint(30, 45), 12);
+    auto airport = WorldBuilder::assembleAirport(host, header,{
+        makeRunway(host, { 30.01, 45.01 }, { 30.02, 45.02 }, "04", "22"),
+        makeRunway(host, { 30.01, 45.01 }, { 30.02, 45.01 }, "01", "19"),
+    }, {}, {}, {});
+
+    ASSERT_EQ(airport->runways().size(), 2);
+    const auto& rwy1 = airport->runways()[0];
+    const auto& rwy2 = airport->runways()[1];
+
+    EXPECT_FLOAT_EQ(rwy1->end1().elevationFeet(), 12);
+    EXPECT_FLOAT_EQ(rwy1->end2().elevationFeet(), 12);
+    EXPECT_FLOAT_EQ(rwy2->end1().elevationFeet(), 12);
+    EXPECT_FLOAT_EQ(rwy2->end2().elevationFeet(), 12);
+
+    WorldBuilder::tidyAirportElevations(host, airport);
+
+    EXPECT_FLOAT_EQ(rwy1->end1().elevationFeet(), 123);
+    EXPECT_FLOAT_EQ(rwy1->end2().elevationFeet(), 123);
+    EXPECT_FLOAT_EQ(rwy2->end1().elevationFeet(), 123);
+    EXPECT_FLOAT_EQ(rwy2->end2().elevationFeet(), 123);
+}
+

@@ -12,6 +12,9 @@ using namespace std;
 #define MICROSECONDS_IN_HOUR 3600000000.0
 #define MICROSECONDS_IN_MINUTE 60000000.0
 
+// the highest elevation airport - Qamdo Bamda, China
+#define WORLD_MAX_RUNWAY_ELEVATION 14219.0
+
 namespace world
 {
     constexpr float Aircraft::MaxAltitudeAGL;
@@ -30,8 +33,8 @@ namespace world
 
     void Aircraft::setOnFinal(const Runway::End& runwayEnd)
     {
-        setAltitude(Altitude::msl(2500));
-        setGroundSpeedKt(140.0f);
+        setAltitude(Altitude::msl(runwayEnd.elevationFeet() + 2500 + 40));
+        setGroundSpeedKt(145.0f);
         setVerticalSpeedFpm(-1000.0f);
         setFlapState(0);
         setGearState(0);
@@ -40,9 +43,12 @@ namespace world
 
         m_locationTimespamp = m_host->getWorld()->timestamp();
 
-        float finalDistance = 2.5 * 140.0 / 60;
+        float finalDistance = 2.5 * 145.0 / 60;
         auto aimingPoint = runwayEnd.centerlinePoint().geo();
-        auto finalStartPoint = GeoMath::getPointAtDistance(aimingPoint, GeoMath::flipHeading(runwayEnd.heading()), finalDistance * METERS_IN_NAUTICAL_MILE - 100);
+        auto finalStartPoint = GeoMath::getPointAtDistance(
+            aimingPoint,
+            GeoMath::flipHeading(runwayEnd.heading()),
+            finalDistance * METERS_IN_NAUTICAL_MILE - runwayEnd.displacedThresholdMeters() - 50);
         setLocation(finalStartPoint);
 
         // stringstream log;
@@ -70,9 +76,16 @@ namespace world
             m_maneuver->progressTo(timestamp);
         }
 
+        bool touchedDown = false;
         int64_t elapsedMicroseconds = (timestamp - m_locationTimespamp).count();
-        moveFor(elapsedMicroseconds);
+
+        moveFor(elapsedMicroseconds, touchedDown);
+
         m_locationTimespamp = timestamp;
+        if (touchedDown)
+        {
+            m_touchdownTimestamp = timestamp;
+        }
     }
     
     void Aircraft::setLocation(const GeoPoint& _location)
@@ -210,7 +223,7 @@ namespace world
         m_onChanges()->mutableFlights().updated(m_flight.lock());
     }
 
-    void Aircraft::moveFor(int64_t elapsedMicroseconds)
+    void Aircraft::moveFor(int64_t elapsedMicroseconds, bool& touchedDown)
     {
         if (abs(m_groundSpeedKt) > 0.00001)
         {
@@ -219,17 +232,6 @@ namespace world
                 m_location, 
                 m_track, 
                 m_groundSpeedKt * elapsedHours * METERS_IN_NAUTICAL_MILE);
-
-            // if (!m_altitude.isGround())            
-            // {
-            //     stringstream log;
-            //     log << setprecision(11) 
-            //         << "Aircraft[" << m_id << "]::moveFor(" << elapsedMicroseconds << ") : " 
-            //         << "(" << m_location.latitude << "," << m_location.longitude << ")->"
-            //         << "(" << nextLocation.latitude << "," << nextLocation.longitude << ")";
-            //     m_host->writeLog(log.str().c_str());            
-            // }
-
             setLocation(nextLocation);
         }
 
@@ -238,6 +240,9 @@ namespace world
             double elapsedMinutes = elapsedMicroseconds / MICROSECONDS_IN_MINUTE;
             float nextFeet = m_altitude.feet() + m_verticalSpeedFpm * elapsedMinutes;
             Altitude nextAltitude  = getNextAltitude(nextFeet);
+            touchedDown = (
+                m_altitude.type() != Altitude::Type::Ground &&
+                nextAltitude.type() == Altitude::Type::Ground);
             setAltitude(nextAltitude);
         }
     }
@@ -268,15 +273,26 @@ namespace world
                 : nextFeet > 0 
                     ? Altitude::agl(nextFeet) 
                     : Altitude::ground();
-            break;
         case Altitude::Type::MSL:
-            return nextFeet <= MaxAltitudeAGL
-                ? Altitude::agl(nextFeet - m_host->getWorld()->queryTerrainElevationAt(m_location))
-                : Altitude::msl(nextFeet);
-            break;
+            auto flightPtr = m_flight.lock();
+            if (flightPtr)
+            {
+                return nextFeet <= flightPtr->landingRunwayElevationFeet() + MaxAltitudeAGL
+                   ? Altitude::agl(nextFeet - m_host->getWorld()->queryTerrainElevationAt(m_location))
+                   : Altitude::msl(nextFeet);
+            }
+            return Altitude::ground();
         }
 
         throw runtime_error(
             "Aircraft id=" + to_string(m_id) + " invalid altitude type=" + to_string((int)m_altitude.type()));
+    }
+
+    bool Aircraft::justTouchedDown(chrono::microseconds timestamp)
+    {
+        auto microsecondsSinceTouchdown = (timestamp -  m_touchdownTimestamp);
+        bool wasTouchDown = microsecondsSinceTouchdown.count() < 500000; // < 0.5s
+        m_touchdownTimestamp = timestamp - chrono::seconds(1);
+        return wasTouchDown;
     }
 }

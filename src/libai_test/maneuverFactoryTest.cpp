@@ -735,6 +735,7 @@ shared_ptr<Airport> createTestAirport(shared_ptr<HostServices> host)
 
     Airport::Header testHeader("KJFK", "JFK", GeoPoint(10,40), 0);
     auto airport = WorldBuilder::assembleAirport(
+        host,
         testHeader,
         {},
         {},

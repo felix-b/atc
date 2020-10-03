@@ -71,7 +71,7 @@ namespace ai
             auto taxiPath = TaxiPath::tryFind(airport->taxiNet(), p0, runwayEnd.centerlinePoint().geo());
             if (!taxiPath) 
             {
-                throw runtime_error("TNC> taxi path NOT FOUND!");
+                throw runtime_error("taxi path NOT FOUND!");
             }
 
             GeoPoint p1 = taxiPath->edges[0]->node1()->location().geo();
@@ -116,7 +116,24 @@ namespace ai
                 pushAndStart->departureRunway(),
                 pushAndStart->taxiPath()
             ));
-        }   
+        }
+
+        shared_ptr<RunwayCrossClearance> runwayCrossCleaeance(shared_ptr<Flight> flight, const string& runwayName)
+        {
+            auto airport = getDepartureAirport(flight);
+
+            Clearance::Header header;
+            initClearanceHeader(
+                header,
+                Clearance::Type::RunwayCrossClearance,
+                airport->groundAt(flight->aircraft()->location()),
+                flight);
+
+            return shared_ptr<RunwayCrossClearance>(new RunwayCrossClearance(
+                header,
+                runwayName
+            ));
+        }
 
         shared_ptr<LineupApproval> lineupApproval(shared_ptr<Flight> flight, bool wait)
         {

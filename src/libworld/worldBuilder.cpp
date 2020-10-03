@@ -6,6 +6,7 @@
 #include <chrono>
 #include "libworld.h"
 #include "stlhelpers.h"
+#include "simplePhraseologyService.hpp"
 
 using namespace std;
 using namespace world;
@@ -38,6 +39,7 @@ namespace world
     }
 
     shared_ptr<Airport> WorldBuilder::assembleAirport(
+        shared_ptr<HostServices> host,
         const Airport::Header& header,
         const vector<shared_ptr<Runway>>& runways,
         const vector<shared_ptr<ParkingStand>>& parkingStands,
@@ -51,7 +53,7 @@ namespace world
         {
             airport->m_runways.push_back(rwy);
         }
-        airport->m_taxiNet = assembleTaxiNet(runways, taxiNodes, taxiEdges);
+        airport->m_taxiNet = assembleTaxiNet(host, runways, taxiNodes, taxiEdges);
 
         for (auto parking : parkingStands)
         {
@@ -59,8 +61,8 @@ namespace world
             airport->m_parkingStandByName.insert({ parking->m_name, parking });
         }
 
-        fixUpEdgesAndRunways(airport);
-        linkAirportTowerAirspace(airport, tower, airspace);
+        fixUpEdgesAndRunways(host, airport);
+        linkAirportTowerAirspace(host, airport, tower, airspace);
 
         return airport;
     }
@@ -114,7 +116,11 @@ namespace world
             return position;
         };
 
-        tower->m_callSign = header.icao().substr(1); //TODO: this will sound unrealistically. Manual configuration?
+        //TODO: tower callsign will sound unrealistically. Manual configuration?
+        tower->m_callSign = SimplePhraseologyService::spellIcaoCode(header.icao()[0] == 'K'
+            ? header.icao().substr(1)  // ICAO->FAA
+            : header.icao());
+
         tower->m_name = header.icao() + " Tower";
         tower->m_type = ControlFacility::Type::Tower;
         tower->m_airspace = airspace;
@@ -125,10 +131,10 @@ namespace world
             position->m_controller = host->createAIController(position);
             tower->m_positions.push_back(position);
             
-            host->writeLog(
-                "Initialized controller position [%s] on frequency [%d]", 
-                position->callSign().c_str(), 
-                position->frequency()->khz());
+//            host->writeLog(
+//                "Initialized controller position [%s] on frequency [%d]",
+//                position->callSign().c_str(),
+//                position->frequency()->khz());
         }
 
         return tower;
@@ -175,7 +181,19 @@ namespace world
         }
     }
 
+    void WorldBuilder::tidyAirportElevations(
+        shared_ptr<HostServices> host,
+        shared_ptr<Airport> airport)
+    {
+        for (const auto& runway : airport->runways())
+        {
+            runway->m_end1.m_elevationFeet = host->queryTerrainElevationAt(runway->m_end1.m_centerlinePoint.geo());
+            runway->m_end2.m_elevationFeet = host->queryTerrainElevationAt(runway->m_end2.m_centerlinePoint.geo());
+        }
+    }
+
     shared_ptr<TaxiNet> WorldBuilder::assembleTaxiNet(
+        shared_ptr<HostServices> host,
         const vector<shared_ptr<Runway>>& runways,
         const vector<shared_ptr<TaxiNode>>& nodes,
         const vector<shared_ptr<TaxiEdge>>& edges)
@@ -242,10 +260,12 @@ namespace world
         return airspace;
     }
 
-    void WorldBuilder::fixUpEdgesAndRunways(shared_ptr<Airport> airport)
+    void WorldBuilder::fixUpEdgesAndRunways(
+        shared_ptr<HostServices> host,
+        shared_ptr<Airport> airport)
     {
         const auto calcRunwayHeadings = [airport]() {
-            for (auto runway : airport->m_runways)
+            for (const auto& runway : airport->m_runways)
             {
                 auto& end1 = runway->m_end1;
                 auto& end2 = runway->m_end2;
@@ -255,6 +275,14 @@ namespace world
                 end2.m_heading = GeoMath::getHeadingFromPoints(
                     end2.m_centerlinePoint.geo(), 
                     end1.m_centerlinePoint.geo());
+                runway->m_lengthMeters = GeoMath::getDistanceMeters(
+                    end1.m_centerlinePoint.geo(),
+                    end2.m_centerlinePoint.geo());
+
+                // runway elevations can be tailored to scenery with a call to tidyAirportElevations()
+                // this must be deferred in the sim until terrain probes are available at the airport
+                end1.m_elevationFeet = airport->header().elevation();
+                end2.m_elevationFeet = airport->header().elevation();
             }
         };
 
@@ -317,6 +345,7 @@ namespace world
     }
 
     void WorldBuilder::linkAirportTowerAirspace(
+        shared_ptr<HostServices> host,
         shared_ptr<Airport> airport,
         shared_ptr<ControlFacility> tower,
         shared_ptr<ControlledAirspace> airspace)
