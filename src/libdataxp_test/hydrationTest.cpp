@@ -2,18 +2,22 @@
 // This file is part of AT&C project which simulates virtual world of air traffic and ATC.
 // Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
 // 
-#pragma once
 #include <memory>
+#include <string>
+#include <functional>
+#include "gtest/gtest.h"
 
 using namespace std;
 
-class TncPoc
+class ScalarFields
 {
 public:
-    virtual void start() = 0;
-    virtual void stop() = 0;
-    virtual void setTimeFactor(uint64_t factor) = 0;
+    int n;
+    char s5[5];
+    bool b;
+    float f;
 };
 
-shared_ptr<TncPoc> createPoc0();
-shared_ptr<TncPoc> createPoc1();
+TEST(HydrationTest, scalarFieldsObject) {
+    
+}

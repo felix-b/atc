@@ -25,6 +25,7 @@ static const unordered_map<string, Aircraft::Category> aircraftCategoryLookup = 
     {"turboprops", Aircraft::Category::Turboprop},
     {"props", Aircraft::Category::Prop},
     {"helos", Aircraft::Category::Helicopter},
+    {"fighters", Aircraft::Category::Fighter},
     {"all", Aircraft::Category::All},
 };
 
@@ -101,11 +102,23 @@ bool XPAirportReader::validate(vector<string>& diagnostics)
 
 shared_ptr<Airport> XPAirportReader::getAirport()
 {
-    if (m_skippingAirport)
+    if (!m_skippingAirport)
     {
-        return nullptr;
+        try
+        {
+            return assembleAirportOrThrow();
+        }
+        catch (const exception &e)
+        {
+            m_host->writeLog("APTDAT|FAILED to assemble airport [%s]: %s", m_icao.c_str(), e.what());
+        }
     }
 
+    return nullptr;
+}
+
+shared_ptr<Airport> XPAirportReader::assembleAirportOrThrow()
+{
     GeoPoint datum(
         m_datumLatitude != DATUM_UNSPECIFIED ? m_datumLatitude : 0,
         m_datumLongitude != DATUM_UNSPECIFIED ? m_datumLongitude : 0);
@@ -118,6 +131,7 @@ shared_ptr<Airport> XPAirportReader::getAirport()
         : nullptr;
 
     auto airport = WorldBuilder::assembleAirport(
+        m_host,
         header,
         m_runways, 
         m_parkingStands, 
@@ -145,7 +159,10 @@ void XPAirportReader::readAptDatInContext(istream& input, ContextualParser parse
         }
         catch (const exception& e)
         {
-            throw runtime_error(formatErrorMessage(input, saveInputPosition, saveLineCode, e.what()));
+            string errorMessage = formatErrorMessage(input, saveInputPosition, saveLineCode, e.what());
+            m_host->writeLog("APTDAT|%s", errorMessage.c_str());
+            //throw runtime_error(errorMessage);
+            m_skippingAirport = true;
         }
     }
 }
@@ -162,6 +179,7 @@ bool XPAirportReader::readAptDatLineInContext(istream &input, XPAirportReader::C
     }
 
     m_unparsedLineCode = -1;
+
     bool accepted = parser(lineCode);
     if (!accepted)
     {
@@ -170,7 +188,7 @@ bool XPAirportReader::readAptDatLineInContext(istream &input, XPAirportReader::C
     }
 
     return true;
-}
+} 
 
 bool XPAirportReader::rootContextParser(int lineCode, istream& input)
 {
@@ -194,9 +212,9 @@ bool XPAirportReader::rootContextParser(int lineCode, istream& input)
         {
             m_skippingAirport = !invokeFilterCallback();
             m_filterWasQueried = true;
-            if (!m_skippingAirport)
+            if (m_skippingAirport)
             {
-                m_host->writeLog("XPAirportReader: will load airport [%s]", m_icao.c_str());
+                m_host->writeLog("APTDAT|will skip airport [%s] according to filter", m_icao.c_str());
             }
         }
     }
@@ -644,16 +662,18 @@ int XPAirportReader::extractNextLineCode(istream &input)
 string XPAirportReader::formatErrorMessage(istream &input, const streampos& position, int extractedLineCode, const char *what)
 {
     stringstream message;
-    message << "FAILED to read apt.dat [" << what << "] line > ";
+    message << "FAILED to read apt.dat: airport[" << m_icao << "] error [" << what << "] line [";
     if (extractedLineCode >= 0)
     {
         message << "code[" << extractedLineCode << "] > ";
     }
 
+    input.clear();
     input.seekg(position);
     string line;
     getline(input, line);
     message << line;
+    message << ']';
 
     return message.str();
 }
@@ -708,6 +728,8 @@ void XPAptDatReader::readAptDat(
     const XPAirportReader::FilterAirportCallback& onFilterAirport,
     const XPAptDatReader::AirportLoadedCallback& onAirportLoaded)
 {
+    int loadedCount = 0;
+    int skippedCount = 0;
     int unparsedLineCode = -1;
 
     do {
@@ -718,9 +740,17 @@ void XPAptDatReader::readAptDat(
         auto airport = airportReader.getAirport();
         if (airport)
         {
-            m_host->writeLog("Airport loaded: %s", airport->header().icao().c_str());
+            //m_host->writeLog("Airport loaded: %s", airport->header().icao().c_str());
             onAirportLoaded(airport);
+            loadedCount++;
+        }
+        else
+        {
+            m_host->writeLog("APTDAT|skipped airport [%s]", airportReader.icao().c_str());
+            skippedCount++;
         }
     } while (unparsedLineCode == 1);
+
+    m_host->writeLog("APTDAT|done loading airports, %d loaded, %d skipped.", loadedCount, skippedCount);
 }
 

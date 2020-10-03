@@ -110,6 +110,22 @@ namespace world
         shared_ptr<TaxiPath> taxiPath() const { return m_taxiPath; }
     };
 
+    class RunwayCrossClearance : public Clearance
+    {
+    private:
+        string m_runwayName;
+    public:
+        RunwayCrossClearance(
+            const Header& _header,
+            const string& _runwayName
+        ) : Clearance(_header),
+            m_runwayName(_runwayName)
+        {
+        }
+    public:
+        const string& runwayName() const { return m_runwayName; }
+    };
+
     class LineupApproval : public Clearance
     {
     private:

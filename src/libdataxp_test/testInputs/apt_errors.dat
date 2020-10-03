@@ -1,0 +1,25 @@
+1  500 0 0 ABCD  The First Airport
+1302 country First Country
+100 30.00 1 1 0.25 1 2 0    07 45.5555 -075.5555 0 1 1 0 0 1    25  45.6666 -075.6666    0 1 1 0 0 1
+1300 -45.12345 -075.12345 45.00 gate turboprops|props A1
+
+1  600 0 0 EFGH  The Second Airport
+1302 country Second Country
+100 31.00 1 1 0.25 1 2 0    17 ZZ.YYYY -076.5555 0 1 1 0 0 1    35  46.6666 -076.6666    0 1 1 0 0 1
+1300 -46.12345 -076.12345 46.00 gate turboprops|props B1
+
+
+1  700 0 0 IJKL  The Third Airport
+1302 country Third Country
+100 32.00 1 1 0.25 1 2 0    30 47.5555 -077.5555 0 1 1 0 0 1    12  47.6666 -077.6666    0 1 1 0 0 1
+1300 -47.12345 -077.12345 47.00 gate turboprops|props C1
+
+
+1  800 0 0 MNOP  The Fourth Airport
+1302 country Fourth Country
+100 33.00 1 1 0.25 1 2 0    10 48.5555 -078.5555 0 1 1 0 0 1    28  48.6666 -078.6666    0 1 1 0 0 1
+1300 -48.12345 -078.12345 48.00 gate turboprops|props D1
+
+
+
+

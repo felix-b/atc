@@ -50,7 +50,7 @@ namespace world
 
         auto flightPlan = flight->plan();
         auto aircraft = flight->aircraft();
-        
+
         m_host->writeLog(
             "Added flight: %s(%s->%s) aircraft id=%d model=%s",
             flight->callSign().c_str(), 
@@ -69,6 +69,29 @@ namespace world
         flight->aircraft()->park(parkingStand);
     }
 
+    void World::clearAllFlights()
+    {
+        for (const auto& facility : m_controlFacilities)
+        {
+            facility->clearFlights();
+        }
+
+        m_host->services().get<TextToSpeechService>()->clearAll();
+        m_host->services().get<AircraftObjectService>()->clearAll();
+        m_flights.clear();
+        m_flightById.clear();
+
+        clearWorkItems();
+    }
+
+    void World::clearWorkItems()
+    {
+        while (!m_workItemQueue.empty())
+        {
+            m_workItemQueue.pop();
+        }
+    }
+
     void World::processDueWorkItems()
     {
         if (m_workItemQueue.empty() || m_workItemQueue.top().timestamp > m_timestamp)
@@ -81,13 +104,18 @@ namespace world
 
         while (!m_workItemQueue.empty() && m_workItemQueue.top().timestamp <= m_timestamp)
         {
+            const auto& workItem = m_workItemQueue.top();
+            m_host->writeLog("WORLD |work item [%s]", workItem.description.c_str());
+
             try
             {
-                m_workItemQueue.top().callback();
+                workItem.callback();
             }
             catch(const exception& e)
             {
-                m_host->writeLog("World::processDueWorkItems(): a callback FAILED! %s", e.what());
+                m_host->writeLog(
+                    "WORLD |work item [%s] callback CRASHED!!! %s",
+                    workItem.description.c_str(), e.what());
             }
             
             m_workItemQueue.pop();
@@ -101,7 +129,14 @@ namespace world
     {
         for (const auto& flight : m_flights)
         {
-            flight->progressTo(m_timestamp);
+            try
+            {
+                flight->progressTo(m_timestamp);
+            }
+            catch (const exception& e)
+            {
+                m_host->writeLog("WORLD |processFlights [%s] CRASHED!!! %s", flight->callSign().c_str(), e.what());
+            }
         }
     }
 
@@ -109,7 +144,17 @@ namespace world
     {
         for (const auto& facility : m_controlFacilities)
         {
-            facility->progressTo(m_timestamp);
+            try
+            {
+                facility->progressTo(m_timestamp);
+            }
+            catch (const exception& e)
+            {
+                m_host->writeLog(
+                    "WORLD |processControlFacilities [%s] CRASHED!!! %s",
+                    facility->callSign().c_str(),
+                    e.what());
+            }
         }
     }
 
@@ -130,21 +175,21 @@ namespace world
         return temp;
     }
 
-    void World::deferUntilNextTick(function<void()> callback)
+    void World::deferUntilNextTick(const string& description, function<void()> callback)
     {
-        m_workItemQueue.push({ m_timestamp, callback });
+        m_workItemQueue.push({ description, m_timestamp, callback });
     }
     
-    void World::deferUntil(time_t time, function<void()> callback)
+    void World::deferUntil(const string& description, time_t time, function<void()> callback)
     {
         time_t deltaTimeInSeconds = time - currentTime();
         chrono::microseconds deferredTimestamp = chrono::microseconds(m_timestamp.count() + deltaTimeInSeconds * 1000000);
-        m_workItemQueue.push({ deferredTimestamp, callback });
+        m_workItemQueue.push({ description, deferredTimestamp, callback });
     }
     
-    void World::deferBy(chrono::microseconds microseconds, function<void()> callback)
+    void World::deferBy(const string& description, chrono::microseconds microseconds, function<void()> callback)
     {
-        m_workItemQueue.push({ m_timestamp + microseconds, callback });
+        m_workItemQueue.push({ description, m_timestamp + microseconds, callback });
     }
 
     shared_ptr<Frequency> World::tryFindCommFrequency(shared_ptr<Flight> flight, int frequencyKhz)

@@ -8,6 +8,7 @@ enable_testing()
 add_executable(libdataxp_test 
     cppTest.cpp
     xpAirportReaderTest.cpp
+    hydrationTest.cpp
 )
 
 set_property(TARGET libdataxp_test PROPERTY CXX_STANDARD 14)

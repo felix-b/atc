@@ -55,6 +55,7 @@ public:
         FilterAirportCallback _onFilterAirport = noopFilterAirport);
 public:
     int unparsedLineCode() const { return m_unparsedLineCode; }
+    const string& icao() const { return m_icao; }
 public:
     void readAirport(istream &input);
     bool validate(vector<string> &diagnostics);
@@ -74,11 +75,12 @@ private:
     void parseControlFrequency(int lineCode, istream &input);
     bool isControlFrequencyLine(int lineCode);
     bool invokeFilterCallback();
+    shared_ptr<Airport> assembleAirportOrThrow();
+    string formatErrorMessage(istream &input, const streampos& position, int extractedLineCode, const char *what);
 public:
     static string readFirstToken(istream &input);
     static string readToEndOfLine(istream &input);
     static int extractNextLineCode(istream &input);
-    static string formatErrorMessage(istream &input, const streampos& position, int extractedLineCode, const char *what);
     static void skipToNextLine(istream &input);
     static shared_ptr<ControlledAirspace> noopQueryAirspace(const Airport::Header& header);
     static bool noopFilterAirport(const Airport::Header& header);

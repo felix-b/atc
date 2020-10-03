@@ -141,7 +141,7 @@ namespace world
 
         shared_ptr<Intent> pilotReportHoldingShort(shared_ptr<Flight> flight, const string& runway, const string& holdingPoint)
         {
-            auto tower = m_helper.getDepartureTower(flight); //TODO: handle arrivals
+            auto tower = m_helper.getDepartureGround(flight); //TODO: handle arrivals
             return shared_ptr<Intent>(new PilotReportHoldingShortIntent(
                 flight,
                 tower,
@@ -149,9 +149,18 @@ namespace world
                 holdingPoint
             ));
         }
-        
+
+        shared_ptr<Intent> groundCrossRunwayClearance(shared_ptr<RunwayCrossClearance> clearance)
+        {
+            m_host->writeLog("INTNTF|groundCrossRunwayClearance");
+            return shared_ptr<Intent>(new GroundRunwayCrossClearanceIntent(
+                clearance
+            ));
+        }
+
         shared_ptr<Intent> groundSwitchToTower(shared_ptr<Flight> flight)
         {
+            m_host->writeLog("INTNTF|groundSwitchToTower");
             auto tower = m_helper.getDepartureTower(flight); //TODO: handle arrivals
             return shared_ptr<Intent>(new GroundSwitchToTowerIntent(
                 flight,

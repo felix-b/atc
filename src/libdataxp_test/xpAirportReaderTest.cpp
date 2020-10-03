@@ -188,8 +188,25 @@ TEST(XPAirportReaderTest, readAptDat_runways) {
     EXPECT_EQ(rwy2->end1().name(), "04L");
     EXPECT_EQ(rwy2->end2().name(), "22R");
     EXPECT_FLOAT_EQ(rwy2->widthMeters(), 60.00);
+}
 
-    //TODO: add assertions on heading
+TEST(XPAirportReaderTest, readAptDat_assignRunwaysHeaderElevation) {
+    XPAirportReader builder(makeHost());
+    stringstream aptDat = makeAptDat({
+        "1 1234 0 0 ABCD Test",
+        "100 46.02 1 0 0.00 1 3 0 13L  40.1234 -073.4567 277  0 3 2 1 0 31R  40.6437 -073.7592  314  0 3 8 1 0",
+        "100 60.00 2 0 0.00 1 3 0 04L  40.2345 -073.5678 140  0 3 0 0 1 22R  40.6505 -073.7633 1044  0 3 0 0 0",
+    });
+
+    builder.readAirport(aptDat);
+    const auto airport = builder.getAirport();
+    const auto& runways = airport->runways();
+
+    ASSERT_EQ(runways.size(), 2);
+    EXPECT_FLOAT_EQ(runways[0]->end1().elevationFeet(), 1234);
+    EXPECT_FLOAT_EQ(runways[0]->end2().elevationFeet(), 1234);
+    EXPECT_FLOAT_EQ(runways[1]->end1().elevationFeet(), 1234);
+    EXPECT_FLOAT_EQ(runways[1]->end2().elevationFeet(), 1234);
 }
 
 TEST(XPAirportReaderTest, readAptDat_runwayEdges) {
@@ -541,30 +558,30 @@ TEST(XPAirportReaderTest, readAptDat_assembleTower) {
     ASSERT_TRUE(!!tower);
     EXPECT_EQ(airport->tower().get(), tower.get());
     EXPECT_EQ(tower->type(), ControlFacility::Type::Tower);
-    EXPECT_EQ(tower->callSign(), "JFK"); //TODO: Kennedy
+    EXPECT_EQ(tower->callSign(), "J F K"); //TODO: Kennedy
     EXPECT_EQ(tower->airport().get(), airport.get());
     EXPECT_EQ(tower->airspace().get(), airspace.get());
     ASSERT_EQ(tower->positions().size(), 5);
 
     EXPECT_EQ(tower->positions()[0]->type(), ControllerPosition::Type::ClearanceDelivery);
     EXPECT_EQ(tower->positions()[0]->frequency()->khz(), 135050);
-    EXPECT_EQ(tower->positions()[0]->callSign(), "JFK Clearance"); //TODO: "Kennedy Clearance"
+    EXPECT_EQ(tower->positions()[0]->callSign(), "J F K Clearance"); //TODO: "Kennedy Clearance"
 
     EXPECT_EQ(tower->positions()[1]->type(), ControllerPosition::Type::Ground);
     EXPECT_EQ(tower->positions()[1]->frequency()->khz(), 121650);
-    EXPECT_EQ(tower->positions()[1]->callSign(), "JFK Ground"); //TODO: "Kennedy Ground"
+    EXPECT_EQ(tower->positions()[1]->callSign(), "J F K Ground"); //TODO: "Kennedy Ground"
 
     EXPECT_EQ(tower->positions()[2]->type(), ControllerPosition::Type::Local);
     EXPECT_EQ(tower->positions()[2]->frequency()->khz(), 119100);
-    EXPECT_EQ(tower->positions()[2]->callSign(), "JFK Tower"); //TODO: "Kennedy Tower"
+    EXPECT_EQ(tower->positions()[2]->callSign(), "J F K Tower"); //TODO: "Kennedy Tower"
 
     EXPECT_EQ(tower->positions()[3]->type(), ControllerPosition::Type::Approach);
     EXPECT_EQ(tower->positions()[3]->frequency()->khz(), 123700);
-    EXPECT_EQ(tower->positions()[3]->callSign(), "JFK Approach"); //TODO: "New York Approach"
+    EXPECT_EQ(tower->positions()[3]->callSign(), "J F K Approach"); //TODO: "New York Approach"
 
     EXPECT_EQ(tower->positions()[4]->type(), ControllerPosition::Type::Departure);
     EXPECT_EQ(tower->positions()[4]->frequency()->khz(), 124750);
-    EXPECT_EQ(tower->positions()[4]->callSign(), "JFK Departure"); //TODO: "New York Departure"
+    EXPECT_EQ(tower->positions()[4]->callSign(), "J F K Departure"); //TODO: "New York Departure"
 }
 
 TEST(XPAptDatReaderTest, readAptDat_allAirports)
@@ -625,6 +642,59 @@ TEST(XPAptDatReaderTest, readAptDat_filterAirports)
     EXPECT_EQ(output[1]->getParkingStandOrThrow("D1")->name(), "D1");
 }
 
+TEST(XPAptDatReaderTest, readAptDat_skipAirportsFailingToLoad)
+{
+    ifstream input;
+    openTestInputStream("apt_errors.dat", input);
+    XPAptDatReader reader(makeHost());
+    vector<shared_ptr<Airport>> output;
+
+    reader.readAptDat(
+        input,
+        XPAirportReader::noopQueryAirspace,
+        [&](const Airport::Header& header) {
+            return true;
+        },
+        [&](shared_ptr<Airport> airport) {
+            output.push_back(airport);
+        }
+    );
+
+    ASSERT_EQ(output.size(), 3);
+    EXPECT_EQ(output[0]->header().icao(), "ABCD");
+    EXPECT_EQ(output[1]->header().icao(), "IJKL");
+    EXPECT_EQ(output[2]->header().icao(), "MNOP");
+}
+
+#if 0
+TEST(XPAptDatReaderTest, readAll_realDefaultAptDat)
+{
+    ifstream input;
+    input.exceptions(ifstream::failbit | ifstream::badbit);
+    input.open(R"(E:\X-Plane 11\Resources\default scenery\default apt dat\Earth nav data\apt.dat)");
+
+    int count = 0;
+
+    XPAptDatReader reader(makeHost());
+    reader.readAptDat(
+        input,
+        [&](const Airport::Header& header) {
+            return WorldBuilder::assembleSampleAirportControlZone(header);
+        },
+        [&](const Airport::Header& header) {
+            return true;
+        },
+        [&](shared_ptr<Airport> airport) {
+            count++;
+            if ((count % 100) == 0)
+            {
+                cout << "done: # " << count << " " << airport->header().icao() << endl;
+            }
+        }
+    );
+}
+#endif
+
 shared_ptr<HostServices> makeHost()
 {
     return make_shared<TestHostServices>();
@@ -671,6 +741,13 @@ void openTestInputStream(const string& fileName, ifstream& str)
     string fullPath = "../../src/libdataxp_test/testInputs/" + fileName;
     str.exceptions(ifstream::failbit | ifstream::badbit);
     str.open(fullPath.c_str());
+}
+
+void createTestOutputStream(const string& fileName, ofstream& str)
+{
+    string fullPath = "../../src/libdataxp_test/testInputs/" + fileName;
+    str.exceptions(ofstream::failbit | ofstream::badbit);
+    str.open(fullPath.c_str(), ofstream::out | ofstream::trunc);
 }
 
 void assertRunwaysExist(shared_ptr<Airport> airport, const vector<string>& names)

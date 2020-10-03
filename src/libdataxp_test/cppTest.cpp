@@ -4,6 +4,9 @@
 // 
 #include "gtest/gtest.h"
 #include <sstream>
+#include <future>
+#include <thread>
+#include <chrono>
 
 using namespace std;
 
@@ -45,3 +48,23 @@ TEST(CppTest, extractFromStream_8_decimalDigits) {
     EXPECT_GT(value, 32.00029333);
     EXPECT_LT(value, 32.00029335);
 }
+
+#if 0
+TEST(CppTest, future_async_valid) {
+    std::future<int> foo;
+    foo = std::async (std::launch::async, [] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        return 123;
+    });
+
+    EXPECT_TRUE(foo.valid());
+    EXPECT_EQ(foo.wait_for(chrono::milliseconds(0)), future_status::timeout);
+
+    foo.wait();
+
+    EXPECT_EQ(foo.wait_for(chrono::milliseconds(0)), future_status::ready);
+    EXPECT_EQ(foo.get(), 123);
+
+    EXPECT_FALSE(foo.valid()); /* !!! */
+}
+#endif

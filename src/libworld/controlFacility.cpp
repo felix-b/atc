@@ -34,6 +34,13 @@ namespace world
         }
     }
 
+    void ControlFacility::clearFlights()
+    {
+        for (const auto& position : m_positions)
+        {
+            position->clearFlights();
+        }
+    }
 
     // shared_ptr<ControllerPosition> ControlFacility::tryFindPosition(
     //     ControllerPosition::Type type, 

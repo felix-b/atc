@@ -11,10 +11,13 @@ add_executable(libworld_test
     libworld_test.h
     taxiEdgeTest.cpp
     worldBuilderTest.cpp
+    worldTest.cpp
+    airportTest.cpp
     taxiPathTest.cpp
     uniPointTest.cpp
     geoMathTest.cpp
     hostServicesTest.cpp
+    airportTest.h
 )
 
 set_property(TARGET libworld_test PROPERTY CXX_STANDARD 14)

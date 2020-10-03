@@ -3,11 +3,45 @@
 // Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
 // 
 #include "libworld.h"
+#include "worldHelper.hpp"
 
 using namespace std;
 
 namespace world
 {
+    Flight::Flight(
+        shared_ptr<HostServices> _host,
+        int _id,
+        RulesType _rules,
+        string _airlineIcao,
+        string _flightNo,
+        string _callSign,
+        shared_ptr<FlightPlan> _plan
+    ) : m_host(_host),
+        m_id(_id),
+        m_rules(_rules),
+        m_airlineIcao(_airlineIcao),
+        m_flightNo(_flightNo),
+        m_callSign(_callSign),
+        m_plan(_plan),
+        m_onChanges(World::onChangesUnassigned),
+        m_landingRunwayElevationFeet(ALTITUDE_UNASSIGNED - 1) //TODO: std::optional - does MinGW already support C++17?
+    {
+    }
+
+    float Flight::landingRunwayElevationFeet()
+    {
+        if (m_landingRunwayElevationFeet <= ALTITUDE_UNASSIGNED)
+        {
+            const Runway::End &landingRunwayEnd = m_host->getWorld()->getRunwayEnd(
+                m_plan->arrivalAirportIcao(),
+                m_plan->arrivalRunway());
+            m_landingRunwayElevationFeet = landingRunwayEnd.elevationFeet();
+            m_host->writeLog("FLIGHT|%s: landingRunwayElevationFeet = %f", m_callSign.c_str(), m_landingRunwayElevationFeet);
+        }
+        return m_landingRunwayElevationFeet;
+    }
+
     void Flight::progressTo(chrono::microseconds timestamp)
     {
         m_aircraft->progressTo(timestamp);

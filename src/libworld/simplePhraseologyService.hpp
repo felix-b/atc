@@ -74,44 +74,6 @@ namespace world
             return builder.getUtterance();
         }
 
-        string spellPhoneticString(string s)
-        {
-            stringstream result;
-
-            for (int i = 0 ; i < s.length() ; i++)
-            {
-                if (i > 0)
-                {
-                    result << " ";
-                }
-                
-                char c = s[i];
-                if (c >= '0' && c <= '9')
-                {
-                    result << c;
-                }
-                else
-                {
-                    result << spellPhoneticChar(c);
-                }
-            }
-
-            return result.str();
-        }
-
-        string spellPhoneticChar(char c)
-        {
-            int index = toupper(c) - 'A';
-            return index >= 0 && index < PHONETIC_ALPHABET_SIZE
-                ? PHONETIC_ALPHABET[index]
-                : "?";
-        }
-
-        string spellFrequencyKhz(int khz)
-        {
-            return to_string(khz / 1000) + " point " + to_string(khz % 1000);
-        }
-    
     private:
 
         void buildVerbalizerMap()
@@ -166,6 +128,10 @@ namespace world
 
             m_verbalizerByIntentCode.insert({ PilotReportHoldingShortIntent::IntentCode, [this](UtteranceBuilder& builder, shared_ptr<Intent> intent) { 
                 verbalizeHoldingShort(builder, dynamic_pointer_cast<PilotReportHoldingShortIntent>(intent));
+            }});
+
+            m_verbalizerByIntentCode.insert({ GroundRunwayCrossClearanceIntent::IntentCode, [this](UtteranceBuilder& builder, shared_ptr<Intent> intent) {
+                verbalizeRunwayCrossClearance(builder, dynamic_pointer_cast<GroundRunwayCrossClearanceIntent>(intent));
             }});
 
             m_verbalizerByIntentCode.insert({ GroundSwitchToTowerIntent::IntentCode, [this](UtteranceBuilder& builder, shared_ptr<Intent> intent) { 
@@ -406,17 +372,28 @@ namespace world
             builder.addData(spellCallsign(intent->subjectControl()->callSign()));
             builder.addPunctuation();
             builder.addData(spellCallsign(intent->subjectFlight()->callSign()));
+            builder.addText("holding short");
+
+            if (intent->runway().length() > 0)
+            {
+                builder.addData("runway " + spellRunway(intent->runway()));
+            }
+
             if (intent->holdingPoint().length() > 0)
             {
-                builder.addText("holding short at");
-                builder.addData(spellPhoneticString(intent->holdingPoint()));
+                builder.addData("at " + spellPhoneticString(intent->holdingPoint()));
             }
-            else
-            {
-                builder.addText("holding short of runway");
-                builder.addData(spellRunway(intent->runway()));
-            }
-            builder.addData(spellRunway(intent->runway()));
+        }
+
+        void verbalizeRunwayCrossClearance(UtteranceBuilder& builder, shared_ptr<GroundRunwayCrossClearanceIntent> intent)
+        {
+            builder.addData(spellCallsign(intent->subjectFlight()->callSign()));
+            builder.addPunctuation();
+            builder.addText("Ground");
+            builder.addPunctuation();
+            builder.addText("Cross runway");
+            builder.addData(spellRunway(intent->clearance()->runwayName()));
+            builder.addText("continue taxiing");
         }
 
         void verbalizeSwitchToTower(UtteranceBuilder& builder, shared_ptr<GroundSwitchToTowerIntent> intent)
@@ -487,18 +464,21 @@ namespace world
 
             builder.addText("contact departure on");
             builder.addData(spellFrequency(intent->departureKhz()));
+            builder.addText("runway");
+            builder.addData(spellRunway(intent->clearance()->departureRunway()));
             builder.addText("cleared for takeoff.");
         }
 
         void verbalizeTakeoffClearanceReadback(UtteranceBuilder& builder, shared_ptr<PilotTakeoffClearanceReadbackIntent> intent)
         {
             auto clearance = intent->clearance();
-            
+
             builder.addText("heading");
             builder.addData(spellHeading(clearance->initialHeading()));
             builder.addText("departure on");
             builder.addData(spellFrequency(intent->departureKhz()));
             builder.addText("cleared for takeoff");
+            builder.addData(spellRunway(intent->clearance()->departureRunway()));
             builder.addFarewell(spellCallsign(intent->subjectFlight()->callSign()));
         }
 
@@ -528,9 +508,47 @@ namespace world
             builder.addFarewell(spellCallsign(intent->subjectFlight()->callSign()));
         }
 
-    private:
-        
-        string spellTaxiPath(shared_ptr<TaxiPath> taxiPath)
+    public:
+
+        static string spellPhoneticString(string s)
+        {
+            stringstream result;
+
+            for (int i = 0 ; i < s.length() ; i++)
+            {
+                if (i > 0)
+                {
+                    result << " ";
+                }
+
+                char c = s[i];
+                if (c >= '0' && c <= '9')
+                {
+                    result << c;
+                }
+                else
+                {
+                    result << spellPhoneticChar(c);
+                }
+            }
+
+            return result.str();
+        }
+
+        static string spellPhoneticChar(char c)
+        {
+            int index = toupper(c) - 'A';
+            return index >= 0 && index < PHONETIC_ALPHABET_SIZE
+                   ? PHONETIC_ALPHABET[index]
+                   : "?";
+        }
+
+        static string spellFrequencyKhz(int khz)
+        {
+            return to_string(khz / 1000) + " point " + to_string(khz % 1000);
+        }
+
+        static string spellTaxiPath(shared_ptr<TaxiPath> taxiPath)
         {
             stringstream text;
             auto steps = taxiPath->toHumanFriendlySteps();
@@ -547,7 +565,7 @@ namespace world
             return text.str();
         }
 
-        string spellFrequency(int khz)
+        static string spellFrequency(int khz)
         {
             stringstream text;
 
@@ -574,7 +592,7 @@ namespace world
             return text.str();
         }
 
-        string spellRunway(const string& name)
+        static string spellRunway(const string& name)
         {
             stringstream text;
 
@@ -605,7 +623,8 @@ namespace world
             return text.str();
         }
 
-        string spellSquawk(const string& squawk)
+
+        static string spellSquawk(const string& squawk)
         {
             stringstream text;
 
@@ -621,7 +640,23 @@ namespace world
             return text.str();
         }
 
-        string spellHeading(float heading)
+        static string spellIcaoCode(const string& icaoCode)
+        {
+            stringstream text;
+
+            for (int i = 0 ; i < icaoCode.length() ; i++)
+            {
+                if (i > 0)
+                {
+                    text << ' ';
+                }
+                text << icaoCode[i];
+            }
+
+            return text.str();
+        }
+
+        static string spellHeading(float heading)
         {
             string digits = to_string((int)heading);
             stringstream text;
@@ -638,7 +673,7 @@ namespace world
             return text.str();
         }
 
-        string spellCallsign(const string& callsign)
+        static string spellCallsign(const string& callsign)
         {
             stringstream text;
 
@@ -654,22 +689,22 @@ namespace world
             return text.str();
         }
 
-        string spellAltitude(float feet)
+        static string spellAltitude(float feet)
         {
             return to_string((int)feet);
         }
 
-        bool isHeads(const shared_ptr<Intent>& intent)
+        static bool isHeads(const shared_ptr<Intent>& intent)
         {
             return ((intent->subjectFlight()->pilot()->id() % 2) == 0);
         }
 
-        bool isTails(const shared_ptr<Intent>& intent)
+        static bool isTails(const shared_ptr<Intent>& intent)
         {
            return !isHeads(intent);
         }
 
-        bool isMale(const shared_ptr<Intent>& intent)
+        static bool isMale(const shared_ptr<Intent>& intent)
         {
             return (intent->subjectFlight()->pilot()->gender() == Actor::Gender::Male);
         }

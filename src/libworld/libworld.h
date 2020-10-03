@@ -17,10 +17,13 @@
 
 using namespace std;
 
+// lowest elevation in the world is -1355 MSL at Dead Sea
 #define ALTITUDE_GROUND -10000
+#define ALTITUDE_UNASSIGNED -11000
 #define FREQUENCY_UNICOM_1228 122800
 #define FREQUENCY_UNICOM_1227 122700
 #define FREQUENCY_UNICOM_1230 123000
+#define FEET_IN_1_METER 3.28084
 
 namespace world
 {
@@ -65,6 +68,8 @@ namespace world
     class WorldBuilder;
     class AIPilotFactory;
     class AIControllerFactory;
+    class TextToSpeechService;
+    class AircraftObjectService;
     class HostServices;
 
     struct GeoPoint
@@ -438,7 +443,8 @@ namespace world
             float m_overrunAreaMeters;
             UniPoint m_centerlinePoint;
             float m_heading; //exact heading
-            shared_ptr<TaxiNode> m_centerlineNode; 
+            shared_ptr<TaxiNode> m_centerlineNode;
+            float m_elevationFeet;
         public:
             End(
                 const string& _name,
@@ -448,7 +454,9 @@ namespace world
             ) : m_name(_name),
                 m_displacedThresholdMeters(_displacedThresholdMeters),
                 m_overrunAreaMeters(_overrunAreaMeters),
-                m_centerlinePoint(_centerlinePoint)
+                m_centerlinePoint(_centerlinePoint),
+                m_heading(0),
+                m_elevationFeet(0)
             {
             }
         public:
@@ -458,6 +466,7 @@ namespace world
             float overrunAreaMeters() const { return m_overrunAreaMeters; }
             shared_ptr<TaxiNode> centerlineNode() const { return m_centerlineNode; }
             const UniPoint& centerlinePoint() const { return m_centerlinePoint; }
+            float elevationFeet() const { return m_elevationFeet; }
         };
     private:
         float m_widthMeters;
@@ -541,6 +550,7 @@ namespace world
     private:
         struct WorkItem
         {
+            string description;
             chrono::microseconds timestamp;
             function<void()> callback;
         };
@@ -583,12 +593,14 @@ namespace world
         void progressTo(chrono::microseconds futureTimestamp);
         void addFlight(shared_ptr<Flight> flight);
         void addFlightColdAndDark(shared_ptr<Flight> flight);
+        void clearAllFlights();
+        void clearWorkItems();
         shared_ptr<World::ChangeSet> takeChanges();
-        void deferUntilNextTick(function<void()> callback);
-        void deferUntil(time_t time, function<void()> callback);
-        void deferBy(chrono::microseconds microseconds, function<void()> callback);
+        void deferUntilNextTick(const string& description, function<void()> callback);
+        void deferUntil(const string& description, time_t time, function<void()> callback);
+        void deferBy(const string& description, chrono::microseconds microseconds, function<void()> callback);
         // shared_ptr<ControlledAirspace> findAirspaceById(int id) const;
-        // shared_ptr<Flight> findFlightById(int id) const;
+        shared_ptr<Flight> getFlightById(int id) const { return getValueOrThrow(m_flightById, id); }
         shared_ptr<Airport> getAirport(const string& icaoCode) const { return getValueOrThrow(m_airportByIcao, icaoCode); }
         const Runway::End& getRunwayEnd(const string& airportIcao, const string& runwayName) const;
         shared_ptr<Frequency> tryFindCommFrequency(shared_ptr<Flight> flight, int frequencyKhz);
@@ -775,6 +787,7 @@ namespace world
         const vector<shared_ptr<ControllerPosition>>& handoffControllers() const { return m_handoffControllers; }
     public:
         void progressTo(chrono::microseconds timestamp);
+        void clearFlights();
     private:
         void startListenOnFrequency();
     };
@@ -812,6 +825,7 @@ namespace world
         shared_ptr<ControllerPosition> findPositionOrThrow(ControllerPosition::Type type, const GeoPoint& location) const;
     public:
         void progressTo(chrono::microseconds timestamp);
+        void clearFlights();
     };
 
     class ControlledAirspace
@@ -949,6 +963,8 @@ namespace world
         }
     public:
         shared_ptr<ControllerPosition> position() const { return m_position; }
+        shared_ptr<ControlFacility> facility() const { return m_position->facility(); }
+        shared_ptr<Airport> airport() const { return m_position->facility()->airport(); }
     public:
         virtual void receiveIntent(shared_ptr<Intent> intent) = 0;
         virtual void progressTo(chrono::microseconds timestamp) = 0;
@@ -972,11 +988,20 @@ namespace world
         typedef function<bool()> QueryCompletion;
     public:
         virtual QueryCompletion vocalizeTransmission(shared_ptr<Frequency> frequency, shared_ptr<Transmission> transmission) = 0;
+        virtual void clearAll() = 0;
     public:
         static bool noopQueryCompletion()
         {
             return true;
         }
+    };
+
+    //TODO: abstract XPMP2
+    class AircraftObjectService
+    {
+    public:
+        virtual void processEvents(shared_ptr<World::ChangeSet> changeSet) = 0;
+        virtual void clearAll() = 0;
     };
 
     class Frequency : public enable_shared_from_this<Frequency>
@@ -1022,6 +1047,7 @@ namespace world
         int addListener(Listener callback);
         void removeListener(int listenerId);
         void progressTo(chrono::microseconds timestamp);
+        void clearTransmissions();
     private:
         void beginTransmission(shared_ptr<Transmission> transmission, chrono::microseconds timestamp);
         void endTransmission(chrono::microseconds timestamp);
@@ -1218,12 +1244,13 @@ namespace world
             IfrReadbackConfirmation = 2,
             PushAndStartApproval = 3,
             DepartureTaxiClearance = 4,
-            LineupApproval = 5,
-            TakeoffClearance = 6,
-            EnRouteClearance = 7,
-            ApproachClearance = 8,
-            LandingClearance = 9,
-            ArrivalTaxiClearance = 10
+            RunwayCrossClearance = 5,
+            LineupApproval = 6,
+            TakeoffClearance = 7,
+            EnRouteClearance = 8,
+            ApproachClearance = 9,
+            LandingClearance = 10,
+            ArrivalTaxiClearance = 11
         };
         struct Header
         {
@@ -1350,7 +1377,8 @@ namespace world
             Prop = 0x08,
             LightProp = 0x10,
             Helicopter = 0x20,
-            All = 0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20
+            Fighter = 0x40,
+            All = 0x01 | 0x02 | 0x04 | 0x08 | 0x10 | 0x20 | 0x40
         }; 
         enum class OperationType
         {
@@ -1391,6 +1419,7 @@ namespace world
         Category m_category;
         GeoPoint m_location;
         chrono::microseconds m_locationTimespamp;
+        chrono::microseconds m_touchdownTimestamp;
         AircraftAttitude m_attitude;
         Altitude m_altitude;
         double m_track;
@@ -1429,6 +1458,9 @@ namespace world
             m_verticalSpeedFpm(0),
             m_gearState(1.0f),
             m_flapState(0),
+            m_spoilerState(0),
+            m_locationTimespamp(chrono::seconds(-1)),
+            m_touchdownTimestamp(chrono::seconds(-1)),
             m_altitude(Altitude::ground()),
             m_frequencyKhz(-1),
             m_frequencyListenerId(-1),
@@ -1460,6 +1492,7 @@ namespace world
         float gearState() const { return m_gearState; }
         float flapState() const { return m_flapState; }
         float spoilerState() const { return m_spoilerState; }
+        bool justTouchedDown(chrono::microseconds timestamp);
     public:
         void assignFlight(shared_ptr<Flight> flight);
         void progressTo(chrono::microseconds timestamp);
@@ -1481,7 +1514,7 @@ namespace world
         void setManeuver(shared_ptr<Maneuver> _maneuver);
     private:
         void notifyChanges();
-        void moveFor(int64_t elapsedMicroseconds);
+        void moveFor(int64_t elapsedMicroseconds, bool& touchedDown);
         Altitude getNextAltitude(float nextFeet);
     public:
         void onChanges(World::OnChangesCallback callback) { m_onChanges = callback; }
@@ -1647,6 +1680,8 @@ namespace world
         shared_ptr<Aircraft> m_aircraft;
         shared_ptr<FlightPlan> m_plan;
         shared_ptr<FlightPlan::Cursor> m_planCursor;
+        float m_landingRunwayElevationFeet;
+        vector<shared_ptr<Clearance>> m_clearances;
         World::OnChangesCallback m_onChanges;
     public:
         Flight(
@@ -1656,17 +1691,7 @@ namespace world
             string _airlineIcao,
             string _flightNo,
             string _callSign,
-            shared_ptr<FlightPlan> _plan
-        ) : m_host(_host),
-            m_id(_id),
-            m_rules(_rules),
-            m_airlineIcao(_airlineIcao),
-            m_flightNo(_flightNo),
-            m_callSign(_callSign),
-            m_plan(_plan),
-            m_onChanges(World::onChangesUnassigned)
-        {
-        }
+            shared_ptr<FlightPlan> _plan);
     public:
         int id() const { return m_id; }
         const int& getKey() override { return m_id; }
@@ -1678,7 +1703,7 @@ namespace world
         shared_ptr<Pilot> pilot() const { return m_pilot; }
         shared_ptr<FlightPlan> plan() const { return m_plan; }
         shared_ptr<FlightPlan::Cursor> planCursor() const { return m_planCursor; }
-        vector<shared_ptr<Clearance>> m_clearances;
+        float landingRunwayElevationFeet();
     public:
         void setAircraft(shared_ptr<Aircraft> _aircraft);
         void setPilot(shared_ptr<Pilot> _pilot);
@@ -1800,6 +1825,7 @@ namespace world
         shared_ptr<ControllerPosition> approachAt(const GeoPoint& location) const { 
             return m_tower->findPositionOrThrow(ControllerPosition::Type::Approach, location); 
         }
+        shared_ptr<Runway> findLongestRunway();
     public:
         shared_ptr<Runway> getRunwayOrThrow(const string& name) const;
         shared_ptr<Runway> tryFindRunway(const string& name) const;
@@ -2048,6 +2074,7 @@ namespace world
             const vector<shared_ptr<Airport>>& airports);
 
         static shared_ptr<Airport> assembleAirport(
+            shared_ptr<HostServices> host,
             const Airport::Header& header,
             const vector<shared_ptr<Runway>>& runways,
             const vector<shared_ptr<ParkingStand>>& parkingStands,
@@ -2082,14 +2109,21 @@ namespace world
             bool departure,
             bool arrival,
             bool ils);
+
+        static void tidyAirportElevations(
+            shared_ptr<HostServices> host,
+            shared_ptr<Airport> airport);
     private:
         static shared_ptr<TaxiNet> assembleTaxiNet(
+            shared_ptr<HostServices> host,
             const vector<shared_ptr<Runway>>& runways,
             const vector<shared_ptr<TaxiNode>>& nodes,
             const vector<shared_ptr<TaxiEdge>>& edges);
         static void fixUpEdgesAndRunways(
+            shared_ptr<HostServices> host,
             shared_ptr<Airport> airport);
         static void linkAirportTowerAirspace(
+            shared_ptr<HostServices> host,
             shared_ptr<Airport> airport,
             shared_ptr<ControlFacility> tower,
             shared_ptr<ControlledAirspace> airspace);
@@ -2157,6 +2191,7 @@ namespace world
         virtual LocalPoint geoToLocal(const GeoPoint& geo) = 0;
         virtual GeoPoint localToGeo(const LocalPoint& local) = 0;
         virtual int getNextRandom(int maxValue) = 0;
+        virtual float queryTerrainElevationAt(const GeoPoint& location) = 0;
         virtual shared_ptr<Controller> createAIController(shared_ptr<ControllerPosition> position) = 0;
         virtual shared_ptr<Pilot> createAIPilot(shared_ptr<Flight> flight) = 0;
         virtual string getResourceFilePath(const vector<string>& relativePathParts) = 0;

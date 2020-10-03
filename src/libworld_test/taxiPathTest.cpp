@@ -45,6 +45,7 @@ shared_ptr<TaxiNet> createMediumTestNet()
     auto e67 = shared_ptr<TaxiEdge>(new TaxiEdge(1009, "E67", 666, 777));
 
     auto airport = WorldBuilder::assembleAirport(
+        host,
         testHeader,
         {},
         {},
@@ -217,7 +218,7 @@ TEST(TaxiPathTest, findPath_trivialSingleEdgeNet)
     auto n1 = shared_ptr<TaxiNode>(new TaxiNode(111, UniPoint::fromLocal(host, {10, GROUND, 10})));
     auto n2 = shared_ptr<TaxiNode>(new TaxiNode(222, UniPoint::fromLocal(host, {20, GROUND, 20})));
     auto e1 = shared_ptr<TaxiEdge>(new TaxiEdge(1001, "E1", 111, 222));
-    auto airport = WorldBuilder::assembleAirport(testHeader, {}, {}, { n1, n2 }, { e1 });
+    auto airport = WorldBuilder::assembleAirport(host, testHeader, {}, {}, { n1, n2 }, { e1 });
     auto net = airport->taxiNet();
 
     auto path = TaxiPath::find(net, n1, n2);
@@ -241,7 +242,7 @@ TEST(TaxiPathTest, findPath_trivialTriangleNet)
     auto e23 = shared_ptr<TaxiEdge>(new TaxiEdge(1002, "E23", 222, 333));
     auto e13 = shared_ptr<TaxiEdge>(new TaxiEdge(1003, "E13", 111, 333));
     
-    auto airport = WorldBuilder::assembleAirport(testHeader, {}, {}, { n1, n2, n3 }, { e12, e23, e13 });
+    auto airport = WorldBuilder::assembleAirport(host, testHeader, {}, {}, { n1, n2, n3 }, { e12, e23, e13 });
     auto net = airport->taxiNet();
 
     auto path12 = TaxiPath::find(net, n1, n2);
@@ -282,7 +283,7 @@ TEST(TaxiPathTest, findPath_neverUseGroundways)
     auto e23 = shared_ptr<TaxiEdge>(new TaxiEdge(1002, "E23", 222, 333, TaxiEdge::Type::Taxiway));
     auto e13 = shared_ptr<TaxiEdge>(new TaxiEdge(1003, "E13", 111, 333, TaxiEdge::Type::Groundway));
     
-    auto airport = WorldBuilder::assembleAirport(testHeader, {}, {}, { n1, n2, n3 }, { e12, e23, e13 });
+    auto airport = WorldBuilder::assembleAirport(host, testHeader, {}, {}, { n1, n2, n3 }, { e12, e23, e13 });
     auto net = airport->taxiNet();
 
     auto path13 = TaxiPath::find(net, n1, n3);
@@ -304,7 +305,7 @@ TEST(TaxiPathTest, findPath_neverUseRunways)
         Runway::End("13", 0, 0, n1->location()), 
         Runway::End("31", 0, 0, n3->location()), 30));
 
-    auto airport = WorldBuilder::assembleAirport(testHeader, { rwy13 }, {}, { n1, n2, n3 }, { e12, e23, e13 });
+    auto airport = WorldBuilder::assembleAirport(host, testHeader, { rwy13 }, {}, { n1, n2, n3 }, { e12, e23, e13 });
     auto net = airport->taxiNet();
 
     auto path13 = TaxiPath::find(net, n1, n3);

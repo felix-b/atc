@@ -31,7 +31,7 @@ TEST(TaxiEdgeTest, flipOver)
     auto n2 = shared_ptr<TaxiNode>(new TaxiNode(222, UniPoint::fromLocal(host, {20, GROUND, 20})));
     auto e12 = shared_ptr<TaxiEdge>(new TaxiEdge(1001, "E12", 111, 222));
 
-    auto net = WorldBuilder::assembleAirport(testHeader, {}, {}, { n1, n2 }, { e12 });
+    auto net = WorldBuilder::assembleAirport(host, testHeader, {}, {}, { n1, n2 }, { e12 });
 
     EXPECT_EQ(e12->nodeId1(), 111);
     EXPECT_EQ(e12->node1(), n1);
