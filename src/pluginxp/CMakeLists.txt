@@ -133,6 +133,7 @@ target_include_directories(pluginxp PUBLIC
     ../libworld
     ../libdataxp
     ../libai
+    ../libserver
 )
 
 target_link_libraries(libXPMP2 PUBLIC INTERFACE ${XPLM_LIBRARY} ${XPWIDGETS_LIBRARY})
@@ -150,7 +151,7 @@ if (APPLE)
         libai
         ${SPEECH_LIBRARY}
         ${OPENAL_LIBRARY}
-        ${IOKIT_LIBRARY} 
+        ${IOKIT_LIBRARY}
         ${CORE_FOUNDATION_LIBRARY} 
         ${COCOA_LIBRARY} 
         ${OpenGL_LIBRARY} 
@@ -165,4 +166,8 @@ else()
         ${SPEECH_LIBRARY}
         ${OPENAL_LIBRARY}
     )
+endif ()
+
+if (WIN32)
+    target_link_libraries(pluginxp PUBLIC libserver)
 endif ()

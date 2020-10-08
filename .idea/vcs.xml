@@ -10,7 +10,9 @@
     <mapping directory="$PROJECT_DIR$/libs/PPL/include/simpleini" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libs/XPMP2" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libs/XPSDK" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/libs/asio" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libs/concurrentqueue" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libs/googletest" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/libs/websocketpp" vcs="Git" />
   </component>
 </project>

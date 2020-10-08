@@ -27,40 +27,19 @@ namespace ai
             m_intentFactory = _host->services().get<IntentFactory>();
             m_clearanceFactory = _host->services().get<ClearanceFactory>();
 
-            switch (id())
+            if (m_speechStyle.rate == world::Actor::SpeechRate::Slow)
             {
-            case 1:
-                m_speechStyle.voice = VoiceType::Treble;
-                m_speechStyle.rate = SpeechRate::Slow;
-                m_speechStyle.radioQuality = RadioQuality::Good;
-                m_speechStyle.pttDelayBeforeSpeech = chrono::milliseconds(750);
-                m_speechStyle.pttDelayAfterSpeech = chrono::milliseconds(500);
-                m_speechStyle.disfluencyProbability = 0.5f;
-                m_speechStyle.selfCorrectionProbability = 0.5f;
-                break;
-            case 2:
-                m_speechStyle.voice = VoiceType::Contralto;
-                m_speechStyle.rate = SpeechRate::Fast;
-                m_speechStyle.radioQuality = RadioQuality::Good;
-                m_speechStyle.pttDelayBeforeSpeech = chrono::milliseconds(100);
-                m_speechStyle.pttDelayAfterSpeech = chrono::milliseconds(0);
-                m_speechStyle.disfluencyProbability = 0;
-                m_speechStyle.selfCorrectionProbability = 0;
-                break;
-            case 3:
-                m_speechStyle.voice = VoiceType::Tenor;
-                m_speechStyle.rate = SpeechRate::Fast;
-                m_speechStyle.radioQuality = RadioQuality::Good;
-                m_speechStyle.pttDelayBeforeSpeech = chrono::milliseconds(100);
-                m_speechStyle.pttDelayAfterSpeech = chrono::milliseconds(0);
-                m_speechStyle.disfluencyProbability = 0;
-                m_speechStyle.selfCorrectionProbability = 0;
-                break;
+                m_speechStyle.rate = world::Actor::SpeechRate::Fast;
             }
         }
     public:
         void receiveIntent(shared_ptr<Intent> intent) override 
         {
+            host()->writeLog(
+                "AICONT|receiveIntent flight[%s] intent code[%d]",
+                intent->subjectFlight()->callSign().c_str(),
+                intent->code());
+
             shared_ptr<Intent> reply;
 
             switch (intent->code())
@@ -68,38 +47,42 @@ namespace ai
             case PilotIfrClearanceRequestIntent::IntentCode:
                 reply = m_intentFactory->deliveryIfrClearanceReply(
                     intent->subjectFlight(), 
-                     m_clearanceFactory->ifrClearance(intent->subjectFlight())
+                     m_clearanceFactory->ifrClearance(intent->subjectFlight()),
+                     intent->id()
                 );
                 break;
             case PilotIfrClearanceReadbackIntent::IntentCode:
                 {
                     auto clearance = intent->subjectFlight()->findClearanceOrThrow<IfrClearance>(Clearance::Type::IfrClearance);
                     reply = m_intentFactory->deliveryIfrClearanceReadbackCorrect(
-                        intent->subjectFlight()
+                        intent->subjectFlight(),
+                        intent->id()
                     );
                 }
                 break;
             case PilotPushAndStartRequestIntent::IntentCode:
                 reply = m_intentFactory->groundPushAndStartReply(
                     intent->subjectFlight(), 
-                    m_clearanceFactory->pushAndStartApproval(intent->subjectFlight())
+                    m_clearanceFactory->pushAndStartApproval(intent->subjectFlight()),
+                    intent->id()
                 );
                 break;
             case PilotDepartureTaxiRequestIntent::IntentCode:
                 reply = m_intentFactory->groundDepartureTaxiReply(
                     intent->subjectFlight(), 
-                    m_clearanceFactory->departureTaxiClearance(intent->subjectFlight())
+                    m_clearanceFactory->departureTaxiClearance(intent->subjectFlight()),
+                    intent->id()
                 );
                 break;
             case PilotReportHoldingShortIntent::IntentCode:
                 {
-                    host()->writeLog("AICONT|PilotReportHoldingShortIntent flight[%s]", intent->subjectFlight()->callSign().c_str());
-
                     auto typedIntent = dynamic_pointer_cast<PilotReportHoldingShortIntent>(intent);
                     if (typedIntent)
                     {
                         auto flightPlan = intent->subjectFlight()->plan();
-                        bool isDeparting = flightPlan->departureAirportIcao() == airport()->header().icao();
+                        bool isDeparting =
+                            flightPlan->departureAirportIcao() == airport()->header().icao() &&
+                            flightPlan->departureRunway().length() > 0;
                         host()->writeLog(
                             "AICONT|PilotReportHoldingShortIntent, isDeparting: [%s] == [%s] ? %d",
                             flightPlan->departureAirportIcao().c_str(),
@@ -115,21 +98,22 @@ namespace ai
                         host()->writeLog(
                             "AICONT|PilotReportHoldingShortIntent, isDepartureRunway: [%s] == [%s]||[%s] ? %d",
                              typedIntent->runway().c_str(),
-                             departureRunway->end1().name().c_str(),
-                             departureRunway->end2().name().c_str(),
+                             departureRunway ? departureRunway->end1().name().c_str() : "N/A",
+                             departureRunway ? departureRunway->end2().name().c_str() : "N/A",
                              isDepartureRunway);
                         reply = isDepartureRunway
-                            ? m_intentFactory->groundSwitchToTower(intent->subjectFlight())
+                            ? m_intentFactory->groundSwitchToTower(intent->subjectFlight(), intent->id())
                             : m_intentFactory->groundCrossRunwayClearance(m_clearanceFactory->runwayCrossCleaeance(
                                   typedIntent->subjectFlight(),
                                   typedIntent->runway()
-                              ));
+                              ), intent->id());
                     }
                 }
                 break;
             case PilotCheckInWithTowerIntent::IntentCode:
                 reply = m_intentFactory->towerLineUp(
-                    m_clearanceFactory->lineupApproval(intent->subjectFlight(), true)
+                    m_clearanceFactory->lineupApproval(intent->subjectFlight(), true),
+                    intent->id()
                 );
                 break;
             case PilotLineUpReadbackIntent::IntentCode:
@@ -161,7 +145,17 @@ namespace ai
                         intent->subjectFlight(),
                         runwayEnd.name(),
                         ground->frequency()->khz());
-                    reply = m_intentFactory->towerClearedForLanding(clearance);
+                    reply = m_intentFactory->towerClearedForLanding(clearance, intent->id());
+                }
+                break;
+            case PilotArrivalCheckInWithGroundIntent::IntentCode:
+                {
+                    auto typedIntent = dynamic_pointer_cast<PilotArrivalCheckInWithGroundIntent>(intent);
+                    auto taxiStartPoint = typedIntent->exitEdge()
+                        ? typedIntent->exitEdge()->node2()->location().geo()
+                        : intent->subjectFlight()->aircraft()->location();
+                    auto clearance = m_clearanceFactory->arrivalTaxiClearance(intent->subjectFlight(), taxiStartPoint);
+                    reply = m_intentFactory->groundArrivalTaxiReply(clearance, intent->id());
                 }
                 break;
             }
@@ -170,6 +164,8 @@ namespace ai
             {
                 position()->frequency()->enqueueTransmission(reply);
             }
+
+            host()->writeLog("AICONT|receiveIntent - done");
         }
 
         void progressTo(chrono::microseconds timestamp) override

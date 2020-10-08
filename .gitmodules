@@ -17,3 +17,9 @@
 	path = libs/concurrentqueue
 	url = https://github.com/cameron314/concurrentqueue.git
 	ignore = dirty
+[submodule "libs/asio"]
+	path = libs/asio
+	url = https://github.com/chriskohlhoff/asio.git
+[submodule "libs/websocketpp"]
+	path = libs/websocketpp
+	url = https://github.com/zaphoyd/websocketpp.git

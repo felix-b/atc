@@ -31,6 +31,7 @@ namespace ai
         int m_departureTowerKhz = 0;
         int m_departureKhz = 0;
         int m_arrivalGroundKhz = 0;
+        uint64_t m_lastReceivedIntentId = 0;
     public:
         AIPilot(
             shared_ptr<HostServices> _host, 
@@ -55,55 +56,6 @@ namespace ai
                 handleCommTransmission(intent);
             });
 
-            switch (id())
-            {
-            case 1:
-                m_speechStyle.voice = VoiceType::Bass;
-                m_speechStyle.rate = SpeechRate::Fast;
-                m_speechStyle.radioQuality = RadioQuality::Medium;
-                m_speechStyle.pttDelayBeforeSpeech = chrono::milliseconds(100);
-                m_speechStyle.pttDelayAfterSpeech = chrono::milliseconds(0);
-                m_speechStyle.disfluencyProbability = 0.5f;
-                m_speechStyle.selfCorrectionProbability = 0.5f;
-                break;
-            case 2:
-                m_speechStyle.voice = VoiceType::Tenor;
-                m_speechStyle.rate = SpeechRate::Medium;
-                m_speechStyle.radioQuality = RadioQuality::Poor;
-                m_speechStyle.pttDelayBeforeSpeech = chrono::milliseconds(500);
-                m_speechStyle.pttDelayAfterSpeech = chrono::milliseconds(250);
-                m_speechStyle.disfluencyProbability = 0;
-                m_speechStyle.selfCorrectionProbability = 0;
-                break;
-            case 3:
-                m_speechStyle.voice = VoiceType::Treble;
-                m_speechStyle.rate = SpeechRate::Slow;
-                m_speechStyle.radioQuality = RadioQuality::Medium;
-                m_speechStyle.pttDelayBeforeSpeech = chrono::milliseconds(1000);
-                m_speechStyle.pttDelayAfterSpeech = chrono::milliseconds(500);
-                m_speechStyle.disfluencyProbability = 0.5f;
-                m_speechStyle.selfCorrectionProbability = 0.5f;
-                break;
-            case 4:
-                m_speechStyle.voice = VoiceType::Baritone;
-                m_speechStyle.rate = SpeechRate::Medium;
-                m_speechStyle.radioQuality = RadioQuality::Medium;
-                m_speechStyle.pttDelayBeforeSpeech = chrono::milliseconds(500);
-                m_speechStyle.pttDelayAfterSpeech = chrono::milliseconds(250);
-                m_speechStyle.disfluencyProbability = 1.0f;
-                m_speechStyle.selfCorrectionProbability = 1.0f;
-                break;
-            case 5:
-                m_speechStyle.voice = VoiceType::Bass;
-                m_speechStyle.rate = SpeechRate::Medium;
-                m_speechStyle.radioQuality = RadioQuality::Poor;
-                m_speechStyle.pttDelayBeforeSpeech = chrono::milliseconds(500);
-                m_speechStyle.pttDelayAfterSpeech = chrono::milliseconds(250);
-                m_speechStyle.disfluencyProbability = 0.5f;
-                m_speechStyle.selfCorrectionProbability = 0.5f;
-                break;
-            }
-
             //_host->writeLog("AIPilot::AIPilot() - exit");
         }
     public:
@@ -126,6 +78,7 @@ namespace ai
             {
                 host()->writeLog("TRANSMISSION HANDLED BY PILOT [%s]", flight()->callSign().c_str(), intent->code());
                 shared_ptr<Clearance> newClearance;
+                m_lastReceivedIntentId = intent->id();
 
                 switch (intent->code())
                 {
@@ -172,6 +125,9 @@ namespace ai
                         newClearance = landingClearance;
                     }
                     break;
+                case GroundArrivalTaxiReplyIntent::IntentCode:
+                    newClearance = dynamic_pointer_cast<GroundArrivalTaxiReplyIntent>(intent)->clearance();
+                    break;
                 }
 
                 if (newClearance)
@@ -204,7 +160,10 @@ namespace ai
         {
             return M.sequence(Maneuver::Type::ArrivalApproach, "", {
                 maneuverFinal(),
-                maneuverLanding()
+                maneuverLanding(),
+                M.deferred([this]() {
+                    return maneuverArrivalTaxiToGate();
+                })
             });
         }
 
@@ -292,7 +251,7 @@ namespace ai
                         M.awaitClearance(flight(), Clearance::Type::LandingClearance),
                         M.deferred([=](){
                             auto clearance = flight()->findClearanceOrThrow<LandingClearance>(Clearance::Type::LandingClearance);
-                            auto readback = I.pilotLandingClearanceReadback(flight(), clearance);
+                            auto readback = I.pilotLandingClearanceReadback(flight(), clearance, m_lastReceivedIntentId);
                             return M.transmitIntent(flight(), readback);
                         })
                     }),
@@ -410,7 +369,7 @@ namespace ai
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
                     "", 
                     135,
-                    40,
+                    30,
                     chrono::seconds(20),
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
@@ -437,6 +396,140 @@ namespace ai
             });
         }
 
+        shared_ptr<Maneuver> maneuverArrivalTaxiToGate()
+        {
+            WorldHelper helper(host());
+            auto aircraft = flight()->aircraft();
+            auto airport = helper.getArrivalAirport(flight());
+            auto runway = airport->getRunwayOrThrow(m_flightPlan->arrivalRunway());
+            const auto& runwayEnd = runway->getEndOrThrow(m_flightPlan->arrivalRunway());
+            auto gate = airport->getParkingStandOrThrow(m_flightPlan->arrivalGate());
+            shared_ptr<TaxiEdge> exitFirstEdge;
+            shared_ptr<TaxiEdge> exitLastEdge;
+            string exitName;
+
+            const auto safeCreateExitManeuver = [
+                this, &exitFirstEdge, &exitLastEdge, &exitName, airport, runway, gate, aircraft, runwayEnd
+            ]{
+                shared_ptr<Maneuver> result;
+                host()->writeLog(
+                    "AIPILO|Flight[%s] landed rwy[%s] will look for exit path",
+                    flight()->callSign().c_str(), runwayEnd.name().c_str());
+
+                auto taxiPath = airport->taxiNet()->tryFindExitPathFromRunway(
+                    runway,
+                    runwayEnd,
+                    gate,
+                    aircraft->location());
+
+                if (taxiPath)
+                {
+                    exitFirstEdge = taxiPath->edges[0];
+                    exitLastEdge = taxiPath->edges[taxiPath->edges.size() - 1];
+                    exitName = taxiPath->toHumanFriendlyString();
+
+                    host()->writeLog(
+                        "AIPILO|Flight[%s] arrival gate[%s] will exit runway[%s] via[%s]",
+                        flight()->callSign().c_str(),
+                        gate->name().c_str(),
+                        runwayEnd.name().c_str(),
+                        exitName.c_str());
+
+                    result = M.taxiByPath(flight(), taxiPath, ManeuverFactory::TaxiType::HighSpeed);
+                }
+                else
+                {
+                    host()->writeLog(
+                        "AIPILO|Flight[%s] arrival exit path from runway NOT FOUND! will teleport to gate[%s]",
+                        flight()->callSign().c_str(),
+                        gate->name().c_str());
+                    result = M.instantAction([=]{
+                        aircraft->park(gate);
+                    });
+                }
+
+                return result;
+            };
+
+            auto flapsZero = shared_ptr<Maneuver>(new AnimationManeuver<double>(
+                "",
+                0.4,
+                0,
+                chrono::seconds(30),
+                [](const double& from, const double& to, double progress, double& value) {
+                    value = from + (to - from) * progress;
+                },
+                [=](const double& value, double progress) {
+                    aircraft->setFlapState(value);
+                }
+            ));
+            auto speedBrakeDown = shared_ptr<Maneuver>(new AnimationManeuver<double>(
+                "",
+                1.0,
+                0,
+                chrono::seconds(1),
+                [](const double& from, const double& to, double progress, double& value) {
+                    value = from + (to - from) * progress;
+                },
+                [=](const double& value, double progress) {
+                    aircraft->setSpoilerState(value);
+                }
+            ));
+            auto exitRunway = safeCreateExitManeuver();
+            auto taxiLights = M.instantAction([=] {
+               aircraft->setLights(Aircraft::LightBits::BeaconTaxiNav);
+            });
+            auto lightsOff = M.instantAction([=] {
+                aircraft->setLights(Aircraft::LightBits::None);
+            });
+
+            const auto onHoldingShort = [=](shared_ptr<TaxiEdge> holdShortEdge) {
+                return maneuverAwaitCrossRunway(airport, holdShortEdge);
+            };
+
+            return M.sequence(Maneuver::Type::ArrivalTaxi, "", {
+                M.instantAction([aircraft] {
+                    aircraft->setGroundSpeedKt(0);
+                }),
+                M.parallel(Maneuver::Type::Unspecified, "", {
+                    flapsZero,
+                    speedBrakeDown,
+                    M.sequence(Maneuver::Type::Unspecified, "", {
+                        M.await(Maneuver::Type::Unspecified, "", [this,exitFirstEdge]{
+                            return (!exitFirstEdge) || isPointBehind(exitFirstEdge->node2()->location().geo());
+                        }),
+                        M.delay(chrono::seconds(3)),
+                        M.tuneComRadio(flight(), airport->groundAt(aircraft->location())->frequency()),
+                        M.transmitIntent(flight(), I.pilotArrivalCheckInWithGround(
+                            flight(), runwayEnd.name(), exitName, exitLastEdge
+                        )),
+                        M.awaitClearance(flight(), Clearance::Type::ArrivalTaxiClearance),
+                        M.deferred([this]{
+                            auto clearance = flight()->findClearanceOrThrow<ArrivalTaxiClearance>(Clearance::Type::ArrivalTaxiClearance);
+                            return M.transmitIntent(flight(), I.pilotArrivalTaxiReadback(flight(), m_lastReceivedIntentId));
+                        }),
+                    }),
+                    M.sequence(Maneuver::Type::Unspecified, "", {
+                       exitRunway,
+                       taxiLights,
+                       M.awaitClearance(flight(), Clearance::Type::ArrivalTaxiClearance),
+                       M.parallel(Maneuver::Type::Unspecified, "", {
+                           M.deferred([=]{
+                               auto clearance = flight()->findClearanceOrThrow<ArrivalTaxiClearance>(Clearance::Type::ArrivalTaxiClearance);
+                               return M.taxiByPath(
+                                   flight(),
+                                   clearance->taxiPath(),
+                                   ManeuverFactory::TaxiType::Normal,
+                                   onHoldingShort);
+                           }),
+                       }),
+                   }),
+                }),
+                M.delay(chrono::seconds(5)),
+                lightsOff
+            });
+        }
+
         shared_ptr<Maneuver> maneuverDepartureAwaitIfrClearance()
         {
             auto intentFactory = host()->services().get<IntentFactory>();
@@ -451,7 +544,7 @@ namespace ai
                 M.awaitClearance(flight(), Clearance::Type::IfrClearance),
                 M.deferred([=]() {
                     host()->writeLog("ifrClearanceReadback deferred factory");
-                    auto ifrClearanceReadback = intentFactory->pilotIfrClearanceReadback(flight());
+                    auto ifrClearanceReadback = intentFactory->pilotIfrClearanceReadback(flight(), m_lastReceivedIntentId);
                     return M.transmitIntent(flight(), ifrClearanceReadback);
                 }),
                 M.await(Maneuver::Type::Unspecified, "", [=](){
@@ -459,7 +552,8 @@ namespace ai
                 }),
                 M.deferred([=]() {
                     host()->writeLog("deliveryToGroundHandoffReadback deferred factory");
-                    auto handoffReadback = intentFactory->pilotHandoffReadback(flight(), clearanceDelivery, ground->frequency()->khz());
+                    auto handoffReadback = intentFactory->pilotHandoffReadback(
+                        flight(), clearanceDelivery, ground->frequency()->khz(), m_lastReceivedIntentId);
                     return M.transmitIntent(flight(), handoffReadback);
                 }),
                 M.deferred([=]() {
@@ -481,7 +575,8 @@ namespace ai
                 M.awaitClearance(flight(), Clearance::Type::PushAndStartApproval),
                 M.deferred([=]() {
                     host()->writeLog("pushAndStartReadback deferred factory");
-                    auto pushAndStartReadback = intentFactory->pilotPushAndStartReadback(flight(), ground);
+                    auto pushAndStartReadback =
+                        intentFactory->pilotPushAndStartReadback(flight(), ground, m_lastReceivedIntentId);
                     return M.transmitIntent(flight(), pushAndStartReadback);
                 }),
                 M.deferred([=]() {
@@ -525,7 +620,7 @@ namespace ai
                     M.delay(chrono::seconds(10)),
                     M.switchLights(flight(), Aircraft::LightBits::BeaconNav),
                     M.delay(chrono::seconds(5)),
-                    M.taxiByPath(flight(), taxiPath, true)
+                    M.taxiByPath(flight(), taxiPath, ManeuverFactory::TaxiType::Pushback)
                 };
 
                 return shared_ptr<Maneuver>(new SequentialManeuver(
@@ -562,7 +657,7 @@ namespace ai
                 M.awaitClearance(flight(), Clearance::Type::DepartureTaxiClearance),
                 M.deferred([=]() {
                     host()->writeLog("taxiReadback deferred factory");
-                    auto taxiReadback = intentFactory->pilotDepartureTaxiReadback(flight());
+                    auto taxiReadback = intentFactory->pilotDepartureTaxiReadback(flight(), m_lastReceivedIntentId);
                     return M.transmitIntent(flight(), taxiReadback);
                 }),
                 M.deferred([=]() {
@@ -612,7 +707,7 @@ namespace ai
                 steps.push_back(M.taxiByPath(
                     flight(), 
                     clearance->taxiPath(), 
-                    false,
+                    ManeuverFactory::TaxiType::Normal,
                     onHoldingShort));
 
                 return shared_ptr<Maneuver>(new SequentialManeuver(
@@ -632,7 +727,7 @@ namespace ai
                 }),
                 M.deferred([=]() {
                     auto ground = m_departureAirport->groundAt(flight()->aircraft()->location());
-                    return M.transmitIntent(flight(), I.pilotHandoffReadback(flight(), ground, m_departureTowerKhz));
+                    return M.transmitIntent(flight(), I.pilotHandoffReadback(flight(), ground, m_departureTowerKhz, m_lastReceivedIntentId));
                 }),
                 M.instantAction([=]() {
                     aircraft()->setFrequencyKhz(m_departureTowerKhz);
@@ -641,7 +736,7 @@ namespace ai
                 M.awaitClearance(flight(), Clearance::Type::LineupApproval),
                 M.deferred([=]() {
                     auto approval = flight()->findClearanceOrThrow<LineupApproval>(Clearance::Type::LineupApproval);
-                    auto readback = I.pilotLineUpReadback(approval);
+                    auto readback = I.pilotLineUpReadback(approval, m_lastReceivedIntentId);
                     return M.transmitIntent(flight(), readback);
                 }),
                 M.instantAction([=]() {
@@ -661,7 +756,7 @@ namespace ai
                 M.awaitClearance(flight(), Clearance::Type::RunwayCrossClearance),
                 M.deferred([=]() {
                     auto clearance = flight()->findClearanceOrThrow<RunwayCrossClearance>(Clearance::Type::RunwayCrossClearance);
-                    return M.transmitIntent(flight(), I.pilotAffirmation(flight(), clearance->header().issuedBy));
+                    return M.transmitIntent(flight(), I.pilotAffirmation(flight(), clearance->header().issuedBy, m_lastReceivedIntentId));
                 })
             });
         }
@@ -672,7 +767,7 @@ namespace ai
                 M.awaitClearance(flight(), Clearance::Type::TakeoffClearance),
                 M.deferred([=]() {
                     auto clearance = flight()->findClearanceOrThrow<TakeoffClearance>(Clearance::Type::TakeoffClearance);
-                    auto readback = I.pilotTakeoffClearanceReadback(flight(), clearance, m_departureKhz);
+                    auto readback = I.pilotTakeoffClearanceReadback(flight(), clearance, m_departureKhz, m_lastReceivedIntentId);
                     return M.transmitIntent(flight(), readback);
                 }),
                 M.delay(chrono::seconds(5)),
@@ -833,6 +928,13 @@ namespace ai
 
             host()->writeLog("AIPILO|getActiveZoneRunway: RUNWAY NOT FOUND");
             return nullptr;
+        }
+
+        bool isPointBehind(const GeoPoint& point)
+        {
+            float headingToPoint = GeoMath::getHeadingFromPoints(aircraft()->location(), point);
+            float turnToNodeDegrees = GeoMath::getTurnDegrees(aircraft()->attitude().heading(), headingToPoint);
+            return (abs(turnToNodeDegrees) >= 45);
         }
     };
 }

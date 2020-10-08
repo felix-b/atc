@@ -187,7 +187,7 @@ private:
                 else
                 {
                     time_t arrivalTime = nextArrivalTime;
-                    nextArrivalTime += 45;
+                    nextArrivalTime += 90;
                     addInboundFlight(model, airline, flightId, m_airport->header().icao(), arrivalTime, gate);
                 }
             }

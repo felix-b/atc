@@ -17,7 +17,6 @@ namespace world
         const int _nodeId2,
         Type _type,
         bool _isOneWay,
-        bool _isHighSpeedExit,
         float _lengthMeters
     ) : 
         m_id(_id),
@@ -26,7 +25,6 @@ namespace world
         m_nodeId2(_nodeId2),
         m_type(_type),
         m_isOneWay(_isOneWay),
-        m_isHighSpeedExit(_isHighSpeedExit),
         m_lengthMeters(_lengthMeters),
         m_heading(0)
     {
@@ -36,7 +34,6 @@ namespace world
         m_id(_source->m_id),
         m_type(_source->m_type),
         m_isOneWay(_source->m_isOneWay),
-        m_isHighSpeedExit(_source->m_isHighSpeedExit),
         m_name(_source->m_name),
         m_lengthMeters(_source->m_lengthMeters),
         m_heading(_flippingOver ? GeoMath::flipHeading(_source->m_heading) : _source->m_heading),
@@ -44,6 +41,7 @@ namespace world
         m_nodeId2(_flippingOver ? _source->m_nodeId1 : _source->m_nodeId2),
         m_node1(_flippingOver ? _source->m_node2 : _source->m_node1),
         m_node2(_flippingOver ? _source->m_node1 : _source->m_node2),
+        m_highSpeedExitRunway(_source->m_highSpeedExitRunway),
         m_activeZones(_source->m_activeZones),
         m_flipOver(_source)
     {
@@ -53,7 +51,6 @@ namespace world
         m_id(-1),
         m_type(TaxiEdge::Type::Taxiway),
         m_isOneWay(true),
-        m_isHighSpeedExit(false),
         m_name(""),
         m_lengthMeters(GeoMath::getDistanceMeters(_fromPoint.geo(), _toPoint.geo())),
         m_heading(GeoMath::getHeadingFromPoints(_fromPoint.geo(), _toPoint.geo())),

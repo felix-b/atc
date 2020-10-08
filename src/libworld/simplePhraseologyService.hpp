@@ -78,6 +78,8 @@ namespace world
 
         void buildVerbalizerMap()
         {
+            //TODO: define a macro???
+
             m_verbalizerByIntentCode.insert({ PilotAffirmationIntent::IntentCode, [this](UtteranceBuilder& builder, shared_ptr<Intent> intent) { 
                 verbalizePilotAffirmation(builder, dynamic_pointer_cast<PilotAffirmationIntent>(intent));
             }});
@@ -181,6 +183,19 @@ namespace world
 
             m_verbalizerByIntentCode.insert({ PilotLandingClearanceReadbackIntent::IntentCode, [this](UtteranceBuilder& builder, shared_ptr<Intent> intent) { 
                 verbalizeLandingClearanceReadback(builder, dynamic_pointer_cast<PilotLandingClearanceReadbackIntent>(intent));
+            }});
+
+
+            m_verbalizerByIntentCode.insert({ PilotArrivalCheckInWithGroundIntent::IntentCode, [this](UtteranceBuilder& builder, shared_ptr<Intent> intent) {
+                verbalizeArrivalCheckInWithGround(builder, dynamic_pointer_cast<PilotArrivalCheckInWithGroundIntent>(intent));
+            }});
+
+            m_verbalizerByIntentCode.insert({ GroundArrivalTaxiReplyIntent::IntentCode, [this](UtteranceBuilder& builder, shared_ptr<Intent> intent) {
+                verbalizeArrivalTaxiReply(builder, dynamic_pointer_cast<GroundArrivalTaxiReplyIntent>(intent));
+            }});
+
+            m_verbalizerByIntentCode.insert({ PilotArrivalTaxiReadbackIntent::IntentCode, [this](UtteranceBuilder& builder, shared_ptr<Intent> intent) {
+                verbalizeArrivalTaxiReadback(builder, dynamic_pointer_cast<PilotArrivalTaxiReadbackIntent>(intent));
             }});
         }
 
@@ -505,6 +520,61 @@ namespace world
         {
             builder.addText("cleared to land");
             builder.addData(spellRunway(intent->clearance()->runway()));
+            builder.addFarewell(spellCallsign(intent->subjectFlight()->callSign()));
+        }
+
+        void verbalizeArrivalCheckInWithGround(UtteranceBuilder& builder, shared_ptr<PilotArrivalCheckInWithGroundIntent> intent)
+        {
+            builder.addData(spellCallsign(intent->subjectControl()->callSign()));
+            builder.addPunctuation();
+            builder.addData(spellCallsign(intent->subjectFlight()->callSign()));
+            builder.addPunctuation();
+            builder.addText("vacated runway");
+            builder.addData(spellRunway(intent->runway()));
+            builder.addText("at");
+            builder.addData(spellPhoneticString(intent->exitName()));
+
+            if (isHeads(intent))
+            {
+                builder.addPunctuation();
+                builder.addText("request taxi instructions to terminal");
+            }
+        }
+
+        void verbalizeArrivalTaxiReply(UtteranceBuilder& builder, shared_ptr<GroundArrivalTaxiReplyIntent> intent)
+        {
+            stringstream text;
+
+            if (intent->cleared())
+            {
+                auto clearance = intent->clearance();
+
+                builder.addData(spellCallsign(intent->subjectFlight()->callSign()));
+                builder.addText("your gate is");
+                builder.addData(clearance->parkingStand());
+                builder.addPunctuation();
+                builder.addText("taxi via");
+                builder.addDisfluency("uhm", isHeads(intent));
+                builder.addData(spellTaxiPath(clearance->taxiPath()), true);
+            }
+            else
+            {
+                builder.addData(spellCallsign(intent->subjectFlight()->callSign()));
+                builder.addPunctuation();
+                builder.addText("hold your position, I'll be back with you");
+            }
+        }
+
+        void verbalizeArrivalTaxiReadback(UtteranceBuilder& builder, shared_ptr<PilotArrivalTaxiReadbackIntent> intent)
+        {
+            auto clearance = intent->clearance();
+
+            builder.addText("Gate");
+            builder.addData(spellRunway(clearance->parkingStand()));
+            builder.addPunctuation();
+            builder.addText("taxi via");
+            builder.addData(spellTaxiPath(clearance->taxiPath()), isHeads(intent));
+            builder.addPunctuation();
             builder.addFarewell(spellCallsign(intent->subjectFlight()->callSign()));
         }
 

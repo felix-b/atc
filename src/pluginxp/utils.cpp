@@ -16,6 +16,8 @@
 
 using namespace std;
 
+static string globalPluginDirectory;
+static string globalHostDirectory;
 static LogTimePoint globalLogStartTime = {}; // NOLINT(cert-err58-cpp)
 static const char *globalBuildPlatformId =
 #if APL
@@ -29,9 +31,26 @@ static const char *globalBuildPlatformId =
 #endif
 ;
 
-void initLogStartTime()
+void initPluginUtils()
 {
     globalLogStartTime = chrono::time_point_cast<std::chrono::milliseconds>(chrono::high_resolution_clock::now());
+
+    char name[256];
+    char filePath[256];
+    char signature[256];
+    char description[256];
+    XPLMGetPluginInfo(XPLMGetMyID(), name, filePath, signature, description);
+
+    XPLMExtractFileAndPath(filePath);
+    XPLMExtractFileAndPath(filePath);
+
+    globalPluginDirectory = std::string(filePath);
+
+    XPLMExtractFileAndPath(filePath);
+    XPLMExtractFileAndPath(filePath);
+    XPLMExtractFileAndPath(filePath);
+
+    globalHostDirectory = std::string(filePath);
 }
 
 LogTimePoint getLogStartTime()
@@ -72,13 +91,10 @@ void PrintDebugString(const char* format, ...)
 
 std::string getPluginDirectory()
 {
-    char name[256];
-    char filePath[256];
-    char signature[256];
-    char description[256];
-    XPLMGetPluginInfo(XPLMGetMyID(), name, filePath, signature, description);
-    XPLMExtractFileAndPath(filePath);
-    XPLMExtractFileAndPath(filePath);
-    
-    return std::string(filePath);
+    return globalPluginDirectory;
+}
+
+std::string getHostDirectory()
+{
+    return globalHostDirectory;
 }

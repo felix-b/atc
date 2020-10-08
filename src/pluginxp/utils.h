@@ -12,7 +12,8 @@ using namespace std;
 typedef chrono::time_point<chrono::high_resolution_clock, chrono::milliseconds> LogTimePoint;
 
 const char *getBuildPlatformId();
-void initLogStartTime();
+void initPluginUtils();
 LogTimePoint getLogStartTime();
 void PrintDebugString(const char* format, ...); //TODO: camelCase
 string getPluginDirectory();
+string getHostDirectory();

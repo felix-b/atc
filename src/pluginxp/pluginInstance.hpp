@@ -24,6 +24,9 @@
 #include "utils.h"
 #include "libworld.h"
 #include "libai.hpp"
+#if IBM
+#include "libserver.hpp"
+#endif
 #include "pluginHostServices.hpp"
 #include "pluginMenu.hpp"
 #include "nativeTextToSpeechService.hpp"
@@ -45,10 +48,12 @@ private:
 
     enum class PluginStateId
     {
+        Stopped = 0,
         WorldAssembling = 1,
         WorldAssembled = 2,
         SchedulesStarting = 3,
-        SchedulesStarted = 4
+        SchedulesStarted = 4,
+        Failed = 5
     };
 
     class PluginState
@@ -77,22 +82,74 @@ private:
         }
     };
 
-    class WorldAssemblingState : public PluginState
+    class StoppedState : public PluginState
     {
     private:
         shared_ptr<HostServices> m_host;
+    public:
+        StoppedState(shared_ptr<HostServices> _host) :
+            PluginState(PluginStateId::Stopped, "STOPPED"),
+            m_host(std::move(_host))
+        {
+        }
+    public:
+        void enter() override
+        {
+            stopServer();
+        }
+    private:
+        void stopServer()
+        {
+#if IBM
+            auto server = m_host->services().get<server::ServerControllerInterface>();
+
+            if (server->running())
+            {
+                m_host->writeLog("PLUGIN|stopping the server");
+                server->beginStop();
+                if (server->waitUntilStopped(chrono::seconds(5)))
+                {
+                    m_host->writeLog("PLUGIN|server successfully stopped");
+                }
+                else
+                {
+                    m_host->writeLog("PLUGIN|WARNING: timeout waiting for server to stop");
+                }
+            }
+#endif
+        }
+    };
+
+    class FailedState : public PluginState
+    {
+    public:
+        FailedState() :
+            PluginState(PluginStateId::Failed, "FAILED")
+        {
+        }
+    };
+
+    class WorldAssemblingState : public PluginState
+    {
+    private:
+        shared_ptr<PluginHostServices> m_host;
         future<shared_ptr<World>> m_worldFuture;
+        atomic<bool> m_done;
         PluginMenu::Item m_assemblingItem;
         function<void(shared_ptr<World> world)> m_onAssembled;
+        function<void()> m_onFailed;
     public:
         WorldAssemblingState(
-            shared_ptr<HostServices> _host,
+            shared_ptr<PluginHostServices> _host,
             PluginMenu& _menu,
-            function<void(shared_ptr<World> world)> _onAssembled
+            function<void(shared_ptr<World> world)> _onAssembled,
+            function<void()> _onFailed
         ) : PluginState(PluginStateId::WorldAssembling, "WORLD-ASSEMBLING"),
             m_host(std::move(_host)),
             m_assemblingItem(_menu, "World is being assembled, please wait...", [](){}),
-            m_onAssembled(std::move(_onAssembled))
+            m_onAssembled(std::move(_onAssembled)),
+            m_onFailed(std::move(_onFailed)),
+            m_done(false)
         {
         }
 
@@ -101,13 +158,27 @@ private:
         void enter() override
         {
             m_worldFuture = std::async(std::launch::async, [this] {
-                return assembleWorld();
+                try
+                {
+                    auto world = assembleWorld();
+                    if (world)
+                    {
+                        m_host->useWorld(world);
+                        startServer();
+                    }
+                    return world;
+                }
+                catch (const exception& e)
+                {
+                    m_host->writeLog("PLUGIN|WorldAssemblingState background task CRASHED!!! %s", e.what());
+                    return shared_ptr<World>();
+                }
             });
         }
 
         void exit() override
         {
-            if (m_worldFuture.wait_for(chrono::milliseconds(0)) != future_status::ready)
+            if (!m_done && m_worldFuture.wait_for(chrono::milliseconds(0)) != future_status::ready)
             {
                 m_host->writeLog("PLUGIN|WARNING: leaving WORLD-ASSEMBLING state while the assembly is still in progress!");
             }
@@ -123,7 +194,17 @@ private:
             {
                 m_host->writeLog("PLUGIN|ping WORLD-ASSEMBLING: done");
                 auto world = m_worldFuture.get();
-                m_onAssembled(world);
+                m_done = true;
+
+                if (world)
+                {
+                    m_onAssembled(world);
+                }
+                else
+                {
+                    m_host->writeLog("PLUGIN|ERROR: world was not assembled - plugin will not function (see previous errors).");
+                    m_onFailed();
+                }
             }
         }
 
@@ -131,9 +212,37 @@ private:
 
         shared_ptr<World> assembleWorld()
         {
-            PluginWorldLoader loader(m_host);
-            loader.loadWorld();
-            return loader.getWorld();
+            try
+            {
+                PluginWorldLoader loader(m_host);
+                loader.loadWorld();
+                return loader.getWorld();
+            }
+            catch (const exception& e)
+            {
+                m_host->writeLog("PLUGIN|assembleWorld CRASHED!!! %s", e.what());
+                return shared_ptr<World>();
+            }
+        }
+
+        void startServer()
+        {
+#if IBM
+            try
+            {
+                auto server = m_host->services().get<server::ServerControllerInterface>();
+
+                if (!server->running())
+                {
+                    m_host->writeLog("PLUGIN|starting the server");
+                    server->start(9002);
+                }
+            }
+            catch (const exception& e)
+            {
+                m_host->writeLog("PLUGIN|startServer CRASHED!!! %s", e.what());
+            }
+#endif
         }
     };
 
@@ -339,24 +448,34 @@ public:
         PrintDebugString("PLUGIN|destroying PluginInstance");
 
         XPLMUnregisterFlightLoopCallback(&pluginFlightLoopCallback, this);
-        transitionToState([]() { return nullptr; });
+        if (m_currentState->id() != PluginStateId::Stopped)
+        {
+            transitionToState([this]() { return createStoppedState(); });
+        }
     }
 
 public:
 
     void notifyAirportLoaded()
     {
-        switch (m_currentState->id())
+        try
         {
-        case PluginStateId::WorldAssembling:
-            PrintDebugString("PLUGIN|pinging state [%s]", m_currentState->name().c_str());
-            m_currentState->ping();
-            break;
-        case PluginStateId::SchedulesStarted:
-            transitionToState([this] {
-                return createSchedulesStartingState();
-            });
-            break;
+            switch (m_currentState->id())
+            {
+            case PluginStateId::WorldAssembling:
+                PrintDebugString("PLUGIN|notifyAirportLoaded pinging state [%s]", m_currentState->name().c_str());
+                m_currentState->ping();
+                break;
+            case PluginStateId::SchedulesStarted:
+                transitionToState([this] {
+                    return createSchedulesStartingState();
+                });
+                break;
+            }
+        }
+        catch (const exception& e)
+        {
+            m_hostServices->writeLog("PLUGIN|notifyAirportLoaded CRASHED!!! %s", e.what());
         }
     }
 
@@ -386,6 +505,11 @@ private:
         hostServices->services().use<TextToSpeechService>(pluginTts);
         hostServices->services().use<IntentFactory>(intentFactory);
         hostServices->services().use<PhraseologyService>(phraseologyService);
+
+#if IBM
+        auto serverController = server::ServerControllerInterface::create(hostServices);
+        hostServices->services().use<server::ServerControllerInterface>(serverController);
+#endif
 
         ai::contributeComponents(hostServices);
 
@@ -426,16 +550,28 @@ private:
         }
     }
 
+    shared_ptr<PluginState> createStoppedState()
+    {
+        return make_shared<StoppedState>(m_hostServices);
+    }
+
     shared_ptr<PluginState> createWorldAssemblingState()
     {
-        return make_shared<WorldAssemblingState>(m_hostServices, m_menu, [this](shared_ptr<World> world) {
+        const auto onAssembled = [this](shared_ptr<World> world) {
             m_hostServices->writeLog("PLUGIN|createWorldAssemblingState");
             m_world = world;
-            m_hostServices->useWorld(world);
             transitionToState([this]() {
                 return createSchedulesStartingState();
             });
-        });
+        };
+
+        const auto onFailed = [this] {
+            transitionToState([this]() {
+                return createFailedState();
+            });
+        };
+
+        return make_shared<WorldAssemblingState>(m_hostServices, m_menu, onAssembled, onFailed);
     }
 
     shared_ptr<PluginState> createWorldAssembledState()
@@ -479,6 +615,11 @@ private:
                 });
             }
         );
+    }
+
+    shared_ptr<PluginState> createFailedState()
+    {
+        return make_shared<FailedState>();
     }
 
     void flightLoopTick()

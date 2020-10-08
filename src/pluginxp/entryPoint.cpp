@@ -49,11 +49,12 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
     LogWriter::getLogger().setLogFile(PluginPath::prependPluginPath("atc_log.txt"));
     Log() << Log::Info << "XPluginStart" << Log::endl;
 
-    initLogStartTime();
+    initPluginUtils();
     PrintDebugString(
-        "ENTRYP|XPluginStart, platform-build=[%s], plugin-directory=[%s]\n",
+        "ENTRYP|XPluginStart, platform-build[%s], plugin-directory[%s] sim-directory[%s]\n",
         getBuildPlatformId(),
-        getPluginDirectory().c_str()
+        getPluginDirectory().c_str(),
+        getHostDirectory().c_str()
     );
 
     return 1;

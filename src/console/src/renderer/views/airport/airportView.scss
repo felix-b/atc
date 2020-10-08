@@ -1,0 +1,158 @@
+
+.airport .graph {
+
+    .edge {
+
+        &.groundway {
+            background-color: #c9c3bf;
+            height: 9px;
+            z-index: 10;
+        }
+
+        &.taxiway {
+            background-color: rgb(91, 186, 113);
+            height: 5px;
+            z-index: 20;
+        
+            &.active {
+                background-color: rgb(235, 168, 0);
+            }
+        }
+        
+        &.runway {
+            background-color: rgba(230, 0, 0, 0.776);
+            height: 5px;
+            z-index: 30;
+        }
+
+        &.taxi-path {   
+            background-color: cyan;
+            height: 16px;
+            margin-top:-4px;
+            opacity: 0.75;
+        }
+    }
+
+    .vertex {
+        background-color: #977163;
+        z-index: 110;
+
+        &.gate {
+            width: 0;
+            height: 0;
+            margin-left: -5px;
+            margin-top: -10px;
+            background-color: transparent;
+            border-radius: 0;
+            border-top: none;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 20px solid #8dc67b;
+            z-index: 120;
+
+            &:hover {
+                width: 0;
+                height: 0;
+                margin-left: -5px;
+                margin-top: -10px;
+                background-color: transparent;
+                border-radius: 0;
+                border-top: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-bottom: 20px solid yellow;
+                z-index: 120;
+            }
+        }
+    }
+
+    .aircraft-marker {
+        filter: drop-shadow(white -2px -2px 3px);
+    }
+
+    .pinpoint-marker {
+        width: 8px;
+        height: 8px;
+        margin-left: -4px;
+        margin-top: -4px;
+        border-radius: 8px;
+        background-color: orange;
+        position: absolute;
+        z-index: 300;
+        opacity: 0.5;
+        pointer-events: none;
+        animation: pinpointMarkerBlink 1.5s linear infinite;
+    }
+
+    @keyframes pinpointMarkerBlink {
+        25% {
+            opacity: 1.0;
+            width: 8px;
+            height: 8px;
+            margin-left: -4px;
+            margin-top: -4px;
+            border-radius: 8px;
+            background-color: orange;
+        }
+        40% {
+            opacity: 1.0;
+            width: 16px;
+            height: 16px;
+            margin-left: -8px;
+            margin-top: -8px;
+            border-radius: 16px;
+            background-color: yellow;
+        }
+        50% {
+            opacity: 0;
+            width: 32px;
+            height: 32px;
+            margin-left: -16px;
+            margin-top: -16px;
+            border-radius: 16px;
+            background-color: white;
+        }
+        60% {
+            opacity: 1.0;
+            width: 16px;
+            height: 16px;
+            margin-left: -8px;
+            margin-top: -8px;
+            border-radius: 16px;
+            background-color: yellow;
+        }
+        75% {
+            opacity: 1.0;
+            width: 8px;
+            height: 8px;
+            margin-left: -4px;
+            margin-top: -4px;
+            border-radius: 8px;
+            background-color:orange;
+        }
+    }
+}
+
+.taxi-tool-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr 2fr 2fr;
+    grid-template-rows: 1fr 1fr 1fr 1fr;
+    gap: 1px 1px;
+    grid-template-areas: 
+        ". header-lat header-lon ." 
+        "header-from input-lat-from input-lon-from text-from" 
+        "header-to input-lat-to input-lon-to text-to" 
+        "footer footer footer footer";
+      
+    .header-lat { grid-area: header-lat; }
+    .header-lon { grid-area: header-lon; }
+    .header-from { grid-area: header-from; }
+    .header-to { grid-area: header-to; }
+    .input-lat-from { grid-area: input-lat-from; }
+    .input-lon-from { grid-area: input-lon-from; }
+    .input-lat-to { grid-area: input-lat-to; }
+    .input-lon-to { grid-area: input-lon-to; }
+    .text-from { grid-area: text-from; }
+    .text-to { grid-area: text-to; }
+    .footer { grid-area: footer; }
+}

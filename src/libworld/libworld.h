@@ -5,6 +5,8 @@
 #pragma once
 #define _USE_MATH_DEFINES
 
+#include <cstdarg>
+#include <cstring>
 #include <string>
 #include <memory>
 #include <tuple>
@@ -115,11 +117,12 @@ namespace world
         LocalPoint m_local;
         GeoPoint m_geo;
     public:
+        UniPoint(const GeoPoint& _geo);
         UniPoint(shared_ptr<HostServices> _services, const LocalPoint& _local);
         UniPoint(shared_ptr<HostServices> _services, const GeoPoint& _geo);
     public:
-        void moveByLocal(const LocalPoint& delta);
-        void moveByGeo(const GeoPoint& delta);
+        // void moveByLocal(const LocalPoint& delta);
+        // void moveByGeo(const GeoPoint& delta);
         const LocalPoint& local() const { return m_local; }
         const GeoPoint& geo() const { return m_geo; }
         double latitude() const { return m_geo.latitude; }
@@ -1022,6 +1025,7 @@ namespace world
         TextToSpeechService::QueryCompletion m_queryTransmissionCompletion;
         unordered_map<int, Listener> m_listenerById;
         weak_ptr<ControllerPosition> m_controllerPosition;
+        chrono::microseconds m_lastTransmissionEndTimestamp;
     public:
         Frequency(
             shared_ptr<HostServices> _host,
@@ -1034,7 +1038,8 @@ namespace world
             m_radiusNm(_radiusNm),
             m_nextTransmissionId(1),
             m_nextListenerId(1),
-            m_queryTransmissionCompletion(TextToSpeechService::noopQueryCompletion)
+            m_queryTransmissionCompletion(TextToSpeechService::noopQueryCompletion),
+            m_lastTransmissionEndTimestamp(0)
         {
         }
     public:
@@ -1043,11 +1048,12 @@ namespace world
         float radiusNm() const { return m_radiusNm; }
         shared_ptr<ControllerPosition> controllerPosition() { return m_controllerPosition.lock(); }
     public:
-        shared_ptr<Transmission> enqueueTransmission(const shared_ptr<Intent> intent, long long replyToTransmissionId = -1);
+        shared_ptr<Transmission> enqueueTransmission(const shared_ptr<Intent> intent);
         int addListener(Listener callback);
         void removeListener(int listenerId);
         void progressTo(chrono::microseconds timestamp);
         void clearTransmissions();
+        bool wasSilentFor(chrono::milliseconds duration);
     private:
         void beginTransmission(shared_ptr<Transmission> transmission, chrono::microseconds timestamp);
         void endTransmission(chrono::microseconds timestamp);
@@ -1145,8 +1151,7 @@ namespace world
             Completed = 2
         };
     private:
-        long long m_id;
-        long long m_replyToId;
+        uint64_t m_id;
         shared_ptr<Intent> m_intent;
         State m_state;
         chrono::microseconds m_startTimestamp;
@@ -1154,11 +1159,9 @@ namespace world
         shared_ptr<Utterance> m_verbalizedUtterance;
     public:
         Transmission(
-            long long _id,
-            long long _replyToId,
+            uint64_t _id,
             shared_ptr<Intent> _intent
         ) : m_id(_id),
-            m_replyToId(_replyToId),
             m_intent(_intent),
             m_state(State::NotStarted),
             m_startTimestamp(0),
@@ -1166,8 +1169,7 @@ namespace world
         {
         }
     public:
-        unsigned long long id() const { return m_id; }
-        unsigned long long replyToId() const { return m_replyToId; }
+        uint64_t id() const { return m_id; }
         shared_ptr<Intent> intent() const { return m_intent; }
         State state() const { return m_state; }
         chrono::microseconds startTimestamp() const { return m_startTimestamp; }
@@ -1202,6 +1204,8 @@ namespace world
             ClearanceUnable = 11
         };
     private:
+        uint64_t m_id;
+        uint64_t m_replyToId;
         Direction m_direction;
         Type m_type;
         int m_code;
@@ -1210,12 +1214,16 @@ namespace world
         //string m_transmissionText;
     protected:
         Intent(
+            uint64_t _id,
+            uint64_t _replyToId,
             Direction _direction,
             Type _type,
             int _code,
             shared_ptr<ControllerPosition> _subjectControl,
             shared_ptr<Flight> _subjectFlight
-        ) : m_direction(_direction),
+        ) : m_id(_id),
+            m_replyToId(_replyToId),
+            m_direction(_direction),
             m_type(_type),
             m_code(_code),
             m_subjectControl(_subjectControl),
@@ -1223,11 +1231,14 @@ namespace world
         {
         }
     public:
+        uint64_t id() const { return m_id; }
+        uint64_t replyToId() const { return m_replyToId; }
         Direction direction() const { return m_direction; }
         Type type() const { return m_type; }
         int code() const { return m_code; }
         shared_ptr<ControllerPosition> subjectControl() const { return m_subjectControl; }
         shared_ptr<Flight> subjectFlight() const { return m_subjectFlight; }
+        bool isReply() const { return (m_replyToId > 0); }
         //const string& transmissionText() const { return m_transmissionText; }
     public:
         virtual shared_ptr<Actor> getSpeakingActor() const;
@@ -1312,7 +1323,9 @@ namespace world
             FlyVector = 240,
             FlyDirect = 250,
             FlySpinOnBoundary = 280,
-            Animation = 300
+            Animation = 300,
+            AwaitClearance = 310,
+            AwaitSilenceOnFrequency = 311
         };
         enum class State
         {
@@ -1895,7 +1908,7 @@ namespace world
         }
     };
 
-    class TaxiNet
+    class TaxiNet : public enable_shared_from_this<TaxiNet>
     {
     private:
         friend class WorldBuilder;
@@ -1914,8 +1927,46 @@ namespace world
     public:
         const vector<shared_ptr<TaxiNode>>& nodes() const { return m_nodes; }
         const vector<shared_ptr<TaxiEdge>>& edges() const { return m_edges; }
+    public:
         shared_ptr<TaxiNode> getNodeById(int nodeId) const { return getValueOrThrow(m_nodeById, nodeId); };
         shared_ptr<TaxiNode> findClosestNode(const GeoPoint& location, function<bool(shared_ptr<TaxiNode>)> predicate) const;
+        shared_ptr<TaxiNode> findClosestNode(
+            const GeoPoint& location,
+            const vector<shared_ptr<TaxiNode>>& possibleNodes) const;
+
+//      void findNodesAheadOnRunway(
+//            const GeoPoint& location,
+//            const shared_ptr<Runway>& runway,
+//            const Runway::End& runwayEnd,
+//            vector<shared_ptr<TaxiNode>>& nodesAhead) const;
+
+        shared_ptr<TaxiNode> findClosestNodeOnRunway(
+            const GeoPoint& location,
+            const shared_ptr<Runway>& runway,
+            const Runway::End& runwayEnd) const;
+
+        shared_ptr<TaxiPath> tryFindArrivalPathRunwayToGate(
+            shared_ptr<Runway> runway,
+            const Runway::End& runwayEnd,
+            shared_ptr<ParkingStand> gate,
+            const GeoPoint &fromPoint);
+
+        shared_ptr<TaxiPath> tryFindExitPathFromRunway(
+            shared_ptr<Runway> runway,
+            const Runway::End& runwayEnd,
+            shared_ptr<ParkingStand> gate,
+            const GeoPoint &fromPoint);
+
+        shared_ptr<TaxiPath> tryFindTaxiPathToGate(
+            shared_ptr<ParkingStand> gate,
+            const GeoPoint &fromPoint);
+
+    private:
+
+        shared_ptr<TaxiEdge> tryFindExitFromRunway(
+            shared_ptr<Runway> runway,
+            const Runway::End& runwayEnd,
+            const GeoPoint &fromPoint) const;
     };
 
     struct ActiveZoneMask
@@ -1969,11 +2020,12 @@ namespace world
             Taxiway = 1,
             Runway = 2,
         };
-    public:
+    private:
         int m_id;
         Type m_type;
         bool m_isOneWay;
-        bool m_isHighSpeedExit;
+        string m_highSpeedExitRunway;
+        string m_runwayEndName;
         string m_name;
         float m_lengthMeters;
         float m_heading;
@@ -1992,7 +2044,6 @@ namespace world
             const int _nodeId2,
             Type _type = Type::Taxiway,
             bool _isOneWay = false,
-            bool _isHighSpeedExit = false,
             float _lengthMeters = 0
         );
         TaxiEdge(const UniPoint& _fromPoint, const UniPoint& _toPoint);
@@ -2002,7 +2053,7 @@ namespace world
         Type type() const { return m_type; }
         bool isOneWay() const { return m_isOneWay; }
         bool canFlipOver() const { return !m_isOneWay; }
-        bool isHighSpeedExit() const { return m_isHighSpeedExit; }
+        //const string& highSpeedExitRunway() const { return m_highSpeedExitRunway; }
         const string& name() const { return m_name; }
         float lengthMeters() const { return m_lengthMeters; }
         float heading() const { return m_heading; }
@@ -2012,6 +2063,9 @@ namespace world
         shared_ptr<TaxiNode> node2() const { return m_node2; }
         shared_ptr<Runway> runway() const { return m_runway; }
         const ActiveZoneMatrix& activeZones() const { return m_activeZones; }
+    public:
+        bool isRunway(const string& runwayEndName) const { return m_runwayEndName == runwayEndName; }
+        bool isHighSpeedExitRunway(const string& runwayName) const { return m_highSpeedExitRunway == runwayName; }
     public:
         static shared_ptr<TaxiEdge> flipOver(shared_ptr<TaxiEdge> source);
         static float calculateTaxiDistance(
@@ -2031,10 +2085,11 @@ namespace world
         UniPoint m_location;
         bool m_isJunction;
         bool m_hasTaxiway;
+        bool m_hasRunway;
         vector<shared_ptr<TaxiEdge>> m_edges;
     public:
         TaxiNode(int _id, const UniPoint& _location) :
-            m_id(_id), m_location(_location), m_isJunction(false), m_hasTaxiway(false)
+            m_id(_id), m_location(_location), m_isJunction(false), m_hasTaxiway(false), m_hasRunway(false)
         {
         }
     public:
@@ -2042,9 +2097,11 @@ namespace world
         const UniPoint& location() const { return m_location; }
         bool isJunction() const { return m_isJunction; }
         bool hasTaxiway() const { return m_hasTaxiway; }
+        bool hasRunway() const { return m_hasRunway; }
         const vector<shared_ptr<TaxiEdge>>& edges() const { return m_edges; }
     public:
         shared_ptr<TaxiEdge> getEdgeTo(shared_ptr<TaxiNode> node);
+        shared_ptr<TaxiEdge> tryFindEdge(function<bool(shared_ptr<TaxiEdge> edge)> predicate);
     };
 
     class TaxiPath
@@ -2060,6 +2117,8 @@ namespace world
             const vector<shared_ptr<TaxiEdge>>& _edges);
     public:
         vector<string> toHumanFriendlySteps();
+        string toHumanFriendlyString();
+        void appendEdge(shared_ptr<TaxiEdge> edge);
         void appendEdgeTo(const UniPoint& destination);
     public:
         static shared_ptr<TaxiPath> find(shared_ptr<TaxiNet> net, shared_ptr<TaxiNode> from, shared_ptr<TaxiNode> to);
@@ -2113,12 +2172,13 @@ namespace world
         static void tidyAirportElevations(
             shared_ptr<HostServices> host,
             shared_ptr<Airport> airport);
-    private:
+
         static shared_ptr<TaxiNet> assembleTaxiNet(
             shared_ptr<HostServices> host,
             const vector<shared_ptr<Runway>>& runways,
             const vector<shared_ptr<TaxiNode>>& nodes,
             const vector<shared_ptr<TaxiEdge>>& edges);
+    private:
         static void fixUpEdgesAndRunways(
             shared_ptr<HostServices> host,
             shared_ptr<Airport> airport);
@@ -2143,6 +2203,8 @@ namespace world
 
     class HostServices
     {
+    public:
+        typedef chrono::time_point<chrono::high_resolution_clock, chrono::milliseconds> LogTimePoint;
     public:
         class ServicePtr
         {
@@ -2195,9 +2257,13 @@ namespace world
         virtual shared_ptr<Controller> createAIController(shared_ptr<ControllerPosition> position) = 0;
         virtual shared_ptr<Pilot> createAIPilot(shared_ptr<Flight> flight) = 0;
         virtual string getResourceFilePath(const vector<string>& relativePathParts) = 0;
-        virtual string getHostFilePath(int numFoldersUp, const vector<string>& downPathParts) = 0;
+        virtual string getHostFilePath(const vector<string>& relativePathParts) = 0;
         virtual shared_ptr<istream> openFileForRead(const string& filePath) = 0;
         virtual void writeLog(const char* format, ...) = 0;
+    public:
+        static LogTimePoint logStartTime;
+        static void initLogString();
+        static void formatLogString(char logString[512], const char* format, va_list args);
     };
 }
 

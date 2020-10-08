@@ -1,0 +1,54 @@
+.tool-panel {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 2000;
+
+    .tool-frame {
+        margin-bottom: 5px;
+        padding: 3px;
+        color: white;
+        background-color: #9b6c9b;
+        opacity: 0.5;
+        border-radius: 3px;
+        
+        button {
+            cursor: pointer;
+            background-color: #600060;
+            border: 1px solid #600060;
+            border-radius: 3px;
+            margin: 2px;
+            font-size:10pt;
+            color: white;
+
+
+
+            &.pressed {
+                box-shadow: inset 0 0 5px yellow;
+                border: 1px solid yellow;                
+
+                &:hover {
+                    box-shadow: inset 0 0 5px yellow;
+                    border: 1px solid yellow;                
+                    background-color: #7a0fc6;
+                }
+            }
+
+            &:hover {
+                border: 1px solid #7a0fc6;
+                background-color: #7a0fc6;
+            }
+        }
+
+        input {
+            border: none;
+            color: rgb(50, 6, 62);
+            background-color: #decbde;
+            border-radius: 3px;
+            margin: 2px;
+            padding: 1px;
+            width: 100px;
+            font-size:10pt;
+        }
+    }
+}

@@ -109,11 +109,21 @@ namespace world
         vector<shared_ptr<TestAIController>> m_createdAIControllers;
         vector<shared_ptr<TestAIPilot>> m_createdAIPilots;
         shared_ptr<World> m_world;
+        bool m_quiet;
     public:
         TestHostServices() :
+            TestHostServices(false)
+        {
+        }
+        explicit TestHostServices(bool shouldWriteLogs) :
+            m_quiet(!shouldWriteLogs),
             m_geoToLocal(defaultGeoToLocal),
             m_localToGeo(defaultLocalToGeo)
         {
+            if (shouldWriteLogs)
+            {
+                HostServices::initLogString();
+            }
         }
     public:
         shared_ptr<World> getWorld() override
@@ -166,6 +176,16 @@ namespace world
         }
         void writeLog(const char* format, ...) override
         {
+            if (m_quiet)
+            {
+                return;
+            }
+            char buffer[512];
+            va_list args;
+            va_start(args, format);
+            HostServices::formatLogString(buffer, format, args);
+            va_end(args);
+            cout << buffer;
         }
         string getResourceFilePath(const vector<string>& relativePathParts) override
         {
@@ -177,14 +197,10 @@ namespace world
             }
             return fullPath;
         }
-        string getHostFilePath(int numFoldersUp, const vector<string>& downPathParts) override
+        string getHostFilePath(const vector<string>& relativePathParts) override
         {
-            string fullPath = "PLUGIN_DIR";
-            for (int i = 0 ; i < numFoldersUp ; i++)
-            {
-                fullPath.append("/..");
-            }
-            for (const string& part : downPathParts)
+            string fullPath = "HOST_DIR";
+            for (const string& part : relativePathParts)
             {
                 fullPath.append("/");
                 fullPath.append(part);
@@ -225,7 +241,11 @@ namespace world
     public:
         static shared_ptr<TestHostServices> create()
         {
-            auto testHost = make_shared<TestHostServices>();
+            return createWithLogs(false);
+        }
+        static shared_ptr<TestHostServices> createWithLogs(bool shouldWriteLogs = true)
+        {
+            auto testHost = make_shared<TestHostServices>(shouldWriteLogs);
             testHost->initializeServices(testHost);
             return testHost;
         }

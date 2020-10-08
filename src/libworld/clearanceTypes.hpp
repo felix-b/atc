@@ -110,6 +110,26 @@ namespace world
         shared_ptr<TaxiPath> taxiPath() const { return m_taxiPath; }
     };
 
+    class ArrivalTaxiClearance : public Clearance
+    {
+    private:
+        string m_parkingStand;
+        shared_ptr<TaxiPath> m_taxiPath;
+    public:
+        ArrivalTaxiClearance(
+            const Header& _header,
+            const string& _parkingStand,
+            shared_ptr<TaxiPath> _taxiPath
+        ) : Clearance(_header),
+            m_parkingStand(_parkingStand),
+            m_taxiPath(_taxiPath)
+        {
+        }
+    public:
+        const string& parkingStand() const { return m_parkingStand; }
+        shared_ptr<TaxiPath> taxiPath() const { return m_taxiPath; }
+    };
+
     class RunwayCrossClearance : public Clearance
     {
     private:

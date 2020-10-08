@@ -6,6 +6,8 @@
 #include <unordered_set>
 #include <queue>
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 #include <algorithm>
 
 namespace world
@@ -44,13 +46,41 @@ namespace world
 
         for (const auto& edge : edges)
         {
-            if (result.size() == 0 || edge->name().compare(result[result.size()-1]) != 0)
+            if (edge->name().length() > 0)
             {
-                result.push_back(edge->name());
+                if (result.size() == 0 || edge->name().compare(result[result.size() - 1]) != 0)
+                {
+                    result.push_back(edge->name());
+                }
             }
         }
 
         return result;
+    }
+
+    string TaxiPath::toHumanFriendlyString()
+    {
+        auto steps = toHumanFriendlySteps();
+        stringstream text;
+        bool first = true;
+
+        for (const auto& step : steps)
+        {
+            if (!first)
+            {
+                text << ",";
+            }
+            text << step;
+            first = false;
+        }
+
+        return text.str();
+    }
+
+    void TaxiPath::appendEdge(shared_ptr<TaxiEdge> edge)
+    {
+        edges.push_back(edge);
+        toNode = edge->node2();
     }
 
     void TaxiPath::appendEdgeTo(const UniPoint& destination)
@@ -105,7 +135,13 @@ namespace world
         {
             if (frontier.size() == 0)
             {
-                throw runtime_error("Requested taxi path could not be found");
+                stringstream errorMessage;
+                errorMessage << setprecision(11)
+                             << "Unable to find taxi path! From ["
+                             << from->id() << "|" << from->location().geo().latitude << "," << from->location().geo().longitude
+                             << "] to ["
+                             << to->id() << "|" << to->location().geo().latitude << "," << to->location().geo().longitude << "]";
+                throw runtime_error(errorMessage.str());
             }
 
             tail = frontier.top();

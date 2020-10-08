@@ -21,29 +21,30 @@ namespace world
             : intent->subjectFlight()->callSign());
 
         m_host->writeLog(
-            "%s ON[%d] [%s]->[%s]: %s",
-            message.c_str(),
+            "%d|%s [%s]->[%s] %s",
             m_khz,
+            message.c_str(),
             fromCallSign.c_str(),
             toCallSign.c_str(),
             transmission->verbalizedUtterance()->plainText().c_str());
     }
 
-    shared_ptr<Transmission> Frequency::enqueueTransmission(const shared_ptr<Intent> intent, long long replyToTransmissionId)
+    shared_ptr<Transmission> Frequency::enqueueTransmission(const shared_ptr<Intent> intent)
     {
-        if (m_pendingTransmissions.size() < 1000)
+        if (m_pendingTransmissions.size() >= 1000)
         {
-            auto transmission = shared_ptr<Transmission>(new Transmission(m_nextTransmissionId++, replyToTransmissionId, intent));
-            auto utterance = m_host->services().get<PhraseologyService>()->verbalizeIntent(intent);
-            transmission->setVerbalizedUtterance(utterance);
-
-            logTransmission("ENQEUE TRANSMISSION", transmission);
-
-            m_pendingTransmissions.push(transmission);
-            return transmission;
+            m_host->writeLog("%d|ERROR transmission queue full, cannot enqueue intent code[%d]", m_khz, intent->code());
+            return nullptr;
         }
 
-        return nullptr;
+        auto transmission = shared_ptr<Transmission>(new Transmission(m_nextTransmissionId++, intent));
+        auto utterance = m_host->services().get<PhraseologyService>()->verbalizeIntent(intent);
+        transmission->setVerbalizedUtterance(utterance);
+
+        logTransmission("ENQEUE TRANSMISSION", transmission);
+
+        m_pendingTransmissions.push(transmission);
+        return transmission;
     }
 
     void Frequency::beginTransmission(shared_ptr<Transmission> transmission, chrono::microseconds timestamp)
@@ -70,6 +71,7 @@ namespace world
         m_transmissionInProgress->m_state = Transmission::State::Completed;
         m_transmissionInProgress.reset();
         m_queryTransmissionCompletion = TextToSpeechService::noopQueryCompletion;
+        m_lastTransmissionEndTimestamp = timestamp;
 
         for (const auto& pair : m_listenerById)
         {
@@ -79,7 +81,7 @@ namespace world
             }
             catch(const exception& e)
             {
-                m_host->writeLog("FREQUENCY LISTENER CRASHED!!! %s", e.what());
+                m_host->writeLog("%d|FREQUENCY LISTENER CRASHED!!! %s", m_khz, e.what());
             }
         }
     }
@@ -117,5 +119,16 @@ namespace world
         m_pendingTransmissions = queue<shared_ptr<Transmission>>();
         m_transmissionInProgress.reset();
         m_queryTransmissionCompletion = TextToSpeechService::noopQueryCompletion;
+    }
+
+    bool Frequency::wasSilentFor(chrono::milliseconds duration)
+    {
+        if (m_transmissionInProgress || !m_pendingTransmissions.empty())
+        {
+            return false;
+        }
+
+        auto now = m_host->getWorld()->timestamp();
+        return (now - m_lastTransmissionEndTimestamp >= duration);
     }
 }

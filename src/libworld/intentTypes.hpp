@@ -20,10 +20,13 @@ namespace world
         string m_atisLetter; 
     public:
         PilotIfrClearanceRequestIntent(
+            uint64_t _id,
             const string& _atisLetter,
             shared_ptr<Flight> flight, 
             shared_ptr<ControllerPosition> clearanceDelivery
         ) : Intent(
+                _id,
+                0,
                 Direction::PilotToController, 
                 Type::Request, 
                 IntentCode,
@@ -46,12 +49,16 @@ namespace world
         shared_ptr<IfrClearance> m_clearance;
     public:
         DeliveryIfrClearanceReplyIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
             shared_ptr<ControllerPosition> clearanceDelivery,
             shared_ptr<Flight> flight, 
             bool _cleared, 
             shared_ptr<IfrClearance> _clearance
         ) : Intent(
-                Direction::ControllerToPilot, 
+                _id,
+                _replyToId,
+                Direction::ControllerToPilot,
                 Type::Clearance, 
                 IntentCode,
                 clearanceDelivery,
@@ -73,8 +80,13 @@ namespace world
     private:
         shared_ptr<IfrClearance> m_clearance;
     public:
-        PilotIfrClearanceReadbackIntent(shared_ptr<IfrClearance> _clearance) : 
-            Intent(
+        PilotIfrClearanceReadbackIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<IfrClearance> _clearance
+        ) : Intent(
+                _id,
+                _replyToId,
                 Direction::PilotToController, 
                 Type::ClearanceReadback, 
                 IntentCode,
@@ -97,8 +109,15 @@ namespace world
         bool m_correct;
         int m_groundKhz;
     public:
-        DeliveryIfrClearanceReadbackCorrectIntent(shared_ptr<IfrClearance> _clearance, bool _correct, int _groundKhz) : 
-            Intent(
+        DeliveryIfrClearanceReadbackCorrectIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<IfrClearance> _clearance,
+            bool _correct,
+            int _groundKhz
+        ) : Intent(
+                _id,
+                _replyToId,
                 Direction::ControllerToPilot, 
                 Type::Information, 
                 IntentCode,
@@ -122,9 +141,12 @@ namespace world
         static constexpr int IntentCode = 1040;
     public:
         PilotPushAndStartRequestIntent(
-            shared_ptr<Flight> flight, 
+            uint64_t _id,
+            shared_ptr<Flight> flight,
             shared_ptr<ControllerPosition> ground
         ) : Intent(
+                _id,
+                0,
                 Direction::PilotToController, 
                 Type::Request, 
                 IntentCode,
@@ -144,11 +166,15 @@ namespace world
         shared_ptr<PushAndStartApproval> m_approval;
     public:
         GroundPushAndStartReplyIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
             shared_ptr<ControllerPosition> ground,
             shared_ptr<Flight> flight, 
             bool _approved, 
             shared_ptr<PushAndStartApproval> _approval
         ) : Intent(
+                _id,
+                _replyToId,
                 Direction::ControllerToPilot, 
                 Type::Clearance, 
                 IntentCode,
@@ -169,9 +195,15 @@ namespace world
     public:
         static constexpr int IntentCode = 1060;
     public:
-        PilotAffirmationIntent(shared_ptr<Flight> _subjectFlight, shared_ptr<ControllerPosition> _subjectControl) : 
-            Intent(
-                Direction::PilotToController, 
+        PilotAffirmationIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<Flight> _subjectFlight,
+            shared_ptr<ControllerPosition> _subjectControl
+        ) : Intent(
+                _id,
+                _replyToId,
+                Direction::PilotToController,
                 Type::Request, 
                 IntentCode,
                 _subjectControl,
@@ -188,8 +220,15 @@ namespace world
     private:
         int m_newFrequencyKhz;
     public:
-        PilotHandoffReadbackIntent(shared_ptr<Flight> _subjectFlight, shared_ptr<ControllerPosition> _subjectControl, int _newFrequencyKhz) : 
-            Intent(
+        PilotHandoffReadbackIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<Flight> _subjectFlight,
+            shared_ptr<ControllerPosition> _subjectControl,
+            int _newFrequencyKhz
+        ) : Intent(
+                _id,
+                _replyToId,
                 Direction::PilotToController, 
                 Type::Affirmation, 
                 IntentCode,
@@ -209,9 +248,12 @@ namespace world
         static constexpr int IntentCode = 1070;
     public:
         PilotDepartureTaxiRequestIntent(
-            shared_ptr<Flight> flight, 
+            uint64_t _id,
+            shared_ptr<Flight> flight,
             shared_ptr<ControllerPosition> ground
         ) : Intent(
+                _id,
+                0,
                 Direction::PilotToController, 
                 Type::Request, 
                 IntentCode,
@@ -231,12 +273,16 @@ namespace world
         shared_ptr<DepartureTaxiClearance> m_clearance;
     public:
         GroundDepartureTaxiReplyIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
             shared_ptr<ControllerPosition> ground,
             shared_ptr<Flight> flight, 
             bool _cleared, 
             shared_ptr<DepartureTaxiClearance> _clearance
         ) : Intent(
-                Direction::ControllerToPilot, 
+                _id,
+                _replyToId,
+                Direction::ControllerToPilot,
                 Type::Clearance, 
                 IntentCode,
                 ground,
@@ -258,8 +304,13 @@ namespace world
     private:
         shared_ptr<DepartureTaxiClearance> m_clearance;
     public:
-        PilotDepartureTaxiReadbackIntent(shared_ptr<DepartureTaxiClearance> _clearance) : 
-            Intent(
+        PilotDepartureTaxiReadbackIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<DepartureTaxiClearance> _clearance
+        ) : Intent(
+                _id,
+                _replyToId,
                 Direction::PilotToController, 
                 Type::Request, 
                 IntentCode,
@@ -281,9 +332,16 @@ namespace world
         string m_runway;
         string m_holdingPoint;
     public:
-        PilotReportHoldingShortIntent(shared_ptr<Flight> _subjectFlight, shared_ptr<ControllerPosition> _subjectControl, const string& _runway, const string& _holdingPoint) : 
-            Intent(
-                Direction::PilotToController, 
+        PilotReportHoldingShortIntent(
+            uint64_t _id,
+            shared_ptr<Flight> _subjectFlight,
+            shared_ptr<ControllerPosition> _subjectControl,
+            const string& _runway,
+            const string& _holdingPoint
+        ) : Intent(
+                _id,
+                0,
+                Direction::PilotToController,
                 Type::Report, 
                 IntentCode,
                 _subjectControl,
@@ -305,8 +363,13 @@ namespace world
     private:
         shared_ptr<RunwayCrossClearance> m_clearance;
     public:
-        GroundRunwayCrossClearanceIntent(shared_ptr<RunwayCrossClearance> _clearance) :
-            Intent(
+        GroundRunwayCrossClearanceIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<RunwayCrossClearance> _clearance
+        ) : Intent(
+                _id,
+                _replyToId,
                 Direction::ControllerToPilot,
                 Type::Clearance,
                 IntentCode,
@@ -327,8 +390,15 @@ namespace world
     private:
         int m_towerKhz;
     public:
-        GroundSwitchToTowerIntent(shared_ptr<Flight> _subjectFlight, shared_ptr<ControllerPosition> _subjectControl, int _towerKhz) : 
-            Intent(
+        GroundSwitchToTowerIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<Flight> _subjectFlight,
+            shared_ptr<ControllerPosition> _subjectControl,
+            int _towerKhz
+        ) : Intent(
+                _id,
+                _replyToId,
                 Direction::ControllerToPilot, 
                 Type::Information, 
                 IntentCode,
@@ -352,12 +422,15 @@ namespace world
         bool m_haveNumbers;
     public:
         PilotCheckInWithTowerIntent(
-            shared_ptr<Flight> _subjectFlight, 
+            uint64_t _id,
+            shared_ptr<Flight> _subjectFlight,
             shared_ptr<ControllerPosition> _subjectControl, 
             const string& _runway, 
             const string& _holdingPoint, 
             bool _haveNumbers
         ) : Intent(
+                _id,
+                0,
                 Direction::PilotToController, 
                 Type::Report, 
                 IntentCode,
@@ -380,8 +453,14 @@ namespace world
     public:
         static const int IntentCode = 1130;
     public:
-        ControlStandbyIntent(shared_ptr<Flight> _subjectFlight, shared_ptr<ControllerPosition> _subjectControl) : 
-            Intent(
+        ControlStandbyIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<Flight> _subjectFlight,
+            shared_ptr<ControllerPosition> _subjectControl
+        ) : Intent(
+                _id,
+                _replyToId,
                 Direction::ControllerToPilot, 
                 Type::Report, 
                 IntentCode,
@@ -400,8 +479,13 @@ namespace world
     private:
         shared_ptr<LineupApproval> m_approval;
     public:
-        TowerLineUpIntent(shared_ptr<LineupApproval> _approval) : 
-            Intent(
+        TowerLineUpIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<LineupApproval> _approval
+        ) : Intent(
+                _id,
+                _replyToId,
                 Direction::ControllerToPilot, 
                 Type::Report, 
                 IntentCode,
@@ -424,8 +508,13 @@ namespace world
     private:
         shared_ptr<LineupApproval> m_approval;
     public:
-        PilotLineUpReadbackIntent(shared_ptr<LineupApproval> _approval) : 
-            Intent(
+        PilotLineUpReadbackIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<LineupApproval> _approval
+        ) : Intent(
+                _id,
+                _replyToId,
                 Direction::PilotToController, 
                 Type::Report, 
                 IntentCode,
@@ -451,13 +540,16 @@ namespace world
         int m_departureKhz;
     public:
         TowerClearedForTakeoffIntent(
+            uint64_t _id,
             shared_ptr<ControllerPosition> tower,
             shared_ptr<Flight> flight, 
             bool _cleared, 
             shared_ptr<TakeoffClearance> _clearance,
             int _departureKhz
         ) : Intent(
-                Direction::ControllerToPilot, 
+                _id,
+                0,
+                Direction::ControllerToPilot,
                 Type::Clearance, 
                 IntentCode,
                 tower,
@@ -482,9 +574,15 @@ namespace world
         shared_ptr<TakeoffClearance> m_clearance;
         int m_departureKhz;
     public:
-        PilotTakeoffClearanceReadbackIntent(shared_ptr<TakeoffClearance> _clearance, int _departureKhz) : 
-            Intent(
-                Direction::PilotToController, 
+        PilotTakeoffClearanceReadbackIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<TakeoffClearance> _clearance,
+            int _departureKhz
+        ) : Intent(
+                _id,
+                _replyToId,
+                Direction::PilotToController,
                 Type::Request, 
                 IntentCode,
                 _clearance->header().issuedBy,
@@ -506,8 +604,14 @@ namespace world
     private:
         string m_runway;
     public:
-        PilotReportFinalIntent(shared_ptr<Flight> _subjectFlight, shared_ptr<ControllerPosition> _subjectControl, const string& _runway) : 
-            Intent(
+        PilotReportFinalIntent(
+            uint64_t _id,
+            shared_ptr<Flight> _subjectFlight,
+            shared_ptr<ControllerPosition> _subjectControl,
+            const string& _runway
+        ) : Intent(
+                _id,
+                0,
                 Direction::PilotToController, 
                 Type::Report, 
                 IntentCode,
@@ -531,12 +635,16 @@ namespace world
         int m_groundKhz;
     public:
         TowerClearedForLandingIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
             shared_ptr<ControllerPosition> tower,
             shared_ptr<Flight> flight, 
             bool _cleared, 
             shared_ptr<LandingClearance> _clearance,
             int _groundKhz
         ) : Intent(
+                _id,
+                _replyToId,
                 Direction::ControllerToPilot, 
                 Type::Clearance, 
                 IntentCode,
@@ -562,8 +670,13 @@ namespace world
         shared_ptr<LandingClearance> m_clearance;
         int m_groundKhz;
     public:
-        PilotLandingClearanceReadbackIntent(shared_ptr<LandingClearance> _clearance, int _groundKhz) : 
-            Intent(
+        PilotLandingClearanceReadbackIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<LandingClearance> _clearance, int _groundKhz
+        ) : Intent(
+                _id,
+                _replyToId,
                 Direction::PilotToController, 
                 Type::Request, 
                 IntentCode,
@@ -577,5 +690,101 @@ namespace world
     public:
         shared_ptr<LandingClearance> clearance() const { return m_clearance; }
         int groundKhz() const { return m_groundKhz; }
+    };
+
+    class PilotArrivalCheckInWithGroundIntent : public Intent
+    {
+    public:
+        static const int IntentCode = 1210;
+    private:
+        string m_runway;
+        string m_exitName;
+        shared_ptr<TaxiEdge> m_exitEdge;  //TODO: handle human pilot
+    public:
+        PilotArrivalCheckInWithGroundIntent(
+            uint64_t _id,
+            shared_ptr<Flight> _subjectFlight,
+            shared_ptr<ControllerPosition> _subjectControl,
+            const string& _runway,
+            const string& _exitName,
+            shared_ptr<TaxiEdge> _exitEdge
+        ) : Intent(
+            _id,
+            0,
+            Direction::PilotToController,
+            Type::Report,
+            IntentCode,
+            _subjectControl,
+            _subjectFlight
+        ),
+            m_runway(_runway),
+            m_exitName(_exitName),
+            m_exitEdge(_exitEdge)
+        {
+        }
+    public:
+        const string& runway() const { return m_runway; }
+        const string& exitName() const { return m_exitName; }
+        shared_ptr<TaxiEdge> exitEdge() const { return m_exitEdge; }
+    };
+
+    class GroundArrivalTaxiReplyIntent : public Intent
+    {
+    public:
+        static constexpr int IntentCode = 1220;
+    private:
+        bool m_cleared;
+        shared_ptr<ArrivalTaxiClearance> m_clearance;
+    public:
+        GroundArrivalTaxiReplyIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<ControllerPosition> ground,
+            shared_ptr<Flight> flight,
+            bool _cleared,
+            shared_ptr<ArrivalTaxiClearance> _clearance
+        ) : Intent(
+                _id,
+                _replyToId,
+                Direction::ControllerToPilot,
+                Type::Clearance,
+                IntentCode,
+                ground,
+                flight
+            ),
+            m_cleared(_cleared),
+            m_clearance(_clearance)
+        {
+        }
+    public:
+        bool cleared() const { return m_cleared; }
+        shared_ptr<ArrivalTaxiClearance> clearance() const { return m_clearance; }
+    };
+
+    class PilotArrivalTaxiReadbackIntent : public Intent
+    {
+    public:
+        static const int IntentCode = 1230;
+    private:
+        shared_ptr<ArrivalTaxiClearance> m_clearance;
+    public:
+        PilotArrivalTaxiReadbackIntent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            shared_ptr<ArrivalTaxiClearance> _clearance
+        ) : Intent(
+                _id,
+                _replyToId,
+                Direction::PilotToController,
+                Type::Request,
+                IntentCode,
+                _clearance->header().issuedBy,
+                _clearance->header().issuedTo
+            ),
+            m_clearance(_clearance)
+        {
+        }
+    public:
+        shared_ptr<ArrivalTaxiClearance> clearance() const { return m_clearance; }
     };
 }
