@@ -29,6 +29,7 @@ namespace world
         m_location = GeoMath::getPointAtDistance(parkingStand->location().geo(), GeoMath::flipHeading(parkingStand->heading()), 13);
         m_attitude = AircraftAttitude({ parkingStand->heading(), 0, 0 });
         m_altitude = Altitude::ground();
+        m_groundSpeedKt = 0;
     }
 
     void Aircraft::setOnFinal(const Runway::End& runwayEnd)

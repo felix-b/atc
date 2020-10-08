@@ -14,6 +14,12 @@ namespace ai
     {
     public:
         typedef function<shared_ptr<Maneuver>(shared_ptr<TaxiEdge> atEdge)> HoldingShortCallback;
+        enum class TaxiType
+        {
+            Normal = 1,
+            Pushback = 2,
+            HighSpeed = 3
+        };
     private:
         shared_ptr<HostServices> m_host;
     public:
@@ -33,19 +39,19 @@ namespace ai
         shared_ptr<Maneuver> taxiByPath(
             shared_ptr<Flight> flight, 
             shared_ptr<TaxiPath> path,
-            bool isPushback,
+            TaxiType typeOfTaxi,
             HoldingShortCallback onHoldingShort = noopOnHoldingShort);
         //shared_ptr<Maneuver> taxiByPath2(shared_ptr<Flight> flight, const vector<GeoPoint>& path, bool isPushback);
         shared_ptr<Maneuver> taxiStraight(
             shared_ptr<Flight> flight, 
             const GeoPoint& from, 
             const GeoPoint& to, 
-            bool isPushback);
+            TaxiType typeOfTaxi);
         shared_ptr<Maneuver> taxiTurn(
             shared_ptr<Flight> flight,
             const GeoMath::TurnArc& arc,
             chrono::microseconds duration,
-            bool isPushback);
+            TaxiType typeOfTaxi);
         shared_ptr<Maneuver> taxiStop(shared_ptr<Flight> flight);
         shared_ptr<Maneuver> instantAction(function<void()> action);
         shared_ptr<Maneuver> delay(chrono::microseconds duration);
@@ -58,7 +64,7 @@ namespace ai
         shared_ptr<Maneuver> awaitClearance(
             shared_ptr<Flight> flight, 
             Clearance::Type clearanceType, 
-            Maneuver::Type type = Maneuver::Type::Unspecified, 
+            Maneuver::Type type = Maneuver::Type::AwaitClearance,
             const string& id = "");
         shared_ptr<Maneuver> sequence(Maneuver::Type type, const string& id, const vector<shared_ptr<Maneuver>>& steps);
         shared_ptr<Maneuver> parallel(Maneuver::Type type, const string& id, const vector<shared_ptr<Maneuver>>& steps);

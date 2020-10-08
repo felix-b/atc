@@ -386,7 +386,7 @@ private:
 
         int requestIdCopy = m_activeRequestId;
         const auto& radioStyle = message.radioStyle;
-        chrono::milliseconds timePttAt = radioStyle.delayBeforePtt;
+        chrono::milliseconds timePttAt =  radioStyle.delayBeforePtt;
         chrono::milliseconds timeSpeakAt = timePttAt + radioStyle.delayAfterPtt;
         chrono::milliseconds timePttOffAt = timeSpeakAt + speechPlaybackTime + radioStyle.delayAfterSpeech;
 

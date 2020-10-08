@@ -205,7 +205,27 @@ namespace ai
                 runwayName,
                 ground->frequency()->khz()
             ));
-        }   
+        }
+
+        shared_ptr<ArrivalTaxiClearance> arrivalTaxiClearance(shared_ptr<Flight> flight, const GeoPoint& fromPoint)
+        {
+            auto airport = getArrivalAirport(flight);
+            auto gate = airport->getParkingStandOrThrow(flight->plan()->arrivalGate());
+            auto taxiPath = airport->taxiNet()->tryFindTaxiPathToGate(gate, fromPoint);
+
+            Clearance::Header header;
+            initClearanceHeader(
+                header,
+                Clearance::Type::ArrivalTaxiClearance,
+                airport->groundAt(flight->aircraft()->location()),
+                flight);
+
+            return shared_ptr<ArrivalTaxiClearance>(new ArrivalTaxiClearance(
+                header,
+                flight->plan()->arrivalGate(),
+                taxiPath
+            ));
+        }
 
     private:
         void initClearanceHeader(

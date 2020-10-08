@@ -154,7 +154,7 @@ private:
             }
         }
 
-        label = m_flight->callSign() + " | " + getAltitudeString(source->altitude());
+        label = getLabelText(source);
 
         SetHeading(attitude.heading());
         SetPitch(attitude.pitch() + pitchAdjustment);
@@ -198,18 +198,28 @@ private:
 
 private:
 
+    string getLabelText(const shared_ptr<world::Aircraft>& aircraft)
+    {
+        string altitudeString = getAltitudeString(aircraft->altitude());
+        return altitudeString.empty()
+            ? m_flight->callSign()
+            : m_flight->callSign() + " | " + altitudeString;
+    }
+
+private:
+
     static string getAltitudeString(const Altitude& altitude)
     {
         switch (altitude.type())
         {
         case Altitude::Type::Ground:
-            return to_string(altitude.feet()) + " GND";
+            return "";
         case Altitude::Type::AGL:
-            return to_string(altitude.feet()) + " AGL";
+            return to_string((int)altitude.feet()) + " AGL";
         case Altitude::Type::MSL:
-            return to_string(altitude.feet()) + " MSL";
+            return to_string((int)altitude.feet()) + " MSL";
         default:
-            return to_string(altitude.feet()) + " ???";
+            return to_string((int)altitude.feet()) + " ???";
         }
     }
 };

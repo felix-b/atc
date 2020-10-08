@@ -83,7 +83,45 @@ TEST(WorldBuilderTest, buildTaxiNet_triangle)
     EXPECT_EQ(n3->edges()[1]->node2(), n1);
 }
 
-TEST(WorldBuilderTest, assembleAirport_taxiNetAndRunways) 
+TEST(WorldBuilderTest, buildTaxiNet_hasTaxiway_hasRunways)
+{
+    auto host = TestHostServices::create();
+
+    auto n1 = shared_ptr<TaxiNode>(new TaxiNode(111, UniPoint::fromLocal(host, {10, GROUND, 10})));
+    auto n2 = shared_ptr<TaxiNode>(new TaxiNode(222, UniPoint::fromLocal(host, {10, GROUND, 20})));
+    auto n3 = shared_ptr<TaxiNode>(new TaxiNode(333, UniPoint::fromLocal(host, {20, GROUND, 20})));
+    auto n4 = shared_ptr<TaxiNode>(new TaxiNode(444, UniPoint::fromLocal(host, {20, GROUND, 10})));
+    auto e12 = shared_ptr<TaxiEdge>(new TaxiEdge(1001, "E12", 111, 222));
+    auto e23 = shared_ptr<TaxiEdge>(new TaxiEdge(1002, "E23", 222, 333));
+    auto e34 = shared_ptr<TaxiEdge>(new TaxiEdge(1003, "E34", 333, 444, TaxiEdge::Type::Groundway));
+    auto e41 = shared_ptr<TaxiEdge>(new TaxiEdge(1004, "09/27", 444, 111, TaxiEdge::Type::Runway));
+
+    auto rwy0927 = shared_ptr<Runway>(new Runway(
+        Runway::End("09", 0, 0, n1->location()),
+        Runway::End("27", 0, 0, n4->location()),
+        30
+    ));
+
+    auto airport = WorldBuilder::assembleAirport(
+        host,
+        testHeader,
+        { rwy0927 },
+        {},
+        { n1, n2, n3, n4 },
+        { e12, e23, e34, e41 });
+
+    EXPECT_TRUE(n1->hasTaxiway());
+    EXPECT_TRUE(n2->hasTaxiway());
+    EXPECT_TRUE(n3->hasTaxiway());
+    EXPECT_FALSE(n4->hasTaxiway());
+
+    EXPECT_TRUE(n1->hasRunway());
+    EXPECT_FALSE(n2->hasRunway());
+    EXPECT_FALSE(n3->hasRunway());
+    EXPECT_TRUE(n4->hasRunway());
+}
+
+TEST(WorldBuilderTest, assembleAirport_taxiNetAndRunways)
 {
     auto host = TestHostServices::create();
 
@@ -149,6 +187,119 @@ TEST(WorldBuilderTest, assembleAirport_taxiNetAndRunways)
     EXPECT_EQ(er12->runway(), rwy1836);
     EXPECT_EQ(er12->runway(), rwy1836);
     EXPECT_EQ(er12->runway(), rwy1836);
+}
+
+TEST(WorldBuilderTest, buildTaxiNet_isHighSpeedExitRunway)
+{
+    auto host = TestHostServices::create();
+
+    auto n1 = shared_ptr<TaxiNode>(new TaxiNode(111, UniPoint::fromGeo(host, {30.20, 45.10})));
+    auto n2 = shared_ptr<TaxiNode>(new TaxiNode(222, UniPoint::fromGeo(host, {30.20, 45.20})));
+    auto n3 = shared_ptr<TaxiNode>(new TaxiNode(333, UniPoint::fromGeo(host, {30.20, 45.30})));
+    auto n4 = shared_ptr<TaxiNode>(new TaxiNode(444, UniPoint::fromGeo(host, {30.10, 45.10})));
+    auto n5 = shared_ptr<TaxiNode>(new TaxiNode(555, UniPoint::fromGeo(host, {30.10, 45.20})));
+    auto n6 = shared_ptr<TaxiNode>(new TaxiNode(666, UniPoint::fromGeo(host, {30.10, 45.30})));
+    auto n7 = shared_ptr<TaxiNode>(new TaxiNode(777, UniPoint::fromGeo(host, {30.30, 45.30})));
+    auto n8 = shared_ptr<TaxiNode>(new TaxiNode(888, UniPoint::fromGeo(host, {30.30, 45.10})));
+
+    auto e12 = shared_ptr<TaxiEdge>(new TaxiEdge(1001, "09/27", 111, 222, TaxiEdge::Type::Runway));
+    auto e23 = shared_ptr<TaxiEdge>(new TaxiEdge(1002, "09/27", 222, 333, TaxiEdge::Type::Runway));
+    auto e14 = shared_ptr<TaxiEdge>(new TaxiEdge(1003, "A1", 111, 444));
+    auto e26 = shared_ptr<TaxiEdge>(new TaxiEdge(1004, "A2", 222, 666));
+    auto e27 = shared_ptr<TaxiEdge>(new TaxiEdge(1005, "B1", 222, 777));
+    auto e28 = shared_ptr<TaxiEdge>(new TaxiEdge(1006, "B2", 222, 888));
+    auto e36 = shared_ptr<TaxiEdge>(new TaxiEdge(1007, "A3", 333, 666));
+
+    auto rwy0927 = shared_ptr<Runway>(new Runway(
+        Runway::End("09", 0, 0, n1->location()),
+        Runway::End("27", 0, 0, n3->location()),
+        30
+    ));
+
+    auto airport = WorldBuilder::assembleAirport(
+        host,
+        testHeader,
+        { rwy0927 },
+        {},
+        { n1, n2, n3, n4, n5, n6, n7, n8 },
+        { e12, e23, e14, e26, e27, e28, e36 });
+
+    EXPECT_FALSE(e12->isHighSpeedExitRunway("09"));
+    EXPECT_FALSE(e12->isHighSpeedExitRunway("27"));
+
+    EXPECT_FALSE(e23->isHighSpeedExitRunway("09"));
+    EXPECT_FALSE(e23->isHighSpeedExitRunway("27"));
+
+    EXPECT_FALSE(e14->isHighSpeedExitRunway("09"));
+    EXPECT_FALSE(e14->isHighSpeedExitRunway("27"));
+
+    EXPECT_TRUE(e26->isHighSpeedExitRunway("09"));
+    EXPECT_FALSE(e26->isHighSpeedExitRunway("27"));
+
+    EXPECT_TRUE(e27->isHighSpeedExitRunway("09"));
+    EXPECT_FALSE(e27->isHighSpeedExitRunway("27"));
+
+    EXPECT_FALSE(e28->isHighSpeedExitRunway("09"));
+    EXPECT_TRUE(e28->isHighSpeedExitRunway("27"));
+
+    EXPECT_FALSE(e36->isHighSpeedExitRunway("09"));
+    EXPECT_FALSE(e36->isHighSpeedExitRunway("27"));
+}
+
+TEST(WorldBuilderTest, buildTaxiNet_runwayEdgeDirection)
+{
+    auto host = TestHostServices::create();
+
+    auto n1 = shared_ptr<TaxiNode>(new TaxiNode(111, UniPoint::fromGeo(host, {30.20, 45.10})));
+    auto n2 = shared_ptr<TaxiNode>(new TaxiNode(222, UniPoint::fromGeo(host, {30.20, 45.20})));
+    auto n3 = shared_ptr<TaxiNode>(new TaxiNode(333, UniPoint::fromGeo(host, {30.20, 45.30})));
+    auto n4 = shared_ptr<TaxiNode>(new TaxiNode(444, UniPoint::fromGeo(host, {30.10, 45.10})));
+    auto n5 = shared_ptr<TaxiNode>(new TaxiNode(555, UniPoint::fromGeo(host, {30.10, 45.20})));
+    auto n6 = shared_ptr<TaxiNode>(new TaxiNode(666, UniPoint::fromGeo(host, {30.10, 45.30})));
+
+    auto e12 = shared_ptr<TaxiEdge>(new TaxiEdge(1001, "09/27", 111, 222, TaxiEdge::Type::Runway));
+    auto e23 = shared_ptr<TaxiEdge>(new TaxiEdge(1002, "09/27", 222, 333, TaxiEdge::Type::Runway));
+    auto e41 = shared_ptr<TaxiEdge>(new TaxiEdge(1001, "A1", 444, 111));
+    auto e63= shared_ptr<TaxiEdge>(new TaxiEdge(1003, "A2", 666, 333));
+
+    auto rwy0927 = shared_ptr<Runway>(new Runway(
+        Runway::End("09", 0, 0, n1->location()),
+        Runway::End("27", 0, 0, n3->location()),
+        30
+    ));
+
+    auto airport = WorldBuilder::assembleAirport(
+        host,
+        testHeader,
+        { rwy0927 },
+        {},
+        { n1, n2, n3, n4, n5, n6},
+        { e12, e23, e41, e63 });
+
+    auto e21 = TaxiEdge::flipOver(e12);
+    auto e32 = TaxiEdge::flipOver(e23);
+    auto e14 = TaxiEdge::flipOver(e41);
+    auto e36 = TaxiEdge::flipOver(e63);
+
+    EXPECT_TRUE(e12->isRunway("09"));
+    EXPECT_FALSE(e12->isRunway("27"));
+    EXPECT_FALSE(e21->isRunway("09"));
+    EXPECT_TRUE(e21->isRunway("27"));
+
+    EXPECT_TRUE(e23->isRunway("09"));
+    EXPECT_FALSE(e23->isRunway("27"));
+    EXPECT_FALSE(e32->isRunway("09"));
+    EXPECT_TRUE(e32->isRunway("27"));
+
+    EXPECT_FALSE(e41->isRunway("09"));
+    EXPECT_FALSE(e41->isRunway("27"));
+    EXPECT_FALSE(e14->isRunway("09"));
+    EXPECT_FALSE(e14->isRunway("27"));
+
+    EXPECT_FALSE(e63->isRunway("09"));
+    EXPECT_FALSE(e63->isRunway("27"));
+    EXPECT_FALSE(e36->isRunway("09"));
+    EXPECT_FALSE(e36->isRunway("27"));
 }
 
 TEST(WorldBuilderTest, tidyAirportElevations_runways) {

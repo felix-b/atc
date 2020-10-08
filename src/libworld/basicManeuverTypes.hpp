@@ -159,10 +159,12 @@ namespace world
     class AwaitManeuver : public Maneuver
     {
     private:
+        shared_ptr<HostServices> m_host;
         function<bool()> m_isReady;
     public:
-        AwaitManeuver(Maneuver::Type _type, const string& _id, function<bool()> _isReady) :
+        AwaitManeuver(shared_ptr<HostServices> _host, Maneuver::Type _type, const string& _id, function<bool()> _isReady) :
             Maneuver(_type, _id, {}),
+            m_host(_host),
             m_isReady(_isReady)
         {
         }
@@ -171,12 +173,34 @@ namespace world
         {
             if (m_state == Maneuver::State::NotStarted)
             {
+                m_startTimestamp = timestamp;
                 m_state = Maneuver::State::InProgress;
             }
 
-            if (m_state == Maneuver::State::InProgress && m_isReady())
+            if (m_state == Maneuver::State::InProgress)
             {
-                m_state = Maneuver::State::Finished;
+                if (m_isReady())
+                {
+                    m_state = Maneuver::State::Finished;
+                    m_finishTimestamp = timestamp;
+                }
+                if (!id().empty())
+                {
+                    logStatus(timestamp);
+                }
+            }
+        }
+    private:
+        void logStatus(chrono::microseconds timestamp)
+        {
+            chrono::microseconds elapsed = timestamp - m_startTimestamp;
+            if (m_state == Maneuver::State::Finished)
+            {
+                m_host->writeLog("AIPILO|AWAIT [%s] FINISHED in [%d] ms", id().c_str(), elapsed.count() / 1000);
+            }
+            else if (elapsed.count() > 0 && (elapsed.count() % 1000000) == 0)
+            {
+                m_host->writeLog("AIPILO|AWAIT [%s] in progress for [%d] sec", id().c_str(), elapsed.count() / 1000000);
             }
         }
     };

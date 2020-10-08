@@ -315,11 +315,64 @@ namespace world
             }
         };
 
-        const auto resolveEdgeRunways = [&](shared_ptr<TaxiEdge> edge) {
-            if (edge->m_type == TaxiEdge::Type::Runway)
+        const auto resolveHighSpeedExits = [&](const shared_ptr<Runway>& runway, const shared_ptr<TaxiNode>& nodeOnRunway) {
+            for (const auto& edge : nodeOnRunway->m_edges)
             {
+                if (edge->m_type != TaxiEdge::Type::Taxiway)
+                {
+                    continue;
+                }
+
+                float turnDegrees1 = GeoMath::getTurnDegrees(runway->m_end1.m_heading, edge->m_heading);
+                if (abs(turnDegrees1) < 60)
+                {
+                    edge->m_highSpeedExitRunway = runway->m_end1.m_name;
+                    continue;
+                }
+
+                float turnDegrees2 = GeoMath::getTurnDegrees(runway->m_end2.m_heading, edge->m_heading);
+                if (abs(turnDegrees2) < 60)
+                {
+                    edge->m_highSpeedExitRunway = runway->m_end2.m_name;
+                }
+            }
+        };
+
+        const auto resolveEdgeRunwayEnds = [&](
+            const shared_ptr<Runway>& runway,
+            const shared_ptr<TaxiEdge>& edge1,
+            const shared_ptr<TaxiEdge>& edge2
+        ) {
+            float end1Turn = GeoMath::getTurnDegrees(runway->m_end1.m_heading, edge1->m_heading);
+            edge1->m_runwayEndName = abs(end1Turn) < 45
+                ? runway->m_end1.m_name
+                : runway->m_end2.m_name;
+
+            if (edge2)
+            {
+                edge2->m_runway = runway;
+                edge2->m_runwayEndName = abs(end1Turn) < 45
+                    ? runway->m_end2.m_name
+                    : runway->m_end1.m_name;
+            }
+        };
+
+        const auto resolveEdgeRunways = [&](shared_ptr<TaxiEdge> edge) {
+            switch (edge->m_type)
+            {
+            case TaxiEdge::Type::Runway:
                 edge->m_runway = airport->getRunwayOrThrow(edge->m_name);
                 edge->m_runway->m_edges.push_back(edge);
+                edge->m_node1->m_hasRunway = true;
+                edge->m_node2->m_hasRunway = true;
+                resolveEdgeRunwayEnds(edge->m_runway, edge, edge->m_flipOver);
+                resolveHighSpeedExits(edge->m_runway, edge->m_node1);
+                resolveHighSpeedExits(edge->m_runway, edge->m_node2);
+                break;
+            case TaxiEdge::Type::Taxiway:
+                edge->m_node1->m_hasTaxiway = true;
+                edge->m_node2->m_hasTaxiway = true;
+                break;
             }
 
             resolveActiveZoneMask(edge->m_activeZones.departue);

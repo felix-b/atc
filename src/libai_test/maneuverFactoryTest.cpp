@@ -171,6 +171,7 @@ TEST(ManeuverFactoryTest, animation_startValueFactory) {
 TEST(ManeuverFactoryTest, awaitManeuver) {
     bool ready = false;
     AwaitManeuver maneuver(
+        TestHostServices::create(),
         Maneuver::Type::Unspecified,
         "", 
         [&ready]() { return ready; }
@@ -195,6 +196,7 @@ TEST(ManeuverFactoryTest, awaitManeuver_inSequence) {
     int actionCount = 0;
 
     auto delay = shared_ptr<Maneuver>(new AwaitManeuver(
+        TestHostServices::create(),
         Maneuver::Type::Unspecified, "", [&ready]() {
             return ready;
         }
@@ -585,6 +587,8 @@ TEST(ManeuverFactoryTest, parallel_multipleChildren) {
 }
 
 TEST(ManeuverFactoryTest, parallel_sequencesWithDelays) {
+    auto host = TestHostServices::create();
+
     bool delay1Ready = false;
     bool delay2Ready = false;
     int action1Count = 0;
@@ -592,7 +596,7 @@ TEST(ManeuverFactoryTest, parallel_sequencesWithDelays) {
 
     auto parallel = shared_ptr<ParallelManeuver>(new ParallelManeuver(Maneuver::Type::Unspecified, "", {  
         shared_ptr<Maneuver>(new SequentialManeuver(Maneuver::Type::Unspecified, "", {  
-            shared_ptr<Maneuver>(new AwaitManeuver(Maneuver::Type::Unspecified, "", 
+            shared_ptr<Maneuver>(new AwaitManeuver(host, Maneuver::Type::Unspecified, "",
                 [&]() { return delay1Ready; }
             )),
             shared_ptr<Maneuver>(new InstantActionManeuver(Maneuver::Type::Unspecified, "", 
@@ -600,7 +604,7 @@ TEST(ManeuverFactoryTest, parallel_sequencesWithDelays) {
             )),
         })),
         shared_ptr<Maneuver>(new SequentialManeuver(Maneuver::Type::Unspecified, "", {  
-            shared_ptr<Maneuver>(new AwaitManeuver(Maneuver::Type::Unspecified, "", 
+            shared_ptr<Maneuver>(new AwaitManeuver(host, Maneuver::Type::Unspecified, "",
                 [&]() { return delay2Ready; }
             )),
             shared_ptr<Maneuver>(new InstantActionManeuver(Maneuver::Type::Unspecified, "", 
@@ -632,6 +636,8 @@ TEST(ManeuverFactoryTest, parallel_sequencesWithDelays) {
 }
 
 TEST(ManeuverFactoryTest, parallel_sequencesWithDeferredDelays) {
+    auto host = TestHostServices::create();
+
     int delay0Ready = false;
     int delay1Ready = -1000;
     int delay2Ready = -1000;
@@ -643,12 +649,12 @@ TEST(ManeuverFactoryTest, parallel_sequencesWithDeferredDelays) {
 
     auto parallel = shared_ptr<ParallelManeuver>(new ParallelManeuver(Maneuver::Type::Unspecified, "", {  
         shared_ptr<Maneuver>(new SequentialManeuver(Maneuver::Type::Unspecified, "", {  
-            shared_ptr<Maneuver>(new AwaitManeuver(Maneuver::Type::Unspecified, "", 
+            shared_ptr<Maneuver>(new AwaitManeuver(host, Maneuver::Type::Unspecified, "",
                 [&]() { return delay0Ready; }
             )),
             DeferredManeuver::create(Maneuver::Type::Unspecified, "", [=]() {
                 int readyValue1 = getDelay1Ready();
-                return shared_ptr<Maneuver>(new AwaitManeuver(Maneuver::Type::Unspecified, "", 
+                return shared_ptr<Maneuver>(new AwaitManeuver(host, Maneuver::Type::Unspecified, "",
                     [&]() { return (++readyValue1 > 0); }
                 ));
             }),
@@ -657,12 +663,12 @@ TEST(ManeuverFactoryTest, parallel_sequencesWithDeferredDelays) {
             )),
         })),
         shared_ptr<Maneuver>(new SequentialManeuver(Maneuver::Type::Unspecified, "", {  
-            shared_ptr<Maneuver>(new AwaitManeuver(Maneuver::Type::Unspecified, "", 
+            shared_ptr<Maneuver>(new AwaitManeuver(host, Maneuver::Type::Unspecified, "",
                 [&]() { return delay0Ready; }
             )),
             DeferredManeuver::create(Maneuver::Type::Unspecified, "", [=]() {
                 int readyValue2 = getDelay2Ready();
-                return shared_ptr<Maneuver>(new AwaitManeuver(Maneuver::Type::Unspecified, "", 
+                return shared_ptr<Maneuver>(new AwaitManeuver(host, Maneuver::Type::Unspecified, "",
                     [&]() { return (++readyValue2 > 0); }
                 ));
             }),
@@ -825,7 +831,7 @@ TEST(ManeuverFactoryTest, taxiTurn_rightAngleCounterClockwise) {
     EXPECT_EQ(arc.arcDeltaAngle, GeoMath::pi() / 2); 
     EXPECT_FALSE(arc.arcClockwise); 
 
-    auto maneuver = factory->taxiTurn(flight, arc, chrono::milliseconds(900), false);
+    auto maneuver = factory->taxiTurn(flight, arc, chrono::milliseconds(900), ManeuverFactory::TaxiType::Normal);
     
     maneuver->progressTo(chrono::milliseconds(1000));
     EXPECT_AIRCRAFT_POSITION(flight, 10, 55, 90);
@@ -875,7 +881,7 @@ TEST(ManeuverFactoryTest, taxiTurn_obtuseAngleClockwise) {
     EXPECT_EQ(arc.arcDeltaAngle, -GeoMath::pi() / 4); 
     EXPECT_TRUE(arc.arcClockwise); 
 
-    auto maneuver = factory->taxiTurn(flight, arc, chrono::milliseconds(900), false);
+    auto maneuver = factory->taxiTurn(flight, arc, chrono::milliseconds(900), ManeuverFactory::TaxiType::Normal);
     
     maneuver->progressTo(chrono::milliseconds(1000));
     cout << "loc(0/3)   = " << flight->aircraft()->location().latitude << "," << flight->aircraft()->location().longitude << endl;
@@ -918,7 +924,7 @@ TEST(ManeuverFactoryTest, taxiTurn_kjfk_1) {
     GeoMath::TurnArc arc;
     GeoMath::calculateTurn(turn, arc, host);
 
-    auto maneuver = factory->taxiTurn(flight, arc, chrono::milliseconds(900), false);
+    auto maneuver = factory->taxiTurn(flight, arc, chrono::milliseconds(900), ManeuverFactory::TaxiType::Normal);
     
     maneuver->progressTo(chrono::milliseconds(1000));
     // cout << "loc(0/3)   = " << flight->aircraft()->location().latitude << "," << flight->aircraft()->location().longitude << endl;
@@ -958,7 +964,7 @@ TEST(ManeuverFactoryTest, taxiByPath) {
     // flight->addClearance(taxiClearance);
 
     auto taxiPath = TaxiPath::find(taxiNet, taxiNet->getNodeById(111), taxiNet->getNodeById(777));
-    auto maneuver = factory->taxiByPath(flight, taxiPath, false);
+    auto maneuver = factory->taxiByPath(flight, taxiPath, ManeuverFactory::TaxiType::Normal);
 
     //world->progressTo(chrono::seconds(1000000));
 

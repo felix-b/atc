@@ -138,21 +138,11 @@ public:
         return fullPath;
     }
 
-    string getHostFilePath(int numFoldersUp, const vector<string>& downPathParts) override
+    string getHostFilePath(const vector<string>& relativePathParts) override
     {
-        char name[256];
-        char filePath[256];
-        char signature[256];
-        char description[256];
-        XPLMGetPluginInfo(XPLMGetMyID(), name, filePath, signature, description);
+        string resultPath = getHostDirectory();
 
-        for (int i = 0 ; i < 2 + numFoldersUp ; i++)
-        {
-            XPLMExtractFileAndPath(filePath);
-        }
-
-        string resultPath = string(filePath);
-        for (const string& part : downPathParts)
+        for (const string& part : relativePathParts)
         {
             resultPath.append(m_directorySeparator);
             resultPath.append(part);

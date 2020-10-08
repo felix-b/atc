@@ -49,7 +49,7 @@ shared_ptr<TaxiNet> createMediumTestNet()
         testHeader,
         {},
         {},
-        { n1, n2, n3, n4, n5, n6, n7, n8 }, 
+        { n1, n2, n3, n4, n5, n6, n7, n8 },
         { e12, e14, e13, e24, e23, e35, e56, e48, e67, e68 }
     );
 
@@ -314,8 +314,8 @@ TEST(TaxiPathTest, findPath_neverUseRunways)
 }
 
 void assertTaxiPath(
-    const shared_ptr<TaxiNet> net, 
-    const string& testCase, 
+    const shared_ptr<TaxiNet> net,
+    const string& testCase,
     const shared_ptr<TaxiPath> actualPath,
     const vector<int>& expectedNodeIds)
 {
@@ -348,7 +348,7 @@ void assertTaxiPath(const string& testCase, const vector<shared_ptr<TaxiEdge>>& 
 
     if (expected.size() != actual->edges.size())
     {
-        cout << "ASSERT[" << testCase << "]> path size differs, expected: " << expected.size() 
+        cout << "ASSERT[" << testCase << "]> path size differs, expected: " << expected.size()
              << ", actual: " << actual->edges.size() << endl;
         hasErrors = true;
     }
@@ -371,8 +371,8 @@ void assertTaxiPath(const string& testCase, const vector<shared_ptr<TaxiEdge>>& 
         }
         if (expectedEdge->name().compare(actualEdge->name()) != 0)
         {
-            cout << "ASSERT[" << testCase << "]> edge mismatch at [" << expectedIndex 
-                 << ", expected[" << expectedEdge->name() 
+            cout << "ASSERT[" << testCase << "]> edge mismatch at [" << expectedIndex
+                 << ", expected[" << expectedEdge->name()
                  << "] actual [" << actualEdge-> name() << "]" << endl;
             hasErrors = true;
             continue;
@@ -380,23 +380,23 @@ void assertTaxiPath(const string& testCase, const vector<shared_ptr<TaxiEdge>>& 
         if (expectedEdge->node1() != actualEdge->node1())
         {
             hasErrors = true;
-            cout << "ASSERT[" << testCase << "]> edge node1 mismatch at [" << expectedIndex 
-                 << ", expected[" << expectedEdge->node1()->id() 
+            cout << "ASSERT[" << testCase << "]> edge node1 mismatch at [" << expectedIndex
+                 << ", expected[" << expectedEdge->node1()->id()
                  << "] actual [" << actualEdge->node1()->id() << "]" << endl;
         }
         if (expectedEdge->node2() != actualEdge->node2())
         {
             hasErrors = true;
-            cout << "ASSERT[" << testCase << "]> edge node2 mismatch at [" << expectedIndex 
-                 << ", expected[" << expectedEdge->node2()->id() 
+            cout << "ASSERT[" << testCase << "]> edge node2 mismatch at [" << expectedIndex
+                 << ", expected[" << expectedEdge->node2()->id()
                  << "] actual [" << actualEdge->node2()->id() << "]" << endl;
         }
-    }   
+    }
 
     for (int excessIndex = expectedIndex ; excessIndex < actual->edges.size() ; excessIndex++)
     {
         hasErrors = true;
-        cout << "ASSERT[" << testCase << "]> unexpected edge at [" << excessIndex << "]: " 
+        cout << "ASSERT[" << testCase << "]> unexpected edge at [" << excessIndex << "]: "
              << actual->edges[excessIndex]->name() << endl;
     }
 

@@ -77,8 +77,8 @@ private:
     void loadAirports(vector<shared_ptr<Airport>>& airports)
     {
         // X-Plane 11\Resources\default scenery\default apt dat\Earth nav data\apt.dat
-        string globalAptDatFilePath = m_host->getHostFilePath(2, {
-            "default scenery", "default apt dat", "Earth nav data", "apt.dat"
+        string globalAptDatFilePath = m_host->getHostFilePath({
+            "Resources", "default scenery", "default apt dat", "Earth nav data", "apt.dat"
         });
         m_host->writeLog("LWORLD|global apt.dat file path [%s]", globalAptDatFilePath.c_str());
 

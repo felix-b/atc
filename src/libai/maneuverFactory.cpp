@@ -32,10 +32,10 @@ namespace ai
     shared_ptr<Maneuver> ManeuverFactory::taxiByPath(
         shared_ptr<Flight> flight, 
         shared_ptr<TaxiPath> path,
-        bool isPushback,
+        TaxiType typeOfTaxi,
         HoldingShortCallback onHoldingShort)
     {
-        const auto getTurnRadius = [isPushback](float fromHeading, float toHeading) {
+        const auto getTurnRadius = [typeOfTaxi](float fromHeading, float toHeading) {
             bool areSameSign = (fromHeading * toHeading >= 0);
             float angle = areSameSign
                 ? abs(fromHeading - toHeading)
@@ -44,7 +44,7 @@ namespace ai
             {
                 return -1.0;
             }
-            if (isPushback)
+            if (typeOfTaxi == TaxiType::Pushback)
             {
                 return 0.00015;
             }
@@ -137,26 +137,27 @@ namespace ai
                 flight, 
                 straightFromPoint,
                 straightToPoint,
-                isPushback
+                typeOfTaxi
             ));
 
             if (enterRoundTurn)
             {
-                auto turnDuration = chrono::milliseconds((int)(1000 * turnArc.arcLengthMeters / (isPushback ? 1.0 : 6.0)));
-                steps.push_back(taxiTurn(flight, turnArc, turnDuration, isPushback));
+                float speedFactor = (typeOfTaxi == TaxiType::HighSpeed ? 10.0f : (typeOfTaxi == TaxiType::Pushback ? 1.0f : 6.0f));
+                auto turnDuration = chrono::milliseconds((int)(1000 * turnArc.arcLengthMeters / speedFactor));
+                steps.push_back(taxiTurn(flight, turnArc, turnDuration, typeOfTaxi));
             }
         };
 
         const auto& edges = path->edges;
         vector<shared_ptr<Maneuver>> steps;
 
-        if (!isPushback && flight->aircraft()->location() != edges[0]->node1()->location().geo())
+        if (typeOfTaxi != TaxiType::Pushback && flight->aircraft()->location() != edges[0]->node1()->location().geo())
         {
             steps.push_back(taxiStraight(
                 flight, 
                 flight->aircraft()->location(),
                 edges[0]->node1()->location().geo(),
-                isPushback
+                typeOfTaxi
             ));
         }
 
@@ -191,7 +192,7 @@ namespace ai
         shared_ptr<Flight> flight, 
         const GeoPoint& from, 
         const GeoPoint& to, 
-        bool isPushback)
+        TaxiType typeOfTaxi)
     {
         stringstream logstr;
         logstr << setprecision(11) << endl;
@@ -200,20 +201,21 @@ namespace ai
         logstr << "from=" << from.latitude << "," << from.longitude << endl;
         logstr << "to=" << to.latitude << "," << to.longitude << endl;
 
-        float heading = isPushback
+        float heading = (typeOfTaxi == TaxiType::Pushback
             ? GeoMath::getHeadingFromPoints(to, from)
-            : GeoMath::getHeadingFromPoints(from, to);
+            : GeoMath::getHeadingFromPoints(from, to));
 
         float distanceMeters = GeoMath::getDistanceMeters(from, to);
 
         logstr << "heading=" << heading << endl;
         m_host->writeLog(logstr.str().c_str());
 
+        float speedFactor = (typeOfTaxi == TaxiType::HighSpeed ? 12.0f : (typeOfTaxi == TaxiType::Pushback ? 1.0f : 6.0f));
         auto result = shared_ptr<Maneuver>(new AnimationManeuver<GeoPoint>(
             "", 
             from,
             to,
-            chrono::milliseconds((int)(1000 * distanceMeters / (isPushback ? 3.0 : 6.0))),
+            chrono::milliseconds((int)(1000 * distanceMeters / speedFactor)),
             [](const GeoPoint& from, const GeoPoint& to, double progress, GeoPoint& value) {
                 value.latitude = from.latitude + progress * (to.latitude - from.latitude);
                 value.longitude = from.longitude + progress * (to.longitude - from.longitude);
@@ -233,7 +235,7 @@ namespace ai
         shared_ptr<Flight> flight,
         const GeoMath::TurnArc& arc,
         chrono::microseconds duration,
-        bool isPushback)
+        TaxiType typeOfTaxi)
     {
         stringstream logstr;
         logstr << setprecision(11) << endl;
@@ -272,17 +274,17 @@ namespace ai
             [deltaAngle](const double& from, const double& to, double progress, double& value) {
                 value = from + progress * deltaAngle; 
             },
-            [flight, arc, isPushback, deltaHeading](const double& value, double progress) {
+            [flight, arc, typeOfTaxi, deltaHeading](const double& value, double progress) {
                 auto aircraft = flight->aircraft();
                 GeoPoint newLocation(
                     arc.arcCenter.latitude + arc.arcRadius * sin(value),
                     arc.arcCenter.longitude + arc.arcRadius * cos(value));
                 int direction = 
                     (arc.arcClockwise ? -1 : 1) *
-                    (isPushback ? -1 : 1);
+                    (typeOfTaxi == TaxiType::Pushback ? -1 : 1);
                 //double headingProgress = progress + sin(M_PI * progress) / 4;
                 double newHeading = arc.heading0 + progress * deltaHeading;
-                if (isPushback)
+                if (typeOfTaxi == TaxiType::Pushback)
                 {
                     newHeading = GeoMath::flipHeading(newHeading);
                 }
@@ -339,7 +341,7 @@ namespace ai
 
     shared_ptr<Maneuver> ManeuverFactory::await(Maneuver::Type type, const string& id, function<bool()> isReady)
     {
-        return shared_ptr<AwaitManeuver>(new AwaitManeuver(type, id, isReady));
+        return shared_ptr<AwaitManeuver>(new AwaitManeuver(m_host, type, id, isReady));
     }
 
     shared_ptr<Maneuver> ManeuverFactory::awaitClearance(shared_ptr<Flight> flight, Clearance::Type clearanceType, Maneuver::Type type, const string& id)
@@ -396,11 +398,19 @@ namespace ai
     shared_ptr<Maneuver> ManeuverFactory::transmitIntent(shared_ptr<Flight> flight, shared_ptr<Intent> intent)
     {
         auto boxedTransmission = shared_ptr<BoxedTransmission>(new BoxedTransmission());
+        int awaitSilenceMilliseconds = intent->isReply() ? 250 : 3000;
+        string silenceAwaitId =
+            flight->callSign() + "/" + to_string(awaitSilenceMilliseconds) + "ms-silence-on:" +
+            to_string(flight->aircraft()->frequencyKhz());
 
         return sequence(Maneuver::Type::Unspecified, "", {
-            instantAction([=](){ 
+            await(Maneuver::Type::AwaitSilenceOnFrequency, silenceAwaitId, [=](){
                 auto frequency = flight->aircraft()->frequency();
-                
+                bool result = !frequency || frequency->wasSilentFor(chrono::milliseconds(awaitSilenceMilliseconds));
+                return result;
+            }),
+            instantAction([=](){
+                auto frequency = flight->aircraft()->frequency();
                 if (frequency)
                 {
                     boxedTransmission->ptr = frequency->enqueueTransmission(intent);

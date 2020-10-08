@@ -18,6 +18,8 @@ add_executable(libworld_test
     geoMathTest.cpp
     hostServicesTest.cpp
     airportTest.h
+    taxiNodeTest.cpp
+    taxiNetTest.cpp
 )
 
 set_property(TARGET libworld_test PROPERTY CXX_STANDARD 14)

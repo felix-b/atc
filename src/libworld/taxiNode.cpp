@@ -20,4 +20,12 @@ namespace world
         }
         return *found;
     }
+
+    shared_ptr<TaxiEdge> TaxiNode::tryFindEdge(function<bool(shared_ptr<TaxiEdge> edge)> predicate)
+    {
+        const auto found = find_if(m_edges.begin(), m_edges.end(), predicate);
+        return found == m_edges.end()
+            ? nullptr
+            : *found;
+    }
 }
