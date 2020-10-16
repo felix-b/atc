@@ -10,6 +10,7 @@
 #include "libworld.h"
 #include "libdataxp.h"
 #include "libworld_test.h"
+#include "libdataxp_test.h"
 
 //#include <direct.h>
 //#define GetCurrentDir _getcwd
@@ -24,14 +25,6 @@ using namespace std;
 //   return current_working_dir;
 // }
  
-stringstream makeAptDat(const vector<string>& lines);
-shared_ptr<HostServices> makeHost();
-shared_ptr<ControlledAirspace> makeAirspace(double centerLat, double centerLon, float radiusNm, const string& name);
-void openTestInputStream(const string& fileName, ifstream& str);
-void assertRunwaysExist(shared_ptr<Airport> airport, const vector<string>& names);
-void assertGatesExist(shared_ptr<Airport> airport, const vector<string>& names);
-void assertTaxiEdgesExist(shared_ptr<Airport> airport, const unordered_set<string>& names);
-
 // void writeAirportJson(shared_ptr<const Airport> airport, ostream& output);
 // void writeTaxiPathJson(shared_ptr<const TaxiPath> taxiPath, ostream& output);
 
@@ -673,6 +666,10 @@ TEST(XPAptDatReaderTest, readAll_realDefaultAptDat)
     input.exceptions(ifstream::failbit | ifstream::badbit);
     input.open(R"(E:\X-Plane 11\Resources\default scenery\default apt dat\Earth nav data\apt.dat)");
 
+    ofstream output;
+    output.exceptions(ofstream::failbit | ofstream::badbit);
+    output.open("../../src/libdataxp_test/testOutputs/gates-with-long-names.txt", std::ios_base::out | std::ios_base::trunc);
+
     int count = 0;
 
     XPAptDatReader reader(makeHost());
@@ -689,6 +686,13 @@ TEST(XPAptDatReaderTest, readAll_realDefaultAptDat)
             if ((count % 100) == 0)
             {
                 cout << "done: # " << count << " " << airport->header().icao() << endl;
+            }
+            for (const auto& gate : airport->parkingStands())
+            {
+                if (gate->name().length() > 5)
+                {
+                    output << gate->name() << endl;
+                }
             }
         }
     );

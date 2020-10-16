@@ -127,6 +127,15 @@ public:
         return services().get<AIPilotFactory>()->createPilot(flight);
     }
 
+    shared_ptr<Aircraft> createAIAircraft(
+        const string& modelIcao,
+        const string& operatorIcao,
+        const string& tailNo,
+        Aircraft::Category category) override
+    {
+        return services().get<AIAircraftFactory>()->createAircraft(modelIcao, operatorIcao, tailNo, category);
+    }
+
     string getResourceFilePath(const vector<string>& relativePathParts) override
     {
         string fullPath = m_pluginDirectory;
@@ -161,7 +170,7 @@ public:
 
     void writeLog(const char* format, ...) override
     {
-        const size_t bufferSize = 512;
+        const size_t bufferSize = 1024;
         char buffer[bufferSize];
         va_list argptr;
         va_start(argptr, format);

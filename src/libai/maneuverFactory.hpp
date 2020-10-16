@@ -75,5 +75,18 @@ namespace ai
         shared_ptr<Maneuver> airborneTurn(shared_ptr<Flight> flight, float fromHeading, float toHeading);
     public:
         static shared_ptr<Maneuver> noopOnHoldingShort(shared_ptr<TaxiEdge> atEdge);
+        static void calculateObstacleScanRect(
+            const GeoPoint& location,
+            float heading,
+            GeoPoint& topLeft,
+            GeoPoint& bottomRight,
+            float lengthMeters);
+        static Maneuver::SemaphoreState obstacleScanSemaphore(
+            shared_ptr<World> world,
+            shared_ptr<Flight> ourFlight,
+            bool isPushback,
+            Maneuver::SemaphoreState previousState,
+            chrono::microseconds closedStateDuration);
+        static int getScanSectorIndex(float heading);
     };
 }

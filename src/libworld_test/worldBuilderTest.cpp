@@ -327,3 +327,42 @@ TEST(WorldBuilderTest, tidyAirportElevations_runways) {
     EXPECT_FLOAT_EQ(rwy2->end2().elevationFeet(), 123);
 }
 
+TEST(WorldBuilderTest, assembleAirport_detectParallelRunways_positive) {
+    auto host = TestHostServices::create();
+    Airport::Header header("ABCD", "Test", GeoPoint(30, 45), 12);
+    auto airport = WorldBuilder::assembleAirport(host, header,{
+        makeRunway(host, { 30.01, 40.00 }, { 30.01, 40.01 }, "09R", "27L"),
+        makeRunway(host, { 30.00, 40.00 }, { 30.01, 40.00 }, "01L", "19R"),
+        makeRunway(host, { 30.00, 40.02 }, { 30.01, 40.02 }, "01R", "19L"),
+        makeRunway(host, { 30.00, 40.00 }, { 30.01, 40.01 }, "04", "22"),
+        makeRunway(host, { 30.00, 40.00 }, { 30.00, 40.01 }, "09L", "27R"),
+        makeRunway(host, { 30.00, 40.01 }, { 30.01, 40.01 }, "01C", "19C"),
+    }, {}, {}, {}, {});
+
+    ASSERT_EQ(airport->parallelRunwayGroupCount(), 2);
+
+    const vector<shared_ptr<Runway>>& group1 = airport->getParallelRunwayGroup(0);
+    ASSERT_EQ(group1.size(), 2);
+    EXPECT_EQ(group1[0]->end1().name(), "09R");
+    EXPECT_EQ(group1[1]->end1().name(), "09L");
+
+    const vector<shared_ptr<Runway>>& group2 = airport->getParallelRunwayGroup(1);
+    ASSERT_EQ(group2.size(), 3);
+    EXPECT_EQ(group2[0]->end1().name(), "01L");
+    EXPECT_EQ(group2[1]->end1().name(), "01R");
+    EXPECT_EQ(group2[2]->end1().name(), "01C");
+}
+
+TEST(WorldBuilderTest, assembleAirport_detectParallelRunways_negative) {
+    auto host = TestHostServices::create();
+    Airport::Header header("ABCD", "Test", GeoPoint(30, 45), 12);
+    auto airport = WorldBuilder::assembleAirport(host, header,{
+        makeRunway(host, { 30.01, 40.00 }, { 30.01, 40.01 }, "09", "27"),
+        makeRunway(host, { 30.00, 40.00 }, { 30.01, 40.01 }, "04", "22"),
+    }, {}, {}, {}, {});
+
+    EXPECT_EQ(airport->parallelRunwayGroupCount(), 0);
+    EXPECT_THROW({
+        airport->getParallelRunwayGroup(0);
+    }, out_of_range);
+}

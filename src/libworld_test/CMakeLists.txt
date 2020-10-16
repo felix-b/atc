@@ -20,6 +20,7 @@ add_executable(libworld_test
     airportTest.h
     taxiNodeTest.cpp
     taxiNetTest.cpp
+    stateMachineTest.cpp
 )
 
 set_property(TARGET libworld_test PROPERTY CXX_STANDARD 14)

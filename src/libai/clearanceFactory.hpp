@@ -30,9 +30,6 @@ namespace ai
             auto clearanceDelivery = tower->findPositionOrThrow(
                 ControllerPosition::Type::ClearanceDelivery, 
                 flight->aircraft()->location());
-            auto departure = tower->findPositionOrThrow(
-                ControllerPosition::Type::Departure, 
-                flight->aircraft()->location());
 
             Clearance::Header header;
             initClearanceHeader(header, Clearance::Type::IfrClearance, clearanceDelivery, flight);
@@ -45,7 +42,7 @@ namespace ai
                 5000,
                 34000,
                 5,
-                departure->frequency()->khz(),
+                0, //why DEP??
                 "3" + to_string(flight->id())
             ));
         }
@@ -68,10 +65,15 @@ namespace ai
                 GeoMath::flipHeading(gate->heading()),
                 40);
 
-            auto taxiPath = TaxiPath::tryFind(airport->taxiNet(), p0, runwayEnd.centerlinePoint().geo());
+            auto taxiPath = airport->taxiNet()->tryFindDepartureTaxiPathToRunway(p0, runwayEnd);
             if (!taxiPath) 
             {
-                throw runtime_error("taxi path NOT FOUND!");
+                throw runtime_error(
+                    "departure taxi path from [" +
+                    to_string(p0.latitude) + "," + to_string(p0.longitude) +
+                    "] to runway [" +
+                    runwayEnd.name() +
+                    "] NOT FOUND!");
             }
 
             GeoPoint p1 = taxiPath->edges[0]->node1()->location().geo();
@@ -174,14 +176,16 @@ namespace ai
                 airport->localAt(flight->aircraft()->location()), 
                 flight);
 
-            auto departure = airport->departureAt(flight->aircraft()->location());
+            auto departure = airport->tower()->tryFindPosition(
+                ControllerPosition::Type::Departure,
+                flight->aircraft()->location());
 
             return shared_ptr<TakeoffClearance>(new TakeoffClearance(
                 header,
                 flight->plan()->departureRunway(),
                 immediate,
                 initialHeading,
-                departure->frequency()->khz()
+                departure ? departure->frequency()->khz() : 0
             ));
         }   
 

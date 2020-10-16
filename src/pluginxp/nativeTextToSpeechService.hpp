@@ -140,17 +140,16 @@ public:
         {
             m_host->writeLog("NATT2S|enqueue to SPECHW: (SynthesizeSpeech, requestId=%d), m_nextRequestId=%d", newRequestId, m_nextRequestId);
 
-            RadioSpeechStyle radioStyle;
-            bool isPilotSpeaking = transmission->intent()->direction() == Intent::Direction::PilotToController;
-            setRadioSpeechStyle(speaker->speechStyle(), radioStyle, isPilotSpeaking);
+            RadioSpeechStyle styleToRender;
+            setSpeechStyleToRender(*speaker, styleToRender, speaker->role());
 
-            m_messageQueue.enqueue({ 
-                ThreadMessageType::SynthesizeSpeech, 
-                newRequestId, 
+            m_messageQueue.enqueue({
+                ThreadMessageType::SynthesizeSpeech,
+                newRequestId,
                 frequency,
                 speaker,
                 transmission,
-                radioStyle
+                styleToRender
             });
 
             return [this, newRequestId](){
@@ -381,12 +380,12 @@ private:
 //        m_radioStaticEdgeLong.stop();
 //        m_radioStaticEdgeLong.rewind();
 
-        auto speechPlaybackTime = m_currentSpeech->playbackTime();
+        auto speechPlaybackTime = m_currentSpeech->playbackTime() - chrono::milliseconds(100);
         m_host->writeLog("SPECHW|speech playback time, ms: %lld", speechPlaybackTime.count());
 
         int requestIdCopy = m_activeRequestId;
         const auto& radioStyle = message.radioStyle;
-        chrono::milliseconds timePttAt =  radioStyle.delayBeforePtt;
+        chrono::milliseconds timePttAt = radioStyle.delayBeforePtt;
         chrono::milliseconds timeSpeakAt = timePttAt + radioStyle.delayAfterPtt;
         chrono::milliseconds timePttOffAt = timeSpeakAt + speechPlaybackTime + radioStyle.delayAfterSpeech;
 
@@ -419,26 +418,55 @@ private:
         return m_activeRequestId == requestId;
     }
 
-    void setRadioSpeechStyle(
-        const Actor::SpeechStyle& regularStyle, 
-        RadioSpeechStyle& radioStyle,
-        bool isPilotSpeaking)
+    void setSpeechStyleToRender(
+        const Actor& actor,
+        RadioSpeechStyle& styleToRender,
+        Actor::Role role)
     {
-        radioStyle.delayBeforePtt = chrono::milliseconds(1000 + m_host->getNextRandom(1000));
+        switch (actor.nature())
+        {
+        case Actor::Nature::AI:
+            setRadioRenderSpeechStyle(actor, styleToRender, role);
+            break;
+        case Actor::Nature::Human:
+            setCoPilotRenderSpeechStyle(actor, styleToRender, role);
+            break;
+        }
+    }
+
+    void setCoPilotRenderSpeechStyle(
+        const Actor& actor,
+        RadioSpeechStyle& radioStyle,
+        Actor::Role role)
+    {
+        radioStyle.delayBeforePtt = chrono::milliseconds(0);
+        radioStyle.delayAfterPtt = chrono::milliseconds(500);
+        radioStyle.delayAfterSpeech = chrono::milliseconds(500);
+        radioStyle.staticVolume = 0.1f;
+        radioStyle.highPassFrequency = 250;
+    }
+
+    void setRadioRenderSpeechStyle(
+        const Actor& actor,
+        RadioSpeechStyle& radioStyle,
+        Actor::Role role)
+    {
+        radioStyle.delayBeforePtt = chrono::milliseconds(250 + m_host->getNextRandom(750));
+        const auto& regularStyle = actor.speechStyle();
 
         switch (regularStyle.rate)
         {
         case Actor::SpeechRate::Slow:
-            radioStyle.delayAfterPtt = chrono::milliseconds(1000);
-            radioStyle.delayAfterSpeech = chrono::milliseconds(500);
+            radioStyle.delayAfterPtt = chrono::milliseconds(750);
+            radioStyle.delayAfterSpeech = chrono::milliseconds(325);
             break;
         case Actor::SpeechRate::Fast:
             radioStyle.delayAfterPtt = chrono::milliseconds(0);
             radioStyle.delayAfterSpeech = chrono::milliseconds(0);
             break;
         default:
-            radioStyle.delayAfterPtt = chrono::milliseconds(500);
-            radioStyle.delayAfterSpeech = chrono::milliseconds(250);
+            radioStyle.delayAfterPtt = chrono::milliseconds(300);
+            radioStyle.delayAfterSpeech = chrono::milliseconds(150);
         }
 
         switch (regularStyle.radioQuality)
@@ -456,7 +484,7 @@ private:
             radioStyle.highPassFrequency = 2000;
         }
 
-        if (isPilotSpeaking)
+        if (role == Actor::Role::Pilot)
         {
             radioStyle.highPassFrequency += 500;
         }

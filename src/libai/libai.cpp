@@ -6,6 +6,7 @@
 #include "libai.hpp"
 #include "aiPilot.hpp"
 #include "aiController.hpp"
+#include "aiAircraft.hpp"
 #include "maneuverFactory.hpp"
 
 using namespace std;
@@ -29,7 +30,7 @@ namespace ai
         shared_ptr<Controller> createController(shared_ptr<ControllerPosition> position) override
         {
             //Actor::Gender newControllerGender = m_genderRoundRobin[m_nextControllerId % m_genderRoundRobin.size()];
-            Actor::Gender newControllerGender = m_nextControllerId == 2 ? Actor::Gender::Female : Actor::Gender::Male;
+            Actor::Gender newControllerGender = (m_nextControllerId % 3) == 0 ? Actor::Gender::Female : Actor::Gender::Male;
             int newControllerId = m_nextControllerId++;
 
             switch (position->type())
@@ -69,7 +70,7 @@ namespace ai
             m_host->writeLog("Creating AI pilot for flight: %s", flight->callSign().c_str());
             
             //Actor::Gender newPilotGender = m_genderRoundRobin[m_nextPilotId % m_genderRoundRobin.size()];
-            Actor::Gender newPilotGender = m_nextPilotId == 3 ? Actor::Gender::Female : Actor::Gender::Male;
+            Actor::Gender newPilotGender = ((m_nextPilotId + 5) % 8) == 0 ? Actor::Gender::Female : Actor::Gender::Male;
             int newPilotId = m_nextPilotId++;
 
             return shared_ptr<Pilot>(new AIPilot(
@@ -79,6 +80,34 @@ namespace ai
                 flight,
                 m_maneuverFactory, 
                 m_intentFactory));
+        }
+    };
+
+    class ConcreteAIAircraftFactory : public AIAircraftFactory
+    {
+    private:
+        shared_ptr<HostServices> m_host;
+        int m_nextAircraftId;
+    public:
+        ConcreteAIAircraftFactory(shared_ptr<HostServices> _host) :
+            m_host(_host),
+            m_nextAircraftId(101)
+        {
+        }
+    public:
+        shared_ptr<Aircraft> createAircraft(
+            const string& modelIcao,
+            const string& operatorIcao,
+            const string& tailNo,
+            Aircraft::Category category) override
+        {
+            return shared_ptr<Aircraft>(new AIAircraft(
+                m_host,
+                m_nextAircraftId++,
+                modelIcao,
+                operatorIcao,
+                tailNo,
+                category));
         }
     };
 
@@ -94,8 +123,10 @@ namespace ai
 
         auto aiPilotFactory = shared_ptr<AIPilotFactory>(new ConcreteAIPilotFactory(host));
         auto aiControllerFactory = shared_ptr<AIControllerFactory>(new ConcreteAIControllerFactory(host));
+        auto aiAircraftFactory = shared_ptr<AIAircraftFactory>(new ConcreteAIAircraftFactory(host));
 
         host->services().use<AIPilotFactory>(aiPilotFactory);
         host->services().use<AIControllerFactory>(aiControllerFactory);
+        host->services().use<AIAircraftFactory>(aiAircraftFactory);
     }
 }

@@ -6,6 +6,7 @@ add_library(libai STATIC
     libai.cpp
     aiController.hpp
     aiPilot.hpp
+    aiAircraft.hpp
     maneuverFactory.hpp
     maneuverFactory.cpp
     clearanceFactory.hpp

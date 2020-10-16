@@ -1,7 +1,9 @@
 // 
 // This file is part of AT&C project which simulates virtual world of air traffic and ATC.
 // Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
-// 
+//
+#pragma once
+
 #include "libworld.h"
 #include "clearanceFactory.hpp"
 #include "intentTypes.hpp"
@@ -26,11 +28,6 @@ namespace ai
         {
             m_intentFactory = _host->services().get<IntentFactory>();
             m_clearanceFactory = _host->services().get<ClearanceFactory>();
-
-            if (m_speechStyle.rate == world::Actor::SpeechRate::Slow)
-            {
-                m_speechStyle.rate = world::Actor::SpeechRate::Fast;
-            }
         }
     public:
         void receiveIntent(shared_ptr<Intent> intent) override 
@@ -171,6 +168,40 @@ namespace ai
         void progressTo(chrono::microseconds timestamp) override
         {
             //TODO
+        }
+
+        void selectActiveRunways(vector<string>& departure, vector<string>& arrival) override
+        {
+            host()->writeLog("AICONT|AIController::selectActiveRunways");
+
+            auto airport = facility()->airport();
+            if (!airport || position()->type() != ControllerPosition::Type::Local)
+            {
+                throw runtime_error("Cannot select active runways: not a local controller or no airport");
+            }
+
+            if (airport->hasParallelRunways())
+            {
+                const auto& longestGroup = airport->findLongestParallelRunwayGroup();
+
+                departure.push_back(longestGroup.at(0)->end1().name());
+                arrival.push_back(longestGroup.at(1)->end1().name());
+                if (longestGroup.size() > 2)
+                {
+                    arrival.push_back(longestGroup.at(longestGroup.size() - 1)->end1().name());
+                }
+
+                host()->writeLog(
+                    "AICONT|Selected parallel active runways departure[%s] arrival[%s][%s]",
+                    departure.at(0).c_str(),
+                    arrival.at(0).c_str(),
+                    arrival.at(arrival.size() - 1).c_str());
+            }
+            else
+            {
+                departure.push_back(airport->findLongestRunway()->end1().name());
+                host()->writeLog("AICONT|Selected single active runway [%s]", departure.at(0).c_str());
+            }
         }
     };
 }

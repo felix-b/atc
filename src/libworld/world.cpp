@@ -52,12 +52,13 @@ namespace world
         auto aircraft = flight->aircraft();
 
         m_host->writeLog(
-            "Added flight: %s(%s->%s) aircraft id=%d model=%s",
+            "Added flight: %s(%s->%s) aircraft id=%d model=%s nature=%d",
             flight->callSign().c_str(), 
             flightPlan->departureAirportIcao().c_str(),
             flightPlan->arrivalAirportIcao().c_str(),
             aircraft->id(),
-            aircraft->modelIcao().c_str());
+            aircraft->modelIcao().c_str(),
+            aircraft->nature());
     }
 
     void World::addFlightColdAndDark(shared_ptr<Flight> flight)
@@ -221,5 +222,31 @@ namespace world
     bool World::compareWorkItems(const World::WorkItem& left, const World::WorkItem& right)
     {
         return (left.timestamp > right.timestamp);
+    }
+
+    bool World::detectAircraftInRect(
+        const GeoPoint& topLeft,
+        const GeoPoint& bottomRight,
+        function<bool(shared_ptr<Aircraft> aircraft)> predicate)
+    {
+        for (const auto& flight : m_flights)
+        {
+            if (!predicate(flight->aircraft()))
+            {
+                continue;
+            }
+
+            const GeoPoint& location = flight->aircraft()->location();
+
+            if (location.latitude >= bottomRight.latitude &&
+                location.latitude <= topLeft.latitude &&
+                location.longitude >= topLeft.longitude &&
+                location.longitude <= bottomRight.longitude)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

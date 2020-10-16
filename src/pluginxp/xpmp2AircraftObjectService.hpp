@@ -28,6 +28,7 @@
 // tnc
 #include "utils.h"
 #include "libworld.h"
+#include "configuration.hpp"
 
 using namespace std;
 using namespace PPL;
@@ -41,6 +42,7 @@ class Xpmp2AircraftObject : public XPMP2::Aircraft
 private:
     shared_ptr<HostServices> m_host;
     shared_ptr<Flight> m_flight;
+    shared_ptr<PluginConfiguration> m_config;
     World::OnChangesCallback m_onQueryChanges;
     int m_frameCount;
 public:
@@ -59,11 +61,13 @@ public:
         m_onQueryChanges(World::onChangesUnassigned),
         m_frameCount(0)
     {
+        m_config = m_host->services().get<PluginConfiguration>();
+
         auto source = m_flight->aircraft();
         auto location = source->location();
 
         // Label
-        label = m_flight->callSign();
+        label = getLabelText(source);
         colLabel[0] = 0.0f;             // green
         colLabel[1] = 1.0f;
         colLabel[2] = 0.0f;
@@ -121,11 +125,17 @@ public:
     {
         m_onQueryChanges = callback;
     }
+
 private:
 
     void safeUpdatePosition()
     {
         m_frameCount++;
+
+        if (label.length() > 0 && !m_config->showAIAircraftLabels)
+        {
+            label.clear();
+        }
 
         auto changes = m_onQueryChanges();
         if (!changes || !hasKey(changes->flights().updated(), m_flight->id()))
@@ -200,27 +210,20 @@ private:
 
     string getLabelText(const shared_ptr<world::Aircraft>& aircraft)
     {
-        string altitudeString = getAltitudeString(aircraft->altitude());
-        return altitudeString.empty()
-            ? m_flight->callSign()
-            : m_flight->callSign() + " | " + altitudeString;
-    }
-
-private:
-
-    static string getAltitudeString(const Altitude& altitude)
-    {
-        switch (altitude.type())
+        if (!m_config->showAIAircraftLabels)
         {
-        case Altitude::Type::Ground:
             return "";
-        case Altitude::Type::AGL:
-            return to_string((int)altitude.feet()) + " AGL";
-        case Altitude::Type::MSL:
-            return to_string((int)altitude.feet()) + " MSL";
-        default:
-            return to_string((int)altitude.feet()) + " ???";
         }
+
+        auto flight = aircraft->getFlightOrThrow();
+        string phaseString = flight->phase() == Flight::Phase::Departure
+            ? " (D)"
+            : (flight->phase() == Flight::Phase::Arrival ? " (A)" : " (T/A)");
+
+        string altitudeString = aircraft->altitude().toString();
+        return altitudeString.empty()
+            ? m_flight->callSign() + phaseString
+            : m_flight->callSign() + phaseString + " | " + altitudeString;
     }
 };
 
@@ -292,11 +295,17 @@ public:
 
         for (const auto& addedFlight : m_lastChangeSet->flights().added())
         {
+            if (addedFlight->aircraft()->nature() != world::Actor::Nature::AI)
+            {
+                continue;
+            }
+
             auto newSimAircraft = shared_ptr<Xpmp2AircraftObject>(new Xpmp2AircraftObject(m_host, addedFlight));
             newSimAircraft->onQueryChanges([this, addedFlight](){
                 //m_host->writeLog("onQueryChanges from %s", addedFlight->callSign().c_str());
                 return m_lastChangeSet;
             });
+
             m_simAircraft.push_back(newSimAircraft);
         }
     }
