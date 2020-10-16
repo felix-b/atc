@@ -21,7 +21,7 @@ namespace world
         logStartTime = chrono::time_point_cast<std::chrono::milliseconds>(chrono::high_resolution_clock::now());
     }
 
-    void HostServices::formatLogString(char logString[512], const char *format, va_list args)
+    void HostServices::formatLogString(char logString[LOG_BUFFER_SIZE], const char *format, va_list args)
     {
         auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(chrono::high_resolution_clock::now());
         auto millisecondsTimestamp = now - logStartTime;

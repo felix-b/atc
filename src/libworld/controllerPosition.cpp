@@ -34,4 +34,19 @@ namespace world
             }
         });
     }
+
+    void ControllerPosition::selectActiveRunways(vector<string>& departureRunways, vector<string>& arrivalRunways)
+    {
+        if (m_controller)
+        {
+            m_host->writeLog("ATCFCL|Selecting active runways");
+            departureRunways.clear();
+            arrivalRunways.clear();
+            m_controller->selectActiveRunways(departureRunways, arrivalRunways);
+        }
+        else
+        {
+            m_host->writeLog("ATCFCL|Cannot select active runways: controller not assigned");
+        }
+    }
 }

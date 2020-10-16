@@ -14,7 +14,7 @@ shared_ptr<Flight> makeFlight(shared_ptr<HostServices> host, int id, const strin
 {
     auto plan = make_shared<FlightPlan>(0, 3600, fromIcao, toIcao);
     auto flight = make_shared<Flight>(host, id, Flight::RulesType::IFR, "DAL", to_string(id), "DAL " + to_string(id), plan);
-    auto aircraft = make_shared<Aircraft>(host, 1000 + id, "B738", "DAL", "T" + to_string(id), Aircraft::Category::Jet);
+    auto aircraft = host->createAIAircraft("B738", "DAL", "T" + to_string(id), Aircraft::Category::Jet);
     flight->setAircraft(aircraft);
     return flight;
 }

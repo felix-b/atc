@@ -15,7 +15,7 @@ static const double PI = 3.141592653589793;
 static const double TWO_PI = 2 * 3.141592653589793;
 static const double EARTH_RADIUS_METERS = 6371000.0; //TODO: more precision?
 
-double normalizeRadians(double a) 
+double normalizeRadians(double a)
 {
     while (a <= -PI) {
         a += TWO_PI;

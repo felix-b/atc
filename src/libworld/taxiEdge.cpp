@@ -18,14 +18,14 @@ namespace world
         Type _type,
         bool _isOneWay,
         float _lengthMeters
-    ) : 
-        m_id(_id),
+    ) : m_id(_id),
         m_name(_name),
         m_nodeId1(_nodeId1),
         m_nodeId2(_nodeId2),
         m_type(_type),
         m_isOneWay(_isOneWay),
         m_lengthMeters(_lengthMeters),
+        m_flightPhaseAllocation(Flight::Phase::NotAssigned),
         m_heading(0)
     {
     }
@@ -43,6 +43,7 @@ namespace world
         m_node2(_flippingOver ? _source->m_node1 : _source->m_node2),
         m_highSpeedExitRunway(_source->m_highSpeedExitRunway),
         m_activeZones(_source->m_activeZones),
+        m_flightPhaseAllocation(_source->m_flightPhaseAllocation),
         m_flipOver(_source)
     {
     }
@@ -57,7 +58,8 @@ namespace world
         m_nodeId1(-1),
         m_nodeId2(-1),
         m_node1(make_shared<TaxiNode>(-1, _fromPoint)),
-        m_node2(make_shared<TaxiNode>(-1, _toPoint))
+        m_node2(make_shared<TaxiNode>(-1, _toPoint)),
+        m_flightPhaseAllocation(Flight::Phase::NotAssigned)
     {
     }
 
@@ -91,5 +93,14 @@ namespace world
             pow(localFrom.x - localTo.x, 2) + 
             pow(localFrom.z - localTo.z, 2)
         );
+    }
+
+    void TaxiEdge::setFlightPhaseAllocation(Flight::Phase allocation)
+    {
+        m_flightPhaseAllocation = allocation;
+        if (m_flipOver)
+        {
+            m_flipOver->m_flightPhaseAllocation = allocation;
+        }
     }
 }

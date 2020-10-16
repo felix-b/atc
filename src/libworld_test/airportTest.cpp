@@ -28,6 +28,29 @@ TEST(AirportTest, findLongestRunway)
     EXPECT_EQ(longestRunway->end2().name(), "27");
 }
 
+TEST(AirportTest, findLongestParallelRunwayGroup)
+{
+    auto host = TestHostServices::create();
+    Airport::Header header("ABCD", "Test", GeoPoint(30, 40), 0);
+    auto airport = WorldBuilder::assembleAirport(host, header,{
+        makeRunway(host, { 30.01, 40.00 }, { 30.01, 40.02 }, "09R", "27L"),
+        makeRunway(host, { 30.00, 40.00 }, { 30.02, 40.00 }, "01L", "19R"),
+        makeRunway(host, { 30.00, 40.02 }, { 30.015, 40.02 }, "01R", "19L"),
+        makeRunway(host, { 31.03, 41.03 }, { 31.06, 41.06 }, "04R", "22L"),
+        makeRunway(host, { 30.00, 40.00 }, { 30.00, 40.02 }, "09L", "27R"),
+        makeRunway(host, { 30.00, 40.00 }, { 30.03, 40.03 }, "04L", "22R"),
+        makeRunway(host, { 30.00, 40.01 }, { 30.02, 40.01 }, "01C", "19C"),
+    }, {}, {}, {}, {});
+
+    ASSERT_EQ(airport->parallelRunwayGroupCount(), 3);
+
+    const vector<shared_ptr<Runway>>& longestRunwayGroup = airport->findLongestParallelRunwayGroup();
+
+    ASSERT_EQ(longestRunwayGroup.size(), 2);
+    EXPECT_EQ(longestRunwayGroup[0]->end1().name(), "04R");
+    EXPECT_EQ(longestRunwayGroup[1]->end1().name(), "04L");
+}
+
 shared_ptr<Runway> makeRunway(
     shared_ptr<HostServices> host,
     const GeoPoint& p1,

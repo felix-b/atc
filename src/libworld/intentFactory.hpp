@@ -189,12 +189,13 @@ namespace world
         shared_ptr<Intent> groundSwitchToTower(shared_ptr<Flight> flight, uint64_t replyToId)
         {
             m_host->writeLog("INTNTF|groundSwitchToTower");
-            auto tower = m_helper.getDepartureTower(flight); //TODO: handle arrivals
+            auto ground = m_helper.getDepartureGround(flight);
+            auto tower = m_helper.getDepartureTower(flight);
             return shared_ptr<Intent>(new GroundSwitchToTowerIntent(
                 m_nextIntentId++,
                 replyToId,
                 flight,
-                tower, 
+                ground,
                 tower->frequency()->khz()
             ));
         }
@@ -234,7 +235,7 @@ namespace world
         {
             auto flight = clearance->header().issuedTo;
             auto tower = m_helper.getDepartureTower(flight);
-            auto departure = m_helper.getDeparture(flight);
+            auto departure = m_helper.tryGetDeparture(flight);
             
             return shared_ptr<Intent>(new TowerClearedForTakeoffIntent(
                 m_nextIntentId++,
@@ -242,7 +243,7 @@ namespace world
                 flight,
                 true,
                 clearance,
-                departure->frequency()->khz()
+                departure ? departure->frequency()->khz() : 0
             ));
         }
 

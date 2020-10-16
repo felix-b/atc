@@ -6,6 +6,7 @@ add_library(libworld STATIC
     aircraft.cpp
     airport.cpp
     airspaceClass.cpp
+    altitude.cpp
     basicManeuverTypes.hpp
     clearanceTypes.hpp
     controlFacility.cpp
@@ -35,6 +36,7 @@ add_library(libworld STATIC
     world.cpp
     worldBuilder.cpp
     worldHelper.hpp
+    stateMachine.hpp
     hostServices.cpp
 )
 

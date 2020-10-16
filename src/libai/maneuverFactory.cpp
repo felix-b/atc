@@ -12,13 +12,22 @@
 #include "maneuverFactory.hpp"
 #include "clearanceFactory.hpp"
 #include "intentFactory.hpp"
+#include "aiAircraft.hpp"
 
 using namespace std;
 using namespace world;
 
 namespace ai
 {
-
+    static shared_ptr<AIAircraft> getAIAircraft(shared_ptr<Flight> flight)
+    {
+        auto aircraft = dynamic_pointer_cast<AIAircraft>(flight->aircraft());
+        if (aircraft)
+        {
+            return aircraft;
+        }
+        throw runtime_error("Flight [" + flight->callSign() + "]: not an AI aircraft");
+    }
     
     // shared_ptr<Maneuver> ManeuverFactory::departureLineUpAndWait(shared_ptr<Flight> flight)
     // {
@@ -210,21 +219,26 @@ namespace ai
         logstr << "heading=" << heading << endl;
         m_host->writeLog(logstr.str().c_str());
 
+        auto world = m_host->getWorld();
         float speedFactor = (typeOfTaxi == TaxiType::HighSpeed ? 12.0f : (typeOfTaxi == TaxiType::Pushback ? 1.0f : 6.0f));
         auto result = shared_ptr<Maneuver>(new AnimationManeuver<GeoPoint>(
             "", 
             from,
             to,
             chrono::milliseconds((int)(1000 * distanceMeters / speedFactor)),
-            [](const GeoPoint& from, const GeoPoint& to, double progress, GeoPoint& value) {
+            [=](const GeoPoint& from, const GeoPoint& to, double progress, GeoPoint& value) {
                 value.latitude = from.latitude + progress * (to.latitude - from.latitude);
                 value.longitude = from.longitude + progress * (to.longitude - from.longitude);
                 value.altitude = 0;
             },
-            [flight, heading](const GeoPoint& value, double progress) {
-                auto aircraft = flight->aircraft();
+            [flight, heading, typeOfTaxi](const GeoPoint& value, double progress) {
+                auto aircraft = getAIAircraft(flight);
                 aircraft->setLocation(value);
                 aircraft->setAttitude(aircraft->attitude().withHeading(heading));
+            },
+            [=](Maneuver::SemaphoreState previousState, chrono::microseconds totalWaitDuration) {
+                return obstacleScanSemaphore(
+                    world, flight, typeOfTaxi == TaxiType::Pushback, previousState, totalWaitDuration);
             }
         ));
 
@@ -265,7 +279,8 @@ namespace ai
         //m_host->writeLog("taxiTurn-DELTA-HEADING> arc.heading0=%f, arc.heading1=%f, deltaHeading=%f", arc.heading0, arc.heading1, deltaHeading);
         logstr << "deltaHeading=" << deltaHeading << endl;
         m_host->writeLog(logstr.str().c_str());
-            
+
+        auto world = m_host->getWorld();
         auto result = shared_ptr<Maneuver>(new AnimationManeuver<double>(
             "", 
             arc.arcStartAngle,
@@ -275,7 +290,7 @@ namespace ai
                 value = from + progress * deltaAngle; 
             },
             [flight, arc, typeOfTaxi, deltaHeading](const double& value, double progress) {
-                auto aircraft = flight->aircraft();
+                auto aircraft = getAIAircraft(flight);
                 GeoPoint newLocation(
                     arc.arcCenter.latitude + arc.arcRadius * sin(value),
                     arc.arcCenter.longitude + arc.arcRadius * cos(value));
@@ -293,6 +308,10 @@ namespace ai
                 //     direction * GeoMath::pi() / 2);
                 aircraft->setLocation(newLocation);
                 aircraft->setAttitude(aircraft->attitude().withHeading(newHeading));
+            },
+            [=](Maneuver::SemaphoreState previousState, chrono::microseconds totalWaitDuration) {
+                return obstacleScanSemaphore(
+                    world, flight, typeOfTaxi == TaxiType::Pushback, previousState, totalWaitDuration);
             }
         ));
 
@@ -371,8 +390,8 @@ namespace ai
 
     shared_ptr<Maneuver> ManeuverFactory::switchLights(shared_ptr<Flight> flight, Aircraft::LightBits lights)
     {
-        return instantAction([=](){ 
-            flight->aircraft()->setLights(lights);
+        return instantAction([=](){
+            getAIAircraft(flight)->setLights(lights);
         });
     }
 
@@ -398,15 +417,20 @@ namespace ai
     shared_ptr<Maneuver> ManeuverFactory::transmitIntent(shared_ptr<Flight> flight, shared_ptr<Intent> intent)
     {
         auto boxedTransmission = shared_ptr<BoxedTransmission>(new BoxedTransmission());
-        int awaitSilenceMilliseconds = intent->isReply() ? 250 : 3000;
+        int awaitSilenceMilliseconds = intent->isReply()
+            ? 250
+            : (flight->phase() == Flight::Phase::Arrival ? 3000 : 4000);
         string silenceAwaitId =
             flight->callSign() + "/" + to_string(awaitSilenceMilliseconds) + "ms-silence-on:" +
             to_string(flight->aircraft()->frequencyKhz());
+        auto waitStartedAt = m_host->getWorld()->timestamp();
 
         return sequence(Maneuver::Type::Unspecified, "", {
             await(Maneuver::Type::AwaitSilenceOnFrequency, silenceAwaitId, [=](){
+                auto elapsed = m_host->getWorld()->timestamp() - waitStartedAt;
+                int effectiveWaitMilliseconds = (elapsed.count() > 30000000 ? awaitSilenceMilliseconds / 2 : awaitSilenceMilliseconds);
                 auto frequency = flight->aircraft()->frequency();
-                bool result = !frequency || frequency->wasSilentFor(chrono::milliseconds(awaitSilenceMilliseconds));
+                bool result = !frequency || frequency->wasSilentFor(chrono::milliseconds(effectiveWaitMilliseconds));
                 return result;
             }),
             instantAction([=](){
@@ -443,7 +467,7 @@ namespace ai
             return instantAction([](){});
         }
 
-        auto aircraft = flight->aircraft();
+        auto aircraft = getAIAircraft(flight);
         float turnDegrees = GeoMath::getTurnDegrees(fromHeading, toHeading);
         int bankAngle = (abs(turnDegrees) > 15 ? 20 : 10) * (turnDegrees < 0 ? -1 : 1);
         int turnRate = abs(bankAngle) == 20 ? 2 : 1;
@@ -511,5 +535,119 @@ namespace ai
     {
         return nullptr;
     }
-}
 
+    void ManeuverFactory::calculateObstacleScanRect(
+        const GeoPoint& location,
+        float heading,
+        GeoPoint& topLeft,
+        GeoPoint& bottomRight,
+        float radiusMeters)
+    {
+        float radius = 0.00001 * radiusMeters;
+        float halfRadius = radius / 2;
+        int sectorIndex = getScanSectorIndex(heading);
+
+        switch (sectorIndex)
+        {
+        case 0: // -22.5..+22.5
+            topLeft = {location.latitude + radius, location.longitude - halfRadius };
+            bottomRight = { location.latitude, location.longitude + halfRadius };
+            break;
+        case 1: // +22.5..+67.5
+            topLeft = {location.latitude + radius, location.longitude };
+            bottomRight = { location.latitude, location.longitude + radius };
+            break;
+        case 2:
+            topLeft = {location.latitude + halfRadius, location.longitude };
+            bottomRight = {location.latitude - halfRadius, location.longitude + radius };
+            break;
+        case 3:
+            topLeft = { location.latitude, location.longitude };
+            bottomRight = { location.latitude - radius, location.longitude + radius };
+            break;
+        case 4:
+            topLeft = {location.latitude, location.longitude - halfRadius };
+            bottomRight = { location.latitude - radius, location.longitude + halfRadius };
+            break;
+        case 5:
+            topLeft = { location.latitude, location.longitude - radius };
+            bottomRight = { location.latitude - radius, location.longitude };
+            break;
+        case 6:
+            topLeft = {location.latitude + halfRadius, location.longitude - radius };
+            bottomRight = { location.latitude - halfRadius, location.longitude };
+            break;
+        case 7:
+            topLeft = {location.latitude + radius, location.longitude - radius };
+            bottomRight = { location.latitude, location.longitude };
+            break;
+        }
+    }
+
+    Maneuver::SemaphoreState ManeuverFactory::obstacleScanSemaphore(
+        shared_ptr<World> world,
+        shared_ptr<Flight> ourFlight,
+        bool isPushback,
+        Maneuver::SemaphoreState previousState,
+        chrono::microseconds closedStateTotalDuration)
+    {
+        auto ourAircraft = ourFlight->aircraft();
+        auto ourPhase = ourFlight->phase();
+
+        float scanRadiusMeters = previousState == Maneuver::SemaphoreState::Open ? 60 : 75;
+        float ourHeading = isPushback
+            ? GeoMath::flipHeading(ourAircraft->attitude().heading())
+            : ourAircraft->attitude().heading();
+
+        GeoPoint scanTopLeft;
+        GeoPoint scanBottomRight;
+        calculateObstacleScanRect(ourAircraft->location(), ourHeading, scanTopLeft, scanBottomRight, scanRadiusMeters);
+
+        const auto isAircraftAnObstacle = [&](shared_ptr<Aircraft> otherAircraft) {
+            if (otherAircraft == ourAircraft)
+            {
+                return false;
+            }
+            if (otherAircraft->nature() == Actor::Nature::Human)
+            {
+                return true;
+            }
+
+            auto otherPhase = otherAircraft->getFlightOrThrow()->phase();
+            if (ourPhase != otherPhase)
+            {
+                return (ourPhase == Flight::Phase::Departure && otherPhase != Flight::Phase::TurnAround);
+            }
+
+            float headingToOther = GeoMath::getHeadingFromPoints(ourAircraft->location(), otherAircraft->location());
+            float turnToOther = GeoMath::getTurnDegrees(ourHeading, headingToOther);
+            float deltaHeading = GeoMath::getTurnDegrees(ourHeading, otherAircraft->attitude().heading());
+            bool isSameDirection = abs(deltaHeading) < 60;
+            bool isInFront = abs(turnToOther) < 60;
+            //bool isBehind = abs(turnToOther) > 120;
+            bool isHeadOn = abs(deltaHeading) > 165;
+
+            if (isHeadOn)
+            {
+                return false;
+            }
+            if (isInFront && isSameDirection)
+            {
+                return true;
+            }
+
+            return (turnToOther > 0); //right-hand rule
+        };
+
+        bool obstaclesDetected = world->detectAircraftInRect(scanTopLeft, scanBottomRight, isAircraftAnObstacle);
+        return obstaclesDetected
+            ? Maneuver::SemaphoreState::Closed
+            : Maneuver::SemaphoreState::Open;
+    }
+
+    int ManeuverFactory::getScanSectorIndex(float heading)
+    {
+        int sector = (int)((heading + 22.5) / 45.0) % 8;
+        return sector;
+    }
+}

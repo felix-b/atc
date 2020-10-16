@@ -5,9 +5,11 @@ include(CTest)
 include(GoogleTest)
 enable_testing()
 
-add_executable(libdataxp_test 
+add_executable(libdataxp_test
+    libdataxp_test.h
     cppTest.cpp
     xpAirportReaderTest.cpp
+    airportOpsTest.cpp
     hydrationTest.cpp
 )
 

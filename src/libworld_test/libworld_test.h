@@ -21,8 +21,13 @@ namespace world
         class TestAIController : public Controller
         {
         public:
+            typedef function<void(vector<string>& departure, vector<string>& arrival)> OnSelectActiveRunways;
+        private:
+            OnSelectActiveRunways m_onSelectActiveRunways;
+        public:
             TestAIController(shared_ptr<HostServices> _host, int _id, const string& _name, shared_ptr<ControllerPosition> _position) : 
-                Controller(_host, _id, Actor::Gender::Female, _position)
+                Controller(_host, _id, Actor::Gender::Female, _position),
+                m_onSelectActiveRunways(noopSelectActiveRunways)
             {
             }
         public:
@@ -30,6 +35,18 @@ namespace world
             {
             }
             void progressTo(chrono::microseconds timestamp) override
+            {
+            }
+            void selectActiveRunways(vector<string>& departure, vector<string>& arrival) override
+            {
+                m_onSelectActiveRunways(departure, arrival);
+            }
+            void onSelectActiveRunways(OnSelectActiveRunways callback)
+            {
+                m_onSelectActiveRunways = callback;
+            }
+        public:
+            static void noopSelectActiveRunways(vector<string>& departure, vector<string>& arrival)
             {
             }
         };
@@ -52,6 +69,44 @@ namespace world
             {
                 return nullptr;
             }
+        };
+        class TestAIAircraft : public Aircraft
+        {
+        public:
+            TestAIAircraft(
+                shared_ptr<HostServices> _host,
+                int _id,
+                const string& _modelIcao,
+                const string& _airlineIcao,
+                const string& _tailNo,
+                Category _category
+            ) : Aircraft(
+                _host,
+                _id,
+                Actor::Nature::AI,
+                _modelIcao,
+                _airlineIcao,
+                _tailNo,
+                _category)
+            {
+            }
+        public:
+            const GeoPoint& location() const override { throw runtime_error("TestAIAircraft"); }
+            const AircraftAttitude& attitude() const override { throw runtime_error("TestAIAircraft"); }
+            double track() const override { throw runtime_error("TestAIAircraft"); }
+            const Altitude& altitude() const override { throw runtime_error("TestAIAircraft"); }
+            double groundSpeedKt() const override { throw runtime_error("TestAIAircraft"); }
+            double verticalSpeedFpm() const override { throw runtime_error("TestAIAircraft"); }
+            const string& squawk() const override { throw runtime_error("TestAIAircraft"); }
+            LightBits lights() const override { throw runtime_error("TestAIAircraft"); }
+            bool isLightsOn(LightBits bits) const override { throw runtime_error("TestAIAircraft"); }
+            float gearState() const override { throw runtime_error("TestAIAircraft"); }
+            float flapState() const override { throw runtime_error("TestAIAircraft"); }
+            float spoilerState() const override { throw runtime_error("TestAIAircraft"); }
+            bool justTouchedDown(chrono::microseconds timestamp) override { throw runtime_error("TestAIAircraft"); }
+            void park(shared_ptr<ParkingStand> parkingStand) override { throw runtime_error("TestAIAircraft"); }
+            void setOnFinal(const Runway::End& runwayEnd) override { throw runtime_error("TestAIAircraft"); }
+            void notifyChanges() override {}
         };
         class TestAircraftObjectService : public AircraftObjectService
         {
@@ -104,6 +159,7 @@ namespace world
         function<double(float local)> m_localToGeo;
         int m_nextAIControllerId = 1;
         int m_nextAIPilotId = 1;
+        int m_nextAIAircraftId = 1;
         shared_ptr<TestAircraftObjectService> m_aircraftObjectService;
         shared_ptr<TestTtsService> m_textToSpeechService;
         vector<shared_ptr<TestAIController>> m_createdAIControllers;
@@ -173,6 +229,17 @@ namespace world
             auto pilot = shared_ptr<TestAIPilot>(new TestAIPilot(shared_from_this(), id, name, flight));
             m_createdAIPilots.push_back(pilot);
             return pilot;
+        }
+        shared_ptr<Aircraft> createAIAircraft(
+            const string& modelIcao,
+            const string& operatorIcao,
+            const string& tailNo,
+            Aircraft::Category category) override
+        {
+            int id = m_nextAIAircraftId++;
+            auto aircraft = shared_ptr<Aircraft>(new TestAIAircraft(
+                shared_from_this(), id, modelIcao, operatorIcao, tailNo, category));
+            return aircraft;
         }
         void writeLog(const char* format, ...) override
         {
@@ -249,6 +316,13 @@ namespace world
             testHost->initializeServices(testHost);
             return testHost;
         }
+        static shared_ptr<TestHostServices> createWithWorld(bool shouldWriteLogs = false)
+        {
+            auto testHost = createWithLogs(shouldWriteLogs);
+            testHost->useWorld(shared_ptr<World>(new World(testHost, 0)));
+            return testHost;
+        }
+
     private:
         static float defaultGeoToLocal(double geo) 
         {

@@ -12,6 +12,7 @@
 #include "maneuverFactory.hpp"
 #include "clearanceFactory.hpp"
 #include "libworld_test.h"
+#include "aiAircraft.hpp"
 
 using namespace world;
 using namespace ai;
@@ -754,9 +755,9 @@ shared_ptr<Airport> createTestAirport(shared_ptr<HostServices> host)
 
 shared_ptr<Flight> createTestFlight(shared_ptr<HostServices> host)
 {
-    shared_ptr<Aircraft> aircraft(new Aircraft(
-        host, 
-        12345, 
+    shared_ptr<Aircraft> aircraft = shared_ptr<Aircraft>(new AIAircraft(
+        host,
+        12345,
         "B738", 
         "DAL", 
         "12345", 
@@ -797,7 +798,7 @@ shared_ptr<DepartureTaxiClearance> createTaxiClearance(shared_ptr<Airport> airpo
     EXPECT_NEAR((flight)->aircraft()->attitude().heading(), (hdg), 0.1);
 
 TEST(ManeuverFactoryTest, taxiTurn_rightAngleCounterClockwise) {
-    shared_ptr<TestHostServices> host(new TestHostServices());
+    auto host = TestHostServices::createWithWorld();
     shared_ptr<ManeuverFactory> factory(new ManeuverFactory(host));
 
     auto airport = createTestAirport(host);
@@ -847,7 +848,7 @@ TEST(ManeuverFactoryTest, taxiTurn_rightAngleCounterClockwise) {
 }
 
 TEST(ManeuverFactoryTest, taxiTurn_obtuseAngleClockwise) {
-    shared_ptr<TestHostServices> host(new TestHostServices());
+    auto host = TestHostServices::createWithWorld();
     shared_ptr<ManeuverFactory> factory(new ManeuverFactory(host));
 
     auto airport = createTestAirport(host);
@@ -905,7 +906,7 @@ TEST(ManeuverFactoryTest, taxiTurn_obtuseAngleClockwise) {
 }
 
 TEST(ManeuverFactoryTest, taxiTurn_kjfk_1) {
-    shared_ptr<TestHostServices> host(new TestHostServices());
+    auto host = TestHostServices::createWithWorld();
     shared_ptr<ManeuverFactory> factory(new ManeuverFactory(host));
 
     auto flight = createTestFlight(host);
@@ -948,7 +949,7 @@ TEST(ManeuverFactoryTest, taxiTurn_kjfk_1) {
 }
 
 TEST(ManeuverFactoryTest, taxiByPath) {
-    shared_ptr<TestHostServices> host(new TestHostServices());
+    auto host = TestHostServices::createWithWorld();
     shared_ptr<ManeuverFactory> factory(new ManeuverFactory(host));
     
     // shared_ptr<World> world(new World(host, 0));

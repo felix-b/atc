@@ -126,34 +126,27 @@ TEST(TaxiPathTest, findClosestNodeOnRunway)
 
 TEST(TaxiPathTest, arrival_runwayToGate_straight)
 {
+    auto host = TestHostServices::create();
     auto airport = createArrivalTestAirport();
     auto runway = airport->getRunwayOrThrow("09");
-    auto path = airport->taxiNet()->tryFindArrivalPathRunwayToGate(
-        runway,
-        runway->getEndOrThrow("09"),
+    auto path = airport->taxiNet()->tryFindTaxiPathToGate(
         airport->getParkingStandOrThrow("G5"),
         GeoPoint(30.10, 45.45));
 
     ASSERT_TRUE(!!path);
-    EXPECT_EQ(path->edges.size(), 4);
+    ASSERT_EQ(path->edges.size(), 3);
 
-    EXPECT_FLOAT_EQ(path->edges[0]->node1()->location().latitude(), 30.10);
-    EXPECT_FLOAT_EQ(path->edges[0]->node1()->location().longitude(), 45.45);
+    EXPECT_EQ(path->edges[0]->id(), 10502050);
 
-    EXPECT_FLOAT_EQ(path->edges[0]->node2()->location().latitude(), 30.10);
-    EXPECT_FLOAT_EQ(path->edges[0]->node2()->location().longitude(), 45.50);
-
-    EXPECT_EQ(path->edges[1]->id(), 10502050);
-
-    EXPECT_FLOAT_EQ(path->edges[2]->node1()->location().latitude(), 30.20);
-    EXPECT_FLOAT_EQ(path->edges[2]->node1()->location().longitude(), 45.50);
+    EXPECT_FLOAT_EQ(path->edges[1]->node1()->location().latitude(), 30.20);
+    EXPECT_FLOAT_EQ(path->edges[1]->node1()->location().longitude(), 45.50);
 
     EXPECT_FLOAT_EQ(
-        path->edges[2]->node2()->location().latitude(),
-        path->edges[3]->node1()->location().latitude());
+        path->edges[1]->node2()->location().latitude(),
+        path->edges[2]->node1()->location().latitude());
     EXPECT_FLOAT_EQ(
-        path->edges[2]->node2()->location().longitude(),
-        path->edges[3]->node1()->location().longitude());
+        path->edges[1]->node2()->location().longitude(),
+        path->edges[2]->node1()->location().longitude());
 
-    EXPECT_FLOAT_EQ(path->edges[3]->heading(), 0);
+    EXPECT_FLOAT_EQ(path->edges[2]->heading(), 0);
 }

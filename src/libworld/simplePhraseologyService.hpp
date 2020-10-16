@@ -41,6 +41,19 @@ static const char* PHONETIC_ALPHABET[PHONETIC_ALPHABET_SIZE] = {
     "Zulu"
 };
 
+static const char* PHONETIC_DIGITS[10] = {
+    "Zeero",
+    "One",
+    "Too",
+    "Tree",
+    "Fower",
+    "Fife",
+    "Six",
+    "Seven",
+    "Ait",
+    "Niner"
+};
+
 namespace world
 {
 
@@ -377,7 +390,7 @@ namespace world
             builder.addData(spellRunway(clearance->departureRunway()));
             builder.addPunctuation();
             builder.addText("via");
-            builder.addData(spellTaxiPath(clearance->taxiPath()), isHeads(intent));
+            builder.addData(spellTaxiPath(clearance->taxiPath()), true);
             builder.addPunctuation();
             builder.addFarewell(spellCallsign(intent->subjectFlight()->callSign()));
         }
@@ -477,8 +490,12 @@ namespace world
                 builder.addData(spellHeading(clearance->initialHeading()));
             }
 
-            builder.addText("contact departure on");
-            builder.addData(spellFrequency(intent->departureKhz()));
+            if (intent->departureKhz() > 0)
+            {
+                builder.addText("contact departure on");
+                builder.addData(spellFrequency(intent->departureKhz()));
+            }
+
             builder.addText("runway");
             builder.addData(spellRunway(intent->clearance()->departureRunway()));
             builder.addText("cleared for takeoff.");
@@ -490,8 +507,13 @@ namespace world
 
             builder.addText("heading");
             builder.addData(spellHeading(clearance->initialHeading()));
-            builder.addText("departure on");
-            builder.addData(spellFrequency(intent->departureKhz()));
+
+            if (intent->departureKhz() > 0)
+            {
+                builder.addText("departure on");
+                builder.addData(spellFrequency(intent->departureKhz()));
+            }
+
             builder.addText("cleared for takeoff");
             builder.addData(spellRunway(intent->clearance()->departureRunway()));
             builder.addFarewell(spellCallsign(intent->subjectFlight()->callSign()));
@@ -570,17 +592,17 @@ namespace world
             auto clearance = intent->clearance();
 
             builder.addText("Gate");
-            builder.addData(spellRunway(clearance->parkingStand()));
+            builder.addData(clearance->parkingStand());
             builder.addPunctuation();
             builder.addText("taxi via");
-            builder.addData(spellTaxiPath(clearance->taxiPath()), isHeads(intent));
+            builder.addData(spellTaxiPath(clearance->taxiPath()), true);
             builder.addPunctuation();
             builder.addFarewell(spellCallsign(intent->subjectFlight()->callSign()));
         }
 
     public:
 
-        static string spellPhoneticString(string s)
+        string spellPhoneticString(string s)
         {
             stringstream result;
 
@@ -594,23 +616,35 @@ namespace world
                 char c = s[i];
                 if (c >= '0' && c <= '9')
                 {
-                    result << c;
+                    result << spellPhoneticDigit(c);
+                }
+                else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+                {
+                    result << spellPhoneticChar(c);
                 }
                 else
                 {
-                    result << spellPhoneticChar(c);
+                    result << c;
                 }
             }
 
             return result.str();
         }
 
-        static string spellPhoneticChar(char c)
+        const char* spellPhoneticChar(char c)
         {
             int index = toupper(c) - 'A';
             return index >= 0 && index < PHONETIC_ALPHABET_SIZE
-                   ? PHONETIC_ALPHABET[index]
-                   : "?";
+               ? PHONETIC_ALPHABET[index]
+               : "?";
+        }
+
+        const char* spellPhoneticDigit(char c)
+        {
+            int index = c - '0';
+            return index >= 0 && index < 10
+               ? PHONETIC_DIGITS[index]
+               : "?";
         }
 
         static string spellFrequencyKhz(int khz)
@@ -618,7 +652,7 @@ namespace world
             return to_string(khz / 1000) + " point " + to_string(khz % 1000);
         }
 
-        static string spellTaxiPath(shared_ptr<TaxiPath> taxiPath)
+        string spellTaxiPath(shared_ptr<TaxiPath> taxiPath)
         {
             stringstream text;
             auto steps = taxiPath->toHumanFriendlySteps();
@@ -627,7 +661,7 @@ namespace world
             {
                 if (i > 0)
                 {
-                    text << " ";
+                    text << ", ";
                 }
                 text << spellPhoneticString(steps[i]);
             }

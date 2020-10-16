@@ -4,6 +4,9 @@
 // 
 #include <algorithm>
 #include <chrono>
+#include <vector>
+#include <memory>
+#include <unordered_map>
 #include "libworld.h"
 #include "stlhelpers.h"
 #include "simplePhraseologyService.hpp"
@@ -130,7 +133,7 @@ namespace world
             const auto position = assemblePosition(posInit);
             position->m_controller = host->createAIController(position);
             tower->m_positions.push_back(position);
-            
+
 //            host->writeLog(
 //                "Initialized controller position [%s] on frequency [%d]",
 //                position->callSign().c_str(),
@@ -290,7 +293,7 @@ namespace world
             auto& map = airport->m_runwayByName;
             Runway::Bitmask nextRunwayBit = 1;
             
-            for (const auto runway : airport->m_runways)
+            for (const auto& runway : airport->m_runways)
             {
                 runway->m_maskBit = nextRunwayBit;
                 nextRunwayBit <<= 1;
@@ -299,7 +302,37 @@ namespace world
                 map.insert({ runway->m_end1.m_name + "/" + runway->m_end2.m_name, runway });
                 map.insert({ runway->m_end2.m_name + "/" + runway->m_end1.m_name, runway });
             }
+
             return map;
+        };
+
+        const auto buildParallelRunwayGroups = [&airport]() {
+            auto& groups = airport->m_parallelRunwayGroups;
+
+            for (const auto runway : airport->m_runways)
+            {
+                const string& name = runway->end1().name();
+                int numDigits = countLeadingDigits(name);
+                if (numDigits == name.length())
+                {
+                    continue;
+                }
+
+                string key = name.substr(0, numDigits);
+                auto found = find_if(groups.begin(), groups.end(), [&](vector<shared_ptr<Runway>>& group) {
+                    const string& otherName = group.at(0)->end1().name();
+                    return (otherName.find(key) == 0);
+                });
+
+                if (found != groups.end())
+                {
+                    found->push_back(runway);
+                }
+                else
+                {
+                    groups.push_back({ runway });
+                }
+            }
         };
 
         const auto resolveActiveZoneMask = [&airport](ActiveZoneMask& mask) {
@@ -394,6 +427,7 @@ namespace world
 
         buildRunwayByNameMap();
         calcRunwayHeadings();
+        buildParallelRunwayGroups();
         resolveAllEdgeRunways();
     }
 
@@ -415,5 +449,15 @@ namespace world
             airspace->m_airport = airport;
             airspace->m_controllingFacility = tower;
         }
+    }
+
+    int WorldBuilder::countLeadingDigits(const string &s)
+    {
+        int index;
+        for (
+            index = 0 ;
+            index < s.length() && isdigit(s[index]) ;
+            index++);
+        return index;
     }
 }

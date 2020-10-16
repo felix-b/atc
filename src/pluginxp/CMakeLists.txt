@@ -116,10 +116,15 @@ add_xplane_plugin(pluginxp 301
     pluginInstance.hpp
     entryPoint.cpp
     pluginWorldLoader.hpp
-    pluginScheduleLoader.hpp
+    demoScheduleLoader.hpp
     speechSoundBuffer.hpp
-    utils.cpp
+        libdataxp_test.cpp
     utils.h
+    configuration.hpp
+    userPilotAssistantWorkflow.hpp
+    userAircraft.hpp
+    userPilot.hpp
+    transcriptInterface.hpp
 )
 
 set_property(TARGET pluginxp PROPERTY CXX_STANDARD 14)

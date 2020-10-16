@@ -67,10 +67,12 @@ namespace world
             return ground;
         }
 
-        shared_ptr<ControllerPosition> getDeparture(shared_ptr<Flight> flight)
+        shared_ptr<ControllerPosition> tryGetDeparture(shared_ptr<Flight> flight)
         { 
             auto airport = getDepartureAirport(flight);
-            return airport->departureAt(flight->aircraft()->location());
+            return airport->tower()->tryFindPosition(
+                ControllerPosition::Type::Departure,
+                flight->aircraft()->location());
         }
 
         shared_ptr<Intent> verbalize(shared_ptr<Intent> intent)

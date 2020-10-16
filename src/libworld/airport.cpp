@@ -8,7 +8,7 @@
 
 namespace world
 {
-    shared_ptr<Runway> Airport::findLongestRunway()
+    shared_ptr<Runway> Airport::findLongestRunway() const
     {
         const auto compareRunwayLength = [](const shared_ptr<Runway>& r1, const shared_ptr<Runway>& r2) {
             return (r1->lengthMeters() < r2->lengthMeters());
@@ -32,6 +32,28 @@ namespace world
         return longestRunway;
     }
 
+    const vector<shared_ptr<Runway>>& Airport::findLongestParallelRunwayGroup() const
+    {
+        const auto calcAverageRunwayLength = [](const vector<shared_ptr<Runway>>& group)->float {
+            float sum = 0;
+            for (int i = 0 ; i < group.size() ; i++)
+            {
+                sum += group[i]->lengthMeters();
+            }
+            return group.size() > 0 ? sum / group.size() : 0;
+        };
+
+        vector<float> averages;
+        transform(
+            m_parallelRunwayGroups.begin(),
+            m_parallelRunwayGroups.end(),
+            back_inserter(averages),
+            calcAverageRunwayLength);
+
+        int indexOfMaxAverage = distance(averages.begin(), max_element(averages.begin(), averages.end()));
+        return m_parallelRunwayGroups.at(indexOfMaxAverage);
+    }
+
     shared_ptr<Runway> Airport::getRunwayOrThrow(const string& name) const
     {
         auto runway = tryFindRunway(name);
@@ -44,6 +66,12 @@ namespace world
             throw runtime_error(errorMessage.str());
         }
         return runway;
+    }
+
+    const Runway::End& Airport::getRunwayEndOrThrow(const string& name) const
+    {
+        auto runway = getRunwayOrThrow(name);
+        return runway->getEndOrThrow(name);
     }
 
     shared_ptr<Runway> Airport::tryFindRunway(const string& name) const
@@ -70,5 +98,44 @@ namespace world
         return found != m_parkingStandByName.end()
             ? found->second
             : nullptr;
+    }
+
+    shared_ptr<ParkingStand> Airport::findClosestParkingStand(const GeoPoint& location)
+    {
+        ClosestItemFinder<ParkingStand> finder(location);
+        for (const auto& gate : m_parkingStands)
+        {
+            finder.next(gate);
+        }
+        return finder.getClosest();
+    }
+
+    void Airport::selectActiveRunways()
+    {
+        if (!m_tower)
+        {
+            return;
+        }
+
+        for (const auto& position : m_tower->positions())
+        {
+            if (position->type() == ControllerPosition::Type::Local)
+            {
+                position->selectActiveRunways(m_activeDepartureRunways, m_activeArrivalRunways);
+            }
+        }
+    }
+
+    void Airport::selectArrivalAndDepartureTaxiways()
+    {
+        for (const auto& departureRunwayName : m_activeDepartureRunways)
+        {
+            const auto& runwayEnd = getRunwayOrThrow(departureRunwayName)->getEndOrThrow(departureRunwayName);
+
+            for (const auto &gate : m_parkingStands)
+            {
+                m_taxiNet->tryFindDepartureTaxiPathToRunway(gate->location().geo(), runwayEnd);
+            }
+        }
     }
 }

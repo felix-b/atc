@@ -18,7 +18,7 @@ namespace world
     {
         if (slowDown)
         {
-            addPart("<rate absspeed='-5'>" + text + "</rate>", Utterance::PartType::Text);
+            addPart("<rate speed='-5'>" + text + "</rate>", Utterance::PartType::Text);
         }
         else
         {
@@ -30,11 +30,11 @@ namespace world
     {
         if (slowDown)
         {
-            addPart("<rate speed='-1'>" + text + "</rate>", Utterance::PartType::Data);
+            addPart("<rate speed='-2'>" + text + "</rate>", Utterance::PartType::Data);
         }
         else
         {
-            addPart(text, Utterance::PartType::Data);
+            addPart("<rate speed='-1'>" + text + "</rate>", Utterance::PartType::Data);
         }
     }
 
@@ -42,7 +42,7 @@ namespace world
     {
         if (!skip)
         {
-            addPart("<rate absspeed='-7'><pitch middle='-1'><silence msec='1'/>uhm</pitch></rate>", Utterance::PartType::Disfluency);
+            addPart("<rate speed='-7'><pitch middle='-1'><silence msec='1'/>uhm</pitch></rate>", Utterance::PartType::Disfluency);
         }
     }
 

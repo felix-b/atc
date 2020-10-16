@@ -26,6 +26,7 @@ using namespace std;
 #define FREQUENCY_UNICOM_1227 122700
 #define FREQUENCY_UNICOM_1230 123000
 #define FEET_IN_1_METER 3.28084
+#define KNOT_IN_1_METER_PER_SEC 1.9438444942
 
 namespace world
 {
@@ -70,6 +71,7 @@ namespace world
     class WorldBuilder;
     class AIPilotFactory;
     class AIControllerFactory;
+    class AIAircraftFactory;
     class TextToSpeechService;
     class AircraftObjectService;
     class HostServices;
@@ -296,6 +298,7 @@ namespace world
         Type type() const { return m_type; }
         bool isGround() const { return m_type == Type::Ground; }
         bool isGroundBased() const { return m_type == Type::Ground || m_type == Type::AGL; }
+        string toString() const;
     public:
         static Altitude ground() { return Altitude(0, Type::Ground); }
         static Altitude agl(float feet) { return Altitude(feet, Type::AGL); }
@@ -608,6 +611,10 @@ namespace world
         const Runway::End& getRunwayEnd(const string& airportIcao, const string& runwayName) const;
         shared_ptr<Frequency> tryFindCommFrequency(shared_ptr<Flight> flight, int frequencyKhz);
         float queryTerrainElevationAt(const GeoPoint& location) { return m_onQueryTerrainElevation(location); }
+        bool detectAircraftInRect(
+            const GeoPoint& topLeft,
+            const GeoPoint& bottomRight,
+            function<bool(shared_ptr<Aircraft> aircraft)> predicate);
     public:
         time_t startTime() const { return m_startTime; }
         chrono::microseconds timestamp() const { return m_timestamp; }
@@ -645,6 +652,12 @@ namespace world
             Unknown = 0,
             Male = 1,
             Female = 2
+        };
+        enum class Role
+        {
+            Unknown = 0,
+            Pilot = 1,
+            Controller = 2
         };
         enum class VoiceType
         {
@@ -693,6 +706,7 @@ namespace world
         int m_id;
         string m_name;
         Nature m_nature;
+        Role m_role;
         Gender m_gender;
     protected:
         SpeechStyle m_speechStyle;
@@ -702,22 +716,25 @@ namespace world
             int _id,
             const string& _name,
             Nature _nature,
+            Role _role,
             Gender _gender,
             const SpeechStyle& _speechStyle
         ) : m_host(_host),
             m_id(_id),
             m_name(_name),
             m_nature(_nature),
+            m_role(_role),
             m_gender(_gender),
             m_speechStyle(_speechStyle)
         {
         }
-        Actor(shared_ptr<HostServices> _host, int _id, Gender _gender);
+        Actor(shared_ptr<HostServices> _host, int _id, Role _role, Gender _gender);
     public:
         shared_ptr<HostServices> host () const { return m_host; }
         int id() const { return m_id; }
         const string& name() const { return m_name; }
         Nature nature() const { return m_nature; }
+        Role role() const { return m_role; }
         Gender gender() const { return m_gender; }
         const SpeechStyle& speechStyle() const { return m_speechStyle; }
     public:
@@ -791,6 +808,7 @@ namespace world
     public:
         void progressTo(chrono::microseconds timestamp);
         void clearFlights();
+        void selectActiveRunways(vector<string>& departureRunways, vector<string>& arrivalRunways);
     private:
         void startListenOnFrequency();
     };
@@ -951,7 +969,7 @@ namespace world
             Nature _nature,
             Gender _gender,
             shared_ptr<ControllerPosition> _position
-        ) : Actor(_host, _id, _name, _nature, _gender, { false }),
+        ) : Actor(_host, _id, _name, _nature, Actor::Role::Controller, _gender, { false }),
             m_position(_position)
         {
         }
@@ -960,10 +978,11 @@ namespace world
             int _id,
             Gender _gender,
             shared_ptr<ControllerPosition> _position
-        ) : Actor(_host, _id, _gender),
+        ) : Actor(_host, _id, Actor::Role::Controller, _gender),
             m_position(_position)
         {
         }
+        virtual void selectActiveRunways(vector<string>& departure, vector<string>& arrival) { }
     public:
         shared_ptr<ControllerPosition> position() const { return m_position; }
         shared_ptr<ControlFacility> facility() const { return m_position->facility(); }
@@ -1334,6 +1353,12 @@ namespace world
             InProgress = 2,
             Finished = 3
         };
+        enum class SemaphoreState
+        {
+            NotInitialized = 0,
+            Open = 1,
+            Closed = 2
+        };
         class ParameterDictionary
         {
         private:
@@ -1426,109 +1451,88 @@ namespace world
     private:
         shared_ptr<HostServices> m_host;
         int m_id;
+        Actor::Nature m_nature;
         string m_modelIcao;
         string m_airlineIcao;
         string m_tailNo;
         Category m_category;
-        GeoPoint m_location;
-        chrono::microseconds m_locationTimespamp;
-        chrono::microseconds m_touchdownTimestamp;
-        AircraftAttitude m_attitude;
-        Altitude m_altitude;
-        double m_track;
-        double m_groundSpeedKt;
-        double m_verticalSpeedFpm;
-        string m_squawk;
-        int m_frequencyKhz;
-        shared_ptr<Frequency> m_frequency;
-        int m_frequencyListenerId;
-        LightBits m_lights;
-        float m_gearState;
-        float m_flapState;
-        float m_spoilerState;
-        shared_ptr<Maneuver> m_maneuver;
         weak_ptr<Flight> m_flight;
         World::OnChangesCallback m_onChanges;
         Frequency::Listener m_onCommTransmission;
-    public:
+        int m_frequencyKhz;
+        shared_ptr<Frequency> m_frequency;
+        int m_frequencyListenerId;
+    protected:
         Aircraft(
             shared_ptr<HostServices> _host,
             int _id,
+            Actor::Nature _nature,
             const string& _modelIcao,
             const string& _airlineIcao,
             const string& _tailNo,
             Category _category
         ) : m_host(_host),
             m_id(_id),
+            m_nature(_nature),
             m_modelIcao(_modelIcao), 
             m_airlineIcao(_airlineIcao), 
             m_tailNo(_tailNo), 
             m_category(_category),
-            m_location(0, 0),
-            m_attitude({ 0, 0, 0 }),
-            m_track(0),
-            m_groundSpeedKt(0),
-            m_verticalSpeedFpm(0),
-            m_gearState(1.0f),
-            m_flapState(0),
-            m_spoilerState(0),
-            m_locationTimespamp(chrono::seconds(-1)),
-            m_touchdownTimestamp(chrono::seconds(-1)),
-            m_altitude(Altitude::ground()),
-            m_frequencyKhz(-1),
-            m_frequencyListenerId(-1),
-            m_lights(LightBits::None),
             m_onChanges(World::onChangesUnassigned),
-            m_onCommTransmission(Frequency::noopListener)
+            m_onCommTransmission(Frequency::noopListener),
+            m_frequencyKhz(-1),
+            m_frequencyListenerId(-1)
         {
             //setFrequencyKhz(FREQUENCY_UNICOM_1228);
         }
     public:
-        int id() const { return m_id; } 
+        int id() const { return m_id; }
+        Actor::Nature nature() const { return m_nature; }
         const string& modelIcao () const { return m_modelIcao; }
         const string& airlineIcao () const { return m_airlineIcao; }
         const string& tailNo () const { return m_tailNo; }
         Category category () const { return m_category; }
-    public:
-        const GeoPoint& location() const { return m_location; }
-        chrono::microseconds locationTiemstamp() const { return m_locationTimespamp; }
-        const AircraftAttitude& attitude() const { return m_attitude; }
-        double track() const { return m_track; }
-        const Altitude& altitude() const { return m_altitude; }
-        double groundSpeedKt() const { return m_groundSpeedKt; }
-        double verticalSpeedFpm() const { return m_verticalSpeedFpm; }
-        const string& squawk() const { return m_squawk; }
         shared_ptr<Frequency> frequency() const { return m_frequency; }
         int frequencyKhz() const { return m_frequencyKhz; }
-        LightBits lights() const { return m_lights; }
-        bool isLightsOn(LightBits bits);
-        float gearState() const { return m_gearState; }
-        float flapState() const { return m_flapState; }
-        float spoilerState() const { return m_spoilerState; }
-        bool justTouchedDown(chrono::microseconds timestamp);
+        shared_ptr<Flight> getFlightOrThrow();
     public:
-        void assignFlight(shared_ptr<Flight> flight);
-        void progressTo(chrono::microseconds timestamp);
-        void park(shared_ptr<ParkingStand> parkingStand);
-        void setOnFinal(const Runway::End& runwayEnd);
-        void setLocation(const GeoPoint& _location);
-        void setAttitude(const AircraftAttitude& _attitude, TrackSyncMode trackSync = TrackSyncMode::SyncToHeading);
-        void setAltitude(const Altitude& _altitude);
-        void setTrack(double _track);
-        void setGroundSpeedKt(double kt);
-        void setVerticalSpeedFpm(double fpm);
-        void setGearState(float ratio);
-        void setFlapState(float ratio);
-        void setSpoilerState(float ratio);
-        void setSquawk(const string& _squawk);
-        void setFrequencyKhz(int _frequencyKhz);
-        void setFrequency(shared_ptr<Frequency> _frequency);
-        void setLights(LightBits _lights);
-        void setManeuver(shared_ptr<Maneuver> _maneuver);
-    private:
-        void notifyChanges();
-        void moveFor(int64_t elapsedMicroseconds, bool& touchedDown);
-        Altitude getNextAltitude(float nextFeet);
+        virtual void setFrequencyKhz(int _frequencyKhz);
+        virtual void setFrequency(shared_ptr<Frequency> _frequency);
+        virtual void assignFlight(shared_ptr<Flight> flight);
+        virtual void progressTo(chrono::microseconds timestamp) { }
+    public:
+        virtual const GeoPoint& location() const = 0;
+        virtual const AircraftAttitude& attitude() const = 0;
+        virtual double track() const = 0;
+        virtual const Altitude& altitude() const = 0;
+        virtual double groundSpeedKt() const = 0;
+        virtual double verticalSpeedFpm() const = 0;
+        virtual const string& squawk() const = 0;
+        virtual LightBits lights() const = 0;
+        virtual bool isLightsOn(LightBits bits) const = 0;
+        virtual float gearState() const = 0;
+        virtual float flapState() const = 0;
+        virtual float spoilerState() const = 0;
+        virtual bool justTouchedDown(chrono::microseconds timestamp) = 0;
+    public:
+        virtual void park(shared_ptr<ParkingStand> parkingStand) = 0;
+        virtual void setOnFinal(const Runway::End& runwayEnd) = 0;
+//        virtual void setLocation(const GeoPoint& _location) = 0;
+//        virtual void setAttitude(const AircraftAttitude& _attitude, TrackSyncMode trackSync = TrackSyncMode::SyncToHeading) = 0;
+//        virtual void setAltitude(const Altitude& _altitude) = 0;
+//        virtual void setTrack(double _track) = 0;
+//        virtual void setGroundSpeedKt(double kt) = 0;
+//        virtual void setVerticalSpeedFpm(double fpm) = 0;
+//        virtual void setGearState(float ratio) = 0;
+//        virtual void setFlapState(float ratio) = 0;
+//        virtual void setSpoilerState(float ratio) = 0;
+//        virtual void setSquawk(const string& _squawk) = 0;
+//        virtual void setLights(LightBits _lights) = 0;
+    protected:
+        shared_ptr<HostServices> host() const { return m_host; }
+        weak_ptr<Flight> flight() const { return m_flight; }
+        shared_ptr<World::ChangeSet> getWorldChangeSet() const;
+        virtual void notifyChanges() = 0;
     public:
         void onChanges(World::OnChangesCallback callback) { m_onChanges = callback; }
         void onCommTransmission(Frequency::Listener callback) { m_onCommTransmission = callback; }
@@ -1682,6 +1686,14 @@ namespace world
             CVFR,
             IFR
         };
+        enum class Phase
+        {
+            NotAssigned = 0,
+            Departure = 1,
+            EnRoute = 2,
+            Arrival = 3,
+            TurnAround = 4
+        };
     private:
         shared_ptr<HostServices> m_host;
         int m_id;
@@ -1693,6 +1705,7 @@ namespace world
         shared_ptr<Aircraft> m_aircraft;
         shared_ptr<FlightPlan> m_plan;
         shared_ptr<FlightPlan::Cursor> m_planCursor;
+        Phase m_phase;
         float m_landingRunwayElevationFeet;
         vector<shared_ptr<Clearance>> m_clearances;
         World::OnChangesCallback m_onChanges;
@@ -1716,12 +1729,14 @@ namespace world
         shared_ptr<Pilot> pilot() const { return m_pilot; }
         shared_ptr<FlightPlan> plan() const { return m_plan; }
         shared_ptr<FlightPlan::Cursor> planCursor() const { return m_planCursor; }
+        Phase phase() const { return m_phase; }
         float landingRunwayElevationFeet();
     public:
         void setAircraft(shared_ptr<Aircraft> _aircraft);
         void setPilot(shared_ptr<Pilot> _pilot);
         void progressTo(chrono::microseconds timestamp);
         void addClearance(shared_ptr<Clearance> clearance);
+        void setPhase(Phase newPhase) { m_phase = newPhase; }
     public:
         void onChanges(World::OnChangesCallback callback) { m_onChanges = callback; }
     public:
@@ -1752,8 +1767,9 @@ namespace world
             const string& _name,
             Nature _nature,
             Gender _gender,
-            shared_ptr<Flight> _flight
-        ) : Actor(_host, _id, _name, _nature, _gender, { false }),
+            shared_ptr<Flight> _flight,
+            const Actor::SpeechStyle _speechStyle
+        ) : Actor(_host, _id, _name, _nature, Actor::Role::Pilot, _gender, _speechStyle),
             m_flight(_flight),
             m_aircraft(_flight->aircraft())
         {
@@ -1763,7 +1779,7 @@ namespace world
             int _id,
             Gender _gender,
             shared_ptr<Flight> _flight
-        ) : Actor(_host, _id, _gender),
+        ) : Actor(_host, _id, Actor::Role::Pilot, _gender),
             m_flight(_flight),
             m_aircraft(_flight->aircraft())
         {
@@ -1811,6 +1827,9 @@ namespace world
         unordered_map<string, shared_ptr<ParkingStand>> m_parkingStandByName;
         shared_ptr<TaxiNet> m_taxiNet;
         shared_ptr<ControlFacility> m_tower;
+        vector<vector<shared_ptr<Runway>>> m_parallelRunwayGroups;
+        vector<string> m_activeDepartureRunways;
+        vector<string> m_activeArrivalRunways;
     public:
         Airport(const Header& _header) : 
             m_header(_header)
@@ -1822,6 +1841,10 @@ namespace world
         const vector<shared_ptr<ParkingStand>>& parkingStands() const { return m_parkingStands; }
         shared_ptr<TaxiNet> taxiNet() const { return m_taxiNet; }
         shared_ptr<ControlFacility> tower() const { return m_tower; }
+        bool hasParallelRunways() const { return m_parallelRunwayGroups.size() > 0; }
+        int parallelRunwayGroupCount() const { return m_parallelRunwayGroups.size(); }
+        const vector<string>& activeDepartureRunways() const { return m_activeDepartureRunways; }
+        const vector<string>& activeArrivalRunways() const { return m_activeArrivalRunways; }
     public:
         shared_ptr<ControllerPosition> clearanceDeliveryAt(const GeoPoint& location) const { 
             return m_tower->findPositionOrThrow(ControllerPosition::Type::ClearanceDelivery, location); 
@@ -1838,12 +1861,18 @@ namespace world
         shared_ptr<ControllerPosition> approachAt(const GeoPoint& location) const { 
             return m_tower->findPositionOrThrow(ControllerPosition::Type::Approach, location); 
         }
-        shared_ptr<Runway> findLongestRunway();
+        shared_ptr<Runway> findLongestRunway() const;
     public:
         shared_ptr<Runway> getRunwayOrThrow(const string& name) const;
+        const Runway::End& getRunwayEndOrThrow(const string& name) const;
         shared_ptr<Runway> tryFindRunway(const string& name) const;
         shared_ptr<ParkingStand> getParkingStandOrThrow(const string& name) const;
         shared_ptr<ParkingStand> tryFindParkingStand(const string& name) const;
+        const vector<shared_ptr<Runway>>& getParallelRunwayGroup(int index) const { return m_parallelRunwayGroups.at(index); }
+        const vector<shared_ptr<Runway>>& findLongestParallelRunwayGroup() const;
+        shared_ptr<ParkingStand> findClosestParkingStand(const GeoPoint& location);
+        void selectActiveRunways();
+        void selectArrivalAndDepartureTaxiways();
     };
 
     class ParkingStand
@@ -1908,6 +1937,35 @@ namespace world
         }
     };
 
+    template<class T>
+    class ClosestItemFinder
+    {
+    private:
+        GeoPoint m_location;
+        shared_ptr<T> m_closest;
+        double m_minDistanceMetric = -1;
+    public:
+        ClosestItemFinder(const GeoPoint& _location) :
+            m_location(_location)
+        {
+        }
+    public:
+        void next(const shared_ptr<T>& item)
+        {
+            const double distanceMetric =
+                abs(m_location.latitude - item->location().latitude()) +
+                abs(m_location.longitude - item->location().longitude());
+
+            if (m_minDistanceMetric < 0 || distanceMetric < m_minDistanceMetric)
+            {
+                m_minDistanceMetric = distanceMetric;
+                m_closest = item;
+            }
+        }
+    public:
+        const shared_ptr<T>& getClosest() const { return m_closest; }
+    };
+
     class TaxiNet : public enable_shared_from_this<TaxiNet>
     {
     private:
@@ -1945,13 +2003,19 @@ namespace world
             const shared_ptr<Runway>& runway,
             const Runway::End& runwayEnd) const;
 
-        shared_ptr<TaxiPath> tryFindArrivalPathRunwayToGate(
-            shared_ptr<Runway> runway,
-            const Runway::End& runwayEnd,
-            shared_ptr<ParkingStand> gate,
-            const GeoPoint &fromPoint);
+//        shared_ptr<TaxiPath> tryFindArrivalPathRunwayToGate(
+//            shared_ptr<HostServices> host,
+//            shared_ptr<Runway> runway,
+//            const Runway::End& runwayEnd,
+//            shared_ptr<ParkingStand> gate,
+//            const GeoPoint &fromPoint);
+
+        shared_ptr<TaxiPath> tryFindDepartureTaxiPathToRunway(
+            const GeoPoint& fromPoint,
+            const Runway::End& toRunwayEnd);
 
         shared_ptr<TaxiPath> tryFindExitPathFromRunway(
+            shared_ptr<HostServices> host,
             shared_ptr<Runway> runway,
             const Runway::End& runwayEnd,
             shared_ptr<ParkingStand> gate,
@@ -1961,12 +2025,15 @@ namespace world
             shared_ptr<ParkingStand> gate,
             const GeoPoint &fromPoint);
 
+        void assignFlightPhaseAllocation(shared_ptr<TaxiPath> path, Flight::Phase allocation);
     private:
 
         shared_ptr<TaxiEdge> tryFindExitFromRunway(
+            shared_ptr<HostServices> host,
             shared_ptr<Runway> runway,
             const Runway::End& runwayEnd,
-            const GeoPoint &fromPoint) const;
+            const GeoPoint &fromPoint,
+            float turnToGateDegrees) const;
     };
 
     struct ActiveZoneMask
@@ -2035,6 +2102,7 @@ namespace world
         shared_ptr<TaxiNode> m_node2;
         shared_ptr<Runway> m_runway;
         shared_ptr<TaxiEdge> m_flipOver;
+        Flight::Phase m_flightPhaseAllocation;
         ActiveZoneMatrix m_activeZones;
     public:
         TaxiEdge(
@@ -2063,9 +2131,11 @@ namespace world
         shared_ptr<TaxiNode> node2() const { return m_node2; }
         shared_ptr<Runway> runway() const { return m_runway; }
         const ActiveZoneMatrix& activeZones() const { return m_activeZones; }
+        Flight::Phase flightPhaseAllocation() const { return m_flightPhaseAllocation; }
     public:
         bool isRunway(const string& runwayEndName) const { return m_runwayEndName == runwayEndName; }
         bool isHighSpeedExitRunway(const string& runwayName) const { return m_highSpeedExitRunway == runwayName; }
+        void setFlightPhaseAllocation(Flight::Phase allocation);
     public:
         static shared_ptr<TaxiEdge> flipOver(shared_ptr<TaxiEdge> source);
         static float calculateTaxiDistance(
@@ -2087,9 +2157,15 @@ namespace world
         bool m_hasTaxiway;
         bool m_hasRunway;
         vector<shared_ptr<TaxiEdge>> m_edges;
+        Flight::Phase m_flightPhaseAllocation;
     public:
         TaxiNode(int _id, const UniPoint& _location) :
-            m_id(_id), m_location(_location), m_isJunction(false), m_hasTaxiway(false), m_hasRunway(false)
+            m_id(_id),
+            m_location(_location),
+            m_isJunction(false),
+            m_hasTaxiway(false),
+            m_hasRunway(false),
+            m_flightPhaseAllocation(Flight::Phase::NotAssigned)
         {
         }
     public:
@@ -2098,14 +2174,19 @@ namespace world
         bool isJunction() const { return m_isJunction; }
         bool hasTaxiway() const { return m_hasTaxiway; }
         bool hasRunway() const { return m_hasRunway; }
+        Flight::Phase flightPhaseAllocation() const { return m_flightPhaseAllocation; }
         const vector<shared_ptr<TaxiEdge>>& edges() const { return m_edges; }
     public:
         shared_ptr<TaxiEdge> getEdgeTo(shared_ptr<TaxiNode> node);
         shared_ptr<TaxiEdge> tryFindEdge(function<bool(shared_ptr<TaxiEdge> edge)> predicate);
+    public:
+        void setFlightPhaseAllocation(Flight::Phase allocation) { m_flightPhaseAllocation = allocation; }
     };
 
     class TaxiPath
     {
+    public:
+        typedef function<float(shared_ptr<TaxiEdge> edge)> CostFunction;
     public:
         shared_ptr<TaxiNode> fromNode;
         shared_ptr<TaxiNode> toNode;
@@ -2121,8 +2202,21 @@ namespace world
         void appendEdge(shared_ptr<TaxiEdge> edge);
         void appendEdgeTo(const UniPoint& destination);
     public:
-        static shared_ptr<TaxiPath> find(shared_ptr<TaxiNet> net, shared_ptr<TaxiNode> from, shared_ptr<TaxiNode> to);
-        static shared_ptr<TaxiPath> tryFind(shared_ptr<TaxiNet> taxiNet, const GeoPoint& fromPoint, const GeoPoint& toPoint);
+        static shared_ptr<TaxiPath> find(
+            shared_ptr<TaxiNet> net,
+            shared_ptr<TaxiNode> from,
+            shared_ptr<TaxiNode> to,
+            CostFunction costFunction = lengthCostFunction);
+        static shared_ptr<TaxiPath> tryFind(
+            shared_ptr<TaxiNet> taxiNet,
+            const GeoPoint& fromPoint,
+            const GeoPoint& toPoint,
+            CostFunction costFunction = lengthCostFunction);
+
+        static float lengthCostFunction(shared_ptr<TaxiEdge> edge)
+        {
+            return edge->lengthMeters();
+        }
     };
 
     class WorldBuilder
@@ -2187,6 +2281,7 @@ namespace world
             shared_ptr<Airport> airport,
             shared_ptr<ControlFacility> tower,
             shared_ptr<ControlledAirspace> airspace);
+        static int countLeadingDigits(const string& s);
     };
 
     class AIControllerFactory
@@ -2199,6 +2294,16 @@ namespace world
     {
     public:
         virtual shared_ptr<Pilot> createPilot(shared_ptr<Flight> flight) = 0;
+    };
+
+    class AIAircraftFactory
+    {
+    public:
+        virtual shared_ptr<Aircraft> createAircraft(
+            const string& modelIcao,
+            const string& operatorIcao,
+            const string& tailNo,
+            Aircraft::Category category) = 0;
     };
 
     class HostServices
@@ -2256,6 +2361,11 @@ namespace world
         virtual float queryTerrainElevationAt(const GeoPoint& location) = 0;
         virtual shared_ptr<Controller> createAIController(shared_ptr<ControllerPosition> position) = 0;
         virtual shared_ptr<Pilot> createAIPilot(shared_ptr<Flight> flight) = 0;
+        virtual shared_ptr<Aircraft> createAIAircraft(
+            const string& modelIcao,
+            const string& operatorIcao,
+            const string& tailNo,
+            Aircraft::Category category) = 0;
         virtual string getResourceFilePath(const vector<string>& relativePathParts) = 0;
         virtual string getHostFilePath(const vector<string>& relativePathParts) = 0;
         virtual shared_ptr<istream> openFileForRead(const string& filePath) = 0;

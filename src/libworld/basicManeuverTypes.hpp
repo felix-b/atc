@@ -109,6 +109,10 @@ namespace world
             T& result
         )> FormulaFunction;
         typedef function<void(const T& value, double progress)> ApplyFunction;
+        typedef function<Maneuver::SemaphoreState(
+            Maneuver::SemaphoreState previousState,
+            chrono::microseconds closedStateTotalDuration
+        )> SemaphoreFunction;
     private:
         T m_startValue;
         T m_endValue;
@@ -116,6 +120,10 @@ namespace world
         chrono::microseconds m_duration;
         FormulaFunction m_formula;
         ApplyFunction m_apply;
+        SemaphoreFunction m_semaphore;
+        SemaphoreState m_lastSemaphoreState;
+        chrono::microseconds m_semaphoreWaitDuration;
+        chrono::microseconds m_lastElapsed;
     public:
         AnimationManeuver(
             const string& _id,
@@ -123,13 +131,18 @@ namespace world
             const T& _endValue,
             chrono::microseconds _duration,
             FormulaFunction _formula,
-            ApplyFunction _apply
+            ApplyFunction _apply,
+            SemaphoreFunction _semaphore = noopSemaphore
         ) : Maneuver(Maneuver::Type::Animation, _id, {}),
             m_startValue(_startValue),
             m_endValue(_endValue),
             m_duration(_duration),
             m_formula(_formula),
-            m_apply(_apply)
+            m_apply(_apply),
+            m_semaphore(_semaphore),
+            m_lastSemaphoreState(SemaphoreState::Open),
+            m_semaphoreWaitDuration(chrono::microseconds(0)),
+            m_lastElapsed(chrono::microseconds(0))
         {
         }    
     public:
@@ -142,17 +155,33 @@ namespace world
             }
 
             chrono::microseconds elapsed = timestamp - m_startTimestamp;
+            chrono::microseconds deltaElapsed = elapsed - m_lastElapsed;
+            m_lastElapsed = elapsed;
+
+            m_lastSemaphoreState = m_semaphore(m_lastSemaphoreState, m_semaphoreWaitDuration);
+            if (m_lastSemaphoreState == SemaphoreState::Closed)
+            {
+                m_semaphoreWaitDuration += deltaElapsed;
+                return;
+            }
+
+            chrono::microseconds elapsedAnimation = elapsed - m_semaphoreWaitDuration;
             double progress = min(
                 1.0, 
-                (double)elapsed.count() / (double)m_duration.count());
+                (double)elapsedAnimation.count() / (double)m_duration.count());
             m_formula(m_startValue, m_endValue, progress, m_lastValue);
             m_apply(m_lastValue, progress);
 
-            if (elapsed >= m_duration)
+            if (elapsedAnimation >= m_duration)
             {
                 m_state = Maneuver::State::Finished;
                 m_finishTimestamp = timestamp;
             }
+        }
+    public:
+        static SemaphoreState noopSemaphore(SemaphoreState, chrono::microseconds)
+        {
+            return SemaphoreState::Open;
         }
     };
 

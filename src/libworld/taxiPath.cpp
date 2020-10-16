@@ -97,7 +97,8 @@ namespace world
     shared_ptr<TaxiPath> TaxiPath::tryFind(
         shared_ptr<TaxiNet> taxiNet, 
         const GeoPoint& fromPoint, 
-        const GeoPoint& toPoint)
+        const GeoPoint& toPoint,
+        CostFunction costFunction)
     {
         const auto isTaxiEdge = [](const shared_ptr<TaxiEdge>& edge) { 
             return (edge->type() == TaxiEdge::Type::Taxiway); 
@@ -111,7 +112,7 @@ namespace world
         
         if (fromNode && toNode)
         {
-            auto taxiPath = TaxiPath::find(taxiNet, fromNode, toNode);
+            auto taxiPath = TaxiPath::find(taxiNet, fromNode, toNode, costFunction);
             return taxiPath;
         }
 
@@ -121,7 +122,8 @@ namespace world
     shared_ptr<TaxiPath> TaxiPath::find(
         shared_ptr<TaxiNet> net, 
         shared_ptr<TaxiNode> from, 
-        shared_ptr<TaxiNode> to)
+        shared_ptr<TaxiNode> to,
+        CostFunction costFunction)
     {
         // uniform cost search
 
@@ -183,7 +185,7 @@ namespace world
                 bool alreadyVisited = (stepDoneById.find(nextId) != stepDoneById.end());
                 if (!alreadyVisited)
                 {
-                    PathStep nextStep = { nextId, edge, tail.lengthToHere + edge->lengthMeters() };
+                    PathStep nextStep = { nextId, edge, tail.lengthToHere + costFunction(edge) };
                     //cout << "ALG> pushing step [" << tail.id << "->" << nextId << "] cost[" << nextStep.lengthToHere << "]" << endl;
                     frontier.push(nextStep);
                 }

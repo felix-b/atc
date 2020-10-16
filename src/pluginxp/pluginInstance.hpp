@@ -34,7 +34,12 @@
 #include "xpmp2AircraftObjectService.hpp"
 #include "xplmSpeakStringTtsService.hpp"
 #include "pluginWorldLoader.hpp"
-#include "pluginScheduleLoader.hpp"
+#include "demoScheduleLoader.hpp"
+#include "configuration.hpp"
+#include "userPilotAssistantWorkflow.hpp"
+#include "userAircraft.hpp"
+#include "userPilot.hpp"
+#include "transcriptInterface.hpp"
 
 using namespace std;
 using namespace PPL;
@@ -287,12 +292,18 @@ private:
 
         void enter() override
         {
-            PluginScheduleLoader scheduleLoader(m_host, m_world);
+            DemoScheduleLoader scheduleLoader(m_host, m_world);
             scheduleLoader.loadSchedules();
 
-            m_userAirport = scheduleLoader.airport();
+            m_host->writeLog(
+                "PLUGIN|The world now has [%d] airports, [%d] control facilities, [%d] AI flights",
+                m_world->airports().size(),
+                m_world->controlFacilities().size(),
+                m_world->flights().size());
 
+            m_userAirport = scheduleLoader.airport();
             WorldBuilder::tidyAirportElevations(m_host, m_userAirport);
+
             logUserAirportElevations();
         }
 
@@ -333,7 +344,7 @@ private:
         chrono::time_point<chrono::high_resolution_clock, chrono::microseconds> m_lastTickTime;
         uint64_t m_timeFactor;
         shared_ptr<Airport> m_userAirport;
-
+        shared_ptr<UserPilotAssistantWorkflow> m_userPilotWorkflow;
         PluginMenu::Item m_stopSchedulesItem;
         PluginMenu::Item m_restartSchedulesItem;
         PluginMenu::Item m_tuneClearanceItem;
@@ -342,6 +353,7 @@ private:
         PluginMenu::Item m_time1XItem;
         PluginMenu::Item m_time10XItem;
         PluginMenu::Item m_time20XItem;
+        PluginMenu::Item m_toggleLabelsItem;
         DataRef<int> m_com1FrequencyKhz;
     public:
         SchedulesStartedState(
@@ -363,6 +375,7 @@ private:
             m_time1XItem(_menu, "Time X 1", [=](){ m_timeFactor = 1; }),
             m_time10XItem(_menu, "Time X 10", [=](){ m_timeFactor = 10; }),
             m_time20XItem(_menu, "Time X 20", [=](){ m_timeFactor = 20; }),
+            m_toggleLabelsItem(_menu, "Toggle AI aircraft labels", [this](){ toggleAIAircraftLabels(); }),
             m_com1FrequencyKhz("sim/cockpit2/radios/actuators/com1_frequency_hz_833", PPL::ReadWrite)
         {
             m_aircraftObjectService = m_host->services().get<AircraftObjectService>();
@@ -372,6 +385,7 @@ private:
 
         void enter() override
         {
+            initUserFlight();
         }
 
         void ping() override
@@ -395,6 +409,7 @@ private:
         void exit() override
         {
             m_world->clearAllFlights();
+            m_userPilotWorkflow.reset();
         }
 
     private:
@@ -420,6 +435,67 @@ private:
         {
             auto tower = m_userAirport->localAt(m_userAirport->header().datum());
             m_com1FrequencyKhz = tower->frequency()->khz();
+        }
+
+        void toggleAIAircraftLabels()
+        {
+            auto config = m_host->services().get<PluginConfiguration>();
+            config->showAIAircraftLabels = !config->showAIAircraftLabels;
+        }
+
+        void initUserFlight()
+        {
+            auto world = m_host->getWorld();
+            auto departureTime = world->currentTime() + 30 * 60; //P-30
+            auto arrivalTime = departureTime + 3 * 60 * 60; //3h
+
+            auto flightPlan = shared_ptr<FlightPlan>(new FlightPlan(
+                departureTime,
+                arrivalTime,
+                m_userAirport->header().icao(),
+                "KMIA"));
+
+            auto userFlight = shared_ptr<Flight>(new Flight(
+                m_host,
+                1,
+                Flight::RulesType::IFR,
+                "UAL",
+                "737",
+                "United 737",
+                flightPlan));
+
+            m_host->writeLog("initUserFlight:2");
+
+            auto userAircraft = UserAircraft::create(m_host);
+            auto departureGate = m_userAirport->findClosestParkingStand(userAircraft->location());
+            auto departureRunway = m_userAirport->activeDepartureRunways().at(0);
+            flightPlan->setDepartureGate(departureGate ? departureGate->name() : "N/A");
+            flightPlan->setDepartureRunway(departureRunway);
+
+            m_host->writeLog(
+                "UPILOT|INIT departure gate=[%s] runway=[%s]",
+                flightPlan->departureGate().c_str(), flightPlan->departureRunway().c_str());
+
+            userFlight->setAircraft(userAircraft);
+
+            m_host->writeLog("initUserFlight:4");
+
+            auto userPilot = UserPilot::create(m_host, "Bob", Actor::Gender::Male, userFlight);
+
+            m_host->writeLog("initUserFlight:5");
+
+            userFlight->setPilot(userPilot);
+
+            m_host->writeLog("initUserFlight:6");
+
+            m_userPilotWorkflow = shared_ptr<UserPilotAssistantWorkflow>(new UserPilotAssistantWorkflow(
+                m_host,
+                userFlight,
+                m_userAirport));
+
+            m_world->addFlight(userFlight);
+
+            m_host->writeLog("initUserFlight:7");
         }
     };
 
@@ -490,6 +566,7 @@ private:
 #endif
 
         auto hostServices = shared_ptr<PluginHostServices>(new PluginHostServices());
+        auto configuration = make_shared<PluginConfiguration>();
 
 #if LIN
         auto pluginTts = shared_ptr<XPLMSpeakStringTtsService>(new XPLMSpeakStringTtsService(hostServices));
@@ -500,11 +577,14 @@ private:
         auto phraseologyService = shared_ptr<PhraseologyService>(new SimplePhraseologyService(hostServices));
         auto aircraftObjectService = shared_ptr<Xpmp2AircraftObjectService>(new Xpmp2AircraftObjectService(hostServices));
         auto intentFactory = shared_ptr<IntentFactory>(new IntentFactory(hostServices));
+        auto transcriptInterface = shared_ptr<TranscriptInterface>(new MenuBasedTranscriptInterface(hostServices, m_menu));
 
+        hostServices->services().use<PluginConfiguration>(configuration);
         hostServices->services().use<AircraftObjectService>(aircraftObjectService);
         hostServices->services().use<TextToSpeechService>(pluginTts);
         hostServices->services().use<IntentFactory>(intentFactory);
         hostServices->services().use<PhraseologyService>(phraseologyService);
+        hostServices->services().use<TranscriptInterface>(transcriptInterface);
 
 #if IBM
         auto serverController = server::ServerControllerInterface::create(hostServices);

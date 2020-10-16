@@ -1,7 +1,9 @@
 // 
 // This file is part of AT&C project which simulates virtual world of air traffic and ATC.
 // Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
-// 
+//
+#pragma once
+
 #include <chrono>
 #include <sstream>
 #include <iomanip>
@@ -11,6 +13,7 @@
 #include "maneuverFactory.hpp"
 #include "intentTypes.hpp"
 #include "intentFactory.hpp"
+#include "aiAircraft.hpp"
 #include "libai.hpp"
 
 using namespace std;
@@ -28,6 +31,7 @@ namespace ai
         IntentFactory& I;
         shared_ptr<Airport> m_departureAirport;
         shared_ptr<FlightPlan> m_flightPlan;
+        shared_ptr<AIAircraft> m_aircraft;
         int m_departureTowerKhz = 0;
         int m_departureKhz = 0;
         int m_arrivalGroundKhz = 0;
@@ -45,7 +49,8 @@ namespace ai
             m_maneuverFactory(_maneuverFactory),
             M(*_maneuverFactory),
             m_intentFactory(_intentFactory),
-            I(*_intentFactory)
+            I(*_intentFactory),
+            m_aircraft(dynamic_pointer_cast<AIAircraft>(_flight->aircraft()))
         {
             //_host->writeLog("AIPilot::AIPilot() - enter");
 
@@ -169,7 +174,6 @@ namespace ai
 
         shared_ptr<Maneuver> maneuverFinal()
         {
-            auto aircraft = flight()->aircraft();
             auto flaps15GearDown = M.sequence(Maneuver::Type::Unspecified, "", {
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
                     "", 
@@ -180,7 +184,7 @@ namespace ai
                         value = from + (to - from) * progress; 
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setFlapState(value);
+                        m_aircraft->setFlapState(value);
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -192,7 +196,7 @@ namespace ai
                         value = from + (to - from) * progress; 
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setGearState(value);
+                        m_aircraft->setGearState(value);
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -204,7 +208,7 @@ namespace ai
                         value = from + (to - from) * progress;
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setAttitude(aircraft->attitude().withPitch(value));
+                        m_aircraft->setAttitude(m_aircraft->attitude().withPitch(value));
                     }
                 ))
             });
@@ -218,7 +222,7 @@ namespace ai
                         value = from + (to - from) * progress;
                     },
                     [=](const double &value, double progress) {
-                        aircraft->setFlapState(value);
+                        m_aircraft->setFlapState(value);
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -230,7 +234,7 @@ namespace ai
                         value = from + (to - from) * progress;
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setAttitude(aircraft->attitude().withPitch(value));
+                        m_aircraft->setAttitude(m_aircraft->attitude().withPitch(value));
                     }
                 ))
             });
@@ -261,8 +265,6 @@ namespace ai
 
         shared_ptr<Maneuver> maneuverLanding()
         {
-            auto aircraft = flight()->aircraft();
-
             auto preFlare = M.parallel(Maneuver::Type::ArrivalLanding, "", {
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
                     "", 
@@ -273,7 +275,7 @@ namespace ai
                         value = from + (to - from) * progress; 
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setAttitude(aircraft->attitude().withPitch(value));
+                        m_aircraft->setAttitude(m_aircraft->attitude().withPitch(value));
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -285,7 +287,7 @@ namespace ai
                         value = from + (to - from) * progress; 
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setVerticalSpeedFpm(value);
+                        m_aircraft->setVerticalSpeedFpm(value);
                     }
                 )),
             });
@@ -299,7 +301,7 @@ namespace ai
                         value = from + (to - from) * progress; 
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setAttitude(aircraft->attitude().withPitch(value));
+                        m_aircraft->setAttitude(m_aircraft->attitude().withPitch(value));
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -311,7 +313,7 @@ namespace ai
                         value = from + (to - from) * progress;
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setGroundSpeedKt(value);
+                        m_aircraft->setGroundSpeedKt(value);
                     }
                 )),
                 M.sequence(Maneuver::Type::Unspecified, "", {
@@ -324,7 +326,7 @@ namespace ai
                             value = from + (to - from) * progress;
                         },
                         [=](const double &value, double progress) {
-                            aircraft->setVerticalSpeedFpm(value);
+                            m_aircraft->setVerticalSpeedFpm(value);
                         }
                     )),
                     shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -336,7 +338,7 @@ namespace ai
                             value = from + (to - from) * progress;
                         },
                         [=](const double &value, double progress) {
-                            aircraft->setVerticalSpeedFpm(value);
+                            m_aircraft->setVerticalSpeedFpm(value);
                         }
                     ))
                 })
@@ -351,7 +353,7 @@ namespace ai
                         value = from + (to - from) * progress; 
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setSpoilerState(value);
+                        m_aircraft->setSpoilerState(value);
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -363,7 +365,7 @@ namespace ai
                         value = from + (to - from) * progress; 
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setAttitude(aircraft->attitude().withPitch(value));
+                        m_aircraft->setAttitude(m_aircraft->attitude().withPitch(value));
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -375,22 +377,22 @@ namespace ai
                         value = from + (to - from) * progress; 
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setGroundSpeedKt(value);
+                        m_aircraft->setGroundSpeedKt(value);
                     }
                 )),
             });
 
             return M.sequence(Maneuver::Type::ArrivalLanding, "", {
                 M.await(Maneuver::Type::Unspecified, "", [=]() {
-                    return (aircraft->altitude().type() == Altitude::Type::AGL && aircraft->altitude().feet() <= 55);
+                    return (m_aircraft->altitude().type() == Altitude::Type::AGL && m_aircraft->altitude().feet() <= 55);
                 }),
                 preFlare,
                 M.await(Maneuver::Type::Unspecified, "", [=]() {
-                    return (aircraft->altitude().type() == Altitude::Type::AGL && aircraft->altitude().feet() <= 20);
+                    return (m_aircraft->altitude().type() == Altitude::Type::AGL && m_aircraft->altitude().feet() <= 20);
                 }),
                 flare,
                 M.await(Maneuver::Type::Unspecified, "", [=]() {
-                    return (aircraft->altitude().type() == Altitude::Type::Ground);
+                    return (m_aircraft->altitude().type() == Altitude::Type::Ground);
                 }),
                 touchDownAndDeccelerate
             });
@@ -417,6 +419,7 @@ namespace ai
                     flight()->callSign().c_str(), runwayEnd.name().c_str());
 
                 auto taxiPath = airport->taxiNet()->tryFindExitPathFromRunway(
+                    host(),
                     runway,
                     runwayEnd,
                     gate,
@@ -460,7 +463,7 @@ namespace ai
                     value = from + (to - from) * progress;
                 },
                 [=](const double& value, double progress) {
-                    aircraft->setFlapState(value);
+                    m_aircraft->setFlapState(value);
                 }
             ));
             auto speedBrakeDown = shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -472,15 +475,16 @@ namespace ai
                     value = from + (to - from) * progress;
                 },
                 [=](const double& value, double progress) {
-                    aircraft->setSpoilerState(value);
+                    m_aircraft->setSpoilerState(value);
                 }
             ));
             auto exitRunway = safeCreateExitManeuver();
             auto taxiLights = M.instantAction([=] {
-               aircraft->setLights(Aircraft::LightBits::BeaconTaxiNav);
+                m_aircraft->setLights(Aircraft::LightBits::BeaconTaxiNav);
             });
             auto lightsOff = M.instantAction([=] {
-                aircraft->setLights(Aircraft::LightBits::None);
+                m_aircraft->setLights(Aircraft::LightBits::None);
+                flight()->setPhase(Flight::Phase::TurnAround);
             });
 
             const auto onHoldingShort = [=](shared_ptr<TaxiEdge> holdShortEdge) {
@@ -488,8 +492,8 @@ namespace ai
             };
 
             return M.sequence(Maneuver::Type::ArrivalTaxi, "", {
-                M.instantAction([aircraft] {
-                    aircraft->setGroundSpeedKt(0);
+                M.instantAction([this] {
+                    m_aircraft->setGroundSpeedKt(0);
                 }),
                 M.parallel(Maneuver::Type::Unspecified, "", {
                     flapsZero,
@@ -616,6 +620,9 @@ namespace ai
                 auto taxiPath = createPushbackTaxiPath(approval->pushbackPath());
 
                 vector<shared_ptr<Maneuver>> maneuverSteps = {
+                    M.instantAction([=]{
+                        flight()->setPhase(Flight::Phase::Departure);
+                    }),
                     M.switchLights(flight(), Aircraft::LightBits::Beacon),
                     M.delay(chrono::seconds(10)),
                     M.switchLights(flight(), Aircraft::LightBits::BeaconNav),
@@ -641,8 +648,8 @@ namespace ai
                 [](const double& from, const double& to, double progress, double& value) {
                     value = from + (to - from) * progress; 
                 },
-                [=](const double& value, double progress) {
-                    flight()->aircraft()->setFlapState(value);
+                [this](const double& value, double progress) {
+                    m_aircraft->setFlapState(value);
                 }
             ));
 
@@ -739,8 +746,8 @@ namespace ai
                     auto readback = I.pilotLineUpReadback(approval, m_lastReceivedIntentId);
                     return M.transmitIntent(flight(), readback);
                 }),
-                M.instantAction([=]() {
-                    flight()->aircraft()->setLights(Aircraft::LightBits::BeaconLandingNavStrobe);
+                M.instantAction([this]() {
+                    m_aircraft->setLights(Aircraft::LightBits::BeaconLandingNavStrobe);
                 }),
                 M.delay(chrono::seconds(5)),
             });
@@ -778,7 +785,6 @@ namespace ai
         {
             return DeferredManeuver::create(Maneuver::Type::DepartureTakeOffRoll, "", [=]() {
                 auto clearance = flight()->findClearanceOrThrow<TakeoffClearance>(Clearance::Type::TakeoffClearance);
-                auto aircraft = flight()->aircraft();
                 auto runway = m_departureAirport->getRunwayOrThrow(clearance->departureRunway());
                 const auto& runwayEnd = runway->getEndOrThrow(clearance->departureRunway());
                 float runwayHeading = runwayEnd.heading();
@@ -791,8 +797,8 @@ namespace ai
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
                     },
-                    [=](const double& value, double progress) {
-                        aircraft->setGroundSpeedKt(value);
+                    [this](const double& value, double progress) {
+                        m_aircraft->setGroundSpeedKt(value);
                     }
                 ));
                 auto rotate1 = shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -804,7 +810,7 @@ namespace ai
                         value = from + (to - from) * progress; 
                     },
                     [=](const double& value, double progress) {
-                        aircraft->setAttitude(aircraft->attitude().withPitch(value));
+                        m_aircraft->setAttitude(m_aircraft->attitude().withPitch(value));
                     }
                 ));
                 auto rotate2 = shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -815,8 +821,8 @@ namespace ai
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
                     },
-                    [=](const double& value, double progress) {
-                        aircraft->setAttitude(aircraft->attitude().withPitch(value));
+                    [this](const double& value, double progress) {
+                        m_aircraft->setAttitude(m_aircraft->attitude().withPitch(value));
                     }
                 ));
                 auto liftUp = shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -827,8 +833,8 @@ namespace ai
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
                     },
-                    [=](const double& value, double progress) {
-                        aircraft->setVerticalSpeedFpm(value);
+                    [this](const double& value, double progress) {
+                        m_aircraft->setVerticalSpeedFpm(value);
                         //aircraft->setAltitude(value);
                     }
                 ));
@@ -840,8 +846,8 @@ namespace ai
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
                     },
-                    [=](const double& value, double progress) {
-                        aircraft->setGearState(value);
+                    [this](const double& value, double progress) {
+                        m_aircraft->setGearState(value);
                     }
                 ));
                 auto accelerateAirborne = shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -852,8 +858,8 @@ namespace ai
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
                     },
-                    [=](const double& value, double progress) {
-                        aircraft->setGroundSpeedKt(value);
+                    [this](const double& value, double progress) {
+                        m_aircraft->setGroundSpeedKt(value);
                     }
                 ));
                 auto turnToInitialHeading = shared_ptr<Maneuver>(new AnimationManeuver<double>(
@@ -864,15 +870,15 @@ namespace ai
                     [](const double& from, const double& to, double progress, double& value) {
                         value = from + (to - from) * progress; 
                     },
-                    [=](const double& value, double progress) {
-                        aircraft->setGroundSpeedKt(value);
+                    [this](const double& value, double progress) {
+                        m_aircraft->setGroundSpeedKt(value);
                     }
                 ));
 
                 return M.sequence(Maneuver::Type::Unspecified, "", {
-                    M.instantAction([=]() {
+                    M.instantAction([this, runway]() {
                         const auto& runwayEnd = runway->getEndOrThrow(m_flightPlan->departureRunway());
-                        aircraft->setAttitude(aircraft->attitude().withHeading(runwayEnd.heading()));
+                        m_aircraft->setAttitude(m_aircraft->attitude().withHeading(runwayEnd.heading()));
                     }),
                     M.parallel(Maneuver::Type::Unspecified, "", {
                         M.sequence(Maneuver::Type::Unspecified, "", {
