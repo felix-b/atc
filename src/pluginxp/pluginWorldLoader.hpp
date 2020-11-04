@@ -51,6 +51,32 @@ public:
         m_world = WorldBuilder::assembleSampleWorld(m_host, airports);
         m_host->writeLog("World initialized");
 
+        for (const auto& airport : airports)
+        {
+            try
+            {
+                auto runway = airport->findLongestRunway();
+                if (runway->lengthMeters() >= 2000 && !airport->hasParallelRunways() && (
+                    airport->header().icao().at(0) == 'K' ||
+                    airport->header().icao().at(0) == 'Y' ||
+                    airport->header().icao().substr(0, 2) == "EG"))
+                {
+                    m_host->writeLog(
+                        "LWORLD|FOUNDAPT [%s] rwys[%d] gates[%d] longest-rwy[%d]m name[%s]",
+                        airport->header().icao().c_str(),
+                        airport->runways().size(),
+                        airport->parkingStands().size(),
+                        (int) runway->lengthMeters(),
+                        runway->name().c_str()
+                    );
+                }
+            }
+            catch(const exception& e)
+            {
+                m_host->writeLog("LWORLD|FOUNDAPT FAILED on [%s]: %s", airport->header().icao().c_str(), e.what());
+            }
+        }
+
         m_host->writeLog(
             "LWORLD|Assembled world with [%d] airports, [%d] airspaces, [%d] control facilities",
             m_world->airports().size(),

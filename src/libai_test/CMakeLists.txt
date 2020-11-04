@@ -8,6 +8,15 @@ enable_testing()
 add_executable(libai_test 
     maneuverFactoryTest.cpp
     workflowTest.cpp
+    mutexTestCase.hpp
+    mutexLongRunningTestCase.hpp
+    createAirportEFGH.cpp
+    simpleRunwayMutexTest.cpp
+    runwayMutexSequenceTest1.cpp
+    runwayMutexSequenceTest2.cpp
+    runwayMutexSequenceTest3.cpp
+    runwayMutexSequenceTest4.cpp
+    runwayMutexSequenceTest5.cpp
 )
 
 set_property(TARGET libai_test PROPERTY CXX_STANDARD 14)

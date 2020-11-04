@@ -273,7 +273,7 @@ TEST(ManeuverFactoryTest, sequential_multipleChildren) {
     vector<tuple<string, double, double>> log;
 
     auto animation1 = shared_ptr<AnimationManeuver<double>>(new AnimationManeuver<double>(
-        "", 100, 200, chrono::seconds(5),
+        "A1", 100, 200, chrono::seconds(5),
         [](const double& from, const double& to, double progress, double& value) {
             value = from + progress * (to - from);
         },
@@ -282,7 +282,7 @@ TEST(ManeuverFactoryTest, sequential_multipleChildren) {
         }
     ));
     auto animation2 = shared_ptr<AnimationManeuver<double>>(new AnimationManeuver<double>(
-        "", 1000, 2000, chrono::seconds(10),
+        "A2", 1000, 2000, chrono::seconds(10),
         [](const double& from, const double& to, double progress, double& value) {
             value = from + progress * (to - from);
         },
@@ -291,7 +291,7 @@ TEST(ManeuverFactoryTest, sequential_multipleChildren) {
         }
     ));
     auto sequential = shared_ptr<SequentialManeuver>(new SequentialManeuver(
-        Maneuver::Type::Unspecified, "", {  
+        Maneuver::Type::Unspecified, "S1", {
             animation1, 
             animation2
         }
@@ -372,6 +372,7 @@ TEST(ManeuverFactoryTest, sequential_multipleChildren) {
     EXPECT_FLOAT_EQ(get<2>(log[5]), 2000.0);
 }
 
+
 TEST(ManeuverFactoryTest, sequential_shiftedTicks) {
     vector<tuple<string, double, double>> log;
 
@@ -445,6 +446,38 @@ TEST(ManeuverFactoryTest, sequential_shiftedTicks) {
     EXPECT_EQ(get<0>(log[5]), "2");
     EXPECT_FLOAT_EQ(get<1>(log[5]), 1.0);
     EXPECT_FLOAT_EQ(get<2>(log[5]), 2000.0);
+}
+
+TEST(ManeuverFactoryTest, sequential_getStatusString) {
+
+    auto animation1 = shared_ptr<AnimationManeuver<double>>(new AnimationManeuver<double>(
+        "A1", 100, 200, chrono::seconds(5),
+        [](const double& from, const double& to, double progress, double& value) {
+            value = from + progress * (to - from);
+        },
+        [](const double& value, double progress) { }
+    ));
+    auto animation2 = shared_ptr<AnimationManeuver<double>>(new AnimationManeuver<double>(
+        "A2", 1000, 2000, chrono::seconds(10),
+        [](const double& from, const double& to, double progress, double& value) {
+            value = from + progress * (to - from);
+        },
+        [](const double& value, double progress) { }
+    ));
+    auto sequential = shared_ptr<SequentialManeuver>(new SequentialManeuver(
+        Maneuver::Type::Unspecified, "S1", {
+            animation1,
+            animation2
+        }
+    ));
+
+    sequential->progressTo(chrono::seconds(15));
+    sequential->progressTo(chrono::seconds(20));
+    EXPECT_EQ(sequential->state(), Maneuver::State::InProgress);
+    EXPECT_EQ(animation1->state(), Maneuver::State::Finished);
+    EXPECT_EQ(animation2->state(), Maneuver::State::InProgress);
+
+    EXPECT_EQ(sequential->getStatusString(), "IP:S1[IP:A2]");
 }
 
 TEST(ManeuverFactoryTest, parallel_singleChild) {
@@ -696,6 +729,44 @@ TEST(ManeuverFactoryTest, parallel_sequencesWithDeferredDelays) {
     EXPECT_EQ(action1Count, 1);
     EXPECT_EQ(action2Count, 1);
     EXPECT_EQ(parallel->state(), Maneuver::State::Finished);
+}
+
+TEST(ManeuverFactoryTest, parallel_getStatusString) {
+    auto animation1 = shared_ptr<AnimationManeuver<double>>(new AnimationManeuver<double>(
+        "A1", 100, 200, chrono::seconds(5),
+        [](const double& from, const double& to, double progress, double& value) {
+            value = from + progress * (to - from);
+        },
+        [](const double& value, double progress) { }
+    ));
+    auto animation2 = shared_ptr<AnimationManeuver<double>>(new AnimationManeuver<double>(
+        "A2", 1000, 2000, chrono::seconds(10),
+        [](const double& from, const double& to, double progress, double& value) {
+            value = from + progress * (to - from);
+        },
+        [](const double& value, double progress) { }
+    ));
+    auto parallel = shared_ptr<ParallelManeuver>(new ParallelManeuver(
+        Maneuver::Type::Unspecified, "P1", {
+            animation1,
+            animation2
+        }
+    ));
+
+    parallel->progressTo(chrono::milliseconds(1));
+    parallel->progressTo(chrono::milliseconds(3000));
+    EXPECT_EQ(animation1->state(), Maneuver::State::InProgress);
+    EXPECT_EQ(animation2->state(), Maneuver::State::InProgress);
+    EXPECT_EQ(parallel->state(), Maneuver::State::InProgress);
+
+    EXPECT_EQ(parallel->getStatusString(), "IP:P1(IP:A1|IP:A2)");
+
+    parallel->progressTo(chrono::milliseconds(7000));
+    EXPECT_EQ(animation1->state(), Maneuver::State::Finished);
+    EXPECT_EQ(animation2->state(), Maneuver::State::InProgress);
+    EXPECT_EQ(parallel->state(), Maneuver::State::InProgress);
+
+    EXPECT_EQ(parallel->getStatusString(), "IP:P1(F:A1|IP:A2)");
 }
 
 TEST(ManeuverFactoryTest, deferredManeuver_instantAction) {

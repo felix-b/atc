@@ -4,7 +4,9 @@
 // 
 #pragma once
 
+#include <string>
 #include <iostream>
+#include <sstream>
 #include <functional>
 #include <vector>
 #include <utility>
@@ -137,8 +139,11 @@ private:
             label.clear();
         }
 
-        auto changes = m_onQueryChanges();
-        if (!changes || !hasKey(changes->flights().updated(), m_flight->id()))
+        auto changeSet = m_onQueryChanges();
+        bool anyUpdates = changeSet && hasKey(changeSet->flights().updated(), m_flight->id());
+        bool configChanged = changeSet && changeSet->configurationChanged();
+        bool isDebugMode = m_config->showAIAircraftDebugLabels;
+        if (!anyUpdates && !configChanged && !isDebugMode)
         {
             return;
         }
@@ -215,15 +220,44 @@ private:
             return "";
         }
 
-        auto flight = aircraft->getFlightOrThrow();
-        string phaseString = flight->phase() == Flight::Phase::Departure
-            ? " (D)"
-            : (flight->phase() == Flight::Phase::Arrival ? " (A)" : " (T/A)");
+        stringstream text;
+        text << m_flight->callSign() << " ";
+
+        switch (m_flight->phase())
+        {
+        case Flight::Phase::Arrival:
+            text << "(A)";
+            break;
+        case Flight::Phase::Departure:
+            text << "(D)";
+            break;
+        case Flight::Phase::TurnAround:
+            text << "(t/a)";
+            break;
+        }
 
         string altitudeString = aircraft->altitude().toString();
-        return altitudeString.empty()
-            ? m_flight->callSign() + phaseString
-            : m_flight->callSign() + phaseString + " | " + altitudeString;
+        if (!altitudeString.empty())
+        {
+            text << " | " << altitudeString;
+        }
+
+        if (m_config->showAIAircraftDebugLabels)
+        {
+            text << " | " << aircraft->frequencyKhz()
+                 << " | " << acRadar.code
+                 << (IsCurrentlyShownAsAI() ? 'A' : 'a')
+                 << (IsCurrentlyShownAsTcasTarget() ? 'T' : 't')
+                 << '/' << tcasTargetIdx;
+
+            string debugString = aircraft->getStatusString();
+            if (!debugString.empty())
+            {
+                text << " | " << debugString;
+            }
+        }
+
+        return text.str();
     }
 };
 

@@ -85,12 +85,16 @@ namespace world
 
         GeoPoint getLandingPoint(shared_ptr<Flight> flight)
         {
+            const auto& runwayEnd = getLandingRunwayEnd(flight);
+            return runwayEnd.centerlinePoint().geo();
+        }
+
+        const Runway::End& getLandingRunwayEnd(shared_ptr<Flight> flight)
+        {
             auto airport = getArrivalAirport(flight);
             auto runwayName = flight->plan()->arrivalRunway();
             auto runway = airport->getRunwayOrThrow(runwayName);
-            const auto& runwayEnd = runway->getEndOrThrow(runwayName);
-
-            return runwayEnd.centerlinePoint().geo();
+            return runway->getEndOrThrow(runwayName);
         }
     };
 }

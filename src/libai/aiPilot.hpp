@@ -36,6 +36,14 @@ namespace ai
         int m_departureKhz = 0;
         int m_arrivalGroundKhz = 0;
         uint64_t m_lastReceivedIntentId = 0;
+        DeclineReason m_lastDeclineReason = DeclineReason::None;
+        bool m_wasTakeoffClearanceReadBack = false;
+        bool m_continueApproach = false;
+        int m_departureNumberInLine = 0;
+        bool m_prepareForImmediateTakeoff = false;
+        bool m_holdShortForDeparture = false;
+        chrono::microseconds m_linedUpTimestamp = chrono::microseconds(0);
+        bool m_stoppedBeforeTakeoff = false;
     public:
         AIPilot(
             shared_ptr<HostServices> _host, 
@@ -76,6 +84,10 @@ namespace ai
         {
             //TODO
         }
+        string getStatusString() const override
+        {
+            return "<twrkhz=" + to_string(m_departureTowerKhz) + ">";
+        }
     private:
         void handleCommTransmission(shared_ptr<Intent> intent)
         {
@@ -107,14 +119,28 @@ namespace ai
                 case GroundDepartureTaxiReplyIntent::IntentCode:
                     newClearance = dynamic_pointer_cast<GroundDepartureTaxiReplyIntent>(intent)->clearance();
                     break;
+                case GroundHoldShortRunwayIntent::IntentCode:
+                    m_lastDeclineReason = dynamic_pointer_cast<GroundHoldShortRunwayIntent>(intent)->reason();
+                    break;
                 case GroundRunwayCrossClearanceIntent::IntentCode:
                     newClearance = dynamic_pointer_cast<GroundRunwayCrossClearanceIntent>(intent)->clearance();
                     break;
                 case GroundSwitchToTowerIntent::IntentCode:
                     m_departureTowerKhz = dynamic_pointer_cast<GroundSwitchToTowerIntent>(intent)->towerKhz();
+                    intent->subjectControl()->frequency()->enqueuePushToTalk(
+                        chrono::milliseconds(150),
+                        I.pilotHandoffReadback(flight(), intent->subjectControl(), m_departureTowerKhz, intent->id()));
                     break;
-                case TowerLineUpIntent::IntentCode:
-                    newClearance = dynamic_pointer_cast<TowerLineUpIntent>(intent)->approval();
+                case TowerDepartureCheckInReplyIntent::IntentCode:
+                    m_departureNumberInLine = dynamic_pointer_cast<TowerDepartureCheckInReplyIntent>(intent)->numberInLine();
+                    m_prepareForImmediateTakeoff = dynamic_pointer_cast<TowerDepartureCheckInReplyIntent>(intent)->prepareForImmediateTakeoff();
+                    break;
+                case TowerDepartureHoldShortIntent::IntentCode:
+                    m_holdShortForDeparture = true;
+                    m_lastDeclineReason = dynamic_pointer_cast<TowerDepartureHoldShortIntent>(intent)->reason();
+                    break;
+                case TowerLineUpAndWaitIntent::IntentCode:
+                    newClearance = dynamic_pointer_cast<TowerLineUpAndWaitIntent>(intent)->approval();
                     break;
                 case TowerClearedForTakeoffIntent::IntentCode:
                     {
@@ -122,6 +148,9 @@ namespace ai
                         m_departureKhz = takeOffClearance->departureKhz();
                         newClearance = takeOffClearance;
                     }
+                    break;
+                case TowerContinueApproachIntent::IntentCode:
+                    m_continueApproach = true;
                     break;
                 case TowerClearedForLandingIntent::IntentCode:
                     {
@@ -147,14 +176,16 @@ namespace ai
             time_t startTime = flight()->plan()->departureTime() - 180;
             time_t secondsBeforeStart = startTime - host()->getWorld()->currentTime();
 
-            auto result = M.sequence(Maneuver::Type::Flight, "", { 
+            auto result = M.sequence(Maneuver::Type::Flight, "flight_cycle", {
                 M.delay(chrono::seconds(secondsBeforeStart)),
                 maneuverDepartureAwaitIfrClearance(),
                 maneuverDepartureAwaitPushback(),
                 maneuverDeparturePushbackAndStart(),
                 maneuverDepartureAwaitTaxi(),
-                maneuverDepartureTaxi(),
-                maneuverAwaitTakeOff(),
+                M.parallel(Maneuver::Type::Unspecified, "", {
+                    maneuverDepartureTaxi(),
+                    maneuverAwaitTakeOffClearance(),
+                }),
                 maneuverTakeoff()
             });
 
@@ -163,7 +194,7 @@ namespace ai
 
         shared_ptr<Maneuver> maneuverFinalToGate(const Runway::End& landingRunway)
         {
-            return M.sequence(Maneuver::Type::ArrivalApproach, "", {
+            return M.sequence(Maneuver::Type::ArrivalApproach, "final_to_gate", {
                 maneuverFinal(),
                 maneuverLanding(),
                 M.deferred([this]() {
@@ -174,9 +205,9 @@ namespace ai
 
         shared_ptr<Maneuver> maneuverFinal()
         {
-            auto flaps15GearDown = M.sequence(Maneuver::Type::Unspecified, "", {
+            auto flaps15GearDown = M.sequence(Maneuver::Type::Unspecified, "flaps_15_gear_down", {
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "flaps",
                     0,
                     0.15,
                     chrono::seconds(7),
@@ -188,7 +219,7 @@ namespace ai
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "gear",
                     0,
                     1.0,
                     chrono::seconds(10),
@@ -200,7 +231,7 @@ namespace ai
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "",
+                    "pitch",
                     -2.0,
                     0.0,
                     chrono::seconds(3),
@@ -212,9 +243,9 @@ namespace ai
                     }
                 ))
             });
-            auto flaps40 = M.parallel(Maneuver::Type::Unspecified, "", {
+            auto flaps40 = M.parallel(Maneuver::Type::Unspecified, "flaps_40", {
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "",
+                    "flaps",
                     0.15,
                     0.4,
                     chrono::seconds(10),
@@ -226,7 +257,7 @@ namespace ai
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "",
+                    "pitch",
                     0.0,
                     1.5,
                     chrono::seconds(5),
@@ -240,32 +271,44 @@ namespace ai
             });
 
             auto landingPoint = m_helper.getLandingPoint(flight());
+            auto tower = m_helper.getArrivalTower(flight(), landingPoint);
+            string landingRunwayName = m_helper.getLandingRunwayEnd(flight()).name();
             
-            return M.sequence(Maneuver::Type::ArrivalApproach, "", {
-                M.delay(chrono::seconds(10)),
-                flaps15GearDown,
-                M.tuneComRadio(flight(), m_helper.getArrivalTower(flight(), landingPoint)->frequency()),
-                M.transmitIntent(flight(), I.pilotReportFinal(flight())),
-                M.parallel(Maneuver::Type::Unspecified, "", {
-                    M.sequence(Maneuver::Type::Unspecified, "", {
-                        M.delay(chrono::seconds(20)),
-                        flaps40,
-                    }),
-                    M.sequence(Maneuver::Type::Unspecified, "", {
-                        M.awaitClearance(flight(), Clearance::Type::LandingClearance),
-                        M.deferred([=](){
-                            auto clearance = flight()->findClearanceOrThrow<LandingClearance>(Clearance::Type::LandingClearance);
-                            auto readback = I.pilotLandingClearanceReadback(flight(), clearance, m_lastReceivedIntentId);
-                            return M.transmitIntent(flight(), readback);
-                        })
-                    }),
+            return M.parallel(Maneuver::Type::ArrivalApproach, "final", {
+                M.sequence(Maneuver::Type::Unspecified, "aviate", {
+                    M.delay(chrono::seconds(10)),
+                    flaps15GearDown,
+                    M.delay(chrono::seconds(20)),
+                    flaps40,
                 }),
+                M.sequence(Maneuver::Type::Unspecified, "communicate", {
+                    M.tuneComRadio(flight(), tower->frequency()),
+                    M.transmitIntent(flight(), I.pilotReportFinal(flight()), "twr_report_final"),
+                    M.await(Maneuver::Type::Unspecified, "await_twr_reply", [this]{
+                        return (m_continueApproach || flight()->tryFindClearance<LandingClearance>(Clearance::Type::LandingClearance));
+                    }),
+                    M.deferred([this,tower,landingRunwayName]{
+                        if (m_continueApproach)
+                        {
+                            return M.transmitIntent(
+                                flight(),
+                                I.pilotContinueApproachReadback(flight(), tower, landingRunwayName, m_lastReceivedIntentId));
+                        }
+                        return M.instantAction([]{});
+                    }),
+                    M.awaitClearance(flight(), Clearance::Type::LandingClearance, "await_landing_clrnc"),
+                    M.deferred([=](){
+                        auto clearance = flight()->findClearanceOrThrow<LandingClearance>(Clearance::Type::LandingClearance);
+                        auto readback = I.pilotLandingClearanceReadback(flight(), clearance, m_lastReceivedIntentId);
+                        return M.transmitIntent(flight(), readback, "readback_landing_clrnc");
+                    })
+                })
             });
         }
 
         shared_ptr<Maneuver> maneuverLanding()
         {
-            auto preFlare = M.parallel(Maneuver::Type::ArrivalLanding, "", {
+            auto preFlare = M.parallel(Maneuver::Type::ArrivalLanding, "pre_flare", {
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
                     "", 
                     1.5,
@@ -291,9 +334,9 @@ namespace ai
                     }
                 )),
             });
-            auto flare = M.parallel(Maneuver::Type::ArrivalLanding, "", {
+            auto flare = M.parallel(Maneuver::Type::ArrivalLanding, "flare", {
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "pitch",
                     3.0,
                     5.5,
                     chrono::seconds(3),
@@ -305,7 +348,7 @@ namespace ai
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "",
+                    "gndspd",
                     145,
                     135,
                     chrono::seconds(3),
@@ -318,7 +361,7 @@ namespace ai
                 )),
                 M.sequence(Maneuver::Type::Unspecified, "", {
                     shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                        "",
+                        "verspd_1",
                         -500,
                         -50,
                         chrono::seconds(2),
@@ -330,7 +373,7 @@ namespace ai
                         }
                     )),
                     shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                        "",
+                        "verspd_2",
                         -50,
                         -100,
                         chrono::seconds(1),
@@ -343,9 +386,19 @@ namespace ai
                     ))
                 })
             });
-            auto touchDownAndDeccelerate = M.parallel(Maneuver::Type::ArrivalLandingRoll, "", {
+            auto logTouchDown = M.instantAction([this](){
+                host()->writeLog(
+                    "AIPILO|TOUCHDOWN flight[%s] at [%f,%f] vertical-speed[%f]fpm ground-speed[%f]kt pitch[%f]deg",
+                    flight()->callSign().c_str(),
+                    m_aircraft->location().latitude,
+                    m_aircraft->location().longitude,
+                    m_aircraft->verticalSpeedFpm(),
+                    m_aircraft->groundSpeedKt(),
+                    m_aircraft->attitude().pitch());
+            });
+            auto touchDownAndDeccelerate = M.parallel(Maneuver::Type::ArrivalLandingRoll, "touch_and_decel", {
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "spdbrk",
                     0,
                     1.0,
                     chrono::seconds(1),
@@ -357,7 +410,7 @@ namespace ai
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "pitch",
                     5.5,
                     0.0,
                     chrono::seconds(6),
@@ -369,7 +422,7 @@ namespace ai
                     }
                 )),
                 shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "gndspd",
                     135,
                     30,
                     chrono::seconds(20),
@@ -382,18 +435,19 @@ namespace ai
                 )),
             });
 
-            return M.sequence(Maneuver::Type::ArrivalLanding, "", {
-                M.await(Maneuver::Type::Unspecified, "", [=]() {
+            return M.sequence(Maneuver::Type::ArrivalLanding, "landing", {
+                M.await(Maneuver::Type::Unspecified, "await_55_agl", [=]() {
                     return (m_aircraft->altitude().type() == Altitude::Type::AGL && m_aircraft->altitude().feet() <= 55);
                 }),
                 preFlare,
-                M.await(Maneuver::Type::Unspecified, "", [=]() {
+                M.await(Maneuver::Type::Unspecified, "await_20_agl", [=]() {
                     return (m_aircraft->altitude().type() == Altitude::Type::AGL && m_aircraft->altitude().feet() <= 20);
                 }),
                 flare,
-                M.await(Maneuver::Type::Unspecified, "", [=]() {
+                M.await(Maneuver::Type::Unspecified, "await_touch_down", [=]() {
                     return (m_aircraft->altitude().type() == Altitude::Type::Ground);
                 }),
+                logTouchDown,
                 touchDownAndDeccelerate
             });
         }
@@ -455,7 +509,7 @@ namespace ai
             };
 
             auto flapsZero = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                "",
+                "flaps_0",
                 0.4,
                 0,
                 chrono::seconds(30),
@@ -467,7 +521,7 @@ namespace ai
                 }
             ));
             auto speedBrakeDown = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                "",
+                "speedbrk_down",
                 1.0,
                 0,
                 chrono::seconds(1),
@@ -479,6 +533,14 @@ namespace ai
                 }
             ));
             auto exitRunway = safeCreateExitManeuver();
+            auto logVacatedActive = M.instantAction([this](){
+                host()->writeLog(
+                    "AIPILO|VACATEDACTIVE flight[%s] at [%f,%f] ground-speed[%f]kt",
+                    flight()->callSign().c_str(),
+                    m_aircraft->location().latitude,
+                    m_aircraft->location().longitude,
+                    m_aircraft->groundSpeedKt());
+            });
             auto taxiLights = M.instantAction([=] {
                 m_aircraft->setLights(Aircraft::LightBits::BeaconTaxiNav);
             });
@@ -488,10 +550,15 @@ namespace ai
             });
 
             const auto onHoldingShort = [=](shared_ptr<TaxiEdge> holdShortEdge) {
+                if (holdShortEdge->activeZones().arrival.runwaysMask() == runway->maskBit())
+                {
+                    //TODO: this is a hack. Instead check if the runway is ahead or behind
+                    return M.instantAction([]{}); // don't hold short of runway we've just landed on (and which is supposed to be behind us).
+                }
                 return maneuverAwaitCrossRunway(airport, holdShortEdge);
             };
 
-            return M.sequence(Maneuver::Type::ArrivalTaxi, "", {
+            return M.sequence(Maneuver::Type::ArrivalTaxi, "arrival_taxi", {
                 M.instantAction([this] {
                     m_aircraft->setGroundSpeedKt(0);
                 }),
@@ -507,7 +574,7 @@ namespace ai
                         M.transmitIntent(flight(), I.pilotArrivalCheckInWithGround(
                             flight(), runwayEnd.name(), exitName, exitLastEdge
                         )),
-                        M.awaitClearance(flight(), Clearance::Type::ArrivalTaxiClearance),
+                        M.awaitClearance(flight(), Clearance::Type::ArrivalTaxiClearance, "await_taxi_clrnc"),
                         M.deferred([this]{
                             auto clearance = flight()->findClearanceOrThrow<ArrivalTaxiClearance>(Clearance::Type::ArrivalTaxiClearance);
                             return M.transmitIntent(flight(), I.pilotArrivalTaxiReadback(flight(), m_lastReceivedIntentId));
@@ -515,6 +582,7 @@ namespace ai
                     }),
                     M.sequence(Maneuver::Type::Unspecified, "", {
                        exitRunway,
+                       logVacatedActive,
                        taxiLights,
                        M.awaitClearance(flight(), Clearance::Type::ArrivalTaxiClearance),
                        M.parallel(Maneuver::Type::Unspecified, "", {
@@ -542,7 +610,7 @@ namespace ai
             auto clearanceDelivery = airport->clearanceDeliveryAt(flight()->aircraft()->location());
             auto ground = airport->groundAt(flight()->aircraft()->location());
 
-            return M.sequence(Maneuver::Type::DepartureAwaitIfrClearance, "", {
+            return M.sequence(Maneuver::Type::DepartureAwaitIfrClearance, "await_ifr_clr", {
                 M.tuneComRadio(flight(), clearanceDelivery->frequency()),
                 M.transmitIntent(flight(), ifrClearanceRequest),
                 M.awaitClearance(flight(), Clearance::Type::IfrClearance),
@@ -573,7 +641,7 @@ namespace ai
             auto airport = host()->getWorld()->getAirport(flight()->plan()->departureAirportIcao());
             auto ground = airport->groundAt(flight()->aircraft()->location());
 
-            return M.sequence(Maneuver::Type::DepartureAwaitPushback, "", {
+            return M.sequence(Maneuver::Type::DepartureAwaitPushback, "await_pushback", {
                 M.tuneComRadio(flight(), ground->frequency()),
                 M.transmitIntent(flight(), pushAndStartRequest),
                 M.awaitClearance(flight(), Clearance::Type::PushAndStartApproval),
@@ -614,7 +682,7 @@ namespace ai
                 return taxiPath;
             };
 
-            return DeferredManeuver::create(Maneuver::Type::DeparturePushbackAndStart, "", [=]() {
+            return DeferredManeuver::create(Maneuver::Type::DeparturePushbackAndStart, "push_and_start", [=]() {
                 auto flightPlan = flight()->plan();
                 auto approval = flight()->findClearanceOrThrow<PushAndStartApproval>(Clearance::Type::PushAndStartApproval);
                 auto taxiPath = createPushbackTaxiPath(approval->pushbackPath());
@@ -641,7 +709,7 @@ namespace ai
         shared_ptr<Maneuver> maneuverDepartureAwaitTaxi()
         {
             auto flapsToTakeoffPosition = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                "", 
+                "flaps_t_o",
                 0.0,
                 0.15,
                 chrono::seconds(3),
@@ -656,7 +724,7 @@ namespace ai
             auto intentFactory = host()->services().get<IntentFactory>();
             auto taxiRequest = intentFactory->pilotDepartureTaxiRequest(flight());
 
-            return M.sequence(Maneuver::Type::DepartureAwaitTaxi, "", {
+            return M.sequence(Maneuver::Type::DepartureAwaitTaxi, "await_departure_taxi", {
                 M.delay(chrono::seconds(5)),
                 flapsToTakeoffPosition,
                 M.delay(chrono::seconds(5)),
@@ -703,7 +771,7 @@ namespace ai
                 return holdShortManeuver;
             };
 
-            return DeferredManeuver::create(Maneuver::Type::DepartureTaxi, "", [=]() {
+            return DeferredManeuver::create(Maneuver::Type::DepartureTaxi, "departure_taxi", [=]() {
                 auto clearance = flight()->findClearanceOrThrow<DepartureTaxiClearance>(Clearance::Type::DepartureTaxiClearance);
                 addLineupEdges(clearance);
 
@@ -716,6 +784,9 @@ namespace ai
                     clearance->taxiPath(), 
                     ManeuverFactory::TaxiType::Normal,
                     onHoldingShort));
+                steps.push_back(M.instantAction([this]{
+                    m_linedUpTimestamp = host()->getWorld()->timestamp();
+                }));
 
                 return shared_ptr<Maneuver>(new SequentialManeuver(
                     Maneuver::Type::DepartureTaxi,
@@ -727,29 +798,73 @@ namespace ai
 
         shared_ptr<Maneuver> maneuverDepartureAwaitLineup(const string& runwayName, shared_ptr<TaxiEdge> holdShortEdge)
         {
-            return M.sequence(Maneuver::Type::DepartureLineUpAndWait, "", {
-                M.transmitIntent(flight(), I.pilotReportHoldingShort(flight(), runwayName, holdShortEdge->name())),
-                M.await(Maneuver::Type::Unspecified, "", [this](){
+            return M.sequence(Maneuver::Type::Unspecified, "await_lineup", {
+                M.deferred([=]() {
+                    if (m_departureTowerKhz == 0)
+                    {
+                        return M.transmitIntent(flight(), I.pilotReportHoldingShort(
+                      flight(),
+                     m_helper.getDepartureAirport(flight()),
+                            runwayName,
+                            holdShortEdge->name()
+                        ), "", 1000, [this]{
+                            if (m_departureTowerKhz > 0)
+                            {
+                                host()->writeLog("AIPILO|Flight[%s] CANCEL_TRANSMIT_HOLDING_SHORT", flight()->callSign().c_str());
+                                return true;
+                            }
+                            return false;
+                        });
+                    }
+                    return M.instantAction([]{});
+                }),
+                M.await(Maneuver::Type::Unspecified, "await_tower_khz", [this](){
                     return (m_departureTowerKhz > 0);
                 }),
-                M.deferred([=]() {
-                    auto ground = m_departureAirport->groundAt(flight()->aircraft()->location());
-                    return M.transmitIntent(flight(), I.pilotHandoffReadback(flight(), ground, m_departureTowerKhz, m_lastReceivedIntentId));
-                }),
-                M.instantAction([=]() {
-                    aircraft()->setFrequencyKhz(m_departureTowerKhz);
-                }),
-                M.transmitIntent(flight(), I.pilotCheckInWithTower(flight(), /*flight()->plan()->departureRunway()*/"", holdShortEdge->name(), false)),
-                M.awaitClearance(flight(), Clearance::Type::LineupApproval),
-                M.deferred([=]() {
-                    auto approval = flight()->findClearanceOrThrow<LineupApproval>(Clearance::Type::LineupApproval);
-                    auto readback = I.pilotLineUpReadback(approval, m_lastReceivedIntentId);
-                    return M.transmitIntent(flight(), readback);
-                }),
+//                M.deferred([=]() {
+//                    auto ground = m_departureAirport->groundAt(flight()->aircraft()->location());
+//                    return M.transmitIntent(flight(), I.pilotHandoffReadback(flight(), ground, m_departureTowerKhz, m_lastReceivedIntentId));
+//                }),
                 M.instantAction([this]() {
                     m_aircraft->setLights(Aircraft::LightBits::BeaconLandingNavStrobe);
                 }),
-                M.delay(chrono::seconds(5)),
+                M.instantAction([=]() {
+                    aircraft()->setFrequencyKhz(m_departureTowerKhz);
+                    m_lastDeclineReason = DeclineReason::None;
+                }),
+                M.transmitIntent(flight(), I.pilotCheckInWithTower(flight(), runwayName, holdShortEdge->name(), false)),
+                M.await(Maneuver::Type::AwaitClearance, "await_any_luaw_clrnc_holdshrt", [this]{
+                    auto clearance = flight()->tryFindClearance<TakeoffClearance>(Clearance::Type::TakeoffClearance);
+                    auto luaw = flight()->tryFindClearance<LineUpAndWaitApproval>(Clearance::Type::LineUpAndWait);
+                    return (clearance || luaw || m_lastDeclineReason != DeclineReason::None);
+                }),
+                M.deferred([this, runwayName]{
+                    if (m_lastDeclineReason != DeclineReason::None)
+                    {
+                        return M.transmitIntent(flight(), I.pilotRunwayHoldShortReadback(
+                            flight(),
+                            m_helper.getDepartureTower(flight()),
+                            runwayName,
+                            m_lastDeclineReason,
+                            m_lastReceivedIntentId));
+                    }
+                    return M.instantAction([]{});
+                }),
+                M.await(Maneuver::Type::AwaitClearance, "await_luaw_or_takeoff_clrnc", [this]{
+                    auto clearance = flight()->tryFindClearance<TakeoffClearance>(Clearance::Type::TakeoffClearance);
+                    auto luaw = flight()->tryFindClearance<LineUpAndWaitApproval>(Clearance::Type::LineUpAndWait);
+                    return (clearance || luaw);
+                }),
+//                M.deferred([=]() {
+//                    auto clearance = flight()->tryFindClearance<TakeoffClearance>(Clearance::Type::TakeoffClearance);
+//                    auto luaw = flight()->tryFindClearance<LineUpAndWaitApproval>(Clearance::Type::LineUpAndWait);
+//                    auto readback = clearance
+//                        ? I.pilotTakeoffClearanceReadback(flight(), clearance, m_departureKhz, m_lastReceivedIntentId)
+//                        : I.pilotLineUpAndWaitReadback(luaw, m_lastReceivedIntentId);
+//                    m_wasTakeoffClearanceReadBack = (readback->code() == PilotTakeoffClearanceReadbackIntent::IntentCode);
+//                    return M.transmitIntent(flight(), readback);
+//                }),
+                //M.delay(chrono::seconds(3))
             });
         }
 
@@ -758,51 +873,118 @@ namespace ai
             auto runway = getActiveZoneRunway(airport, holdShortEdge);
             string runwayName = runway ? runway->end1().name() : "";
 
-            return M.sequence(Maneuver::Type::TaxiHoldShort, "", {
-                M.transmitIntent(flight(), I.pilotReportHoldingShort(flight(), runwayName, holdShortEdge->name())),
+            return M.sequence(Maneuver::Type::TaxiHoldShort, "await_cross_rwy", {
+                M.instantAction([this]{
+                    m_lastDeclineReason = DeclineReason::None;
+                }),
+                M.transmitIntent(flight(), I.pilotReportHoldingShort(
+                    flight(),
+                    m_helper.getDepartureAirport(flight()),
+                    runwayName,
+                    holdShortEdge->name()
+                )),
+                M.await(Maneuver::Type::Unspecified, "", [this]{
+                    auto clearance = flight()->tryFindClearance<RunwayCrossClearance>(Clearance::Type::RunwayCrossClearance);
+                    return (clearance || m_lastDeclineReason != DeclineReason::None);
+                }),
+                M.deferred([this, airport, runwayName]{
+                    if (m_lastDeclineReason != DeclineReason::None)
+                    {
+                        return M.transmitIntent(flight(), I.pilotRunwayHoldShortReadback(
+                            flight(),
+                            airport->groundAt(flight()->aircraft()->location()), runwayName,
+                            m_lastDeclineReason,
+                            m_lastReceivedIntentId));
+                    }
+                    return M.instantAction([]{});
+                }),
                 M.awaitClearance(flight(), Clearance::Type::RunwayCrossClearance),
                 M.deferred([=]() {
                     auto clearance = flight()->findClearanceOrThrow<RunwayCrossClearance>(Clearance::Type::RunwayCrossClearance);
-                    return M.transmitIntent(flight(), I.pilotAffirmation(flight(), clearance->header().issuedBy, m_lastReceivedIntentId));
+                    return M.transmitIntent(flight(), I.pilotRunwayCrossReadback(clearance, m_lastReceivedIntentId));
                 })
             });
         }
 
-        shared_ptr<Maneuver> maneuverAwaitTakeOff()
+        shared_ptr<Maneuver> maneuverAwaitTakeOffClearance()
         {
-            return M.sequence(Maneuver::Type::DepartureAwaitTakeOff, "", {
+            return M.sequence(Maneuver::Type::DepartureAwaitTakeOff, "await_takeoff_clrnc", {
+                M.await(Maneuver::Type::AwaitClearance, "await_luaw_or_takeoff_clrnc", [this]{
+                    auto clearance = flight()->tryFindClearance<TakeoffClearance>(Clearance::Type::TakeoffClearance);
+                    auto luaw = flight()->tryFindClearance<LineUpAndWaitApproval>(Clearance::Type::LineUpAndWait);
+                    return (clearance || luaw);
+                }),
+                M.deferred([=]() {
+                    auto clearance = flight()->tryFindClearance<TakeoffClearance>(Clearance::Type::TakeoffClearance);
+                    auto luaw = flight()->tryFindClearance<LineUpAndWaitApproval>(Clearance::Type::LineUpAndWait);
+                    auto readback = clearance
+                        ? I.pilotTakeoffClearanceReadback(flight(), clearance, m_departureKhz, m_lastReceivedIntentId)
+                        : I.pilotLineUpAndWaitReadback(luaw, m_lastReceivedIntentId);
+                    m_wasTakeoffClearanceReadBack = (readback->code() == PilotTakeoffClearanceReadbackIntent::IntentCode);
+                    return M.transmitIntent(flight(), readback);
+                }),
                 M.awaitClearance(flight(), Clearance::Type::TakeoffClearance),
                 M.deferred([=]() {
                     auto clearance = flight()->findClearanceOrThrow<TakeoffClearance>(Clearance::Type::TakeoffClearance);
-                    auto readback = I.pilotTakeoffClearanceReadback(flight(), clearance, m_departureKhz, m_lastReceivedIntentId);
-                    return M.transmitIntent(flight(), readback);
+                    if (!m_wasTakeoffClearanceReadBack)
+                    {
+                        auto readback = I.pilotTakeoffClearanceReadback(flight(), clearance, m_departureKhz, m_lastReceivedIntentId);
+                        m_wasTakeoffClearanceReadBack = true;
+                        return M.transmitIntent(flight(), readback);
+                    }
+                    return M.instantAction([]{});
                 }),
-                M.delay(chrono::seconds(5)),
             });
-        }        
+        }
 
         shared_ptr<Maneuver> maneuverTakeoff()
         {
-            return DeferredManeuver::create(Maneuver::Type::DepartureTakeOffRoll, "", [=]() {
+            return DeferredManeuver::create(Maneuver::Type::DepartureTakeOffRoll, "takeoff", [=]() {
                 auto clearance = flight()->findClearanceOrThrow<TakeoffClearance>(Clearance::Type::TakeoffClearance);
+                auto luaw = flight()->tryFindClearance<LineUpAndWaitApproval>(Clearance::Type::LineUpAndWait);
                 auto runway = m_departureAirport->getRunwayOrThrow(clearance->departureRunway());
                 const auto& runwayEnd = runway->getEndOrThrow(clearance->departureRunway());
                 float runwayHeading = runwayEnd.heading();
 
-                auto rollOnRunway = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
-                    0,
-                    140.0,
-                    chrono::seconds(20),
-                    [](const double& from, const double& to, double progress, double& value) {
-                        value = from + (to - from) * progress; 
-                    },
-                    [this](const double& value, double progress) {
-                        m_aircraft->setGroundSpeedKt(value);
+                auto beforeTakeoffChecklist = M.await(Maneuver::Type::Unspecified, "bfr_tkoff_chklst", [=]() {
+                    auto now = host()->getWorld()->timestamp();
+                    auto elapsed = now - m_linedUpTimestamp;
+                    if (elapsed > chrono::milliseconds(100) && !m_stoppedBeforeTakeoff)
+                    {
+                        m_stoppedBeforeTakeoff = true;
+                        host()->writeLog(
+                            "AIPILO|BEFORE-TAKEOFF Flight[%s] stopped for before-takeoff checklist lined-up[%lld] now[%lld] elapsed[%lld]",
+                            flight()->callSign().c_str(),
+                            m_linedUpTimestamp,
+                            now,
+                            elapsed);
                     }
-                ));
+                    return (clearance->immediate() || elapsed >= chrono::seconds(3));
+                });
+                auto logTakeoffRoll = M.instantAction([this](){
+                    host()->writeLog(
+                        "AIPILO|TAKEOFFROLL flight[%s] at [%f,%f] stopped[%d]",
+                        flight()->callSign().c_str(),
+                        m_aircraft->location().latitude,
+                        m_aircraft->location().longitude,
+                        m_stoppedBeforeTakeoff ? 1 : 0);
+                });
+                auto rollOnRunway = M.deferred([this]() {
+                    return shared_ptr<Maneuver>(new AnimationManeuver<double>(
+                        "roll",
+                        m_stoppedBeforeTakeoff ? 0.0f : 20.0f,
+                        140.0,
+                        chrono::seconds(20),
+                        [](const double &from, const double &to, double progress, double &value) {
+                            value = from + (to - from) * progress;
+                        },
+                        [this](const double &value, double progress) {
+                            m_aircraft->setGroundSpeedKt(value);
+                        }
+                    ));
+                });
                 auto rotate1 = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "rotate_1",
                     0,
                     8.5,
                     chrono::seconds(3),
@@ -814,7 +996,7 @@ namespace ai
                     }
                 ));
                 auto rotate2 = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "rotate_2",
                     8.5,
                     15.0,
                     chrono::seconds(6),
@@ -825,8 +1007,17 @@ namespace ai
                         m_aircraft->setAttitude(m_aircraft->attitude().withPitch(value));
                     }
                 ));
+                auto logLiftUp = M.instantAction([this](){
+                    host()->writeLog(
+                        "AIPILO|LIFTUP flight[%s] at [%f,%f] ground-speed[%f]kt pitch[%f]deg",
+                        flight()->callSign().c_str(),
+                        m_aircraft->location().latitude,
+                        m_aircraft->location().longitude,
+                        m_aircraft->groundSpeedKt(),
+                        m_aircraft->attitude().pitch());
+                });
                 auto liftUp = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "lift_up",
                     0,
                     2500.0,
                     chrono::seconds(10),
@@ -839,7 +1030,7 @@ namespace ai
                     }
                 ));
                 auto gearUp = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "gear_up",
                     1.0,
                     0.0,
                     chrono::seconds(8),
@@ -851,7 +1042,7 @@ namespace ai
                     }
                 ));
                 auto accelerateAirborne = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "accel_airb",
                     140.0,
                     180.0,
                     chrono::seconds(30),
@@ -863,7 +1054,7 @@ namespace ai
                     }
                 ));
                 auto turnToInitialHeading = shared_ptr<Maneuver>(new AnimationManeuver<double>(
-                    "", 
+                    "turn_init_hdg",
                     140.0,
                     210.0,
                     chrono::seconds(30),
@@ -880,6 +1071,8 @@ namespace ai
                         const auto& runwayEnd = runway->getEndOrThrow(m_flightPlan->departureRunway());
                         m_aircraft->setAttitude(m_aircraft->attitude().withHeading(runwayEnd.heading()));
                     }),
+                    beforeTakeoffChecklist,
+                    logTakeoffRoll,
                     M.parallel(Maneuver::Type::Unspecified, "", {
                         M.sequence(Maneuver::Type::Unspecified, "", {
                             rollOnRunway,
@@ -892,6 +1085,7 @@ namespace ai
                         }),
                         M.sequence(Maneuver::Type::Unspecified, "", {
                             M.delay(chrono::seconds(23)),
+                            logLiftUp,
                             liftUp
                         }),
                         M.sequence(Maneuver::Type::Unspecified, "", {

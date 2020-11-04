@@ -160,6 +160,7 @@ TEST(WorldBuilderTest, assembleAirport_taxiNetAndRunways)
 
     ASSERT_EQ(airport->runways().size(), 1);
     EXPECT_EQ(airport->runways()[0], rwy1836);
+    EXPECT_EQ(rwy1836->name(), "18/36");
 
     auto net = airport->taxiNet();
 

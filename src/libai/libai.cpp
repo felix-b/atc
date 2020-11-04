@@ -5,9 +5,10 @@
 #include "libworld.h"
 #include "libai.hpp"
 #include "aiPilot.hpp"
-#include "aiController.hpp"
+#include "aiControllerBase.hpp"
 #include "aiAircraft.hpp"
 #include "maneuverFactory.hpp"
+#include "localController.hpp"
 
 using namespace std;
 using namespace world;
@@ -35,13 +36,14 @@ namespace ai
 
             switch (position->type())
             {
+            case ControllerPosition::Type::Local:
+                return shared_ptr<Controller>(new LocalController(m_host, newControllerId, newControllerGender, position));
             case ControllerPosition::Type::ClearanceDelivery:
             case ControllerPosition::Type::Ground:
-            case ControllerPosition::Type::Local:
             case ControllerPosition::Type::Approach:
             case ControllerPosition::Type::Departure:
                 //m_host->writeLog("Creating AI controller for position: %s", position->callSign().c_str());
-                return shared_ptr<Controller>(new DummyAIController(m_host, newControllerId, newControllerGender, position));
+                return shared_ptr<Controller>(new AIControllerBase(m_host, newControllerId, newControllerGender, position));
             }
 
             throw runtime_error("AIControllerFactory::createController: unsupported type for position: " + position->callSign());

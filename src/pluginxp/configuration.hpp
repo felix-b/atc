@@ -18,5 +18,5 @@ class PluginConfiguration
 {
 public:
     bool showAIAircraftLabels = true;
+    bool showAIAircraftDebugLabels = false;
 };
-

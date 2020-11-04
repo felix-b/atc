@@ -12,6 +12,7 @@
 #include <tuple>
 #include <vector>
 #include <unordered_map>
+#include <list>
 #include <queue>
 #include <functional>
 #include <chrono>
@@ -27,6 +28,7 @@ using namespace std;
 #define FREQUENCY_UNICOM_1230 123000
 #define FEET_IN_1_METER 3.28084
 #define KNOT_IN_1_METER_PER_SEC 1.9438444942
+#define METERS_IN_1_NAUTICAL_MILE 1852
 
 namespace world
 {
@@ -96,6 +98,32 @@ namespace world
     public:
         friend bool operator== (const GeoPoint& p1, const GeoPoint& p2);
         friend bool operator!= (const GeoPoint& p1, const GeoPoint& p2);    
+    };
+
+    struct GeoVector
+    {
+    public:
+        GeoPoint p1;
+        GeoPoint p2;
+        double latitude;
+        double longitude;
+    public:
+        GeoVector() :
+            GeoVector({ 0, 0 }, {0, 0})
+        {
+        }
+        GeoVector(const GeoPoint& _p1, const GeoPoint& _p2) :
+            p1(_p1), p2(_p2)
+        {
+            longitude = p2.longitude - p1.longitude;
+            latitude = p2.latitude - p1.latitude;
+        }
+    public:
+        static const GeoVector empty;
+    public:
+        friend bool operator== (const GeoVector& u, const GeoVector& v);
+        friend bool operator!= (const GeoVector& u, const GeoVector& v);
+        friend double operator* (const GeoVector& u, const GeoVector& v);
     };
 
     struct LocalPoint
@@ -204,10 +232,10 @@ namespace world
         {
         public:
             GeoPoint e1p0;
-            GeoPoint e1p1; 
+            GeoPoint e1p1;
             double e1HeadingRad;
             GeoPoint e2p0;
-            GeoPoint e2p1; 
+            GeoPoint e2p1;
             double e2HeadingRad;
             float radius;
         };
@@ -243,6 +271,8 @@ namespace world
         static void calculateTurn(const GeoMath::TurnData& input, GeoMath::TurnArc& output, shared_ptr<HostServices> host);
         static float getTurnDegrees(float fromHeading, float toHeading);
         static float addTurnToHeading(float heading, float turnDegrees);
+        static bool isPointInRectangle(const GeoPoint& p, const GeoPoint& A, const GeoPoint& B, const GeoPoint& C, const GeoPoint& D);
+        static double hypotenuse(double side);
     };
 
     template<class TKey>
@@ -474,16 +504,32 @@ namespace world
             const UniPoint& centerlinePoint() const { return m_centerlinePoint; }
             float elevationFeet() const { return m_elevationFeet; }
         };
+        struct Bounds
+        {
+            GeoPoint A;
+            GeoPoint B;
+            GeoPoint C;
+            GeoPoint D;
+            double minLatitude = 0;
+            double maxLatitude = 0;
+            double minLongitude = 0;
+            double maxLongitude = 0;
+        public:
+            bool contains(const GeoPoint& p) const;
+        };
     private:
+        string m_name; // <end1_name>/<end2_name>
         float m_widthMeters;
         float m_lengthMeters;
         End m_end1; //the lesser heading end
         End m_end2; //the greater heading end
         vector<shared_ptr<TaxiEdge>> m_edges;
         Bitmask m_maskBit;
+        Bounds m_bounds;
     public:
         Runway(const Runway::End& end1, const Runway::End& end2, float m_widthMeters);
     public:
+        const string& name() const { return m_name; }
         const End& end1() const { return m_end1; }
         const End& end2() const { return m_end2; }
         const End& getEndOrThrow(const string& name);
@@ -491,6 +537,9 @@ namespace world
         float lengthMeters() const { return m_lengthMeters; }
         Bitmask maskBit() const { return m_maskBit; }
         const vector<shared_ptr<TaxiEdge>>& edges() const { return m_edges; }
+        const Bounds& bounds() const { return m_bounds; }
+    public:
+        void calculateBounds();
     };
 
     class World
@@ -545,11 +594,14 @@ namespace world
             friend class World;
         private:
             EntityChangeSet<Flight, int> m_flights;
+            bool m_configurationChanged = false;
         public:
-            bool empty() const { return m_flights.empty(); }
+            bool empty() const { return m_flights.empty() && !m_configurationChanged; }
+            bool configurationChanged() const { return m_configurationChanged; }
             const EntityChangeSet<Flight, int>& flights() const { return m_flights; }
         public:
             EntityChangeSet<Flight, int>& mutableFlights() { return m_flights; }
+            void setConfigurationChanged() { m_configurationChanged = true; }
         };
         typedef function<shared_ptr<World::ChangeSet>()> OnChangesCallback;
         typedef function<float(const GeoPoint& location)> OnQueryElevationCallback;
@@ -601,6 +653,7 @@ namespace world
         void addFlightColdAndDark(shared_ptr<Flight> flight);
         void clearAllFlights();
         void clearWorkItems();
+        void notifyConfigurationChanged();
         shared_ptr<World::ChangeSet> takeChanges();
         void deferUntilNextTick(const string& description, function<void()> callback);
         void deferUntil(const string& description, time_t time, function<void()> callback);
@@ -608,6 +661,7 @@ namespace world
         // shared_ptr<ControlledAirspace> findAirspaceById(int id) const;
         shared_ptr<Flight> getFlightById(int id) const { return getValueOrThrow(m_flightById, id); }
         shared_ptr<Airport> getAirport(const string& icaoCode) const { return getValueOrThrow(m_airportByIcao, icaoCode); }
+        shared_ptr<Runway> getRunway(const string& airportIcao, const string& runwayName) const;
         const Runway::End& getRunwayEnd(const string& airportIcao, const string& runwayName) const;
         shared_ptr<Frequency> tryFindCommFrequency(shared_ptr<Flight> flight, int frequencyKhz);
         float queryTerrainElevationAt(const GeoPoint& location) { return m_onQueryTerrainElevation(location); }
@@ -990,6 +1044,7 @@ namespace world
     public:
         virtual void receiveIntent(shared_ptr<Intent> intent) = 0;
         virtual void progressTo(chrono::microseconds timestamp) = 0;
+        virtual void clearFlights() = 0;
     };
 
     class InformationService
@@ -1026,12 +1081,107 @@ namespace world
         virtual void clearAll() = 0;
     };
 
+    class Intent
+    {
+    public:
+        enum class Direction
+        {
+            Unknown = 0,
+            PilotToController = 1,
+            ControllerToPilot = 2,
+            ControllerToController = 3,
+            PilotToPilot = 4,
+        };
+        enum class Type
+        {
+            Unknown = 0,
+            Question = 1,
+            Information = 2,
+            Affirmation = 3,
+            Negation = 4,
+            Request = 5,
+            Report = 6,
+            RequestApproval = 7,
+            RequestRejection = 8,
+            Clearance = 9,
+            ClearanceReadback = 10,
+            ClearanceUnable = 11
+        };
+        enum class ConversationState
+        {
+            End = 0,
+            Continue = 1
+        };
+    private:
+        uint64_t m_id;
+        uint64_t m_replyToId;
+        Direction m_direction;
+        Type m_type;
+        int m_code;
+        ConversationState m_conversationState;
+        shared_ptr<ControllerPosition> m_subjectControl;
+        shared_ptr<ControllerPosition> m_subjectControl2;
+        shared_ptr<Flight> m_subjectFlight;
+        shared_ptr<Flight> m_subjectFlight2;
+    protected:
+        Intent(
+            uint64_t _id,
+            uint64_t _replyToId,
+            Direction _direction,
+            Type _type,
+            int _code,
+            ConversationState _conversationState,
+            shared_ptr<ControllerPosition> _subjectControl,
+            shared_ptr<Flight> _subjectFlight,
+            shared_ptr<ControllerPosition> _subjectControl2 = nullptr,
+            shared_ptr<Flight> _subjectFlight2 = nullptr
+        ) : m_id(_id),
+            m_replyToId(_replyToId),
+            m_direction(_direction),
+            m_type(_type),
+            m_code(_code),
+            m_conversationState(_conversationState),
+            m_subjectControl(_subjectControl),
+            m_subjectFlight(_subjectFlight),
+            m_subjectControl2(_subjectControl2),
+            m_subjectFlight2(_subjectFlight2)
+        {
+        }
+    public:
+        uint64_t id() const { return m_id; }
+        uint64_t replyToId() const { return m_replyToId; }
+        Direction direction() const { return m_direction; }
+        Type type() const { return m_type; }
+        int code() const { return m_code; }
+        ConversationState conversationState() const { return m_conversationState; }
+        shared_ptr<ControllerPosition> subjectControl() const { return m_subjectControl; }
+        shared_ptr<ControllerPosition> subjectControl2() const { return m_subjectControl2; }
+        shared_ptr<Flight> subjectFlight() const { return m_subjectFlight; }
+        shared_ptr<Flight> subjectFlight2() const { return m_subjectFlight2; }
+        bool isReply() const { return (m_replyToId > 0); }
+        //const string& transmissionText() const { return m_transmissionText; }
+    public:
+        virtual bool isCritical() const { return false; }
+        virtual shared_ptr<Actor> getSpeakingActor() const;
+        //virtual void setTransmissionText(const string& text) { m_transmissionText = text; }
+    };
+
     class Frequency : public enable_shared_from_this<Frequency>
     {
     private:
         friend class WorldBuilder;
     public:
         typedef function<void(shared_ptr<Intent> intent)> Listener;
+        typedef function<void(shared_ptr<Transmission> transmission)> TransmissionCallback;
+        typedef function<bool()> CancellationQueryCallback;
+        struct PushToTalkAwaiter
+        {
+            int id;
+            chrono::milliseconds silence;
+            shared_ptr<Intent> intent;
+            TransmissionCallback onTransmission;
+            CancellationQueryCallback onQueryCancel;
+        };
     private:
         shared_ptr<HostServices> m_host;
         int m_khz; //e.g. 118325
@@ -1039,11 +1189,17 @@ namespace world
         float m_radiusNm;
         long long m_nextTransmissionId;
         int m_nextListenerId;
+        int m_nextPushToTalkId;
+        list<PushToTalkAwaiter> m_regularAwaiters;
+        list<PushToTalkAwaiter> m_criticalAwaiters;
         queue<shared_ptr<Transmission>> m_pendingTransmissions;
         shared_ptr<Transmission> m_transmissionInProgress;
         TextToSpeechService::QueryCompletion m_queryTransmissionCompletion;
         unordered_map<int, Listener> m_listenerById;
         weak_ptr<ControllerPosition> m_controllerPosition;
+        uint64_t m_lastTransmittedIntentId;
+        Intent::ConversationState m_lastConversationState;
+        chrono::microseconds m_conversationStateExpiryTimestamp;
         chrono::microseconds m_lastTransmissionEndTimestamp;
     public:
         Frequency(
@@ -1057,8 +1213,12 @@ namespace world
             m_radiusNm(_radiusNm),
             m_nextTransmissionId(1),
             m_nextListenerId(1),
+            m_nextPushToTalkId(1),
             m_queryTransmissionCompletion(TextToSpeechService::noopQueryCompletion),
-            m_lastTransmissionEndTimestamp(0)
+            m_lastTransmittedIntentId(0),
+            m_lastConversationState(Intent::ConversationState::End),
+            m_lastTransmissionEndTimestamp(0),
+            m_conversationStateExpiryTimestamp(0)
         {
         }
     public:
@@ -1067,20 +1227,30 @@ namespace world
         float radiusNm() const { return m_radiusNm; }
         shared_ptr<ControllerPosition> controllerPosition() { return m_controllerPosition.lock(); }
     public:
+        void enqueuePushToTalk(
+            chrono::milliseconds silence,
+            const shared_ptr<Intent> intent,
+            TransmissionCallback onTransmission = noopTRansmissionCallback,
+            CancellationQueryCallback onQueryCancel = noopQueryCancelCallback);
         shared_ptr<Transmission> enqueueTransmission(const shared_ptr<Intent> intent);
         int addListener(Listener callback);
         void removeListener(int listenerId);
         void progressTo(chrono::microseconds timestamp);
         void clearTransmissions();
-        bool wasSilentFor(chrono::milliseconds duration);
+        bool wasSilentFor(chrono::milliseconds duration, uint64_t replyToId = 0);
     private:
+        bool tryDequeueAwaiter(list<PushToTalkAwaiter>& queue, PushToTalkAwaiter& dequeued);
+        void cancelAwaiter(PushToTalkAwaiter& awaiter);
         void beginTransmission(shared_ptr<Transmission> transmission, chrono::microseconds timestamp);
         void endTransmission(chrono::microseconds timestamp);
         void logTransmission(const string& message, shared_ptr<Transmission> transmission);
+        void logIntent(const string& message, shared_ptr<Intent> intent);
+        bool wasPushToTalkDequeued(int id);
+        void checkConversationStateExpiry(chrono::microseconds timestamp);
     public:
-        static void noopListener(shared_ptr<Intent> intent)
-        {
-        }
+        static void noopListener(shared_ptr<Intent> intent) { }
+        static void noopTRansmissionCallback(shared_ptr<Transmission> transmission) { }
+        static bool noopQueryCancelCallback() { return false; }
     };
 
     class Utterance
@@ -1167,7 +1337,8 @@ namespace world
         {
             NotStarted = 0,
             InProgress = 1,
-            Completed = 2
+            Completed = 2,
+            Cancelled = 3,
         };
     private:
         uint64_t m_id;
@@ -1198,71 +1369,6 @@ namespace world
         void setVerbalizedUtterance(shared_ptr<Utterance> utterance) { m_verbalizedUtterance = utterance; }
     };
 
-    class Intent
-    {
-    public:
-        enum class Direction
-        {
-            Unknown = 0,
-            PilotToController = 1,
-            ControllerToPilot = 2
-        };
-        enum class Type
-        {
-            Unknown = 0,
-            Question = 1,
-            Information = 2,
-            Affirmation = 3,
-            Negation = 4, 
-            Request = 5,
-            Report = 6,
-            RequestApproval = 7,
-            RequestRejection = 8,
-            Clearance = 9,
-            ClearanceReadback = 10,
-            ClearanceUnable = 11
-        };
-    private:
-        uint64_t m_id;
-        uint64_t m_replyToId;
-        Direction m_direction;
-        Type m_type;
-        int m_code;
-        shared_ptr<ControllerPosition> m_subjectControl;
-        shared_ptr<Flight> m_subjectFlight;
-        //string m_transmissionText;
-    protected:
-        Intent(
-            uint64_t _id,
-            uint64_t _replyToId,
-            Direction _direction,
-            Type _type,
-            int _code,
-            shared_ptr<ControllerPosition> _subjectControl,
-            shared_ptr<Flight> _subjectFlight
-        ) : m_id(_id),
-            m_replyToId(_replyToId),
-            m_direction(_direction),
-            m_type(_type),
-            m_code(_code),
-            m_subjectControl(_subjectControl),
-            m_subjectFlight(_subjectFlight)
-        {
-        }
-    public:
-        uint64_t id() const { return m_id; }
-        uint64_t replyToId() const { return m_replyToId; }
-        Direction direction() const { return m_direction; }
-        Type type() const { return m_type; }
-        int code() const { return m_code; }
-        shared_ptr<ControllerPosition> subjectControl() const { return m_subjectControl; }
-        shared_ptr<Flight> subjectFlight() const { return m_subjectFlight; }
-        bool isReply() const { return (m_replyToId > 0); }
-        //const string& transmissionText() const { return m_transmissionText; }
-    public:
-        virtual shared_ptr<Actor> getSpeakingActor() const;
-        //virtual void setTransmissionText(const string& text) { m_transmissionText = text; }
-    };
 
     class Clearance
     {
@@ -1275,12 +1381,13 @@ namespace world
             PushAndStartApproval = 3,
             DepartureTaxiClearance = 4,
             RunwayCrossClearance = 5,
-            LineupApproval = 6,
+            LineUpAndWait = 6,
             TakeoffClearance = 7,
             EnRouteClearance = 8,
             ApproachClearance = 9,
             LandingClearance = 10,
-            ArrivalTaxiClearance = 11
+            ArrivalTaxiClearance = 11,
+            GoAroundRequest = 12
         };
         struct Header
         {
@@ -1396,11 +1503,13 @@ namespace world
         //virtual chrono::microseconds expectedDuration() const = 0;
     public:
         virtual void progressTo(chrono::microseconds timestamp) = 0;
+        virtual string getStatusString() const;
     private:
         virtual shared_ptr<Maneuver> unProxy() const { return nullptr; }
         void insertChildren(const vector<shared_ptr<Maneuver>>& children);
     public:
         static shared_ptr<Maneuver> unProxy(shared_ptr<Maneuver> source);
+        static const char* getStateAcronym(State value);
     };
 
     class Aircraft
@@ -1514,6 +1623,7 @@ namespace world
         virtual float flapState() const = 0;
         virtual float spoilerState() const = 0;
         virtual bool justTouchedDown(chrono::microseconds timestamp) = 0;
+        virtual string getStatusString() { return "N/A"; }
     public:
         virtual void park(shared_ptr<ParkingStand> parkingStand) = 0;
         virtual void setOnFinal(const Runway::End& runwayEnd) = 0;
@@ -1637,9 +1747,14 @@ namespace world
         string m_arrivalRunway;
         string m_arrivalGate;
         string m_sidName;
+        string m_sidTransition;
         string m_starName;
+        string m_starTransition;
         string m_approachName;
         vector<shared_ptr<Leg>> m_legs;
+        string m_airlineIcao;
+        string m_flightNo;
+        string m_callsign;
         //GeoPoint m_topOfClimb;
         //GeoPoint m_topOfDescent;
     public:
@@ -1665,14 +1780,29 @@ namespace world
         const string& arrivalGate() const { return m_arrivalGate; }
         const string& arrivalRunway() const { return m_arrivalRunway; }
         const string& sidName() const { return m_sidName; }
+        const string& sidTransition() const { return m_sidTransition; }
         const string& starName() const { return m_starName; }
+        const string& starTransition() const { return m_starTransition; }
         const string& approachName() const { return m_approachName; }
+        const string& airlineIcao() const { return m_airlineIcao; }
+        const string& flightNo() const { return m_flightNo; }
+        const string& callsign() const { return m_callsign; }
         const vector<shared_ptr<Leg>>& legs() const { return m_legs; }
     public:
+        void setDepartureAirportIcao(const string& icao) { m_departureAirportIcao = icao; }
         void setDepartureGate(const string& name) { m_departureGate = name; }
         void setDepartureRunway(const string& name) { m_departureRunway = name; }
+        void setSid(const string& name) { m_sidName = name; }
+        void setSidTransition(const string& name) { m_sidTransition = name; }
+        void setStar(const string& name) { m_starName = name; }
+        void setStarTransition(const string& name) { m_starTransition = name; }
+        void setApproach(const string& name) { m_approachName = name; }
         void setArrivalRunway(const string& name) { m_arrivalRunway = name; }
         void setArrivalGate(const string& name) { m_arrivalGate = name; }
+        void setArrivalAirportIcao(const string& icao) { m_arrivalAirportIcao = icao; }
+        void setAirlineIcao(const string& icao) { m_airlineIcao = icao; }
+        void setFlightNo(const string& value) { m_flightNo = value; }
+        void setCallsign(const string& name) { m_callsign = name; }
     };
 
     class Flight : 
@@ -1736,6 +1866,7 @@ namespace world
         void setPilot(shared_ptr<Pilot> _pilot);
         void progressTo(chrono::microseconds timestamp);
         void addClearance(shared_ptr<Clearance> clearance);
+        void setPlan(shared_ptr<FlightPlan> _plan);
         void setPhase(Phase newPhase) { m_phase = newPhase; }
     public:
         void onChanges(World::OnChangesCallback callback) { m_onChanges = callback; }
@@ -1787,6 +1918,7 @@ namespace world
     public:
         shared_ptr<Flight> flight() const { return m_flight; }
         shared_ptr<Aircraft> aircraft() const { return m_aircraft; }
+        virtual string getStatusString() const { return ""; }
     public:
         virtual shared_ptr<Maneuver> getFlightCycle() = 0;
         virtual shared_ptr<Maneuver> getFinalToGate(const Runway::End& landingRunway) = 0;
@@ -1820,6 +1952,12 @@ namespace world
             float elevation() const { return m_elevation; }
         };
     private:
+        struct MutableState
+        {
+            vector<string> activeDepartureRunways;
+            vector<string> activeArrivalRunways;
+        };
+    private:
         Header m_header;
         vector<shared_ptr<Runway>> m_runways;
         unordered_map<string, shared_ptr<Runway>> m_runwayByName;
@@ -1828,11 +1966,11 @@ namespace world
         shared_ptr<TaxiNet> m_taxiNet;
         shared_ptr<ControlFacility> m_tower;
         vector<vector<shared_ptr<Runway>>> m_parallelRunwayGroups;
-        vector<string> m_activeDepartureRunways;
-        vector<string> m_activeArrivalRunways;
+        shared_ptr<MutableState> m_mutableState;
     public:
         Airport(const Header& _header) : 
-            m_header(_header)
+            m_header(_header),
+            m_mutableState(make_shared<MutableState>())
         {
         }
     public:
@@ -1843,25 +1981,9 @@ namespace world
         shared_ptr<ControlFacility> tower() const { return m_tower; }
         bool hasParallelRunways() const { return m_parallelRunwayGroups.size() > 0; }
         int parallelRunwayGroupCount() const { return m_parallelRunwayGroups.size(); }
-        const vector<string>& activeDepartureRunways() const { return m_activeDepartureRunways; }
-        const vector<string>& activeArrivalRunways() const { return m_activeArrivalRunways; }
-    public:
-        shared_ptr<ControllerPosition> clearanceDeliveryAt(const GeoPoint& location) const { 
-            return m_tower->findPositionOrThrow(ControllerPosition::Type::ClearanceDelivery, location); 
-        }
-        shared_ptr<ControllerPosition> groundAt(const GeoPoint& location) const { 
-            return m_tower->findPositionOrThrow(ControllerPosition::Type::Ground, location); 
-        }
-        shared_ptr<ControllerPosition> localAt(const GeoPoint& location) const { 
-            return m_tower->findPositionOrThrow(ControllerPosition::Type::Local, location); 
-        }
-        shared_ptr<ControllerPosition> departureAt(const GeoPoint& location) const { 
-            return m_tower->findPositionOrThrow(ControllerPosition::Type::Departure, location); 
-        }
-        shared_ptr<ControllerPosition> approachAt(const GeoPoint& location) const { 
-            return m_tower->findPositionOrThrow(ControllerPosition::Type::Approach, location); 
-        }
-        shared_ptr<Runway> findLongestRunway() const;
+        const vector<string>& activeDepartureRunways() const { return m_mutableState->activeDepartureRunways; }
+        const vector<string>& activeArrivalRunways() const { return m_mutableState->activeArrivalRunways; }
+        bool isRunwayActive(const string& runwayName) const;
     public:
         shared_ptr<Runway> getRunwayOrThrow(const string& name) const;
         const Runway::End& getRunwayEndOrThrow(const string& name) const;
@@ -1869,10 +1991,33 @@ namespace world
         shared_ptr<ParkingStand> getParkingStandOrThrow(const string& name) const;
         shared_ptr<ParkingStand> tryFindParkingStand(const string& name) const;
         const vector<shared_ptr<Runway>>& getParallelRunwayGroup(int index) const { return m_parallelRunwayGroups.at(index); }
+        shared_ptr<Runway> findLongestRunway() const;
         const vector<shared_ptr<Runway>>& findLongestParallelRunwayGroup() const;
         shared_ptr<ParkingStand> findClosestParkingStand(const GeoPoint& location);
+    public:
+        shared_ptr<ControllerPosition> getControllerPositionOrThrow(ControllerPosition::Type type, const GeoPoint& location) const {
+            return m_tower->findPositionOrThrow(type, location);
+        }
+        shared_ptr<ControllerPosition> clearanceDeliveryAt(const GeoPoint& location) const {
+            return m_tower->findPositionOrThrow(ControllerPosition::Type::ClearanceDelivery, location);
+        }
+        shared_ptr<ControllerPosition> groundAt(const GeoPoint& location) const {
+            return m_tower->findPositionOrThrow(ControllerPosition::Type::Ground, location);
+        }
+        shared_ptr<ControllerPosition> localAt(const GeoPoint& location) const {
+            return m_tower->findPositionOrThrow(ControllerPosition::Type::Local, location);
+        }
+        shared_ptr<ControllerPosition> departureAt(const GeoPoint& location) const {
+            return m_tower->findPositionOrThrow(ControllerPosition::Type::Departure, location);
+        }
+        shared_ptr<ControllerPosition> approachAt(const GeoPoint& location) const {
+            return m_tower->findPositionOrThrow(ControllerPosition::Type::Approach, location);
+        }
+    public:
         void selectActiveRunways();
         void selectArrivalAndDepartureTaxiways();
+    private:
+        void calculateActiveRunwaysBounds();
     };
 
     class ParkingStand
@@ -2368,12 +2513,15 @@ namespace world
             Aircraft::Category category) = 0;
         virtual string getResourceFilePath(const vector<string>& relativePathParts) = 0;
         virtual string getHostFilePath(const vector<string>& relativePathParts) = 0;
+        virtual vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts) = 0;
         virtual shared_ptr<istream> openFileForRead(const string& filePath) = 0;
+        virtual void showMessageBox(const string& title, const char *format, ...) = 0;
         virtual void writeLog(const char* format, ...) = 0;
     public:
         static LogTimePoint logStartTime;
         static void initLogString();
-        static void formatLogString(char logString[512], const char* format, va_list args);
+        static chrono::milliseconds getLogTimestamp();
+        static void formatLogString(chrono::milliseconds timestamp, char logString[512], const char* format, va_list args);
     };
 }
 

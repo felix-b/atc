@@ -82,6 +82,31 @@ namespace world
             : nullptr;
     }
 
+    bool Airport::isRunwayActive(const string& runwayName) const
+    {
+        auto runwayToCheck = getRunwayOrThrow(runwayName);
+
+        for (const auto& name : m_mutableState->activeArrivalRunways)
+        {
+            auto arrival = getRunwayOrThrow(name);
+            if (arrival == runwayToCheck)
+            {
+                return true;
+            }
+        }
+
+        for (const auto& name : m_mutableState->activeDepartureRunways)
+        {
+            auto departure = getRunwayOrThrow(name);
+            if (departure == runwayToCheck)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     shared_ptr<ParkingStand> Airport::getParkingStandOrThrow(const string& name) const
     {
         auto parking = tryFindParkingStand(name);
@@ -121,14 +146,18 @@ namespace world
         {
             if (position->type() == ControllerPosition::Type::Local)
             {
-                position->selectActiveRunways(m_activeDepartureRunways, m_activeArrivalRunways);
+                position->selectActiveRunways(
+                    m_mutableState->activeDepartureRunways,
+                    m_mutableState->activeArrivalRunways);
             }
         }
+
+        calculateActiveRunwaysBounds();
     }
 
     void Airport::selectArrivalAndDepartureTaxiways()
     {
-        for (const auto& departureRunwayName : m_activeDepartureRunways)
+        for (const auto& departureRunwayName : m_mutableState->activeDepartureRunways)
         {
             const auto& runwayEnd = getRunwayOrThrow(departureRunwayName)->getEndOrThrow(departureRunwayName);
 
@@ -136,6 +165,19 @@ namespace world
             {
                 m_taxiNet->tryFindDepartureTaxiPathToRunway(gate->location().geo(), runwayEnd);
             }
+        }
+    }
+
+    void Airport::calculateActiveRunwaysBounds()
+    {
+        for (const auto& runway : m_mutableState->activeArrivalRunways)
+        {
+            getRunwayOrThrow(runway)->calculateBounds();
+        }
+
+        for (const auto& runway : m_mutableState->activeDepartureRunways)
+        {
+            getRunwayOrThrow(runway)->calculateBounds();
         }
     }
 }

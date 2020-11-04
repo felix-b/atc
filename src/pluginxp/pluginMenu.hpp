@@ -65,19 +65,30 @@ public:
     };
 private:
     int m_itemId;
+    XPLMMenuID m_parentMenuId;
     XPLMMenuID m_subMenuId;
     vector<Item*> m_subItemIndex;
-public:
-    PluginMenu(const string& text)
+private:
+    PluginMenu(const string& text, XPLMMenuID parentMenuId)
     {
-        m_itemId = XPLMAppendMenuItem(XPLMFindPluginsMenu(), text.c_str(), nullptr, 1);
-        m_subMenuId = XPLMCreateMenu(text.c_str(), XPLMFindPluginsMenu(), m_itemId, menuHandler, this);
+        m_parentMenuId = parentMenuId;
+        m_itemId = XPLMAppendMenuItem(parentMenuId, text.c_str(), nullptr, 1);
+        m_subMenuId = XPLMCreateMenu(text.c_str(), parentMenuId, m_itemId, menuHandler, this);
+    }
+public:
+    PluginMenu(const string& text, PluginMenu& parentMenu) :
+        PluginMenu(text, parentMenu.m_subMenuId)
+    {
+    }
+    PluginMenu(const string& text) :
+        PluginMenu(text, XPLMFindPluginsMenu())
+    {
     }
     ~PluginMenu()
     {
         XPLMClearAllMenuItems(m_subMenuId);
-        XPLMEnableMenuItem(XPLMFindPluginsMenu(), m_itemId, 0);
-        XPLMRemoveMenuItem(XPLMFindPluginsMenu(), m_itemId);
+        XPLMEnableMenuItem(m_parentMenuId, m_itemId, 0);
+        XPLMRemoveMenuItem(m_parentMenuId, m_itemId);
         XPLMDestroyMenu(m_subMenuId);
     }
 private:

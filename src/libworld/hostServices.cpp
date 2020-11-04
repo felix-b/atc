@@ -21,11 +21,16 @@ namespace world
         logStartTime = chrono::time_point_cast<std::chrono::milliseconds>(chrono::high_resolution_clock::now());
     }
 
-    void HostServices::formatLogString(char logString[LOG_BUFFER_SIZE], const char *format, va_list args)
+    chrono::milliseconds HostServices::getLogTimestamp()
     {
         auto now = std::chrono::time_point_cast<std::chrono::milliseconds>(chrono::high_resolution_clock::now());
         auto millisecondsTimestamp = now - logStartTime;
-        snprintf(logString, LOG_PREFIX_LENGTH + 1, LOG_PREFIX_FORMAT, millisecondsTimestamp.count());
+        return millisecondsTimestamp;
+    }
+
+    void HostServices::formatLogString(chrono::milliseconds timestamp, char logString[LOG_BUFFER_SIZE], const char *format, va_list args)
+    {
+        snprintf(logString, LOG_PREFIX_LENGTH + 1, LOG_PREFIX_FORMAT, timestamp.count());
 
         int messageLength = vsnprintf(logString + LOG_PREFIX_LENGTH, LOG_BUFFER_SIZE - LOG_PREFIX_LENGTH - 2, format, args);
         if (messageLength >= 0 && messageLength < LOG_BUFFER_SIZE - LOG_PREFIX_LENGTH - 2)

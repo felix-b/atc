@@ -4,6 +4,9 @@
 // 
 #pragma once
 
+#include <string>
+#include <sstream>
+
 #include "libworld.h"
 
 using namespace std;
@@ -56,6 +59,19 @@ namespace world
                 m_inProgressChild = m_inProgressChild->nextSibling();
             }
         }
+
+        string getStatusString() const override
+        {
+            stringstream s;
+            s << Maneuver::getStatusString();
+
+            if (m_inProgressChild)
+            {
+                s << "[" << m_inProgressChild->getStatusString() << "]";
+            }
+
+            return s.str();
+        }
     };
 
     class ParallelManeuver : public Maneuver
@@ -95,6 +111,27 @@ namespace world
             m_state = allFinished 
                 ? Maneuver::State::Finished 
                 : Maneuver::State::InProgress;
+        }
+
+        string getStatusString() const override
+        {
+            stringstream s;
+            s << Maneuver::getStatusString();
+            s << "(";
+
+            bool isFirstChild = true;
+            for (auto child = firstChild() ; child ; child = child->nextSibling())
+            {
+                if (!isFirstChild)
+                {
+                    s << "|";
+                }
+                s << child->getStatusString();
+                isFirstChild = false;
+            }
+
+            s << ")";
+            return s.str();
         }
     };
 
@@ -296,6 +333,10 @@ namespace world
             {
                 m_finishTimestamp = timestamp;
             }
+        }
+        string getStatusString() const override
+        {
+            return m_actual ? m_actual->getStatusString() : "defer";
         }
     private:
         shared_ptr<Maneuver> unProxy() const override 

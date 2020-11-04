@@ -53,7 +53,7 @@ namespace ai
             chrono::microseconds duration,
             TaxiType typeOfTaxi);
         shared_ptr<Maneuver> taxiStop(shared_ptr<Flight> flight);
-        shared_ptr<Maneuver> instantAction(function<void()> action);
+        shared_ptr<Maneuver> instantAction(function<void()> action, const string& id = "");
         shared_ptr<Maneuver> delay(chrono::microseconds duration);
         shared_ptr<Maneuver> deferred(
             Maneuver::Type type, 
@@ -64,14 +64,18 @@ namespace ai
         shared_ptr<Maneuver> awaitClearance(
             shared_ptr<Flight> flight, 
             Clearance::Type clearanceType, 
-            Maneuver::Type type = Maneuver::Type::AwaitClearance,
             const string& id = "");
         shared_ptr<Maneuver> sequence(Maneuver::Type type, const string& id, const vector<shared_ptr<Maneuver>>& steps);
         shared_ptr<Maneuver> parallel(Maneuver::Type type, const string& id, const vector<shared_ptr<Maneuver>>& steps);
         shared_ptr<Maneuver> switchLights(shared_ptr<Flight> flight, Aircraft::LightBits lights);
         shared_ptr<Maneuver> tuneComRadio(shared_ptr<Flight> flight, int frequencyKhz);
         shared_ptr<Maneuver> tuneComRadio(shared_ptr<Flight> flight, shared_ptr<Frequency> frequency);
-        shared_ptr<Maneuver> transmitIntent(shared_ptr<Flight> flight, shared_ptr<Intent> intent);
+        shared_ptr<Maneuver> transmitIntent(
+            shared_ptr<Flight> flight,
+            shared_ptr<Intent> intent,
+            const string& id = "",
+            int millisecondsSilence = -1,
+            Frequency::CancellationQueryCallback onQueryCancel = Frequency::noopQueryCancelCallback);
         shared_ptr<Maneuver> airborneTurn(shared_ptr<Flight> flight, float fromHeading, float toHeading);
     public:
         static shared_ptr<Maneuver> noopOnHoldingShort(shared_ptr<TaxiEdge> atEdge);

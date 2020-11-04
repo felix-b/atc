@@ -25,8 +25,8 @@ namespace world
     constexpr int GroundSwitchToTowerIntent::IntentCode;
     constexpr int PilotCheckInWithTowerIntent::IntentCode;
     constexpr int ControlStandbyIntent::IntentCode;
-    constexpr int TowerLineUpIntent::IntentCode;
-    constexpr int PilotLineUpReadbackIntent::IntentCode;
+    constexpr int TowerLineUpAndWaitIntent::IntentCode;
+    constexpr int PilotLineUpAndWaitReadbackIntent::IntentCode;
     constexpr int TowerClearedForTakeoffIntent::IntentCode;
     constexpr int PilotTakeoffClearanceReadbackIntent::IntentCode;
     constexpr int PilotReportFinalIntent::IntentCode;
@@ -35,4 +35,14 @@ namespace world
     constexpr int PilotArrivalCheckInWithGroundIntent::IntentCode;
     constexpr int GroundArrivalTaxiReplyIntent::IntentCode;
     constexpr int PilotArrivalTaxiReadbackIntent::IntentCode;
+    constexpr int GroundHoldShortRunwayIntent::IntentCode;
+    constexpr int TowerDepartureCheckInReplyIntent::IntentCode;
+    constexpr int TowerDepartureHoldShortIntent::IntentCode;
+    constexpr int PilotDepartureHoldShortReadbackIntent::IntentCode;
+    constexpr int PilotRunwayCrossReadbackIntent::IntentCode;
+    constexpr int PilotRunwayHoldShortReadbackIntent::IntentCode;
+    constexpr int TowerContinueApproachIntent::IntentCode;
+    constexpr int PilotContinueApproachReadbackIntent::IntentCode;
+    constexpr int TowerGoAroundIntent::IntentCode;
+    constexpr int PilotGoAroundReadbackIntent::IntentCode;
 }

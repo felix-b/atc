@@ -231,3 +231,117 @@ TEST(GeoMathTest, calculateTurn) {
     // runCase({40,0},{20,20},{20,20},{10,35},6, /**/ {20.42010421718751,19.57989578281249},{19.670443138279733,20.4943352925804},{24.662744904306795,23.822536469931777},-2.356194490192345,-2.1587989303424644,false);
     // runCase({40,0},{20,20},{20,20},{10,25},6, /**/ {20.688485803640884,19.311514196359116},{19.129126689521346,20.43543665523933},{16.445845116521596,15.068873509239832},0.7853981633974483,0.46364760900080615,true);
 }
+
+TEST(GeoMathTest, isPointInRectangle_not_rotated)
+{
+    GeoPoint A(10, 10);
+    GeoPoint B(20, 10);
+    GeoPoint C(20, 20);
+    GeoPoint D(10, 20);
+
+    EXPECT_EQ(GeoMath::isPointInRectangle({ 15, 15 }, A, B, C, D), true);
+    EXPECT_EQ(GeoMath::isPointInRectangle({ 9, 15 }, A, B, C, D), false);
+    EXPECT_EQ(GeoMath::isPointInRectangle({ 15, 9 }, A, B, C, D), false);
+}
+
+TEST(GeoMathTest, isPointInRectangle_rotated_45deg)
+{
+    GeoPoint A(10, 10);
+    GeoPoint B(20, 20);
+    GeoPoint C(10, 30);
+    GeoPoint D(0, 20);
+
+    EXPECT_EQ(GeoMath::isPointInRectangle({ 10, 20 }, A, B, C, D), true);
+    EXPECT_EQ(GeoMath::isPointInRectangle({ 9, 9 }, A, B, C, D), false);
+    EXPECT_EQ(GeoMath::isPointInRectangle({ 20, 10 }, A, B, C, D), false);
+}
+
+TEST(GeoMathTest, isPointInRectangle_kjfk_13R)
+{
+    auto const runCase = [](
+        const string& title,
+        const GeoPoint& A,
+        const GeoPoint& B,
+        const GeoPoint& C,
+        const GeoPoint& D
+    ) {
+        cout << "------" << title << "------" << endl;
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.652128, -73.798528 }, A, B, C, D), false);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.649104, -73.815944 }, A, B, C, D), false);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.647371, -73.812204 }, A, B, C, D), false);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.641840, -73.805834 }, A, B, C, D), false);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.633832, -73.782285 }, A, B, C, D), false);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.630753, -73.780684 }, A, B, C, D), false);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.629427, -73.772282 }, A, B, C, D), false);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.627500, -73.770617 }, A, B, C, D), false);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.648795, -73.817641 }, A, B, C, D), false);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.648127, -73.816120 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.645708, -73.810967 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.633044, -73.782821 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.628087, -73.771746 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.648408, -73.816731 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.646802, -73.812522 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.642743, -73.805052 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.638231, -73.793107 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.633924, -73.785747 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.631465, -73.780222 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.630301, -73.775823 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.628884, -73.772711 }, A, B, C, D), true);
+        EXPECT_EQ(GeoMath::isPointInRectangle({ 40.628469, -73.771660 }, A, B, C, D), true);
+    };
+
+    GeoPoint A(40.647908, -73.817450);
+    GeoPoint B(40.649088, -73.816771);
+    GeoPoint C(40.628245, -73.771064);
+    GeoPoint D(40.627292, -73.771885);
+    runCase("ABCD", A, B, C, D);
+    runCase("BCDA", B, C, D, A);
+    runCase("CDAB", C, D, A, B);
+    runCase("DABC", D, A, B, C);
+}
+
+
+TEST(GeoMathTest, isPointInRectangle_eham_36R)
+{
+    auto const runCase = [](
+        const string& title,
+        const GeoPoint& A,
+        const GeoPoint& B,
+        const GeoPoint& C,
+        const GeoPoint& D
+    ) {
+        cout << "------" << title << "------" << endl;
+        EXPECT_FALSE(GeoMath::isPointInRectangle({ 52.321248, 4.779392 }, A, B, C, D));
+        EXPECT_FALSE(GeoMath::isPointInRectangle({ 52.317832, 4.780700 }, A, B, C, D));
+        EXPECT_FALSE(GeoMath::isPointInRectangle({ 52.315972, 4.778963 }, A, B, C, D));
+        EXPECT_FALSE(GeoMath::isPointInRectangle({ 52.309104, 4.779717 }, A, B, C, D));
+        EXPECT_FALSE(GeoMath::isPointInRectangle({ 52.304577, 4.777836 }, A, B, C, D));
+        EXPECT_FALSE(GeoMath::isPointInRectangle({ 52.304117, 4.779372 }, A, B, C, D));
+        EXPECT_FALSE(GeoMath::isPointInRectangle({ 52.291021, 4.778135 }, A, B, C, D));
+        EXPECT_FALSE(GeoMath::isPointInRectangle({ 52.290938, 4.778140 }, A, B, C, D));
+        EXPECT_FALSE(GeoMath::isPointInRectangle({ 52.290607, 4.777314 }, A, B, C, D));
+        EXPECT_FALSE(GeoMath::isPointInRectangle({ 52.321548, 4.780188 }, A, B, C, D));
+
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.321300, 4.780172 }, A, B, C, D));
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.321112, 4.779853 }, A, B, C, D));
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.320455, 4.780101 }, A, B, C, D));
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.317809, 4.780130 }, A, B, C, D));
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.311713, 4.779295 }, A, B, C, D));
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.308875, 4.778615 }, A, B, C, D));
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.304352, 4.778910 }, A, B, C, D));
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.300028, 4.778216 }, A, B, C, D));
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.290988, 4.777677 }, A, B, C, D));
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.290858, 4.777366 }, A, B, C, D));
+        EXPECT_TRUE(GeoMath::isPointInRectangle({ 52.292343, 4.777484 }, A, B, C, D));
+    };
+
+    GeoPoint A(52.321421, 4.779640);
+    GeoPoint B(52.321386, 4.780734);
+    GeoPoint C(52.290813, 4.777974);
+    GeoPoint D(52.290866, 4.776762);
+    runCase("ABCD", A, B, C, D);
+    runCase("BCDA", B, C, D, A);
+    runCase("CDAB", C, D, A, B);
+    runCase("DABC", D, A, B, C);
+}
+

@@ -51,16 +51,17 @@ public:
     {
     }
 public:
-    void loadSchedules()
+    void loadSchedules(float loadFactor)
     {
         string userAirportIcao = getUserAirportIcao();
         m_airport = m_world->getAirport(userAirportIcao);
         m_airport->selectActiveRunways();
         m_airport->selectArrivalAndDepartureTaxiways();
+        logActiveRunwaysBounds();
 
         m_host->writeLog("SCHEDL|Loading demo AI schedules at airport[%s]", m_airport->header().icao().c_str());
 
-        initDemoSchedules(0.7, m_world->currentTime() + 15, m_world->currentTime() + 10);
+        initDemoSchedules(loadFactor, m_world->currentTime() + 200, m_world->currentTime() + 30);
 
         m_host->writeLog(
             "SCHEDL|Loaded [%d] demo AI flights at airport[%s]",
@@ -126,6 +127,8 @@ private:
             auto flightPlan = shared_ptr<FlightPlan>(new FlightPlan(departureTime, departureTime + 60 * 60 * 3, m_airport->header().icao(), destination));
             flightPlan->setDepartureGate(gate->name());
             flightPlan->setDepartureRunway(activeDepartureRunway);
+            flightPlan->setSid("GREKI 6");
+            flightPlan->setSidTransition("YNKEE");
 
             auto destinationAirport = m_host->getWorld()->getAirport(destination);
             flightPlan->setArrivalRunway(destinationAirport->findLongestRunway()->end1().name());
@@ -175,6 +178,16 @@ private:
             );
         };
 
+        const float normalSecondsBetweenDepartures = 210;
+        const float normalSecondsBetweenArrivals = 210;
+        const float normalLoadFactor = 0.7f;
+        int secondsBetweenDepartures = normalSecondsBetweenDepartures * normalLoadFactor / loadFactor;
+        int secondsBetweenArrivals = normalSecondsBetweenArrivals * normalLoadFactor / loadFactor;
+
+        m_host->writeLog(
+            "SCHEDL|LOADFACTOR [%f] secondsBetweenArrivals=[%d] secondsBetweenDepartures=[%d]",
+            loadFactor, secondsBetweenArrivals, secondsBetweenDepartures);
+
         vector<shared_ptr<ParkingStand>> gates;
         findGatesForFlights(gates, loadFactor);
         findActiveRunways();
@@ -182,6 +195,7 @@ private:
         int index = 0;
         time_t nextDepartureTime = firstDepartureTime;
         time_t nextArrivalTime = firstArrivalTime;
+
         vector<string> airlineOptions = { "DAL", "AAL", "SWA" };
         vector<string> modelOptions = { "B738" /*, "A320"*/ };
 
@@ -197,13 +211,13 @@ private:
                 if ((index % 2) == 1)
                 {
                     time_t departureTime = nextDepartureTime;
-                    nextDepartureTime += 100;
+                    nextDepartureTime += secondsBetweenDepartures;
                     addOutboundFlight(model, airline, flightId, "KMIA", departureTime, gate);
                 }
                 else
                 {
                     time_t arrivalTime = nextArrivalTime;
-                    nextArrivalTime += 180;
+                    nextArrivalTime += secondsBetweenArrivals;
                     addInboundFlight(model, airline, flightId, m_airport->header().icao(), arrivalTime, gate);
                 }
             }
@@ -295,5 +309,31 @@ private:
             found.size(),
             requestedCount,
             loadFactor);
+    }
+
+    void logActiveRunwaysBounds()
+    {
+        const auto logBounds = [this](shared_ptr<Runway> runway) {
+            const auto& bounds = runway->bounds();
+            m_host->writeLog(
+                "LSCHED|RWY-BOUNDS[%s]: A[%f,%f] B[%f,%f] C[%f,%f] D[%f,%f] minLat[%f] maxLat[%f] minLon[%f] maxLon[%f]",
+                runway->name().c_str(),
+                bounds.A.latitude, bounds.A.longitude,
+                bounds.B.latitude, bounds.B.longitude,
+                bounds.C.latitude, bounds.C.longitude,
+                bounds.D.latitude, bounds.D.longitude,
+                bounds.minLatitude, bounds.maxLatitude,
+                bounds.minLongitude, bounds.maxLongitude);
+        };
+
+        for (const auto& name : m_airport->activeArrivalRunways())
+        {
+            logBounds(m_airport->getRunwayOrThrow(name));
+        }
+
+        for (const auto& name : m_airport->activeDepartureRunways())
+        {
+            logBounds(m_airport->getRunwayOrThrow(name));
+        }
     }
 };

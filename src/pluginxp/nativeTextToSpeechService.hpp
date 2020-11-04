@@ -653,7 +653,7 @@ private:
             }
         }
 
-        return chrono::milliseconds(100 * text.length() + 500 * commaCount + 750 * periodCount);
+        return chrono::milliseconds(100 * text.length() + 500 * commaCount + 750 * periodCount) / 3;
     }
 
     static void logSpeechLibraryMessage(const char *text)

@@ -13,8 +13,10 @@ namespace world
         switch (m_direction)
         {
         case Direction::PilotToController:
+        case Direction::PilotToPilot:
             return m_subjectFlight->pilot();
         case Direction::ControllerToPilot:
+        case Direction::ControllerToController:
             return m_subjectControl->controller();
         default:
             return nullptr;

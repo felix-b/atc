@@ -122,4 +122,24 @@ namespace world
         m_pilot = _pilot;
         //m_host->writeLog("Flight::setPilot - exit");
     }
+
+    void Flight::setPlan(shared_ptr<FlightPlan> _plan)
+    {
+        m_plan = _plan;
+
+        if (!_plan->airlineIcao().empty())
+        {
+            m_airlineIcao = _plan->airlineIcao();
+        }
+
+        if (!_plan->callsign().empty())
+        {
+            m_callSign = _plan->callsign();
+        }
+
+        if (!_plan->flightNo().empty())
+        {
+            m_flightNo = _plan->flightNo();
+        }
+    }
 }
