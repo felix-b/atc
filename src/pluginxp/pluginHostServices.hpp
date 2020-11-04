@@ -20,6 +20,9 @@
 #include "XPLMGraphics.h"
 #include "XPLMScenery.h"
 
+// PPL
+#include "messagewindow.h"
+
 // tnc
 #include "utils.h"
 #include "libworld.h"
@@ -27,6 +30,7 @@
 #include "clearanceFactory.hpp"
 
 using namespace std;
+using namespace PPL;
 using namespace world;
 
 class PluginHostServices : public HostServices
@@ -39,7 +43,7 @@ private:
     mt19937 m_randomGenerator;
     XPLMProbeRef m_hTerrainProbe;
     shared_ptr<World> m_world;
-
+    shared_ptr<MessageWindow> m_messageBox;
 public:
 
     PluginHostServices() :
@@ -160,6 +164,41 @@ public:
         return resultPath;
     }
 
+    vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts)
+    {
+        const int bufferSize = 2048;
+        char buffer[bufferSize] = { 0 };
+        vector<string> results;
+        string directoryPath = getHostFilePath(relativePathParts);
+        int returnedFileCount;
+        string nextFileName;
+
+        writeLog("HOSTSV|DIR listing files in folder[%s]", directoryPath.c_str());
+
+        XPLMGetDirectoryContents(directoryPath.c_str(), 0, buffer, bufferSize - 1, nullptr, 0, nullptr, &returnedFileCount);
+        for (int i = 0, fileIndex = 0 ; i < bufferSize && fileIndex < returnedFileCount ; i++)
+        {
+            char c = buffer[i];
+            if (c != 0)
+            {
+                nextFileName += c;
+            }
+            else if (!nextFileName.empty())
+            {
+                results.push_back(nextFileName);
+                writeLog("HOSTSV|DIR found[%s]", directoryPath.c_str());
+                nextFileName.clear();
+                fileIndex++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return results;
+    }
+
     shared_ptr<istream> openFileForRead(const string& filePath) override
     {
         auto file = shared_ptr<ifstream>(new ifstream());
@@ -168,8 +207,37 @@ public:
         return file;
     }
 
+    void showMessageBox(const string& title, const char *format, ...) override
+    {
+        const size_t bufferSize = 1024;
+        char buffer[bufferSize];
+        va_list argptr;
+        va_start(argptr, format);
+        int messageLength = vsnprintf(buffer, bufferSize, format, argptr);
+        va_end(argptr);
+
+        if (messageLength < 0 || messageLength >= bufferSize)
+        {
+            strncpy(buffer, "WARNING: log message skipped, buffer overrun!", bufferSize);
+        }
+
+        m_messageBox = shared_ptr<MessageWindow>(new MessageWindow(
+            400,
+            200,
+            "AT&C - " + title,
+            buffer,
+            false
+        ));
+    }
+
     void writeLog(const char* format, ...) override
     {
+        //TODO: remove
+//        if (!strstr(format, "AIPILO|") && !strstr(format, "AICONT|") && !strstr(format, "120500|"))
+//        {
+//            return;
+//        }
+
         const size_t bufferSize = 1024;
         char buffer[bufferSize];
         va_list argptr;

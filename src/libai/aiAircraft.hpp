@@ -106,9 +106,16 @@ namespace ai
 
         void setOnFinal(const Runway::End& runwayEnd) override
         {
-            setAltitude(Altitude::msl(runwayEnd.elevationFeet() + 2500 + 40));
-            setGroundSpeedKt(145.0f);
-            setVerticalSpeedFpm(-1000.0f);
+            float minutesToThreshold = 4.0f;
+            float descentSpeedFpm = 1000.0f;
+            float groundSpeedKt = 145.0f;
+
+            setAltitude(Altitude::msl(
+                runwayEnd.elevationFeet() +                // runway elevation
+                minutesToThreshold * descentSpeedFpm +          // altitude to lose during descent
+                40));                                           // fine tuning for flare
+            setGroundSpeedKt(groundSpeedKt);
+            setVerticalSpeedFpm(-descentSpeedFpm);
             setFlapState(0);
             setGearState(0);
             setLights(LightBits::BeaconLandingNavStrobe);
@@ -116,7 +123,7 @@ namespace ai
 
             m_locationTimespamp = host()->getWorld()->timestamp();
 
-            float finalDistance = 2.5 * 145.0 / 60;
+            float finalDistance = minutesToThreshold * groundSpeedKt / 60;
             auto aimingPoint = runwayEnd.centerlinePoint().geo();
             auto finalStartPoint = GeoMath::getPointAtDistance(
                 aimingPoint,
@@ -240,6 +247,11 @@ namespace ai
             m_maneuver = _maneuver;
         }
 
+        string getStatusString() override
+        {
+            return m_maneuver ? m_maneuver->getStatusString() : "N/A";
+        }
+
         void notifyChanges() override
         {
             getWorldChangeSet()->mutableFlights().updated(flight().lock());
@@ -276,8 +288,8 @@ namespace ai
             case Altitude::Type::Ground:
             case Altitude::Type::AGL:
                 return nextFeet > MaxAltitudeAGL
-                       ? Altitude::msl(nextFeet + host()->getWorld()->queryTerrainElevationAt(m_location))
-                       : nextFeet > 0
+                    ? Altitude::msl(nextFeet + host()->getWorld()->queryTerrainElevationAt(m_location))
+                    : nextFeet > 0
                          ? Altitude::agl(nextFeet)
                          : Altitude::ground();
             case Altitude::Type::MSL:
@@ -285,8 +297,8 @@ namespace ai
                 if (flightPtr)
                 {
                     return nextFeet <= flightPtr->landingRunwayElevationFeet() + MaxAltitudeAGL
-                           ? Altitude::agl(nextFeet - host()->getWorld()->queryTerrainElevationAt(m_location))
-                           : Altitude::msl(nextFeet);
+                       ? Altitude::agl(nextFeet - host()->getWorld()->queryTerrainElevationAt(m_location))
+                       : Altitude::msl(nextFeet);
                 }
                 return Altitude::ground();
             }

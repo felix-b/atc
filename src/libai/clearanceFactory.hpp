@@ -24,7 +24,7 @@ namespace ai
         {
         }
     public:
-        shared_ptr<IfrClearance> ifrClearance(shared_ptr<Flight> flight)
+        shared_ptr<IfrClearance> ifrClearance(shared_ptr<Flight> flight, int squawk)
         {   
             auto tower = getTower(flight->plan()->departureAirportIcao());
             auto clearanceDelivery = tower->findPositionOrThrow(
@@ -33,17 +33,18 @@ namespace ai
 
             Clearance::Header header;
             initClearanceHeader(header, Clearance::Type::IfrClearance, clearanceDelivery, flight);
+            auto plan = flight->plan();
 
             return shared_ptr<IfrClearance>(new IfrClearance(
                 header, 
-                flight->plan()->arrivalAirportIcao(),
-                "GREKI 6",
-                "YNKEE",
+                plan->arrivalAirportIcao(),
+                plan->sidName(),
+                plan->sidTransition(),
                 5000,
                 34000,
                 5,
                 0, //why DEP??
-                "3" + to_string(flight->id())
+                to_string(squawk)
             ));
         }
 
@@ -137,7 +138,7 @@ namespace ai
             ));
         }
 
-        shared_ptr<LineupApproval> lineupApproval(shared_ptr<Flight> flight, bool wait)
+        shared_ptr<LineUpAndWaitApproval> lineUpAndWait(shared_ptr<Flight> flight, DeclineReason waitReason = DeclineReason::None)
         {
             auto airport = getDepartureAirport(flight);
             auto ifr = flight->tryFindClearance<IfrClearance>(Clearance::Type::IfrClearance);
@@ -149,14 +150,14 @@ namespace ai
             Clearance::Header header;
             initClearanceHeader(
                 header, 
-                Clearance::Type::LineupApproval, 
+                Clearance::Type::LineUpAndWait,
                 airport->localAt(flight->aircraft()->location()), 
                 flight);
 
-            return shared_ptr<LineupApproval>(new LineupApproval(
+            return shared_ptr<LineUpAndWaitApproval>(new LineUpAndWaitApproval(
                 header,
                 flight->plan()->departureRunway(),
-                wait
+                waitReason
             ));
         }
 
@@ -187,7 +188,27 @@ namespace ai
                 initialHeading,
                 departure ? departure->frequency()->khz() : 0
             ));
-        }   
+        }
+
+        shared_ptr<GoAroundRequest> goAroundRequest(
+            shared_ptr<Flight> flight,
+            shared_ptr<ControllerPosition> control,
+            const string& runwayName,
+            DeclineReason reason)
+        {
+            Clearance::Header header;
+            initClearanceHeader(
+                header,
+                Clearance::Type::GoAroundRequest,
+                control,
+                flight);
+
+            return shared_ptr<GoAroundRequest>(new GoAroundRequest(
+                header,
+                runwayName,
+                reason
+            ));
+        }
 
         shared_ptr<LandingClearance> landingClearance(shared_ptr<Flight> flight, const string& runwayName, int groundKhz)
         {

@@ -24,7 +24,9 @@ static void waitForState(
 
 TEST(ServerE2ETest, sendHello)
 {
-    auto host = TestHostServices::createWithLogs();
+    auto host = TestHostServices::create();
+    host->enableLogs(true);
+
     auto controller = ServerControllerInterface::create(host);
 
     controller->start();

@@ -4,13 +4,16 @@
 //
 #pragma once
 
+#include <fstream>
 #include <memory>
 #include <string>
+#include <sstream>
 #include <algorithm>
 #include <unordered_map>
 
 // PPL
 #include "owneddata.h"
+#include "messagewindow.h"
 
 // AT&C
 #include "libworld.h"
@@ -18,7 +21,8 @@
 #include "intentFactory.hpp"
 #include "stateMachine.hpp"
 #include "transcriptInterface.hpp"
-
+#include "airlineReferenceTable.hpp"
+#include "libdataxp.h"
 
 using namespace std;
 using namespace world;
@@ -67,12 +71,14 @@ private:
     shared_ptr<TranscriptInterface> m_transcript;
     shared_ptr<IntentFactory> m_intentFactory;
     WorldHelper m_helper;
+    shared_ptr<FlightPlan> m_flightPlan;
     shared_ptr<Flight> m_flight;
     shared_ptr<Airport> m_departureAirport;
     shared_ptr<ParkingStand> m_departureGate;
     DataRef<int> m_com1FrequencyKhz;
     shared_ptr<Intent> m_lastReceivedIntent;
     string m_holdingShortRunwayName;
+    string m_flightPlanFilePath;
     IntentFactory& I;
     world::Aircraft& A;
     WorldHelper& H;
@@ -228,6 +234,20 @@ private:
         };
     }
 
+    TranscriptInterface::TransmissionOption OPTION_DYNAMIC_LIST(
+        const string& label,
+        TranscriptInterface::OptionListLoadCallback loader,
+        bool refreshable = false)
+    {
+        return {
+            label,
+            []{ },
+            true,
+            loader,
+            refreshable
+        };
+    }
+
     void TRANSMIT(shared_ptr<Frequency> frequency, shared_ptr<Intent> intent)
     {
         if (frequency)
@@ -247,19 +267,21 @@ private:
     {
         STATE(PilotState::PerformingPreflightProcedures, {
             ON_TRIGGER(PilotTrigger::FileFlightPlan, [this]() {
-                bool filed = fileUserFlightPlan();
+                bool filed = fileUserFlightPlan(m_flightPlanFilePath); //"D:\\TnC\\atc\\src\\libdataxp_test\\testInputs\\kjfk_kord.fmx");
                 return filed
                     ? PilotState::FlightPlanFiled
                     : PilotState::PerformingPreflightProcedures;
             })
         }, {
-            OPTION("ATC: File flight plan from FMC", PilotTrigger::FileFlightPlan)
+            OPTION_DYNAMIC_LIST("To FLIGHT-DATA> File Flight Plan", [this](vector<TranscriptInterface::TransmissionOption>& list) {
+                listFlightPlanOptions(list);
+            }, true)
         });
 
         STATE(PilotState::FlightPlanFiled,{
             ON_TRIGGER(PilotTrigger::RequestIfrClearance, PilotState::RequestingIfrClearance)
         }, {
-            OPTION("CLR/DEL: Request IFR clearance", PilotTrigger::RequestIfrClearance)
+            OPTION("To CLR/DEL> Request IFR clearance", PilotTrigger::RequestIfrClearance)
         });
 
         STATE(PilotState::RequestingIfrClearance, [this]{
@@ -270,14 +292,22 @@ private:
                 TRANSMIT(H.getClearanceDelivery(m_flight)->frequency(), I.pilotIfrClearanceReadback(m_flight, intent->id()));
                 return PilotTrigger::None;
             }),
-            ON_INTENT<DeliveryIfrClearanceReadbackCorrectIntent>(PilotTrigger::GotIfrClearance),
+            ON_INTENT<DeliveryIfrClearanceReadbackCorrectIntent>([this](shared_ptr<DeliveryIfrClearanceReadbackCorrectIntent> intent) {
+                TRANSMIT(intent->subjectControl()->frequency(), I.pilotHandoffReadback(
+                    m_flight,
+                    intent->subjectControl(),
+                    intent->groundKhz(),
+                    intent->id()
+                ));
+                return PilotTrigger::GotIfrClearance;
+            }),
             ON_TRIGGER(PilotTrigger::GotIfrClearance, PilotState::HaveIfrClearance),
         });
 
         STATE(PilotState::HaveIfrClearance, {
             ON_TRIGGER(PilotTrigger::RequestPushAndStart, PilotState::RequestingPushAndStart)
         }, {
-            OPTION("GND: Request push and start", PilotTrigger::RequestPushAndStart)
+            OPTION("To GND> Request push and start", PilotTrigger::RequestPushAndStart)
         });
 
         STATE(PilotState::RequestingPushAndStart, [this]{
@@ -298,7 +328,7 @@ private:
         STATE(PilotState::PerformingPushbackAndStart, {
             ON_TRIGGER(PilotTrigger::RequestDepartureTaxi, PilotState::RequestingDepartureTaxi)
         }, {
-            OPTION("GND: Request taxi", PilotTrigger::RequestDepartureTaxi)
+            OPTION("To GND> Request taxi", PilotTrigger::RequestDepartureTaxi)
         });
 
         STATE(PilotState::RequestingDepartureTaxi, [this]{
@@ -320,14 +350,27 @@ private:
         appendDepartureHoldingShortOptions(departureTaxiOptions);
 
         STATE(PilotState::PerformingDepartureTaxi, {
-            ON_TRIGGER(PilotTrigger::ReportHoldingShortRunway, PilotState::HoldingShortRunway)
+            ON_INTENT<GroundSwitchToTowerIntent>([this](shared_ptr<GroundSwitchToTowerIntent> intent) {
+                TRANSMIT(
+                    H.getDepartureGround(m_flight)->frequency(),
+                    I.pilotHandoffReadback(m_flight, intent->subjectControl(), intent->towerKhz(), intent->id()));
+                return PilotTrigger::GroundHandedOffToTower;
+            }),
+            ON_TRIGGER(PilotTrigger::ReportHoldingShortRunway, PilotState::HoldingShortRunway),
+            ON_TRIGGER(PilotTrigger::GroundHandedOffToTower, PilotState::GroundHandedOffToTower)
         }, departureTaxiOptions);
 
         STATE(PilotState::HoldingShortRunway, [this]{
             TRANSMIT(
                 H.getDepartureGround(m_flight)->frequency(),
-                I.pilotReportHoldingShort(m_flight, m_holdingShortRunwayName, ""));
+                I.pilotReportHoldingShort(m_flight, m_departureAirport, m_holdingShortRunwayName, ""));
         }, {
+            ON_INTENT<GroundHoldShortRunwayIntent>([this](shared_ptr<GroundHoldShortRunwayIntent> intent) {
+                TRANSMIT(
+                    H.getDepartureGround(m_flight)->frequency(),
+                    I.pilotRunwayHoldShortReadback(m_flight, intent->subjectControl(), m_holdingShortRunwayName, intent->reason(), intent->id()));
+                return PilotTrigger::None;
+            }),
             ON_INTENT<GroundRunwayCrossClearanceIntent>([this](shared_ptr<GroundRunwayCrossClearanceIntent> intent) {
                 m_flight->addClearance(intent->clearance());
                 TRANSMIT(
@@ -348,19 +391,26 @@ private:
         STATE(PilotState::GroundHandedOffToTower, {
             ON_TRIGGER(PilotTrigger::CheckInWithTower, PilotState::CheckingInWithTower)
         }, {
-            OPTION("TWR: Check in with tower", PilotTrigger::CheckInWithTower)
+            OPTION("To TWR> Check in with tower", PilotTrigger::CheckInWithTower)
         });
 
         STATE(PilotState::CheckingInWithTower, [this]{
+            m_holdingShortRunwayName = m_flightPlan->departureRunway();
             TRANSMIT(
                 H.getDepartureTower(m_flight)->frequency(),
                 I.pilotCheckInWithTower(m_flight, m_holdingShortRunwayName, "", false));
         }, {
-            ON_INTENT<TowerLineUpIntent>([this](shared_ptr<TowerLineUpIntent> intent) {
+            ON_INTENT<TowerDepartureHoldShortIntent>([this](shared_ptr<TowerDepartureHoldShortIntent> intent) {
+                TRANSMIT(
+                    H.getDepartureTower(m_flight)->frequency(),
+                    I.pilotRunwayHoldShortReadback(m_flight, intent->subjectControl(), m_holdingShortRunwayName, intent->reason(), intent->id()));
+                return PilotTrigger::None;
+            }),
+            ON_INTENT<TowerLineUpAndWaitIntent>([this](shared_ptr<TowerLineUpAndWaitIntent> intent) {
                 m_flight->addClearance(intent->approval());
                 TRANSMIT(
                     H.getDepartureTower(m_flight)->frequency(),
-                    I.pilotLineUpReadback(intent->approval(), intent->id()));
+                    I.pilotLineUpAndWaitReadback(intent->approval(), intent->id()));
                 return PilotTrigger::ApprovedToLineUpAndWait;
             }),
             ON_INTENT<TowerClearedForTakeoffIntent>([this](shared_ptr<TowerClearedForTakeoffIntent> intent) {
@@ -388,9 +438,116 @@ private:
         STATE(PilotState::PerformingTakeoff);
     }
 
-    bool fileUserFlightPlan()
+    bool fileUserFlightPlan(const string& filePath)
     {
-        return true;
+        try
+        {
+            host()->writeLog("UPILOT|FLTPLN loading flight plan from file [%s]", filePath.c_str());
+
+            XPFmsxReader reader(host());
+            shared_ptr<istream> fmsFile = host()->openFileForRead(filePath);
+            m_flightPlan = reader.readFrom(*fmsFile);
+
+            if (m_flightPlan->departureAirportIcao() != m_departureAirport->header().icao())
+            {
+                host()->writeLog(
+                    "UPILOT|FLTPLN ERROR: flight plan departure is from a different airport [%s]",
+                    m_flightPlan->departureAirportIcao().c_str());
+                host()->showMessageBox(
+                    "File Flight Plan",
+                    "Cannot file flight plan with departure airport %s: our airport is %s",
+                    m_flightPlan->departureAirportIcao().c_str(),
+                    m_departureAirport->header().icao().c_str());
+                return false;
+            }
+
+            auto departureGate = m_departureAirport->findClosestParkingStand(m_flight->aircraft()->location());
+            auto departureRunway = m_departureAirport->activeDepartureRunways().at(0);
+            m_flightPlan->setDepartureGate(departureGate ? departureGate->name() : "N/A");
+            m_flightPlan->setDepartureRunway(departureRunway);
+
+            trySetCallsignByFlightNumber();
+            m_flight->setPlan(m_flightPlan);
+
+            host()->writeLog(
+                "UPILOT|FLTPLN filed flight plan from[%s]rwy[%s]sid[%s]tran[%s] to[%s]rwy[%s]app[%s]star[%s]tran[%s]",
+                m_flightPlan->departureAirportIcao().c_str(),
+                m_flightPlan->departureRunway().c_str(),
+                m_flightPlan->sidName().c_str(),
+                m_flightPlan->sidTransition().c_str(),
+                m_flightPlan->arrivalAirportIcao().c_str(),
+                m_flightPlan->arrivalRunway().c_str(),
+                m_flightPlan->approachName().c_str(),
+                m_flightPlan->starName().c_str(),
+                m_flightPlan->starTransition().c_str());
+
+//            stringstream message;
+//            message
+//                << "Your flight plan was successfully filed!" << endl << endl
+//                << m_flight->callSign() << endl << endl
+//                << "FROM: " << m_flightPlan->departureAirportIcao() << " rwy " << m_flightPlan->departureRunway() << endl
+//                << "SID [" <<  m_flightPlan->sidName() << "] transition [" << m_flightPlan->sidTransition() << "]" << endl << endl
+//                << "TO: " << m_flightPlan->arrivalAirportIcao() << " rwy " << m_flightPlan->arrivalRunway() << endl
+//                << "STAR [" <<  m_flightPlan->starName() << "] transition [" << m_flightPlan->starTransition() << "]";
+
+            host()->showMessageBox(
+                "File Flight Plan",
+                "FLIGHT PLAN FROM [ %s ] TO [ %s ] WAS SUCCESSFULLY FILED! YOUR CALL SIGN IS [ %s ]",
+                m_flightPlan->departureAirportIcao().c_str(),
+                m_flightPlan->arrivalAirportIcao().c_str(),
+                m_flightPlan->callsign().c_str());
+            return true;
+        }
+        catch(const exception& e)
+        {
+            host()->writeLog("UPILOT|FLTPLN CRASHED!!! Failed to file user flight plan: %s", e.what());
+            return false;
+        }
+    }
+
+    void trySetCallsignByFlightNumber()
+    {
+        const string& flightNo = m_flightPlan->flightNo();
+
+        if (flightNo.empty())
+        {
+            return;
+        }
+
+        AirlineReferenceTable::Entry airline;
+        string flightCallsign;
+        if (AirlineReferenceTable::tryFindByFlightNumber(flightNo, airline, flightCallsign))
+        {
+            host()->writeLog(
+                "UPILOT|FLTPLN [%s]: found airline [%s], the callsign will be [%s]",
+                flightNo.c_str(), airline.icao.c_str(), flightCallsign.c_str());
+
+            m_flightPlan->setAirlineIcao(airline.icao);
+            m_flightPlan->setCallsign(flightCallsign);
+        }
+        else
+        {
+            host()->writeLog(
+                "UPILOT|FLTPLN [%s] WARNING: could not determine airline",
+                flightNo.c_str());
+        }
+    }
+
+    void listFlightPlanOptions(vector<TranscriptInterface::TransmissionOption>& options)
+    {
+        vector<string> flightPlanFileNames = host()->findFilesInHostDirectory({ "Output", "FMS plans" });
+
+        for (const auto& fileName : flightPlanFileNames)
+        {
+            string fullPath = host()->getHostFilePath({ "Output", "FMS plans", fileName });
+            options.push_back({
+                fileName,
+                [this, fullPath]{
+                    m_flightPlanFilePath = fullPath;
+                    receiveTrigger(PilotTrigger::FileFlightPlan);
+                }
+            });
+        }
     }
 
     void appendDepartureHoldingShortOptions(vector<TranscriptInterface::TransmissionOption>& options)

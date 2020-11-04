@@ -7,6 +7,8 @@
 #include <memory>
 #include <functional>
 #include "libworld.h"
+#include "intentFactory.hpp"
+#include "clearanceTypes.hpp"
 
 // #define LOCAL(host, x, y, z) UniPoint::fromLocal((host), {(x), (y), (z)})
 // #define GEO(host, lat, lon, alt) UniPoint::fromGeo((host), {(lat), (lon), (alt)})
@@ -18,16 +20,20 @@ namespace world
         public enable_shared_from_this<TestHostServices>
     {
     public:
+        typedef function<shared_ptr<Airport>(shared_ptr<TestHostServices> host)> AirportFactoryCallback;
         class TestAIController : public Controller
         {
         public:
             typedef function<void(vector<string>& departure, vector<string>& arrival)> OnSelectActiveRunways;
+            typedef function<void(shared_ptr<Intent> intent)> OnReceiveIntent;
         private:
             OnSelectActiveRunways m_onSelectActiveRunways;
+            OnReceiveIntent m_onReceiveIntent;
         public:
             TestAIController(shared_ptr<HostServices> _host, int _id, const string& _name, shared_ptr<ControllerPosition> _position) : 
                 Controller(_host, _id, Actor::Gender::Female, _position),
-                m_onSelectActiveRunways(noopSelectActiveRunways)
+                m_onSelectActiveRunways(noopSelectActiveRunways),
+                m_onReceiveIntent(noopReceiveIntent)
             {
             }
         public:
@@ -41,12 +47,23 @@ namespace world
             {
                 m_onSelectActiveRunways(departure, arrival);
             }
+            void clearFlights() override
+            {
+            }
+        public:
             void onSelectActiveRunways(OnSelectActiveRunways callback)
             {
                 m_onSelectActiveRunways = callback;
             }
+            void onReceiveIntent(OnReceiveIntent callback)
+            {
+                m_onReceiveIntent = callback;
+            }
         public:
             static void noopSelectActiveRunways(vector<string>& departure, vector<string>& arrival)
+            {
+            }
+            static void noopReceiveIntent(shared_ptr<Intent> intent)
             {
             }
         };
@@ -72,6 +89,13 @@ namespace world
         };
         class TestAIAircraft : public Aircraft
         {
+        private:
+            GeoPoint m_location;
+            Altitude m_altitude;
+            LightBits m_lights = LightBits::None;
+            double m_verticalSpeedFpm = 0;
+            double m_groundSpeedKt = 0;
+            string m_squawk;
         public:
             TestAIAircraft(
                 shared_ptr<HostServices> _host,
@@ -81,25 +105,43 @@ namespace world
                 const string& _tailNo,
                 Category _category
             ) : Aircraft(
-                _host,
-                _id,
-                Actor::Nature::AI,
-                _modelIcao,
-                _airlineIcao,
-                _tailNo,
-                _category)
+                    _host,
+                    _id,
+                    Actor::Nature::AI,
+                    _modelIcao,
+                    _airlineIcao,
+                    _tailNo,
+                    _category
+                ),
+                m_altitude(Altitude::ground()),
+                m_location(0,0)
             {
             }
         public:
-            const GeoPoint& location() const override { throw runtime_error("TestAIAircraft"); }
+            const Altitude& altitude() const override { return m_altitude; }
+            void setAltitude(const Altitude& _altitude) { m_altitude = _altitude; }
+
+            const GeoPoint& location() const override { return m_location; }
+            void setLocation(const GeoPoint& _location) { m_location  = _location; }
+
+            LightBits lights() const override { return m_lights; }
+            void setLights(LightBits _lights) { m_lights = _lights; }
+            bool isLightsOn(LightBits bits) const override
+            {
+                return ((m_lights & bits) == bits);
+            }
+
+            double verticalSpeedFpm() const override { return m_verticalSpeedFpm; }
+            void setVerticalSpeedFpm(double value) { m_verticalSpeedFpm = value;}
+
+            double groundSpeedKt() const override { return m_groundSpeedKt; }
+            void setGroundSpeedKt(double value) { m_groundSpeedKt = value;}
+
+            const string& squawk() const override { return m_squawk; }
+            void setSquawk(const string& value) { m_squawk = value; }
+
             const AircraftAttitude& attitude() const override { throw runtime_error("TestAIAircraft"); }
             double track() const override { throw runtime_error("TestAIAircraft"); }
-            const Altitude& altitude() const override { throw runtime_error("TestAIAircraft"); }
-            double groundSpeedKt() const override { throw runtime_error("TestAIAircraft"); }
-            double verticalSpeedFpm() const override { throw runtime_error("TestAIAircraft"); }
-            const string& squawk() const override { throw runtime_error("TestAIAircraft"); }
-            LightBits lights() const override { throw runtime_error("TestAIAircraft"); }
-            bool isLightsOn(LightBits bits) const override { throw runtime_error("TestAIAircraft"); }
             float gearState() const override { throw runtime_error("TestAIAircraft"); }
             float flapState() const override { throw runtime_error("TestAIAircraft"); }
             float spoilerState() const override { throw runtime_error("TestAIAircraft"); }
@@ -107,6 +149,13 @@ namespace world
             void park(shared_ptr<ParkingStand> parkingStand) override { throw runtime_error("TestAIAircraft"); }
             void setOnFinal(const Runway::End& runwayEnd) override { throw runtime_error("TestAIAircraft"); }
             void notifyChanges() override {}
+        };
+        struct TestFlight
+        {
+        public:
+            shared_ptr<Flight> ptr;
+            shared_ptr<TestAIPilot> pilot;
+            shared_ptr<TestAIAircraft> aircraft;
         };
         class TestAircraftObjectService : public AircraftObjectService
         {
@@ -166,6 +215,8 @@ namespace world
         vector<shared_ptr<TestAIPilot>> m_createdAIPilots;
         shared_ptr<World> m_world;
         bool m_quiet;
+        chrono::milliseconds m_timeForLog;
+        bool m_timeForLogWasSet;
     public:
         TestHostServices() :
             TestHostServices(false)
@@ -174,12 +225,11 @@ namespace world
         explicit TestHostServices(bool shouldWriteLogs) :
             m_quiet(!shouldWriteLogs),
             m_geoToLocal(defaultGeoToLocal),
-            m_localToGeo(defaultLocalToGeo)
+            m_localToGeo(defaultLocalToGeo),
+            m_timeForLog(chrono::milliseconds(0)),
+            m_timeForLogWasSet(false)
         {
-            if (shouldWriteLogs)
-            {
-                HostServices::initLogString();
-            }
+            HostServices::initLogString();
         }
     public:
         shared_ptr<World> getWorld() override
@@ -247,10 +297,11 @@ namespace world
             {
                 return;
             }
+            chrono::milliseconds timestamp = m_timeForLogWasSet ? m_timeForLog : HostServices::getLogTimestamp();
             char buffer[512];
             va_list args;
             va_start(args, format);
-            HostServices::formatLogString(buffer, format, args);
+            HostServices::formatLogString(timestamp, buffer, format, args);
             va_end(args);
             cout << buffer;
         }
@@ -274,9 +325,16 @@ namespace world
             }
             return fullPath;
         }
+        vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts) override
+        {
+            return {};
+        }
         shared_ptr<istream> openFileForRead(const string& filePath) override
         {
             return shared_ptr<istream>(new stringstream());
+        }
+        void showMessageBox(const string& title, const char *format, ...) override
+        {
         }
     public:
         void useWorld(shared_ptr<World> _world)
@@ -286,13 +344,76 @@ namespace world
                 return 123.0;
             });
         }
-        const vector<shared_ptr<TestAIController>>& createdAIControllers() const
+        TestFlight addIfrFlight(
+            int flightNo,
+            const string& fromIcao,
+            const string& toIcao,
+            const GeoPoint& location,
+            const Altitude& altitude,
+            const string& typeIcao = "B738")
+        {
+            shared_ptr<TestAIAircraft> aircraft = shared_ptr<TestAIAircraft>(new TestAIAircraft(
+                shared_from_this(),
+                12345,
+                typeIcao,
+                "TES",
+                to_string(flightNo),
+                Aircraft::Category::Jet));
+            shared_ptr<FlightPlan> flightPlan(new FlightPlan(
+                1000,
+                2000,
+                fromIcao,
+                toIcao));
+            shared_ptr<Flight> flight(new Flight(
+                shared_from_this(),
+                flightNo,
+                Flight::RulesType::IFR,
+                "TES",
+                to_string(flightNo),
+                "TES " + to_string(flightNo),
+                flightPlan));
+            shared_ptr<TestAIPilot> pilot(new TestAIPilot(
+                shared_from_this(),
+                flightNo,
+                "Tes",
+                flight));
+
+            flight->setAircraft(aircraft);
+            flight->setPilot(pilot);
+            aircraft->setLocation(location);
+            aircraft->setAltitude(altitude);
+
+            m_world->addFlight(flight);
+            return { flight, pilot, aircraft };
+        }
+        const vector<shared_ptr<TestAIController>>& getCreatedAIControllers() const
         { 
             return m_createdAIControllers; 
         }
-        const vector<shared_ptr<TestAIPilot>>& createdAIPilots() const
+        const vector<shared_ptr<TestAIPilot>>& getCreatedAIPilots() const
         {
             return m_createdAIPilots;
+        }
+        shared_ptr<ControllerPosition> getAirportControl(const string& icao, ControllerPosition::Type type, shared_ptr<Flight> flight)
+        {
+            return m_world->getAirport(icao)->getControllerPositionOrThrow(type, flight->aircraft()->location());
+        }
+        shared_ptr<Frequency> getAirportFrequency(const string& icao, ControllerPosition::Type type, shared_ptr<Flight> flight)
+        {
+            return getAirportControl(icao, type, flight)->frequency();
+        }
+        shared_ptr<IntentFactory> intentFactory()
+        {
+            return services().get<IntentFactory>();
+        }
+        void enableLogs(bool enable)
+        {
+            m_quiet = !enable;
+        }
+        void setTimeForLog(chrono::milliseconds time)
+        {
+            m_timeForLog = time;
+            m_timeForLogWasSet = true;
         }
     public:
         shared_ptr<TestAircraftObjectService> aircraftObjectService() const { return m_aircraftObjectService; }
@@ -308,21 +429,31 @@ namespace world
     public:
         static shared_ptr<TestHostServices> create()
         {
-            return createWithLogs(false);
-        }
-        static shared_ptr<TestHostServices> createWithLogs(bool shouldWriteLogs = true)
-        {
-            auto testHost = make_shared<TestHostServices>(shouldWriteLogs);
+            auto testHost = make_shared<TestHostServices>();
             testHost->initializeServices(testHost);
             return testHost;
         }
-        static shared_ptr<TestHostServices> createWithWorld(bool shouldWriteLogs = false)
+        static shared_ptr<TestHostServices> createWithWorld()
         {
-            auto testHost = createWithLogs(shouldWriteLogs);
+            auto testHost = create();
             testHost->useWorld(shared_ptr<World>(new World(testHost, 0)));
             return testHost;
         }
+        static shared_ptr<TestHostServices> createWithWorldAirports(const vector<AirportFactoryCallback>& airportFactories)
+        {
+            auto testHost = create();
 
+            vector<shared_ptr<Airport>> airports;
+            for (const auto& factory : airportFactories)
+            {
+                airports.push_back(factory(testHost));
+            }
+
+            auto world = WorldBuilder::assembleSampleWorld(testHost, airports);
+            testHost->useWorld(world);
+
+            return testHost;
+        }
     private:
         static float defaultGeoToLocal(double geo) 
         {

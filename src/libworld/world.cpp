@@ -18,14 +18,22 @@ namespace world
             m_lastTimestampDelta = futureTimestamp - m_timestamp;
             m_timestamp = futureTimestamp;
 
+            //m_host->writeLog("WORLD |progressTo:processDueWorkItems");
+
             processDueWorkItems();
             lastStep = "processDueWorkItems";
+
+            //m_host->writeLog("WORLD |progressTo:processFlights");
 
             processFlights();
             lastStep = "processFlights";
 
+            //m_host->writeLog("WORLD |progressTo:processControlFacilities");
+
             processControlFacilities();
             lastStep = "processControlFacilities";
+
+            //m_host->writeLog("WORLD |progressTo:processHeartbeat");
 
             processHeartbeat();
             lastStep = "processHeartbeat";
@@ -93,6 +101,11 @@ namespace world
         }
     }
 
+    void World::notifyConfigurationChanged()
+    {
+        m_changeSet->setConfigurationChanged();
+    }
+
     void World::processDueWorkItems()
     {
         if (m_workItemQueue.empty() || m_workItemQueue.top().timestamp > m_timestamp)
@@ -132,6 +145,7 @@ namespace world
         {
             try
             {
+                //m_host->writeLog("WORLD |progressTo: flight[%s]", flight->callSign().c_str());
                 flight->progressTo(m_timestamp);
             }
             catch (const exception& e)
@@ -211,13 +225,18 @@ namespace world
         return nullptr;
     }
 
+    shared_ptr<Runway> World::getRunway(const string& airportIcao, const string& runwayName) const
+    {
+        auto airport = getAirport(airportIcao);
+        return airport->getRunwayOrThrow(runwayName);
+    }
+
     const Runway::End& World::getRunwayEnd(const string& airportIcao, const string& runwayName) const
     {
         auto airport = getAirport(airportIcao);
         auto runway = airport->getRunwayOrThrow(runwayName);
         return runway->getEndOrThrow(runwayName);
     }
-
 
     bool World::compareWorkItems(const World::WorkItem& left, const World::WorkItem& right)
     {
@@ -231,19 +250,18 @@ namespace world
     {
         for (const auto& flight : m_flights)
         {
-            if (!predicate(flight->aircraft()))
-            {
-                continue;
-            }
-
             const GeoPoint& location = flight->aircraft()->location();
 
+            //TODO: handle +/-180 lon and +/- 90 lat wrapping
             if (location.latitude >= bottomRight.latitude &&
                 location.latitude <= topLeft.latitude &&
                 location.longitude >= topLeft.longitude &&
                 location.longitude <= bottomRight.longitude)
             {
-                return true;
+                if (predicate(flight->aircraft()))
+                {
+                    return true;
+                }
             }
         }
 

@@ -101,3 +101,31 @@ public:
         const XPAirportReader::FilterAirportCallback& onFilterAirport,
         const AirportLoadedCallback& onAirportLoaded);
 };
+
+class XPFmsxReader
+{
+private:
+    struct Line
+    {
+        string token;
+        string suffix;
+        char delimiter;
+    };
+private:
+    shared_ptr<HostServices> m_host;
+public:
+    XPFmsxReader(shared_ptr<HostServices> _host);
+public:
+    shared_ptr<FlightPlan> readFrom(istream& input);
+private:
+    void parseInputLines(istream& input, vector<Line>& lines);
+    void addValue(shared_ptr<FlightPlan> plan, const string& key, const string& value);
+    bool isFmsFormat(const vector<Line>& lines);
+    bool isFmxFormat(const vector<Line>& lines);
+    void parseFmsFormat(shared_ptr<FlightPlan> plan, const vector<Line>& lines);
+    void parseFmxFormat(shared_ptr<FlightPlan> plan, const vector<Line>& lines);
+private:
+    static int countCharOccurrences(const string& s, char c);
+    static string trimLead(const string& s, const string& prefix);
+    static string getRunwayFromApproachName(const string &approachName);
+};

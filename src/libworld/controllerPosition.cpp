@@ -23,6 +23,10 @@ namespace world
         {
             m_frequency->clearTransmissions();
         }
+        if (m_controller)
+        {
+            m_controller->clearFlights();
+        }
     }
 
     void ControllerPosition::startListenOnFrequency()
@@ -39,14 +43,14 @@ namespace world
     {
         if (m_controller)
         {
-            m_host->writeLog("ATCFCL|Selecting active runways");
+            m_host->writeLog("CFACIL|Selecting active runways");
             departureRunways.clear();
             arrivalRunways.clear();
             m_controller->selectActiveRunways(departureRunways, arrivalRunways);
         }
         else
         {
-            m_host->writeLog("ATCFCL|Cannot select active runways: controller not assigned");
+            m_host->writeLog("CFACIL|Cannot select active runways: controller not assigned");
         }
     }
 }

@@ -4,12 +4,15 @@ project(libai VERSION 0.1.0)
 add_library(libai STATIC 
     libai.hpp
     libai.cpp
-    aiController.hpp
+    resourceAllocator.hpp
+    aiControllerBase.hpp
+    localController.hpp
     aiPilot.hpp
     aiAircraft.hpp
     maneuverFactory.hpp
     maneuverFactory.cpp
     clearanceFactory.hpp
+    simpleRunwayMutex.hpp
 )
 
 set_property(TARGET libai PROPERTY CXX_STANDARD 14)

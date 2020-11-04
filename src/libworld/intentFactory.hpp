@@ -164,13 +164,13 @@ namespace world
             ));
         }
 
-        shared_ptr<Intent> pilotReportHoldingShort(shared_ptr<Flight> flight, const string& runway, const string& holdingPoint)
+        shared_ptr<Intent> pilotReportHoldingShort(shared_ptr<Flight> flight, shared_ptr<Airport> airport, const string& runway, const string& holdingPoint)
         {
-            auto tower = m_helper.getDepartureGround(flight); //TODO: handle arrivals
+            auto ground = airport->groundAt(flight->aircraft()->location());
             return shared_ptr<Intent>(new PilotReportHoldingShortIntent(
                 m_nextIntentId++,
                 flight,
-                tower,
+                ground,
                 runway,
                 holdingPoint
             ));
@@ -183,6 +183,91 @@ namespace world
                 m_nextIntentId++,
                 replyToId,
                 clearance
+            ));
+        }
+
+        shared_ptr<Intent> pilotRunwayCrossReadback(shared_ptr<RunwayCrossClearance> clearance, uint64_t replyToId)
+        {
+            return shared_ptr<Intent>(new PilotRunwayCrossReadbackIntent(
+                m_nextIntentId++,
+                replyToId,
+                clearance
+            ));
+        }
+
+        shared_ptr<Intent> pilotRunwayHoldShortReadback(
+            shared_ptr<Flight> flight,
+            shared_ptr<ControllerPosition> control,
+            const string& runway,
+            DeclineReason reason,
+            uint64_t replyToId)
+        {
+            return shared_ptr<Intent>(new PilotRunwayHoldShortReadbackIntent(
+                m_nextIntentId++,
+                replyToId,
+                flight,
+                control,
+                runway,
+                reason
+            ));
+        }
+
+        shared_ptr<Intent> groundHoldShortRunway(
+            const string& runway,
+            shared_ptr<Flight> flight,
+            shared_ptr<ControllerPosition> ground,
+            DeclineReason reason,
+            uint64_t replyToId)
+        {
+            return shared_ptr<Intent>(new GroundHoldShortRunwayIntent(
+                m_nextIntentId++,
+                replyToId,
+                runway,
+                reason,
+                ground,
+                flight
+            ));
+        }
+
+        shared_ptr<Intent> groundCrossRunwayRequestToTower(
+            const string& runway,
+            shared_ptr<Flight> flight,
+            shared_ptr<ControllerPosition> ground,
+            shared_ptr<ControllerPosition> tower,
+            uint64_t pilotRequestId)
+        {
+            m_host->writeLog("INTNTF|groundCrossRunwayRequestToTower");
+            return shared_ptr<Intent>(new GroundCrossRunwayRequestFromTowerIntent(
+                m_nextIntentId++,
+                runway,
+                flight,
+                ground,
+                tower,
+                pilotRequestId
+            ));
+        }
+
+        shared_ptr<Intent> towerCrossRunwayReplyToGround(
+            uint64_t groundRequestId,
+            uint64_t pilotRequestId,
+            shared_ptr<Flight> flight,
+            shared_ptr<ControllerPosition> tower,
+            shared_ptr<ControllerPosition> ground,
+            const string& runway,
+            shared_ptr<RunwayCrossClearance> clearance,
+            DeclineReason declineReason)
+        {
+            m_host->writeLog("INTNTF|towerCrossRunwayReplyToGround");
+            return shared_ptr<Intent>(new TowerCrossRunwayReplyToGroundIntent(
+                m_nextIntentId++,
+                groundRequestId,
+                pilotRequestId,
+                runway,
+                clearance,
+                declineReason,
+                flight,
+                tower,
+                ground
             ));
         }
 
@@ -213,25 +298,80 @@ namespace world
             ));
         }
 
-        shared_ptr<Intent> towerLineUp(shared_ptr<LineupApproval> approval, uint64_t replyToId)
+        shared_ptr<Intent> towerDepartureCheckInReply(
+            const string& runway,
+            shared_ptr<Flight> flight,
+            shared_ptr<ControllerPosition> tower,
+            int numberInLine,
+            bool prepareForImmediateTakeoff,
+            uint64_t replyToId)
         {
-            return shared_ptr<Intent>(new TowerLineUpIntent(
+            return shared_ptr<Intent>(new TowerDepartureCheckInReplyIntent(
+                m_nextIntentId++,
+                replyToId,
+                flight,
+                tower,
+                runway,
+                numberInLine,
+                prepareForImmediateTakeoff
+            ));
+        }
+
+        shared_ptr<Intent> towerDepartureHoldShort(
+            const string& runway,
+            shared_ptr<Flight> flight,
+            shared_ptr<ControllerPosition> tower,
+            DeclineReason reason,
+            uint64_t replyToId)
+        {
+            return shared_ptr<Intent>(new TowerDepartureHoldShortIntent(
+                m_nextIntentId++,
+                replyToId,
+                tower,
+                flight,
+                runway,
+                reason
+            ));
+        }
+
+        shared_ptr<Intent> pilotDepartureHoldShortReadback(shared_ptr<Flight> flight, const string& runway, uint64_t replyToId)
+        {
+            auto tower = m_helper.getDepartureTower(flight);
+            return shared_ptr<Intent>(new PilotDepartureHoldShortReadbackIntent(
+                m_nextIntentId++,
+                replyToId,
+                flight,
+                tower,
+                runway
+            ));
+        }
+
+        shared_ptr<Intent> towerLineUpAndWait(
+            shared_ptr<LineUpAndWaitApproval> approval,
+            const vector<TrafficAdvisory>& traffic,
+            uint64_t replyToId)
+        {
+            return shared_ptr<Intent>(new TowerLineUpAndWaitIntent(
+                m_nextIntentId++,
+                replyToId,
+                approval,
+                traffic
+            ));
+        }
+
+        shared_ptr<Intent> pilotLineUpAndWaitReadback(shared_ptr<LineUpAndWaitApproval> approval, uint64_t replyToId)
+        {
+            return shared_ptr<Intent>(new PilotLineUpAndWaitReadbackIntent(
                 m_nextIntentId++,
                 replyToId,
                 approval
             ));
         }
 
-        shared_ptr<Intent> pilotLineUpReadback(shared_ptr<LineupApproval> approval, uint64_t replyToId)
-        {
-            return shared_ptr<Intent>(new PilotLineUpReadbackIntent(
-                m_nextIntentId++,
-                replyToId,
-                approval
-            ));
-        }
-
-        shared_ptr<Intent> towerClearedForTakeoff(shared_ptr<TakeoffClearance> clearance)
+        shared_ptr<Intent> towerClearedForTakeoff(
+            shared_ptr<TakeoffClearance> clearance,
+            const vector<TrafficAdvisory>& traffic,
+            uint64_t replyToId)
         {
             auto flight = clearance->header().issuedTo;
             auto tower = m_helper.getDepartureTower(flight);
@@ -239,10 +379,12 @@ namespace world
             
             return shared_ptr<Intent>(new TowerClearedForTakeoffIntent(
                 m_nextIntentId++,
+                replyToId,
                 tower,
                 flight,
                 true,
                 clearance,
+                traffic,
                 departure ? departure->frequency()->khz() : 0
             ));
         }
@@ -272,7 +414,64 @@ namespace world
             ));
         }
 
-        shared_ptr<Intent> towerClearedForLanding(shared_ptr<LandingClearance> clearance, uint64_t replyToId)
+        shared_ptr<Intent> towerContinueApproach(
+            shared_ptr<Flight> flight,
+            shared_ptr<ControllerPosition> tower,
+            const string& runwayName,
+            int numberInLine,
+            const vector<TrafficAdvisory>& traffic,
+            uint64_t replyToId)
+        {
+            return shared_ptr<Intent>(new TowerContinueApproachIntent(
+                m_nextIntentId++,
+                replyToId,
+                tower,
+                flight,
+                runwayName,
+                numberInLine,
+                traffic
+            ));
+        }
+
+        shared_ptr<Intent> pilotContinueApproachReadback(
+            shared_ptr<Flight> flight,
+            shared_ptr<ControllerPosition> tower,
+            const string& runwayName,
+            uint64_t replyToId)
+        {
+            return shared_ptr<Intent>(new PilotContinueApproachReadbackIntent(
+                m_nextIntentId++,
+                replyToId,
+                tower,
+                flight,
+                runwayName
+            ));
+        }
+
+        shared_ptr<Intent> towerGoAround(
+            shared_ptr<GoAroundRequest> request,
+            const vector<TrafficAdvisory>& traffic)
+        {
+            return shared_ptr<Intent>(new TowerGoAroundIntent(
+                m_nextIntentId++,
+                0,
+                request,
+                traffic
+            ));
+        }
+
+        shared_ptr<Intent> pilotGoAroundReadback(
+            shared_ptr<GoAroundRequest> request,
+            uint64_t replyToId)
+        {
+            return shared_ptr<Intent>(new PilotGoAroundReadbackIntent(
+                m_nextIntentId++,
+                replyToId,
+                request
+            ));
+        }
+
+        shared_ptr<Intent> towerClearedForLanding(shared_ptr<LandingClearance> clearance, const vector<TrafficAdvisory>& traffic, uint64_t replyToId)
         {
             auto flight = clearance->header().issuedTo;
             auto landingPoint = m_helper.getLandingPoint(flight);
@@ -285,6 +484,7 @@ namespace world
                 flight,
                 true,
                 clearance,
+                traffic,
                 ground->frequency()->khz()
             ));
         }

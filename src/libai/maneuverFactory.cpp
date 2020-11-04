@@ -323,11 +323,11 @@ namespace ai
         throw runtime_error("not implemented");
     }
 
-    shared_ptr<Maneuver> ManeuverFactory::instantAction(function<void()> action)
+    shared_ptr<Maneuver> ManeuverFactory::instantAction(function<void()> action, const string& id)
     {
         return shared_ptr<Maneuver>(new InstantActionManeuver(
             Maneuver::Type::Unspecified,
-            "",
+            id,
             action
         ));
     }
@@ -339,7 +339,7 @@ namespace ai
                 m_host->getWorld()->timestamp() + 
                 chrono::microseconds(duration.count());
         
-            return await(Maneuver::Type::Unspecified, "", [=]() {
+            return await(Maneuver::Type::Unspecified, "delay", [=]() {
                 return m_host->getWorld()->timestamp() >= targetTimestamp;
             });
         });
@@ -363,9 +363,9 @@ namespace ai
         return shared_ptr<AwaitManeuver>(new AwaitManeuver(m_host, type, id, isReady));
     }
 
-    shared_ptr<Maneuver> ManeuverFactory::awaitClearance(shared_ptr<Flight> flight, Clearance::Type clearanceType, Maneuver::Type type, const string& id)
+    shared_ptr<Maneuver> ManeuverFactory::awaitClearance(shared_ptr<Flight> flight, Clearance::Type clearanceType, const string& id)
     {
-        return await(type, id, [=]() {
+        return await(Maneuver::Type::AwaitClearance, id, [=]() {
             return !!flight->tryFindClearance<Clearance>(clearanceType);
         });
     }
@@ -412,50 +412,104 @@ namespace ai
     struct BoxedTransmission
     {
         shared_ptr<Transmission> ptr;
+        bool enqueuedPushToTalk = false;
     };
 
-    shared_ptr<Maneuver> ManeuverFactory::transmitIntent(shared_ptr<Flight> flight, shared_ptr<Intent> intent)
+    static chrono::milliseconds getSilenceDurationBeforePushToTalk(
+        const shared_ptr<Flight>& flight,
+        const shared_ptr<Intent>& intent,
+        int millisecondsOverride)
+    {
+        if (millisecondsOverride >= 0)
+        {
+            return chrono::milliseconds(millisecondsOverride);
+        }
+
+        if (intent->isReply())
+        {
+            return chrono::milliseconds(150);
+        }
+
+        if (intent->isCritical())
+        {
+            return chrono::milliseconds(1500);
+        }
+
+        return chrono::milliseconds(flight->phase() == Flight::Phase::Arrival ? 3000 : 4000);
+    }
+
+    shared_ptr<Maneuver> ManeuverFactory::transmitIntent(
+        shared_ptr<Flight> flight,
+        shared_ptr<Intent> intent,
+        const string& id,
+        int millisecondsSilence,
+        Frequency::CancellationQueryCallback onQueryCancel)
     {
         auto boxedTransmission = shared_ptr<BoxedTransmission>(new BoxedTransmission());
-        int awaitSilenceMilliseconds = intent->isReply()
-            ? 250
-            : (flight->phase() == Flight::Phase::Arrival ? 3000 : 4000);
+        chrono::milliseconds silenceDuration = getSilenceDurationBeforePushToTalk(flight, intent, millisecondsSilence);
         string silenceAwaitId =
-            flight->callSign() + "/" + to_string(awaitSilenceMilliseconds) + "ms-silence-on:" +
+            flight->callSign() + "/" + to_string(silenceDuration.count()) + "-silence/" +
             to_string(flight->aircraft()->frequencyKhz());
         auto waitStartedAt = m_host->getWorld()->timestamp();
 
-        return sequence(Maneuver::Type::Unspecified, "", {
+        return sequence(Maneuver::Type::Unspecified, id, {
             await(Maneuver::Type::AwaitSilenceOnFrequency, silenceAwaitId, [=](){
-                auto elapsed = m_host->getWorld()->timestamp() - waitStartedAt;
-                int effectiveWaitMilliseconds = (elapsed.count() > 30000000 ? awaitSilenceMilliseconds / 2 : awaitSilenceMilliseconds);
                 auto frequency = flight->aircraft()->frequency();
-                bool result = !frequency || frequency->wasSilentFor(chrono::milliseconds(effectiveWaitMilliseconds));
-                return result;
-            }),
-            instantAction([=](){
-                auto frequency = flight->aircraft()->frequency();
-                if (frequency)
+                if (!frequency)
                 {
-                    boxedTransmission->ptr = frequency->enqueueTransmission(intent);
+                    return true;
                 }
-                else
+                if (onQueryCancel())
                 {
                     m_host->writeLog(
-                        "TRANSMISSION ERROR from pilot[%s] on frequency [%d]: no ATC on this frequency",
+                        "AIPILO|TRANSMISSION CANCELLED [%s]->[%s] intent code[%d]",
+                        intent->subjectFlight()->callSign().c_str(),
+                        intent->subjectControl()->callSign().c_str(),
+                        intent->code());
+                    return true;
+                }
+                if (!boxedTransmission->enqueuedPushToTalk)
+                {
+                    frequency->enqueuePushToTalk(silenceDuration, intent, [=](shared_ptr<Transmission> transmission) {
+                        boxedTransmission->ptr = transmission;
+                    }, onQueryCancel);
+                    boxedTransmission->enqueuedPushToTalk = true;
+                }
+                bool result = !!boxedTransmission->ptr;
+                return result;
+
+//                auto elapsed = m_host->getWorld()->timestamp() - waitStartedAt;
+//                int effectiveWaitMilliseconds = (elapsed.count() > 30000000 ? awaitSilenceMilliseconds / 2 : awaitSilenceMilliseconds);
+//                auto frequency = flight->aircraft()->frequency();
+//                bool result = !frequency || frequency->wasSilentFor(chrono::milliseconds(effectiveWaitMilliseconds));
+//                return result;
+            }),
+            instantAction([=](){
+                if (!flight->aircraft()->frequency())
+                {
+                    m_host->writeLog(
+                        "AIPILO|TRANSMISSION ERROR from [%s] on [%d]: no ATC on this frequency",
                         flight->callSign().c_str(), 
                         flight->aircraft()->frequencyKhz());
                 }
             }),
-            await(Maneuver::Type::Unspecified, "", [=](){
-                return (!boxedTransmission->ptr || boxedTransmission->ptr->state() == Transmission::State::Completed);
+            await(Maneuver::Type::Unspecified, "await-transmit-end", [=](){
+                return (!boxedTransmission->ptr ||
+                    boxedTransmission->ptr->state() == Transmission::State::Completed ||
+                    boxedTransmission->ptr->state() == Transmission::State::Cancelled);
             }),
             instantAction([=]() {
+                if (!boxedTransmission->ptr)
+                {
+                    return;
+                }
+                bool completed = boxedTransmission->ptr->state() == Transmission::State::Completed;
                 m_host->writeLog(
-                    "TRANSMISSION COMPLETED: [%s]->[%s]: %s", 
-                    intent->subjectFlight()->callSign().c_str(), 
-                    intent->subjectControl()->callSign().c_str(), 
-                    boxedTransmission->ptr->verbalizedUtterance()->plainText().c_str());
+                    "AIPILO|TRANSMISSION %s [%s]->[%s] intent code[%d]",
+                    completed ? "COMPLETED" : "CANCELLED",
+                    intent->subjectFlight()->callSign().c_str(),
+                    intent->subjectControl()->callSign().c_str(),
+                    intent->code());
             })
         });
     }

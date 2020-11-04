@@ -7,6 +7,7 @@
 namespace world
 {
     const GeoPoint GeoPoint::empty(0, 0);
+    const GeoVector GeoVector::empty({0, 0}, {0, 0});
 
     bool operator== (const GeoPoint& p1, const GeoPoint& p2)
     {
@@ -17,5 +18,19 @@ namespace world
     {
         return !(p1 == p2);
     }
-}
 
+    bool operator== (const GeoVector& u, const GeoVector& v)
+    {
+        return (u.p1 == v.p1 && u.p2 == v.p2);
+    }
+
+    bool operator!= (const GeoVector& u, const GeoVector& v)
+    {
+        return !(u == v);
+    }
+
+    double operator* (const GeoVector& u, const GeoVector& v)
+    {
+        return u.longitude * v.longitude + u.latitude * v.latitude;
+    }
+}

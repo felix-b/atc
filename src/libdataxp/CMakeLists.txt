@@ -4,6 +4,7 @@ project(libdataxp VERSION 0.1.0)
 add_library(libdataxp STATIC 
     libdataxp.h
     xpAirportReader.cpp
+    xpFmsxReader.cpp
 )
 
 set_property(TARGET libdataxp PROPERTY CXX_STANDARD 14)

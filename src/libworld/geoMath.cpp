@@ -74,6 +74,14 @@ double calcTurnAngle(const world::GeoMath::TurnData& input) {
 
 namespace world
 {
+    GeoPoint vect2d(const GeoPoint& p1, const GeoPoint& p2)
+    {
+        GeoPoint temp;
+        temp.longitude = (p2.longitude - p1.longitude);
+        temp.latitude = -1 * (p2.latitude - p1.latitude);
+        return temp;
+    }
+
     double GeoMath::pi()
     {
         return PI;
@@ -314,5 +322,31 @@ namespace world
             return newHeading + 360;
         }
         return newHeading;
+    }
+
+    bool GeoMath::isPointInRectangle(const GeoPoint &m, const GeoPoint &A, const GeoPoint &B, const GeoPoint &C, const GeoPoint &D)
+    {
+        GeoPoint AB = vect2d(A, B);  float C1 = -1 * (AB.latitude*A.longitude + AB.longitude*A.latitude); float D1 = (AB.latitude*m.longitude + AB.longitude*m.latitude) + C1;
+        GeoPoint AD = vect2d(A, D);  float C2 = -1 * (AD.latitude*A.longitude + AD.longitude*A.latitude); float D2 = (AD.latitude*m.longitude + AD.longitude*m.latitude) + C2;
+        GeoPoint BC = vect2d(B, C);  float C3 = -1 * (BC.latitude*B.longitude + BC.longitude*B.latitude); float D3 = (BC.latitude*m.longitude + BC.longitude*m.latitude) + C3;
+        GeoPoint CD = vect2d(C, D);  float C4 = -1 * (CD.latitude*C.longitude + CD.longitude*C.latitude); float D4 = (CD.latitude*m.longitude + CD.longitude*m.latitude) + C4;
+        return (0 >= D1 && 0 >= D4 && 0 <= D2 && 0 >= D3);
+
+//        GeoVector AB(A, B);
+//        GeoVector AM(A, m);
+//        GeoVector BC(B, C);
+//        GeoVector BM(B, m);
+//
+//        double dotABAM = AB * AM;
+//        double dotABAB = AB * AB;
+//        double dotBCBM = BC * BM;
+//        double dotBCBC = BC * BC;
+//
+//        return (0 <= dotABAM && dotABAM <= dotABAB && 0 <= dotBCBM && dotBCBM <= dotBCBC);
+    }
+
+    double GeoMath::hypotenuse(double side)
+    {
+        return sqrt(side * side);
     }
 }

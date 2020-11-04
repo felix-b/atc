@@ -10,7 +10,75 @@ using namespace std;
 
 namespace world
 {
-    class ClearanceFactory;
+    enum class DeclineReason
+    {
+        None = 0,
+        PlanNotFiled = 10,
+        TimeSlot = 20,
+        WaitInLine = 25,
+        WakeTurbulence = 30,
+        TrafficDeparting = 40,
+        TrafficLanding = 50,
+        TrafficCrossing = 60,
+        TrafficDisabled = 70,
+        TrafficTaxiing = 80,
+        TaxiwaysBusy = 90,
+        ApronBusy = 100,
+        GateNotVacated = 110,
+        GateNotAllocated = 120,
+        RunwayNotVacated = 130,
+        AirportBusy = 140,
+        WeatherUnsafe = 150,
+        Maintenance = 160,
+        Emergency = 170,
+        NotFirstInLine = 180,
+    };
+
+    enum class TrafficAdvisoryType
+    {
+        NotSpecified = 0,
+        CrossingRunway = 10,
+        HoldingInPosition = 20,
+        LandingAhead = 30,
+        DepartingAhead = 40,
+        TrafficOnFinal = 50,
+        LandedOnRunway = 60
+    };
+
+    struct TrafficAdvisory
+    {
+    public:
+        TrafficAdvisoryType type;
+        string aircraftTypeIcao;
+        int miles;
+    public:
+        static TrafficAdvisory crossingRunway() { return TrafficAdvisory { TrafficAdvisoryType::CrossingRunway }; }
+        static TrafficAdvisory holdingInPosition() { return TrafficAdvisory { TrafficAdvisoryType::HoldingInPosition }; }
+        static TrafficAdvisory holdingInPosition(const string& typeIcao)
+        {
+            return TrafficAdvisory { TrafficAdvisoryType::HoldingInPosition, typeIcao };
+        }
+        static TrafficAdvisory landing()
+        {
+            return TrafficAdvisory { TrafficAdvisoryType::LandingAhead };
+        }
+        static TrafficAdvisory landingAhead(const string& typeIcao, int miles = 0)
+        {
+            return TrafficAdvisory { TrafficAdvisoryType::LandingAhead, typeIcao, miles };
+        }
+        static TrafficAdvisory landedOnRunway(const string& typeIcao)
+        {
+            return TrafficAdvisory { TrafficAdvisoryType::LandedOnRunway, typeIcao };
+        }
+        static TrafficAdvisory departingAhead(const string& typeIcao)
+        {
+            return TrafficAdvisory { TrafficAdvisoryType::DepartingAhead, typeIcao };
+        }
+        static TrafficAdvisory onFinal(const string& typeIcao, int miles)
+        {
+            return TrafficAdvisory { TrafficAdvisoryType::TrafficOnFinal, typeIcao, miles };
+        }
+    };
 
     class IfrClearance : public Clearance
     {
@@ -146,24 +214,24 @@ namespace world
         const string& runwayName() const { return m_runwayName; }
     };
 
-    class LineupApproval : public Clearance
+    class LineUpAndWaitApproval : public Clearance
     {
     private:
         string m_departureRunway;
-        bool m_wait;
+        DeclineReason m_waitReason;
     public:
-        LineupApproval(
+        LineUpAndWaitApproval(
             const Header& _header,
             const string& _departureRunway,
-            bool _wait
+            DeclineReason _waitReason
         ) : Clearance(_header),
             m_departureRunway(_departureRunway),
-            m_wait(_wait)
+            m_waitReason(_waitReason)
         {
         }
     public:
         const string& departureRunway() const { return m_departureRunway; }
-        bool wait() const { return m_wait; }
+        DeclineReason waitReason() { return m_waitReason; }
     };
 
     class TakeoffClearance : public Clearance
@@ -192,6 +260,26 @@ namespace world
         bool immediate() const { return m_immediate; }
         float initialHeading() const { return m_initialHeading; }
         int departureKhz() const { return m_departureKhz; }
+    };
+
+    class GoAroundRequest : public Clearance
+    {
+    private:
+        string m_runway;
+        DeclineReason m_reason;
+    public:
+        GoAroundRequest(
+            const Header& _header,
+            const string& _runway,
+            DeclineReason _reason
+        ) : Clearance(_header),
+            m_runway(_runway),
+            m_reason(_reason)
+        {
+        }
+    public:
+        const string& runway() const { return m_runway; }
+        DeclineReason reason() const { return m_reason; }
     };
 
     class LandingClearance : public Clearance
