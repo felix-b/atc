@@ -280,6 +280,7 @@ private:
         float m_loadFactor;
         PluginMenu::Item m_worldIsStarting;
         function<void(shared_ptr<Airport> userAirport)> m_onStarted;
+        function<void()> m_onFailed;
         shared_ptr<Airport> m_userAirport;
     public:
         SchedulesStartingState(
@@ -287,36 +288,53 @@ private:
             shared_ptr<World> _world,
             PluginMenu& _menu,
             float _loadFactor,
-            function<void(shared_ptr<Airport> userAirport)> _onStarted
+            function<void(shared_ptr<Airport> userAirport)> _onStarted,
+            function<void()> _onFailed
         ) : PluginState(PluginStateId::SchedulesStarting, "SCHEDULES-STARTING"),
             m_host(std::move(_host)),
             m_world(_world),
             m_worldIsStarting(_menu, "Starting schedules, please wait...", [](){}),
             m_loadFactor(_loadFactor),
-            m_onStarted(std::move(_onStarted))
+            m_onStarted(std::move(_onStarted)),
+            m_onFailed(std::move(_onFailed))
         {
         }
 
         void enter() override
         {
-            DemoScheduleLoader scheduleLoader(m_host, m_world);
-            scheduleLoader.loadSchedules(m_loadFactor);
+            try
+            {
+                DemoScheduleLoader scheduleLoader(m_host, m_world);
+                scheduleLoader.loadSchedules(m_loadFactor);
 
-            m_host->writeLog(
-                "PLUGIN|The world now has [%d] airports, [%d] control facilities, [%d] AI flights",
-                m_world->airports().size(),
-                m_world->controlFacilities().size(),
-                m_world->flights().size());
+                m_host->writeLog(
+                    "PLUGIN|The world now has [%d] airports, [%d] control facilities, [%d] AI flights",
+                    m_world->airports().size(),
+                    m_world->controlFacilities().size(),
+                    m_world->flights().size());
 
-            m_userAirport = scheduleLoader.airport();
-            WorldBuilder::tidyAirportElevations(m_host, m_userAirport);
+                m_userAirport = scheduleLoader.airport();
+                WorldBuilder::tidyAirportElevations(m_host, m_userAirport);
 
-            logUserAirportElevations();
+                logUserAirportElevations();
+            }
+            catch (const exception& e)
+            {
+                m_host->writeLog("PLUGIN|SchedulesStartingState::enter CRASHED!!! %s", e.what());
+                m_userAirport.reset();
+            }
         }
 
         void ping() override
         {
-            m_onStarted(m_userAirport);
+            if (m_userAirport)
+            {
+                m_onStarted(m_userAirport);
+            }
+            else
+            {
+                m_onFailed();
+            }
         }
 
     private:
@@ -712,6 +730,14 @@ private:
             [this](shared_ptr<Airport> userAirport) {
                 transitionToState([this, userAirport]() {
                     return createSchedulesStartedState(userAirport);
+                });
+            },
+            [this]() {
+                m_hostServices->showMessageBox(
+                    "Error",
+                    "There was a problem starting ATC at this airport. You may want to try one of these airports instead: KMIA, KSEA, KJFK, KORD, YBBN");
+                transitionToState([this]() {
+                    return createWorldAssembledState();
                 });
             }
         );

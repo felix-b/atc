@@ -326,6 +326,132 @@ TEST(XPAirportReaderTest, readAptDat_runwayEdges) {
     //writeAirportJson(airport, cout);
 }
 
+TEST(XPAirportReaderTest, readAptDat_runwayEdges_runwayLeadingZerosInconsistent) {
+    XPAirportReader builder(makeHost());
+    stringstream aptDat = makeAptDat({
+        "100 45.00 1 0 0.00 1 3 0 06  40.100 050.200 277  0 3 2 1 0 22  40.130 050.280  314  0 3 8 1 0",
+        "100 60.00 1 0 0.00 1 3 0 9  40.160 050.210 277  0 3 2 1 0 27  40.100 050.270  314  0 3 8 1 0",
+        "",
+        "# nodes",
+        "",
+        "1201  40.100 50.200 both 11 n1",
+        "1201  40.120 50.250 both 22 n2",
+        "1201  40.130 50.280 both 33 n3",
+        "1201  40.140 50.280 both 44 n4",
+        "1201  40.130 50.250 both 55 n5",
+        "1201  40.130 50.240 both 66 n6",
+        "1201  40.160 50.210 both 77 n7",
+        "1201  40.150 50.200 both 88 n8",
+        "1201  40.120 50.230 both 99 n9",
+        "1201  40.100 50.270 both 110 n10",
+        "",
+        "# edges - runways",
+        "",
+        "1202 11 22 twoway runway 06/22",
+        "1204 departure 06,22",
+        "1204 arrival 6,22",
+        "1204 ils 06,22",
+        "1202 22 33 twoway runway 6/22",
+        "1204 departure 6,22",
+        "1204 arrival 6,22",
+        "1204 ils 06,22",
+        "1202 77 66 twoway runway 9/27",
+        "1204 departure 09,27",
+        "1204 arrival 9,27",
+        "1204 ils 09,27",
+        "1202 66 22 twoway runway 09/27",
+        "1204 departure 09,27",
+        "1204 arrival 9,27",
+        "1204 ils 09,27",
+        "1202 22 110 twoway runway 9/27",
+        "1204 departure 9,27",
+        "1204 arrival 09,27",
+        "1204 ils 9,27",
+        "",
+        "# edges - taxiways",
+        "",
+        "1202 77 88 twoway taxiway_F A1",
+        "1204 departure 9,27",
+        "1204 ils 09,27",
+        "1202 88 99 twoway taxiway_F A",
+        "1202 99 66 twoway taxiway_F A2",
+        "1204 departure 09,27",
+        "1204 arrival 9,27",
+        "1202 33 44 twoway taxiway_E B1",
+        "1204 departure 6,22",
+        "1204 ils 06,22",
+        "1202 44 55 twoway taxiway_E B",
+        "1202 55 22 twoway taxiway_E B2",
+        "1204 arrival 6,22,9,27",
+        "1202 66 55 twoway taxiway_D C1",
+        "1204 arrival 06,22",
+        "1202 99 22 twoway taxiway_D C2",
+        "1204 arrival 06,22,09,27",
+    });
+
+    builder.readAirport(aptDat);
+    const auto airport = builder.getAirport();
+
+    ASSERT_TRUE(!!airport);
+
+    const auto taxiNet = airport->taxiNet();
+
+    const auto rwy0622 = airport->getRunwayOrThrow("06/22");
+    const auto rwy0927 = airport->getRunwayOrThrow("09/27");
+
+    auto n1 = taxiNet->getNodeById(11);
+    auto n2 = taxiNet->getNodeById(22);
+    auto n3 = taxiNet->getNodeById(33);
+    auto n4 = taxiNet->getNodeById(44);
+    auto n5 = taxiNet->getNodeById(55);
+    auto n6 = taxiNet->getNodeById(66);
+    auto n7 = taxiNet->getNodeById(77);
+    auto n8 = taxiNet->getNodeById(88);
+    auto n9 = taxiNet->getNodeById(99);
+    auto n10 = taxiNet->getNodeById(110);
+
+    auto e12_0622 = n1->getEdgeTo(n2);
+    auto e23_0622 = n2->getEdgeTo(n3);
+    auto e34_b1   = n3->getEdgeTo(n4);
+    auto e45_b    = n4->getEdgeTo(n5);
+    auto e52_b2   = n5->getEdgeTo(n2);
+    auto e67_0927 = n6->getEdgeTo(n7);
+    auto e62_0927 = n6->getEdgeTo(n2);
+    auto e210_0927 = n2->getEdgeTo(n10);
+    auto e78_a1   = n7->getEdgeTo(n8);
+    auto e89_a    = n8->getEdgeTo(n9);
+    auto e96_a2   = n9->getEdgeTo(n6);
+    auto e56_c1   = n5->getEdgeTo(n6);
+    auto e92_c2   = n9->getEdgeTo(n2);
+
+    EXPECT_EQ(e12_0622->type(), TaxiEdge::Type::Runway);
+    EXPECT_EQ(e12_0622->runway(), rwy0622);
+    EXPECT_EQ(e23_0622->type(), TaxiEdge::Type::Runway);
+    EXPECT_EQ(e23_0622->runway(), rwy0622);
+
+    EXPECT_EQ(e67_0927->type(), TaxiEdge::Type::Runway);
+    EXPECT_EQ(e67_0927->runway(), rwy0927);
+    EXPECT_EQ(e62_0927->type(), TaxiEdge::Type::Runway);
+    EXPECT_EQ(e62_0927->runway(), rwy0927);
+    EXPECT_EQ(e210_0927->type(), TaxiEdge::Type::Runway);
+    EXPECT_EQ(e210_0927->runway(), rwy0927);
+
+    EXPECT_EQ(e78_a1->type(), TaxiEdge::Type::Taxiway);
+    EXPECT_TRUE(e78_a1->activeZones().departue.has(rwy0927));
+    EXPECT_TRUE(e78_a1->activeZones().ils.has(rwy0927));
+    EXPECT_FALSE(e78_a1->activeZones().arrival.has(rwy0927));
+    EXPECT_FALSE(e78_a1->activeZones().departue.has(rwy0622));
+
+    EXPECT_EQ(e92_c2->type(), TaxiEdge::Type::Taxiway);
+    EXPECT_FALSE(e92_c2->activeZones().departue.hasAny());
+    EXPECT_FALSE(e92_c2->activeZones().ils.hasAny());
+    EXPECT_TRUE(e92_c2->activeZones().arrival.has(rwy0622));
+    EXPECT_TRUE(e92_c2->activeZones().arrival.has(rwy0927));
+
+    EXPECT_EQ(e45_b->type(), TaxiEdge::Type::Taxiway);
+    EXPECT_FALSE(e45_b->activeZones().hasAny());
+}
+
 TEST(XPAirportReaderTest, readAptDat_parkingStands) {
     XPAirportReader reader(makeHost());
     stringstream aptDat = makeAptDat({
@@ -475,6 +601,17 @@ TEST(XPAirportReaderTest, readAptDat_realKORD) {
     });
     assertGatesExist(airport, { "Terminal 1 Gate B5", "Suparna Cargo", "Terminal 5 M25" });
     assertTaxiEdgesExist(airport, { "CC", "DD", "W", "PP", "TT", "R", "B", "A7", "RR", "AA" });
+}
+
+TEST(XPAirportReaderTest, readAptDat_realHUEN) {
+    XPAirportReader reader(makeHost());
+    ifstream aptDat;
+    openTestInputStream("apt_huen.dat", aptDat);
+
+    reader.readAirport(aptDat);
+    auto airport = reader.getAirport();
+
+    assertTaxiEdgesExist(airport, { "A", "A1" });
 }
 
 TEST(XPAirportReaderTest, readToEndOfLine) {
@@ -670,9 +807,13 @@ TEST(XPAptDatReaderTest, readAll_realDefaultAptDat)
     output.exceptions(ofstream::failbit | ofstream::badbit);
     output.open("../../src/libdataxp_test/testOutputs/gates-with-long-names.txt", std::ios_base::out | std::ios_base::trunc);
 
+    unordered_set<string> icaos;
     int count = 0;
 
-    XPAptDatReader reader(makeHost());
+    auto host = TestHostServices::create();
+    host->enableLogs(true);
+
+    XPAptDatReader reader(host);
     reader.readAptDat(
         input,
         [&](const Airport::Header& header) {
@@ -687,6 +828,9 @@ TEST(XPAptDatReaderTest, readAll_realDefaultAptDat)
             {
                 cout << "done: # " << count << " " << airport->header().icao() << endl;
             }
+
+            icaos.insert(airport->header().icao());
+
             for (const auto& gate : airport->parkingStands())
             {
                 if (gate->name().length() > 5)
@@ -696,6 +840,11 @@ TEST(XPAptDatReaderTest, readAll_realDefaultAptDat)
             }
         }
     );
+
+    EXPECT_EQ(count, 29609);
+    EXPECT_GE(icaos.size(), 29608);
+    EXPECT_TRUE(hasKey(icaos, string("LCLK")));
+    EXPECT_FALSE(hasKey(icaos, string("CKT8")));
 }
 #endif
 

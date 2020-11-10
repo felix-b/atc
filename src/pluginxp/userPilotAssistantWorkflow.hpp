@@ -495,7 +495,7 @@ private:
                 "FLIGHT PLAN FROM [ %s ] TO [ %s ] WAS SUCCESSFULLY FILED! YOUR CALL SIGN IS [ %s ]",
                 m_flightPlan->departureAirportIcao().c_str(),
                 m_flightPlan->arrivalAirportIcao().c_str(),
-                m_flightPlan->callsign().c_str());
+                m_flight->callSign().c_str());
             return true;
         }
         catch(const exception& e)
