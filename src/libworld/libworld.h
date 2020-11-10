@@ -474,7 +474,9 @@ namespace world
         private:
             friend class WorldBuilder;
         private:
-            string m_name; //name in HHS format: HH=heading/10 (e.g. 117 -> 12), S=suffix L/R/C/empty
+            string m_name; // name in HHS format: HH=heading/10 (e.g. 117 -> 12), S=suffix L/R/C/empty
+            int m_number;  // runway number: heading/10
+            char m_suffix; // L/R/C or 0 if none
             float m_displacedThresholdMeters;
             float m_overrunAreaMeters;
             UniPoint m_centerlinePoint;
@@ -488,6 +490,8 @@ namespace world
                 float _overrunAreaMeters,
                 const UniPoint& _centerlinePoint
             ) : m_name(_name),
+                m_number(getRunwayEndNumber(_name)),
+                m_suffix(getRunwayEndSuffix(_name)),
                 m_displacedThresholdMeters(_displacedThresholdMeters),
                 m_overrunAreaMeters(_overrunAreaMeters),
                 m_centerlinePoint(_centerlinePoint),
@@ -498,6 +502,8 @@ namespace world
         public:
             float heading() const { return m_heading; }
             const string& name() const { return m_name; }
+            int number() const { return m_number; }
+            char suffix() const { return m_suffix; }
             float displacedThresholdMeters() const { return m_displacedThresholdMeters; }
             float overrunAreaMeters() const { return m_overrunAreaMeters; }
             shared_ptr<TaxiNode> centerlineNode() const { return m_centerlineNode; }
@@ -540,6 +546,9 @@ namespace world
         const Bounds& bounds() const { return m_bounds; }
     public:
         void calculateBounds();
+    private:
+        static int getRunwayEndNumber(const string& name);
+        static char getRunwayEndSuffix(const string& name);
     };
 
     class World

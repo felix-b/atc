@@ -289,7 +289,41 @@ namespace world
             }
         };
 
-        const auto buildRunwayByNameMap = [&airport]() {
+        const auto addRunwayByNameMapEntry = [&airport](shared_ptr<Runway> runway, const string& end1Name, const string& end2Name) {
+            auto& map = airport->m_runwayByName;
+
+            string end12Name(end1Name);
+            end12Name.append("/").append(end2Name);
+            string end21Name(end2Name);
+            end21Name.append("/").append(end1Name);
+
+            map.insert({ end1Name, runway });
+            map.insert({ end2Name, runway });
+            map.insert({ end12Name, runway });
+            map.insert({ end21Name, runway });
+        };
+
+        const auto addRunwayByNameMapEntries = [&airport, &addRunwayByNameMapEntry](shared_ptr<Runway> runway) {
+            char end1NameBuffer[5] = { '0', 0, 0, 0, 0 };
+            char end2NameBuffer[5] = { '0', 0, 0, 0, 0 };
+            snprintf(end1NameBuffer + 1, 3, "%d", runway->m_end1.m_number);
+            snprintf(end2NameBuffer + 1, 3, "%d", runway->m_end2.m_number);
+            end1NameBuffer[runway->m_end1.m_number < 10 ? 2 : 3] = runway->m_end1.m_suffix;
+            end2NameBuffer[runway->m_end2.m_number < 10 ? 2 : 3] = runway->m_end2.m_suffix;
+
+            addRunwayByNameMapEntry(runway, string(end1NameBuffer + 1), string(end2NameBuffer + 1));
+
+            if (runway->m_end1.m_number < 10)
+            {
+                addRunwayByNameMapEntry(runway, string(end1NameBuffer), string(end2NameBuffer + 1));
+            }
+            else if (runway->m_end2.m_number < 10)
+            {
+                addRunwayByNameMapEntry(runway, string(end1NameBuffer + 1), string(end2NameBuffer));
+            }
+        };
+
+        const auto buildRunwayByNameMap = [&airport, &addRunwayByNameMapEntries]() {
             auto& map = airport->m_runwayByName;
             Runway::Bitmask nextRunwayBit = 1;
             
@@ -297,13 +331,22 @@ namespace world
             {
                 runway->m_maskBit = nextRunwayBit;
                 nextRunwayBit <<= 1;
-                map.insert({ runway->m_end1.m_name, runway });
-                map.insert({ runway->m_end2.m_name, runway });
-                map.insert({ runway->m_end1.m_name + "/" + runway->m_end2.m_name, runway });
-                map.insert({ runway->m_end2.m_name + "/" + runway->m_end1.m_name, runway });
-            }
 
-            return map;
+                addRunwayByNameMapEntries(runway);
+
+//                string end1Name(end1NameBuffer + 1);
+//                string end2Name(end2NameBuffer + 1);
+//                string end12Name(end1NameBuffer + 1);
+//                end12Name.append("/").append(end2Name);
+//                string end21Name(end2NameBuffer + 1);
+//                end21Name.append("/").append(end1Name);
+//
+//                map.insert({ end1Name, runway });
+//                map.insert({ end2Name, runway });
+//                map.insert({ end12Name, runway });
+//                map.insert({ end21Name, runway });
+
+            }
         };
 
         const auto buildParallelRunwayGroups = [&airport]() {

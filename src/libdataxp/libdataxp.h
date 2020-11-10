@@ -29,6 +29,7 @@ private:
     const FilterAirportCallback m_onFilterAirport;
     bool m_headerWasRead;
     bool m_filterWasQueried;
+    bool m_isLandAirport;
     bool m_skippingAirport;
     int m_unparsedLineCode;
     int m_nextEdgeId;
@@ -55,6 +56,8 @@ public:
         FilterAirportCallback _onFilterAirport = noopFilterAirport);
 public:
     int unparsedLineCode() const { return m_unparsedLineCode; }
+    bool headerWasRead() const { return m_headerWasRead; }
+    bool isLandAirport() const { return m_isLandAirport; }
     const string& icao() const { return m_icao; }
 public:
     void readAirport(istream &input);
@@ -84,6 +87,7 @@ public:
     static void skipToNextLine(istream &input);
     static shared_ptr<ControlledAirspace> noopQueryAirspace(const Airport::Header& header);
     static bool noopFilterAirport(const Airport::Header& header);
+    static bool isAirportHeaderLineCode(int lineCode);
 };
 
 class XPAptDatReader

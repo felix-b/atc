@@ -52,3 +52,32 @@ TEST(XPFmsxReaderTest, readFms) {
     EXPECT_EQ(flightPlan->approachName(), "I09L");
     EXPECT_EQ(flightPlan->arrivalRunway(), "09L");
 }
+
+TEST(XPFmsxReaderTest, readFms_compareDepartureAirportIcao) {
+    auto host = TestHostServices::createWithWorld();
+    XPFmsxReader fmsReader(host);
+    ifstream fms;
+    openTestInputStream("kmia_kfll.fms", fms);
+    auto flightPlan = fmsReader.readFrom(fms);
+
+    XPAirportReader aptDatReader(host);
+    ifstream aptDat;
+    openTestInputStream("apt_kmia.dat", aptDat);
+    aptDatReader.readAirport(aptDat);
+    auto airport = aptDatReader.getAirport();
+
+    EXPECT_EQ(flightPlan->departureAirportIcao(), "KMIA");
+    EXPECT_EQ(flightPlan->departureRunway(), "08R");
+    EXPECT_EQ(flightPlan->sidName(), "WINCO2");
+    EXPECT_EQ(flightPlan->sidTransition(), "");
+    EXPECT_EQ(flightPlan->starName(), "WAVUN5");
+    EXPECT_EQ(flightPlan->starTransition(), "ZFP");
+    EXPECT_EQ(flightPlan->approachName(), "I10L");
+    EXPECT_EQ(flightPlan->arrivalRunway(), "10L");
+
+    if (flightPlan->departureAirportIcao() != airport->header().icao())
+    {
+        bool departureAirportIcaoEquals = false;
+        EXPECT_TRUE(departureAirportIcaoEquals);
+    }
+}

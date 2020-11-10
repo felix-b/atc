@@ -328,6 +328,58 @@ TEST(WorldBuilderTest, tidyAirportElevations_runways) {
     EXPECT_FLOAT_EQ(rwy2->end2().elevationFeet(), 123);
 }
 
+TEST(WorldBuilderTest, assembleAirport_runwayLeadingZeros) {
+    auto host = TestHostServices::create();
+    Airport::Header header("ABCD", "Test", GeoPoint(30, 45), 12);
+    auto airport = WorldBuilder::assembleAirport(host, header,{
+        makeRunway(host, { 30.01, 45.01 }, { 30.02, 45.02 }, "04", "22"),
+        makeRunway(host, { 30.01, 45.01 }, { 30.02, 45.01 }, "1", "19"),
+        makeRunway(host, { 30.01, 45.01 }, { 30.02, 45.01 }, "09L", "27R"),
+        makeRunway(host, { 30.01, 45.01 }, { 30.02, 45.01 }, "9R", "27L"),
+    }, {}, {}, {});
+
+    ASSERT_EQ(airport->runways().size(), 4);
+    const auto& rwy1 = airport->runways()[0];
+    const auto& rwy2 = airport->runways()[1];
+    const auto& rwy3 = airport->runways()[2];
+    const auto& rwy4 = airport->runways()[3];
+
+    EXPECT_EQ(rwy1->end1().number(), 4);
+    EXPECT_EQ(rwy1->end2().number(), 22);
+    EXPECT_EQ(rwy2->end1().number(), 1);
+    EXPECT_EQ(rwy2->end2().number(), 19);
+    EXPECT_EQ(rwy3->end1().number(), 9);
+    EXPECT_EQ(rwy3->end2().number(), 27);
+    EXPECT_EQ(rwy4->end1().number(), 9);
+    EXPECT_EQ(rwy4->end2().number(), 27);
+
+    EXPECT_EQ(rwy1->end1().suffix(), 0);
+    EXPECT_EQ(rwy1->end2().suffix(), 0);
+    EXPECT_EQ(rwy3->end1().suffix(), 'L');
+    EXPECT_EQ(rwy3->end2().suffix(), 'R');
+
+    EXPECT_EQ(airport->tryFindRunway("4"), rwy1);
+    EXPECT_EQ(airport->tryFindRunway("04"), rwy1);
+    EXPECT_EQ(airport->tryFindRunway("4/22"), rwy1);
+    EXPECT_EQ(airport->tryFindRunway("04/22"), rwy1);
+    EXPECT_EQ(airport->tryFindRunway("22/4"), rwy1);
+    EXPECT_EQ(airport->tryFindRunway("22/04"), rwy1);
+
+    EXPECT_EQ(airport->tryFindRunway("9L"), rwy3);
+    EXPECT_EQ(airport->tryFindRunway("09L"), rwy3);
+    EXPECT_EQ(airport->tryFindRunway("9L/27R"), rwy3);
+    EXPECT_EQ(airport->tryFindRunway("09L/27R"), rwy3);
+    EXPECT_EQ(airport->tryFindRunway("27R/9L"), rwy3);
+    EXPECT_EQ(airport->tryFindRunway("27R/09L"), rwy3);
+
+    EXPECT_EQ(airport->tryFindRunway("9R"), rwy4);
+    EXPECT_EQ(airport->tryFindRunway("09R"), rwy4);
+    EXPECT_EQ(airport->tryFindRunway("9R/27L"), rwy4);
+    EXPECT_EQ(airport->tryFindRunway("09R/27L"), rwy4);
+    EXPECT_EQ(airport->tryFindRunway("27L/9R"), rwy4);
+    EXPECT_EQ(airport->tryFindRunway("27L/09R"), rwy4);
+}
+
 TEST(WorldBuilderTest, assembleAirport_detectParallelRunways_positive) {
     auto host = TestHostServices::create();
     Airport::Header header("ABCD", "Test", GeoPoint(30, 45), 12);

@@ -83,6 +83,7 @@ XPAirportReader::XPAirportReader(
     m_datumLongitude(DATUM_UNSPECIFIED),
     m_elevation(0),
     m_skippingAirport(false),
+    m_isLandAirport(false),
     m_headerWasRead(false),
     m_filterWasQueried(false)
 {
@@ -190,11 +191,14 @@ bool XPAirportReader::readAptDatLineInContext(istream &input, XPAirportReader::C
     return true;
 } 
 
+
 bool XPAirportReader::rootContextParser(int lineCode, istream& input)
 {
+    bool isAirportHeaderLine = isAirportHeaderLineCode(lineCode);
+
     if (m_skippingAirport)
     {
-        if (lineCode == 1)
+        if (isAirportHeaderLine)
         {
             return false;
         }
@@ -204,7 +208,7 @@ bool XPAirportReader::rootContextParser(int lineCode, istream& input)
 
     if (m_headerWasRead)
     {
-        if (lineCode == 1)
+        if (isAirportHeaderLine)
         {
             return false; // we're at the beginning of the next airport
         }
@@ -224,6 +228,12 @@ bool XPAirportReader::rootContextParser(int lineCode, istream& input)
     case 1:
         parseHeader1(input);
         m_headerWasRead = true;
+        m_isLandAirport = true;
+        break;
+    case 16:
+    case 17:
+        m_skippingAirport = true;
+        skipToNextLine(input);
         break;
     case 100:
         parseRunway100(input);
@@ -280,7 +290,6 @@ void XPAirportReader::parseRunway100(istream& input)
         input >> displasedThresholdMeters >> overrunAreaMeters;
         input >> unusedInt >> unusedInt >> unusedInt >> unusedInt;
 
-        
         return Runway::End(
             name, 
             displasedThresholdMeters, 
@@ -516,8 +525,8 @@ void XPAirportReader::parseControlFrequency(int lineCode, istream &input)
     if (positionType != ControllerPosition::Type::Unknown)
     {
         int khz;
-        string callSign;
-        input >> khz >> callSign;
+        input >> khz;
+        string callSign = readToEndOfLine(input);
         
         if (tryInsertKey(m_parsedFrequencyKhz, khz))
         {
@@ -717,6 +726,11 @@ bool XPAirportReader::invokeFilterCallback()
     return m_onFilterAirport(header);
 }
 
+bool XPAirportReader::isAirportHeaderLineCode(int lineCode)
+{
+    return (lineCode == 1 || lineCode == 16 || lineCode == 17);
+}
+
 XPAptDatReader::XPAptDatReader(shared_ptr<HostServices> _host) :
     m_host(std::move(_host))
 {
@@ -731,6 +745,7 @@ void XPAptDatReader::readAptDat(
     int loadedCount = 0;
     int skippedCount = 0;
     int unparsedLineCode = -1;
+    string lastLoadedAirportIcao;
 
     do {
         XPAirportReader airportReader(m_host, unparsedLineCode, onQueryAirspace, onFilterAirport);
@@ -741,15 +756,16 @@ void XPAptDatReader::readAptDat(
         if (airport)
         {
             //m_host->writeLog("Airport loaded: %s", airport->header().icao().c_str());
+            lastLoadedAirportIcao = airport->header().icao();
             onAirportLoaded(airport);
             loadedCount++;
         }
-        else
+        else if (airportReader.headerWasRead() && airportReader.isLandAirport())
         {
             m_host->writeLog("APTDAT|skipped airport [%s]", airportReader.icao().c_str());
             skippedCount++;
         }
-    } while (unparsedLineCode == 1);
+    } while (XPAirportReader::isAirportHeaderLineCode(unparsedLineCode));
 
     m_host->writeLog("APTDAT|done loading airports, %d loaded, %d skipped.", loadedCount, skippedCount);
 }

@@ -58,11 +58,19 @@ void XPFmsxReader::parseInputLines(istream &input, vector<Line> &lines)
             break;
         }
 
-        size_t delimitierIndex = text.find_first_of(",: ");
-        if (delimitierIndex != text.npos)
+        const char *delimiterChars = ",: ";
+        size_t delimitierIndex = text.find_first_of(delimiterChars);
+        size_t lastNonSpaceIndex = text.length() - 1;
+
+        while (lastNonSpaceIndex >= 0 && strchr(delimiterChars, text.at(lastNonSpaceIndex)))
+        {
+            lastNonSpaceIndex--;
+        }
+
+        if (delimitierIndex != text.npos && delimitierIndex < lastNonSpaceIndex)
         {
             string token = text.substr(0, delimitierIndex);
-            string suffix = text.substr(delimitierIndex + 1);
+            string suffix = text.substr(delimitierIndex + 1, lastNonSpaceIndex - delimitierIndex);
 
             if (!token.empty())
             {

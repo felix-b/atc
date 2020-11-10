@@ -224,7 +224,7 @@ public:
         m_messageBox = shared_ptr<MessageWindow>(new MessageWindow(
             400,
             200,
-            "AT&C - " + title,
+            "AT&C Plugin - " + title,
             buffer,
             false
         ));

@@ -2,6 +2,7 @@
 // This file is part of AT&C project which simulates virtual world of air traffic and ATC.
 // Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
 // 
+#include <cctype>
 #include "libworld.h"
 
 using namespace std;
@@ -64,5 +65,27 @@ namespace world
         }
 
         return GeoMath::isPointInRectangle(p, A, B, C, D);
+    }
+
+    int Runway::getRunwayEndNumber(const string& name)
+    {
+        char digits[3] = { 0 };
+
+        for (int i = 0 ; i < name.length() && i < 2 ; i++)
+        {
+            char c = name.at(i);
+            if (isdigit(c))
+            {
+                digits[i] = c;
+            }
+        }
+
+        return atoi(digits);
+    }
+
+    char Runway::getRunwayEndSuffix(const string& name)
+    {
+        char c = name.at(name.length() - 1);
+        return !isdigit(c) ? c : 0;
     }
 }
