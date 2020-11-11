@@ -539,7 +539,8 @@ private:
             m_host->writeLog("initUserFlight:5");
 
             userFlight->setPilot(userPilot);
-
+            userFlight->setPhase(Flight::Phase::Departure);
+            
             m_host->writeLog("initUserFlight:6");
 
             m_userPilotWorkflow = shared_ptr<UserPilotAssistantWorkflow>(new UserPilotAssistantWorkflow(
