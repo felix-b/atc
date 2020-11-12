@@ -37,6 +37,16 @@ static const unordered_map<string, Aircraft::OperationType> aircraftOperationTyp
     {"military", Aircraft::OperationType::Military},
 };
 
+// Approximate width of a taxiway
+static const unordered_map<string, int> taxiwayWidthHint = {
+    {"taxiway_A", 10},
+    {"taxiway_B", 20},
+    {"taxiway_C", 30},
+    {"taxiway_D", 40},
+    {"taxiway_E", 50},
+    {"taxiway_F", 60},
+};
+
 static constexpr int DATUM_UNSPECIFIED = -10000;
 
 static void parseSeparatedList(
@@ -333,6 +343,7 @@ void XPAirportReader::parseTaxiEdge1202(istream& input)
 {
     int nodeId1;
     int nodeId2;
+    int widthHint = 0;
     string direction;
     string typeString;
     string name;
@@ -345,6 +356,8 @@ void XPAirportReader::parseTaxiEdge1202(istream& input)
         ? TaxiEdge::Type::Runway 
         : TaxiEdge::Type::Taxiway);
 
+    tryGetValue(taxiwayWidthHint, typeString, widthHint);
+    
     int edgeId = m_nextEdgeId++;
     auto edge = shared_ptr<TaxiEdge>(new TaxiEdge(
         edgeId, 
@@ -352,8 +365,9 @@ void XPAirportReader::parseTaxiEdge1202(istream& input)
         nodeId1, 
         nodeId2, 
         type, 
+        isOneWay,
         {},
-        isOneWay));
+        widthHint));
     
     m_taxiEdges.push_back(edge);
 
@@ -386,8 +400,8 @@ void XPAirportReader::parseGroundEdge1206(istream &input)
         nodeId1, 
         nodeId2, 
         TaxiEdge::Type::Groundway, 
-        {},
-        isOneWay));
+        isOneWay,
+        {}));
     
     m_taxiEdges.push_back(edge);
 }

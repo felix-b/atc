@@ -2252,6 +2252,7 @@ namespace world
         float m_heading;
         int m_nodeId1;
         int m_nodeId2;
+        int m_widthHint;
         shared_ptr<TaxiNode> m_node1;
         shared_ptr<TaxiNode> m_node2;
         shared_ptr<Runway> m_runway;
@@ -2266,7 +2267,8 @@ namespace world
             const int _nodeId2,
             Type _type = Type::Taxiway,
             bool _isOneWay = false,
-            float _lengthMeters = 0
+            float _lengthMeters = 0,
+            int _widthHint = 0
         );
         TaxiEdge(const UniPoint& _fromPoint, const UniPoint& _toPoint);
         TaxiEdge(shared_ptr<TaxiEdge> _source, bool _flippingOver);
@@ -2286,6 +2288,7 @@ namespace world
         shared_ptr<Runway> runway() const { return m_runway; }
         const ActiveZoneMatrix& activeZones() const { return m_activeZones; }
         Flight::Phase flightPhaseAllocation() const { return m_flightPhaseAllocation; }
+        int widthHint() const {return m_widthHint; }
     public:
         bool isRunway(const string& runwayEndName) const { return m_runwayEndName == runwayEndName; }
         bool isHighSpeedExitRunway(const string& runwayName) const { return m_highSpeedExitRunway == runwayName; }

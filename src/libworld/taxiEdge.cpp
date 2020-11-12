@@ -17,11 +17,13 @@ namespace world
         const int _nodeId2,
         Type _type,
         bool _isOneWay,
-        float _lengthMeters
+        float _lengthMeters,
+        int _widthHint
     ) : m_id(_id),
         m_name(_name),
         m_nodeId1(_nodeId1),
         m_nodeId2(_nodeId2),
+        m_widthHint(_widthHint),
         m_type(_type),
         m_isOneWay(_isOneWay),
         m_lengthMeters(_lengthMeters),
@@ -41,6 +43,7 @@ namespace world
         m_nodeId2(_flippingOver ? _source->m_nodeId1 : _source->m_nodeId2),
         m_node1(_flippingOver ? _source->m_node2 : _source->m_node1),
         m_node2(_flippingOver ? _source->m_node1 : _source->m_node2),
+        m_widthHint(_source->m_widthHint),
         m_highSpeedExitRunway(_source->m_highSpeedExitRunway),
         m_activeZones(_source->m_activeZones),
         m_flightPhaseAllocation(_source->m_flightPhaseAllocation),
@@ -57,6 +60,7 @@ namespace world
         m_heading(GeoMath::getHeadingFromPoints(_fromPoint.geo(), _toPoint.geo())),
         m_nodeId1(-1),
         m_nodeId2(-1),
+        m_widthHint(0),
         m_node1(make_shared<TaxiNode>(-1, _fromPoint)),
         m_node2(make_shared<TaxiNode>(-1, _toPoint)),
         m_flightPhaseAllocation(Flight::Phase::NotAssigned)
