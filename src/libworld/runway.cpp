@@ -4,7 +4,7 @@
 // 
 #include <cctype>
 #include "libworld.h"
-
+#include <cmath>
 using namespace std;
 
 namespace world
@@ -34,29 +34,47 @@ namespace world
 
     void Runway::calculateBounds()
     {
-        float diagonal = (float)GeoMath::hypotenuse(30 + m_widthMeters / 2);
-        m_bounds.A = GeoMath::getPointAtDistance(
-            m_end1.centerlinePoint().geo(),
-            GeoMath::addTurnToHeading(m_end1.heading(), 135),
-            diagonal);
-        m_bounds.B = GeoMath::getPointAtDistance(
-            m_end1.centerlinePoint().geo(),
-            GeoMath::addTurnToHeading(m_end1.heading(), -135),
-            diagonal);
-        m_bounds.C = GeoMath::getPointAtDistance(
+        m_bounds.calculate(m_end1.centerlinePoint().geo(),
             m_end2.centerlinePoint().geo(),
-            GeoMath::addTurnToHeading(m_end2.heading(), 135),
-            diagonal);
-        m_bounds.D = GeoMath::getPointAtDistance(
-            m_end2.centerlinePoint().geo(),
-            GeoMath::addTurnToHeading(m_end2.heading(), -135),
-            diagonal);
-        m_bounds.minLatitude = min(m_bounds.A.latitude, min(m_bounds.B.latitude, min(m_bounds.C.latitude, m_bounds.D.latitude)));
-        m_bounds.minLongitude = min(m_bounds.A.longitude, min(m_bounds.B.longitude, min(m_bounds.C.longitude, m_bounds.D.longitude)));
-        m_bounds.maxLatitude = max(m_bounds.A.latitude, max(m_bounds.B.latitude, max(m_bounds.C.latitude, m_bounds.D.latitude)));
-        m_bounds.maxLongitude = max(m_bounds.A.longitude, max(m_bounds.B.longitude, max(m_bounds.C.longitude, m_bounds.D.longitude)));
+                            m_end1.heading(),
+                            m_widthMeters,
+                            5);
+        // Generate bounds for the taxiedges with active zones associated with this runway
+        for (auto edge : m_activeZones)
+        {
+            Bounds& bounds = m_activeBounds[edge];
+            if ((bounds.minLatitude == 0) && (bounds.maxLatitude == 0))
+            {
+                bounds.calculate(
+                    edge->node1()->location().geo(),
+                    edge->node2()->location().geo(),
+                    edge->heading(),
+                    edge->widthHint(),
+                    0
+                    );
+            }
+        }
     }
 
+    void Runway::Bounds::calculate(const GeoPoint& end1, const GeoPoint& end2, float heading1_2, float widthMeters, float marginMeters)
+    {
+        GeoPoint Temp;
+        marginMeters = sqrt(2 * (marginMeters * marginMeters) );
+        Temp = GeoMath::getPointAtDistance(end1, GeoMath::addTurnToHeading(heading1_2, 90), widthMeters/2.);
+        A = GeoMath::getPointAtDistance(Temp, GeoMath::addTurnToHeading(heading1_2 , 135), marginMeters);
+        Temp = GeoMath::getPointAtDistance(end1, GeoMath::addTurnToHeading(heading1_2, -90), widthMeters/2.);
+        B = GeoMath::getPointAtDistance(Temp, GeoMath::addTurnToHeading(heading1_2 , -135), marginMeters);
+        Temp = GeoMath::getPointAtDistance(end2, GeoMath::addTurnToHeading(heading1_2, -90), widthMeters/2.);
+        C = GeoMath::getPointAtDistance(Temp, GeoMath::addTurnToHeading(heading1_2 , -45), marginMeters);
+        Temp = GeoMath::getPointAtDistance(end2, GeoMath::addTurnToHeading(heading1_2, 90), widthMeters/2.);
+        D = GeoMath::getPointAtDistance(Temp, GeoMath::addTurnToHeading(heading1_2 , 45), marginMeters);
+
+        minLatitude = min(A.latitude, min(B.latitude, min(C.latitude, D.latitude)));
+        minLongitude = min(A.longitude, min(B.longitude, min(C.longitude, D.longitude)));
+        maxLatitude = max(A.latitude, max(B.latitude, max(C.latitude, D.latitude)));
+        maxLongitude = max(A.longitude, max(B.longitude, max(C.longitude, D.longitude)));
+
+    }
     bool Runway::Bounds::contains(const GeoPoint& p) const
     {
         if (p.longitude < minLongitude || p.longitude > maxLongitude || p.latitude < minLatitude || p.latitude > maxLatitude)
@@ -87,5 +105,27 @@ namespace world
     {
         char c = name.at(name.length() - 1);
         return !isdigit(c) ? c : 0;
+    }
+    
+    void Runway::appendActiveZone(shared_ptr<TaxiEdge> edge)
+    {
+        if (std::find(m_activeZones.begin(), m_activeZones.end(), edge) == m_activeZones.end())
+        {
+            m_activeZones.push_back(edge);
+        }
+    }
+
+    bool Runway::activeZonesContains(const GeoPoint location)
+    {
+        for (auto edge : m_activeZones)
+        {
+            Bounds& bounds = m_activeBounds[edge];
+
+            if (bounds.contains(location))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }
