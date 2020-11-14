@@ -378,7 +378,7 @@ namespace world
             }
         };
 
-        const auto resolveActiveZoneMask = [&airport](ActiveZoneMask& mask) {
+        const auto resolveActiveZoneMask = [&airport](ActiveZoneMask& mask, shared_ptr<TaxiEdge> edge) {
             mask.m_runwaysMask = 0;
 
             if (mask.m_runwayNames.size() > 0)
@@ -387,6 +387,8 @@ namespace world
                 {
                     const auto& runway = airport->getRunwayOrThrow(name);
                     mask.m_runwaysMask |= runway->m_maskBit;
+                    
+                    runway->appendActiveZone(edge);
                 }
             }
         };
@@ -451,9 +453,9 @@ namespace world
                 break;
             }
 
-            resolveActiveZoneMask(edge->m_activeZones.departue);
-            resolveActiveZoneMask(edge->m_activeZones.arrival);
-            resolveActiveZoneMask(edge->m_activeZones.ils);
+            resolveActiveZoneMask(edge->m_activeZones.departue, edge);
+            resolveActiveZoneMask(edge->m_activeZones.arrival, edge);
+            resolveActiveZoneMask(edge->m_activeZones.ils, edge);
         };
 
         const auto resolveAllEdgeRunways = [=]() {

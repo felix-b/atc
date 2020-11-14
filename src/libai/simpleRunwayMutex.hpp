@@ -248,6 +248,14 @@ namespace ai
         }
 
     private:
+        bool flightOnRunwayOrActiveZones(shared_ptr<Flight> flight)
+        {
+            if (hasKey(m_occupants, flight))
+            {
+                return true;
+            }
+            return m_activeRunway->activeZonesContains(flight->aircraft()->location());
+        }
 
         void performPeriodicCheck()
         {
@@ -289,23 +297,27 @@ namespace ai
             {
                 for (const auto& crossingSubject : m_board.crossing)
                 {
-                    if (!hasKey(m_occupants, crossingSubject->flight))
+                    if (!flightOnRunwayOrActiveZones(crossingSubject->flight))
                     {
                         m_board.clearedToCross.erase(crossingSubject);
 
                         m_host->writeLog(
-                            "AICONT|TWR-RWY-MUTEX[%s] crossing [%s] vacated, now state[0x%X]",
+                            "AICONT|TWR-RWY-MUTEX[%s] crossing [%s] vacated",
                             m_activeRunwayEnd.name().c_str(),
-                            crossingSubject->flight->callSign().c_str(),
-                            m_board.flags);
+                            crossingSubject->flight->callSign().c_str());
                     }
                 }
 
                 for (const auto& crossingSubject : m_board.clearedToCross)
                 {
-                    if (hasKey(m_occupants, crossingSubject->flight))
+                    if (flightOnRunwayOrActiveZones(crossingSubject->flight))
                     {
                         m_board.crossing.insert(crossingSubject);
+
+                        m_host->writeLog(
+                            "AICONT|TWR-RWY-MUTEX[%s] crossing [%s] on runway",
+                            m_activeRunwayEnd.name().c_str(),
+                            crossingSubject->flight->callSign().c_str());
                     }
                 }
 
@@ -313,6 +325,11 @@ namespace ai
                 {
                     m_board.flags &= ~RWY_STATE_CLEARED_CROSSING;
                     m_board.crossing.clear();
+
+                    m_host->writeLog(
+                            "AICONT|TWR-RWY-MUTEX[%s] no more flights crossing, now state[0x%X]",
+                            m_activeRunwayEnd.name().c_str(),
+                            m_board.flags);
                 }
             }
 
