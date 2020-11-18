@@ -764,7 +764,10 @@ namespace ai
 
             const auto onHoldingShort = [=](shared_ptr<TaxiEdge> holdShortEdge) {
                 auto departureRunway = m_departureAirport->getRunwayOrThrow(m_flightPlan->departureRunway());
-                bool isHoldingShortDepartureRunway = holdShortEdge->activeZones().departue.has(departureRunway);
+                bool isHoldingShortDepartureRunway = 
+                       holdShortEdge->activeZones().departue.has(departureRunway) 
+                    || holdShortEdge->activeZones().arrival.has(departureRunway)
+                    || holdShortEdge->activeZones().ils.has(departureRunway);
                 shared_ptr<Maneuver> holdShortManeuver = isHoldingShortDepartureRunway
                     ? maneuverDepartureAwaitLineup(m_flightPlan->departureRunway(), holdShortEdge)
                     : maneuverAwaitCrossRunway(m_departureAirport, holdShortEdge);
