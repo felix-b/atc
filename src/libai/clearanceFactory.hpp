@@ -5,6 +5,7 @@
 #pragma once
 
 #include "libworld.h"
+#include "worldHelper.hpp"
 #include "clearanceTypes.hpp"
 
 using namespace std;
@@ -17,19 +18,18 @@ namespace ai
     private:
         shared_ptr<HostServices> m_host;
         long long m_nextClearanceId;
+        WorldHelper m_helper;
     public:
         ClearanceFactory(shared_ptr<HostServices> _host) :
             m_host(_host),
-            m_nextClearanceId(1)
+            m_nextClearanceId(1),
+            m_helper(_host)
         {
         }
     public:
         shared_ptr<IfrClearance> ifrClearance(shared_ptr<Flight> flight, int squawk)
         {   
-            auto tower = getTower(flight->plan()->departureAirportIcao());
-            auto clearanceDelivery = tower->findPositionOrThrow(
-                ControllerPosition::Type::ClearanceDelivery, 
-                flight->aircraft()->location());
+            auto clearanceDelivery = m_helper.getClearanceDelivery(flight);
 
             Clearance::Header header;
             initClearanceHeader(header, Clearance::Type::IfrClearance, clearanceDelivery, flight);
@@ -56,7 +56,7 @@ namespace ai
                 return nullptr;
             }
 
-            auto airport = getDepartureAirport(flight);
+            auto airport = m_helper.getDepartureAirport(flight);
             auto gate = airport->getParkingStandOrThrow(flight->plan()->departureGate());
             auto runway = airport->getRunwayOrThrow(flight->plan()->departureRunway());
             auto runwayEnd = runway->getEndOrThrow(flight->plan()->departureRunway());
@@ -100,7 +100,7 @@ namespace ai
 
         shared_ptr<DepartureTaxiClearance> departureTaxiClearance(shared_ptr<Flight> flight)
         {
-            auto airport = getDepartureAirport(flight);
+            auto airport = m_helper.getDepartureAirport(flight);
             auto pushAndStart = flight->tryFindClearance<PushAndStartApproval>(Clearance::Type::PushAndStartApproval);
             if (!pushAndStart)
             {
@@ -121,9 +121,9 @@ namespace ai
             ));
         }
 
-        shared_ptr<RunwayCrossClearance> runwayCrossCleaeance(shared_ptr<Flight> flight, const string& runwayName)
+        shared_ptr<RunwayCrossClearance> runwayCrossClearance(shared_ptr<Flight> flight, const string& runwayName)
         {
-            auto airport = getDepartureAirport(flight);
+            auto airport = m_helper.getCurrentAirport(flight);
 
             Clearance::Header header;
             initClearanceHeader(
@@ -140,7 +140,7 @@ namespace ai
 
         shared_ptr<LineUpAndWaitApproval> lineUpAndWait(shared_ptr<Flight> flight, DeclineReason waitReason = DeclineReason::None)
         {
-            auto airport = getDepartureAirport(flight);
+            auto airport = m_helper.getDepartureAirport(flight);
             auto ifr = flight->tryFindClearance<IfrClearance>(Clearance::Type::IfrClearance);
             if (!ifr)
             {
@@ -163,7 +163,7 @@ namespace ai
 
         shared_ptr<TakeoffClearance> takeoffClearance(shared_ptr<Flight> flight, float initialHeading, bool immediate)
         {
-            auto airport = getDepartureAirport(flight);
+            auto airport = m_helper.getDepartureAirport(flight);
             auto ifr = flight->tryFindClearance<IfrClearance>(Clearance::Type::IfrClearance);
             if (!ifr)
             {
@@ -212,7 +212,7 @@ namespace ai
 
         shared_ptr<LandingClearance> landingClearance(shared_ptr<Flight> flight, const string& runwayName, int groundKhz)
         {
-            auto airport = getArrivalAirport(flight);
+            auto airport = m_helper.getArrivalAirport(flight);
             auto runway = airport->getRunwayOrThrow(runwayName);
             const auto& runwayEnd = runway->getEndOrThrow(runwayName);
 
@@ -234,7 +234,7 @@ namespace ai
 
         shared_ptr<ArrivalTaxiClearance> arrivalTaxiClearance(shared_ptr<Flight> flight, const GeoPoint& fromPoint)
         {
-            auto airport = getArrivalAirport(flight);
+            auto airport = m_helper.getArrivalAirport(flight);
             auto gate = airport->getParkingStandOrThrow(flight->plan()->arrivalGate());
             auto taxiPath = airport->taxiNet()->tryFindTaxiPathToGate(gate, fromPoint);
 
@@ -264,19 +264,6 @@ namespace ai
             header.issuedBy = position;
             header.issuedTo = flight;
             header.issuedTimestamp = m_host->getWorld()->timestamp();
-        }
-        shared_ptr<Airport> getDepartureAirport(shared_ptr<Flight> flight)
-        {
-            return m_host->getWorld()->getAirport(flight->plan()->departureAirportIcao());
-        }
-        shared_ptr<Airport> getArrivalAirport(shared_ptr<Flight> flight)
-        {
-            return m_host->getWorld()->getAirport(flight->plan()->arrivalAirportIcao());
-        }
-        shared_ptr<ControlFacility> getTower(const string& airportIcao)
-        {
-            auto airport = m_host->getWorld()->getAirport(airportIcao);
-            return airport->tower();
         }
     };
 }

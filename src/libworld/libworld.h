@@ -1873,6 +1873,7 @@ namespace world
         const string& airlineIcao() const { return m_airlineIcao; }
         const string& flightNo() const { return m_flightNo; }
         const string& callSign() const { return m_callSign; }
+        const string& currentAirportIcao() const { return ((m_phase == Phase::Arrival) ? m_plan->arrivalAirportIcao() : m_plan->departureAirportIcao()); }
         shared_ptr<Aircraft> aircraft() const { return m_aircraft; }
         shared_ptr<Pilot> pilot() const { return m_pilot; }
         shared_ptr<FlightPlan> plan() const { return m_plan; }

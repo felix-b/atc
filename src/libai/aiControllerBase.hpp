@@ -169,7 +169,7 @@ namespace ai
                         }
                         else
                         {
-                            reply = I.groundCrossRunwayClearance(m_clearanceFactory->runwayCrossCleaeance(
+                            reply = I.groundCrossRunwayClearance(m_clearanceFactory->runwayCrossClearance(
                                 typedIntent->subjectFlight(),
                                 typedIntent->runway()
                             ), intent->id());
