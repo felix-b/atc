@@ -33,8 +33,10 @@ We appreciate feedback and suggestions. If you would like certain features to be
    ```
 1. Start X-Plane and start a flight at an airport or your choice
 1. In the main menu, select **Plugins** -> **Air Traffic and Control** -> **Start World**
+1. In the main menu, tune your radio to the same frequency as CLEARANCE/DELIVERY
 
-### What to expect by far
+
+### What to expect so far
 
 - Switch to an external camera. You should see some AI aircraft at the gates.
 - Back to your flight deck, turn on radios and tune COM1 to Clearance Delivery, Ground, or Tower
