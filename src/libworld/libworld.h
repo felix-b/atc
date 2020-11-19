@@ -77,7 +77,7 @@ namespace world
     class TextToSpeechService;
     class AircraftObjectService;
     class HostServices;
-
+    class WorldRoutes;
     struct GeoPoint
     {
     public:
@@ -642,6 +642,7 @@ namespace world
         shared_ptr<ChangeSet> m_changeSet;
         shared_ptr<HostServices> m_host;
     private:
+        shared_ptr<WorldRoutes> m_worldRoutes;
         vector<shared_ptr<ControlledAirspace>> m_airspaces;
         vector<shared_ptr<Airport>> m_airports;
         vector<shared_ptr<Flight>> m_flights;
@@ -684,6 +685,8 @@ namespace world
             const GeoPoint& topLeft,
             const GeoPoint& bottomRight,
             function<bool(shared_ptr<Aircraft> aircraft)> predicate);
+        const shared_ptr<WorldRoutes> worldRoutes() const {return m_worldRoutes;}
+        
     public:
         time_t startTime() const { return m_startTime; }
         chrono::microseconds timestamp() const { return m_timestamp; }
@@ -2387,7 +2390,8 @@ namespace world
     public:
         static shared_ptr<World> assembleSampleWorld(
             shared_ptr<HostServices> host, 
-            const vector<shared_ptr<Airport>>& airports);
+            const vector<shared_ptr<Airport>>& airports,
+            shared_ptr<WorldRoutes> worldRoutes);
 
         static shared_ptr<Airport> assembleAirport(
             shared_ptr<HostServices> host,
@@ -2540,6 +2544,36 @@ namespace world
         static void initLogString();
         static chrono::milliseconds getLogTimestamp();
         static void formatLogString(chrono::milliseconds timestamp, char logString[512], const char* format, va_list args);
+    };
+
+    class WorldRoutes
+    {
+        public:
+        class Route{
+            private:
+                string m_icaoDeparture;
+                string m_icaoDestination;
+                std::vector<string> m_icaoAirframes;
+                string m_AirlineCallsign;
+                string m_AirlineIcao;
+            public:
+                const string& departure()   const {return m_icaoDeparture;}
+                const string& destination() const {return m_icaoDestination;}
+                const std::vector<string>& usedAirframes() const {return m_icaoAirframes;}
+                const string& callsign()    const {return m_AirlineCallsign;}
+                const string& airline()    const {return m_AirlineIcao;}
+            public:
+                Route(const string _departure, const string _destination, const string _airlineIcao, const string _callsign, std::vector<string> _airframes):
+                    m_icaoDeparture(_departure),
+                    m_icaoDestination(_destination),
+                    m_icaoAirframes(_airframes),
+                    m_AirlineIcao(_airlineIcao),
+                    m_AirlineCallsign(_callsign)
+                    {}
+        };
+        public:
+        virtual const Route& findRandomRouteFrom(const string &fromICAO, const string &airframe, const std::vector<std::string>& allowedAirlines) = 0;
+        virtual const Route& findRandomRouteTo(const string &toICAO, const string &airframe, const std::vector<std::string>& allowedAirlines) = 0;
     };
 }
 

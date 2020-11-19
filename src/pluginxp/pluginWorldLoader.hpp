@@ -26,6 +26,7 @@
 #include "nativeTextToSpeechService.hpp"
 #include "pluginHostServices.hpp"
 #include "xpmp2AircraftObjectService.hpp"
+#include "openflights.hpp"
 
 using namespace std;
 using namespace PPL;
@@ -48,7 +49,7 @@ public:
         vector<shared_ptr<Airport>> airports;
         loadAirports(airports);
 
-        m_world = WorldBuilder::assembleSampleWorld(m_host, airports);
+        m_world = WorldBuilder::assembleSampleWorld(m_host, airports, loadWorldRoutes());
         m_host->writeLog("World initialized");
 
 #if 0
@@ -138,5 +139,36 @@ private:
         );
 
         m_host->writeLog("LWORLD|--- end load airports ---");
+    }
+
+    shared_ptr<WorldRoutes> loadWorldRoutes()
+    {
+        OpenFlightDataReader ofdReader(m_host);
+
+        // If this is gonna last in the plugin, it might be better 
+        // to generate a binary version of all this at build time.
+
+        // Initialize airport iata -> icao conversion
+        string filePath  = m_host->getResourceFilePath({"openflights", "airports.dat"});
+        m_host->writeLog("OPENFLIGHTS|Reading [%s]", filePath.c_str());
+        shared_ptr<istream> input = m_host->openFileForRead(filePath);
+        ofdReader.readAirports(*input);
+        
+        filePath  = m_host->getResourceFilePath({"openflights", "planes.dat"});
+        m_host->writeLog("OPENFLIGHTS|Reading [%s]", filePath.c_str());
+        input = m_host->openFileForRead(filePath);
+        ofdReader.readPlanes(*input);
+
+        filePath  = m_host->getResourceFilePath({"openflights", "airlines.dat"});
+        m_host->writeLog("OPENFLIGHTS|Reading [%s]", filePath.c_str());
+        input = m_host->openFileForRead(filePath);
+        ofdReader.readAirlines(*input);
+
+        filePath  = m_host->getResourceFilePath({"openflights", "routes.dat"});
+        m_host->writeLog("OPENFLIGHTS|Reading [%s]", filePath.c_str());
+        input = m_host->openFileForRead(filePath);
+        ofdReader.readRoutes(*input);
+
+        return ofdReader.getWorldRoutes();
     }
 };

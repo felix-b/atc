@@ -18,7 +18,8 @@ namespace world
 {
     shared_ptr<World> WorldBuilder::assembleSampleWorld(
         shared_ptr<HostServices> host, 
-        const vector<shared_ptr<Airport>>& airports)
+        const vector<shared_ptr<Airport>>& airports,
+        shared_ptr<WorldRoutes> worldRoutes)
     {
         auto world = shared_ptr<World>(new World(
             host, 
@@ -37,6 +38,8 @@ namespace world
                 world->m_controlFacilities.push_back(airport->tower());
             }
         }
+
+        world->m_worldRoutes = worldRoutes;
 
         return world;
     }
