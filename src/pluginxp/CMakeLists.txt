@@ -136,7 +136,7 @@ target_include_directories(pluginxp PUBLIC
     ${ATC_LIBS_PATH}/PPL/include/openal-soft/include
     ../include
     ../libworld
-    ../libdataxp
+    ../libloaders
     ../libai
     ../libserver
 )
@@ -152,7 +152,7 @@ if (APPLE)
         ${PPL_LIBRARY}
         ${XPMP2_LIBRARY}
         libworld
-        libdataxp
+        libloaders
         libai
         ${SPEECH_LIBRARY}
         ${OPENAL_LIBRARY}
@@ -166,7 +166,7 @@ else()
         ${PPL_LIBRARY}
         libXPMP2 #${XPMP2_LIBRARY}
         libworld
-        libdataxp
+        libloaders
         libai
         ${SPEECH_LIBRARY}
         ${OPENAL_LIBRARY}

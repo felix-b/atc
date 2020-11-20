@@ -35,7 +35,7 @@ set_property(TARGET libserver PROPERTY CXX_STANDARD 14)
 target_include_directories(libserver PUBLIC
     proto
     ../libworld
-    ../libdataxp
+    ../libloaders
     ${ATC_LIBS_PATH}/websocketpp
     ${ATC_LIBS_PATH}/asio/asio/include
     ${ATC_LIBS_PATH}/concurrentqueue

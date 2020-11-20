@@ -539,11 +539,11 @@ TEST(XPAirportReaderTest, findTaxiPath_KJFK_1) {
     XPAirportReader reader(makeHost());
     ifstream aptDat;
     aptDat.exceptions(ifstream::failbit | ifstream::badbit);
-    aptDat.open("../../src/libdataxp_test/testInputs/apt_kjfk.dat");
+    aptDat.open("../../src/libloaders_test/testInputs/apt_kjfk.dat");
     reader.readAirport(aptDat);
     ofstream jsonOutput;
     jsonOutput.exceptions(ofstream::failbit | ofstream::badbit);
-    jsonOutput.open("../../src/libdataxp_test/testOutputs/taxi_kjfk_79_378.json", std::ios_base::out | std::ios_base::trunc);
+    jsonOutput.open("../../src/libloaders_test/testOutputs/taxi_kjfk_79_378.json", std::ios_base::out | std::ios_base::trunc);
     
     const auto airport = reader.getAirport();
     const auto taxiNet = airport->taxiNet();
@@ -559,11 +559,11 @@ TEST(XPAirportReaderTest, findTaxiPath_KJFK_2) {
     XPAirportReader reader(makeHost());
     ifstream aptDat;
     aptDat.exceptions(ifstream::failbit | ifstream::badbit);
-    aptDat.open("../../src/libdataxp_test/testInputs/apt_kjfk.dat");
+    aptDat.open("../../src/libloaders_test/testInputs/apt_kjfk.dat");
     reader.readAirport(aptDat);
     ofstream jsonOutput;
     jsonOutput.exceptions(ofstream::failbit | ofstream::badbit);
-    jsonOutput.open("../../src/libdataxp_test/testOutputs/taxi_kjfk_79_581.json", std::ios_base::out | std::ios_base::trunc);
+    jsonOutput.open("../../src/libloaders_test/testOutputs/taxi_kjfk_79_581.json", std::ios_base::out | std::ios_base::trunc);
     
     const auto airport = reader.getAirport();
     const auto taxiNet = airport->taxiNet();
@@ -805,7 +805,7 @@ TEST(XPAptDatReaderTest, readAll_realDefaultAptDat)
 
     ofstream output;
     output.exceptions(ofstream::failbit | ofstream::badbit);
-    output.open("../../src/libdataxp_test/testOutputs/gates-with-long-names.txt", std::ios_base::out | std::ios_base::trunc);
+    output.open("../../src/libloaders_test/testOutputs/gates-with-long-names.txt", std::ios_base::out | std::ios_base::trunc);
 
     unordered_set<string> icaos;
     int count = 0;
@@ -891,14 +891,14 @@ stringstream makeAptDat(const vector<string>& lines)
 
 void openTestInputStream(const string& fileName, ifstream& str)
 {
-    string fullPath = "../../src/libdataxp_test/testInputs/" + fileName;
+    string fullPath = "../../src/libloaders_test/testInputs/" + fileName;
     str.exceptions(ifstream::failbit | ifstream::badbit);
     str.open(fullPath.c_str());
 }
 
 void createTestOutputStream(const string& fileName, ofstream& str)
 {
-    string fullPath = "../../src/libdataxp_test/testInputs/" + fileName;
+    string fullPath = "../../src/libloaders_test/testInputs/" + fileName;
     str.exceptions(ofstream::failbit | ofstream::badbit);
     str.open(fullPath.c_str(), ofstream::out | ofstream::trunc);
 }
