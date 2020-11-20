@@ -42,16 +42,6 @@ jobs:
           name: lin_xpl
           path: build/lib/lin.xpl
 
-      - name: copy openflights datas to plugin assets
-        uses: actions/upload-artifact@v2
-        with:
-          name: openflightsdatas
-          path: |
-            libs/openflights/data/airports.dat
-            libs/openflights/data/planes.dat
-            libs/openflights/data/airlines.dat
-            libs/openflights/data/routes.dat
-
       - name: upload plugin assets
         uses: actions/upload-artifact@v2
         with:
@@ -157,8 +147,6 @@ jobs:
           cp win_xpl/tasks/redist/win/libgcc_s_seh-1.dll plugin_assets/64/
           cp win_xpl/tasks/redist/win/libstdc++-6.dll plugin_assets/64/
           cp win_xpl/tasks/redist/win/libwinpthread-1.dll plugin_assets/64/
-          mkdir plugin_assets/openflights
-          find openflightsdatas -type f -exec cp {} plugin_assets/openflights \;
           mv plugin_assets airTrafficAndControl
 
       - name: upload plugin zip

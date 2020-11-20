@@ -23,6 +23,3 @@
 [submodule "libs/websocketpp"]
 	path = libs/websocketpp
 	url = https://github.com/zaphoyd/websocketpp.git
-[submodule "libs/openflights"]
-	path = libs/openflights
-	url = https://github.com/jpatokal/openflights.git
