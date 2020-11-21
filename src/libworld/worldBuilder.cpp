@@ -19,7 +19,7 @@ namespace world
     shared_ptr<World> WorldBuilder::assembleSampleWorld(
         shared_ptr<HostServices> host, 
         const vector<shared_ptr<Airport>>& airports,
-        shared_ptr<WorldRoutes> worldRoutes)
+        shared_ptr<RandomRouteProvider> routeProvider)
     {
         auto world = shared_ptr<World>(new World(
             host, 
@@ -39,7 +39,7 @@ namespace world
             }
         }
 
-        world->m_worldRoutes = worldRoutes;
+        world->m_routeProvider = routeProvider;
 
         return world;
     }

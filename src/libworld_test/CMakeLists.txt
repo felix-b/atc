@@ -23,7 +23,6 @@ add_executable(libworld_test
     stateMachineTest.cpp
     airlineReferenceTableTest.cpp
     unit_testable_world.hpp
-    openflightsTest.cpp
 )
 
 set_property(TARGET libworld_test PROPERTY CXX_STANDARD 14)

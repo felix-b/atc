@@ -449,7 +449,7 @@ namespace world
                 airports.push_back(factory(testHost));
             }
 
-            auto world = WorldBuilder::assembleSampleWorld(testHost, airports, shared_ptr<WorldRoutes>(NULL));
+            auto world = WorldBuilder::assembleSampleWorld(testHost, airports, shared_ptr<RandomRouteProvider>(NULL));
             testHost->useWorld(world);
 
             return testHost;

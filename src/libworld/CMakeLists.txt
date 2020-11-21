@@ -42,7 +42,6 @@ add_library(libworld STATIC
     worldHelper.hpp
     stateMachine.hpp
     hostServices.cpp
-    openflights.hpp
 )
 
 set_property(TARGET libworld PROPERTY CXX_STANDARD 14)

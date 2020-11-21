@@ -12,6 +12,7 @@ add_executable(libloaders_test
     airportOpsTest.cpp
     xpFmsxReaderTest.cpp
     hydrationTest.cpp
+    openflightsTest.cpp
 )
 
 set_property(TARGET libloaders_test PROPERTY CXX_STANDARD 14)

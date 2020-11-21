@@ -77,7 +77,9 @@ namespace world
     class TextToSpeechService;
     class AircraftObjectService;
     class HostServices;
-    class WorldRoutes;
+    class RouteProvider;
+    class RandomRouteProvider;
+
     struct GeoPoint
     {
     public:
@@ -642,7 +644,7 @@ namespace world
         shared_ptr<ChangeSet> m_changeSet;
         shared_ptr<HostServices> m_host;
     private:
-        shared_ptr<WorldRoutes> m_worldRoutes;
+        shared_ptr<RandomRouteProvider> m_routeProvider;
         vector<shared_ptr<ControlledAirspace>> m_airspaces;
         vector<shared_ptr<Airport>> m_airports;
         vector<shared_ptr<Flight>> m_flights;
@@ -685,7 +687,7 @@ namespace world
             const GeoPoint& topLeft,
             const GeoPoint& bottomRight,
             function<bool(shared_ptr<Aircraft> aircraft)> predicate);
-        const shared_ptr<WorldRoutes> worldRoutes() const {return m_worldRoutes;}
+        const shared_ptr<RandomRouteProvider> routeProvider() const {return m_routeProvider;}
         
     public:
         time_t startTime() const { return m_startTime; }
@@ -2392,7 +2394,7 @@ namespace world
         static shared_ptr<World> assembleSampleWorld(
             shared_ptr<HostServices> host, 
             const vector<shared_ptr<Airport>>& airports,
-            shared_ptr<WorldRoutes> worldRoutes);
+            shared_ptr<RandomRouteProvider> routeProvider);
 
         static shared_ptr<Airport> assembleAirport(
             shared_ptr<HostServices> host,
@@ -2547,34 +2549,136 @@ namespace world
         static void formatLogString(chrono::milliseconds timestamp, char logString[512], const char* format, va_list args);
     };
 
-    class WorldRoutes
+    class RouteProvider
     {
+    protected:
+        shared_ptr<HostServices> m_host;
+
+    public:
+        class Route
+        {
+        private:
+            string m_icaoDeparture;
+            string m_icaoDestination;
+            std::vector<string> m_icaoAirframes;
+            string m_AirlineIcao;
+
         public:
-        class Route{
-            private:
-                string m_icaoDeparture;
-                string m_icaoDestination;
-                std::vector<string> m_icaoAirframes;
-                string m_AirlineCallsign;
-                string m_AirlineIcao;
-            public:
-                const string& departure()   const {return m_icaoDeparture;}
-                const string& destination() const {return m_icaoDestination;}
-                const std::vector<string>& usedAirframes() const {return m_icaoAirframes;}
-                const string& callsign()    const {return m_AirlineCallsign;}
-                const string& airline()    const {return m_AirlineIcao;}
-            public:
-                Route(const string _departure, const string _destination, const string _airlineIcao, const string _callsign, std::vector<string> _airframes):
-                    m_icaoDeparture(_departure),
-                    m_icaoDestination(_destination),
-                    m_icaoAirframes(_airframes),
-                    m_AirlineIcao(_airlineIcao),
-                    m_AirlineCallsign(_callsign)
-                    {}
+            const string &departure() const { return m_icaoDeparture; }
+            const string &destination() const { return m_icaoDestination; }
+            const std::vector<string> &usedAirframes() const { return m_icaoAirframes; }
+            const string &airline() const { return m_AirlineIcao; }
+
+        public:
+            Route(const string _departure, const string _destination, const string _airlineIcao, std::vector<string> _airframes) : m_icaoDeparture(_departure),
+                                                                                                                                   m_icaoDestination(_destination),
+                                                                                                                                   m_icaoAirframes(_airframes),
+                                                                                                                                   m_AirlineIcao(_airlineIcao)
+            {
+            }
         };
-        public:
-        virtual const Route& findRandomRouteFrom(const string &fromICAO, const string &airframe, const std::vector<std::string>& allowedAirlines) = 0;
-        virtual const Route& findRandomRouteTo(const string &toICAO, const string &airframe, const std::vector<std::string>& allowedAirlines) = 0;
+
+    protected:
+        RouteProvider(shared_ptr<HostServices> _host) : m_host(_host){};
+
+    public:
+        virtual const Route &findRandomRouteFrom(const string &fromICAO, const string &airframe = "", const std::vector<std::string> &allowedAirlines = {}) = 0;
+        virtual const Route &findRandomRouteTo(const string &toICAO, const string &airframe = "", const std::vector<std::string> &allowedAirlines = {}) = 0;
+    };
+    class RandomRouteProvider : public RouteProvider
+    {
+    private:
+        vector<shared_ptr<RouteProvider::Route>> m_routes;
+        unordered_map<string, vector<shared_ptr<RouteProvider::Route>>> m_routesFrom;
+
+        unordered_map<string, vector<shared_ptr<RouteProvider::Route>>> m_routesTo;
+
+        mt19937 m_rng;
+
+    public:
+        RandomRouteProvider(shared_ptr<HostServices> _host, vector<shared_ptr<RouteProvider::Route>> _routes) : m_routes(_routes), RouteProvider(_host)
+        {
+            m_rng = std::mt19937(chrono::system_clock::now().time_since_epoch().count());
+            for (auto route : m_routes)
+            {
+                m_routesFrom[route->departure()].push_back(route);
+                m_routesTo[route->destination()].push_back(route);
+            }
+        }
+
+        // Used to force Rng for testing purpose
+        void setRng(std::mt19937 randomGenerator)
+        {
+            m_rng = randomGenerator;
+        }
+        const Route &findRandomRouteFrom(const string &fromICAO, const string &airframe, const vector<string> &allowedAirlines)
+        {
+            return findRandomRoute(getValueOrThrow(m_routesFrom, fromICAO), airframe, allowedAirlines);
+        }
+        const Route &findRandomRouteTo(const string &toICAO, const string &airframe, const vector<string> &allowedAirlines)
+        {
+            return findRandomRoute(getValueOrThrow(m_routesTo, toICAO), airframe, allowedAirlines);
+        }
+
+    private:
+        const Route &findRandomRoute(const vector<shared_ptr<world::RouteProvider::Route>> _routes, const string &airframe, const vector<string> &allowedAirlines)
+        {
+            vector<shared_ptr<world::RouteProvider::Route>> routes(_routes);
+            shuffle(routes.begin(), routes.end(), m_rng);
+
+            do
+            {
+                auto route = routes.back();
+                routes.pop_back();
+                auto allowedAirFrames = route->usedAirframes();
+                // Any airline is allowed if allowedAirlines is empty
+                auto routeAirline = (allowedAirlines.size() > 0) ? route->airline() : "";
+
+                // Airframe asked must be used on this route
+                if (!airframe.empty() && !hasStringInsensitive(allowedAirFrames, airframe))
+                {
+                    continue;
+                }
+
+                // Route must be operated by one of the airlines allowed
+                if (!allowedAirlines.empty() && !hasStringInsensitive(allowedAirlines, routeAirline))
+                {
+                    continue;
+                }
+                // return found route
+                return *route;
+            } while (!routes.empty());
+
+            // No route found
+            throw std::runtime_error("Route not found");
+        }
+
+        static bool iequals(const string &a, const string &b)
+        {
+            if (a.length() == b.length())
+            {
+                return equal(b.begin(), b.end(), a.begin(),
+                             [](unsigned char ca, unsigned char cb) {
+                                 return (tolower(ca) == tolower(cb));
+                             });
+            }
+            return false;
+        }
+
+        bool hasStringInsensitive(const vector<string> v, const string &s)
+        {
+            // An empty string is always valid
+            if (s.size() == 0)
+                return true;
+
+            // An empty vector is valid : there are no constraints
+            if (v.size() == 0)
+                return true;
+
+            return hasAny<string>(v, [s](string test) {
+                return (iequals(s, test));
+            });
+        }
     };
 }
 

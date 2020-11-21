@@ -42,7 +42,9 @@ private:
                 return is;
             case '\r':
                 if (sb->sgetc() == '\n')
+                {
                     sb->sbumpc();
+                }
                 return is;
             case streambuf::traits_type::eof():
                 // Also handle the case when the last line has no line ending
@@ -63,7 +65,9 @@ public:
     const string &operator[](size_t index) const
     {
         if (index >= size())
+        {
             throw out_of_range{"CSVRow : index out of bounds"};
+        }
         return m_data[index];
     }
     size_t size() const
@@ -77,7 +81,9 @@ public:
         m_data = split(m_line, ',');
         // Add empty last field if needed
         if (!m_line.empty() && (m_line.back() == ','))
+        {
             m_data.push_back("");
+        }
     }
 };
 
@@ -107,127 +113,11 @@ public:
         catch (ifstream::failure e)
         {
             if (!input.eof())
+            {
                 // rethrow the exception if we are not at eof
                 throw;
-        }
-    }
-};
-
-struct OpenFlightsAirline
-{
-private:
-    string m_icao;
-    string m_callsign;
-
-public:
-    const string &callsign() const { return m_callsign; }
-    const string &icao() const { return m_icao; }
-
-public:
-    OpenFlightsAirline(const string &_icao, const string &_callsign) : m_icao(_icao),
-                                                         m_callsign(_callsign){};
-};
-
-class OpenFlightsRoutes : public world::WorldRoutes
-{
-private:
-    friend class OpenFlightDataReader;
-
-private:
-    shared_ptr<HostServices> m_host;
-    unordered_map<string, string> m_airportIata2Icao;
-    unordered_map<string, string> m_airframeIata2Icao;
-    unordered_map<int, shared_ptr<OpenFlightsAirline>> m_airlines;
-    vector<shared_ptr<world::WorldRoutes::Route>> m_routes;
-    unordered_map<string, vector<shared_ptr<world::WorldRoutes::Route>>> m_routesFrom;
-    unordered_map<string, vector<shared_ptr<world::WorldRoutes::Route>>> m_routesTo;
-    std::mt19937 m_rng;
-public:
-    // seed the RNG with current time,
-    OpenFlightsRoutes(shared_ptr<HostServices> _host) : m_host(_host)
-    {
-        m_rng = std::mt19937(chrono::system_clock::now().time_since_epoch().count());
-    }
-    // Used to force Rng for testing purpose
-    void setRng(std::mt19937 randomGenerator)
-    {
-        m_rng = randomGenerator;
-    }
-    const Route& findRandomRouteFrom(const string &fromICAO, const string &airframe, const vector<string> &allowedAirlines)
-    {
-        m_host->writeLog("OPENFLIGHTS| Searching route from %s with aircraft %s (%d companies allowed)", fromICAO.c_str(), airframe.c_str(), allowedAirlines.size());
-        return findRandomRoute(getValueOrThrow(m_routesFrom, fromICAO), airframe, allowedAirlines);
-    }
-    const Route& findRandomRouteTo(const string &toICAO, const string &airframe, const vector<string> &allowedAirlines)
-    {
-        m_host->writeLog("OPENFLIGHTS| Searching route to %s with aircraft %s (%d companies allowed)", toICAO.c_str(), airframe.c_str(), allowedAirlines.size());
-        return findRandomRoute(getValueOrThrow(m_routesTo, toICAO), airframe, allowedAirlines);
-    }
-
-private:
-    const Route& findRandomRoute(const vector<shared_ptr<world::WorldRoutes::Route>> _routes, const string &airframe, const vector<string> &allowedAirlines)
-    {
-        vector<shared_ptr<world::WorldRoutes::Route>> routes(_routes);
-        shuffle (routes.begin(), routes.end(), m_rng);
-
-        m_host->writeLog("OPENFLIGHTS| %d routes found ", routes.size());
-        for (auto airline : allowedAirlines)
-        {
-            m_host->writeLog("OPENFLIGHTS| %s allowed ", airline.c_str());
-        }
-        do
-        {
-            auto route = routes.back();
-            routes.pop_back();
-            m_host->writeLog("OPENFLIGHTS| checking route from %s to %s by %s", route->departure().c_str(), route->destination().c_str(), route->airline().c_str());
-            auto allowedAirFrames = route->usedAirframes();
-            // Any airline is allowed if allowedAirlines is empty
-            auto routeAirline = (allowedAirlines.size() > 0) ? route->airline() : "";
-
-            // Airframe asked must be used on this route
-            if (!airframe.empty() && !hasStringInsensitive(allowedAirFrames, airframe))
-            {
-                continue;
             }
-
-            // Route must be operated by one of the airlines allowed
-            if (!allowedAirlines.empty() && !hasStringInsensitive(allowedAirlines, routeAirline))
-            {
-                continue;
-            }
-            // return found route
-            return *route;
-        } while (!routes.empty());
-
-        // No route found
-        throw std::runtime_error("Route not found");
-    }
-
-    static bool iequals(const string &a, const string & b)
-    {
-        if (a.length() == b.length())
-        {
-            return equal(b.begin(), b.end(), a.begin(), 
-                [](unsigned char ca, unsigned char cb) {
-                    return (tolower(ca) == tolower(cb));
-                });
         }
-        return false;
-    }
-
-    bool hasStringInsensitive(const vector<string> v, const string &s)
-    {
-        // An empty string is always valid
-        if (s.size() == 0)
-            return true;
-
-        // An empty vector is valid : there are no constraints
-        if (v.size() == 0)
-            return true;
-
-        return hasAny<string>(v, [s](string test) {
-            return (iequals(s, test));
-            });
     }
 };
 
@@ -235,18 +125,25 @@ class OpenFlightDataReader
 {
 private:
     shared_ptr<HostServices> m_host;
-    shared_ptr<OpenFlightsRoutes> m_datas;
-
+    shared_ptr<RandomRouteProvider> m_routes;
+    unordered_map<string, string> m_airportIata2Icao;
+    unordered_map<string, string> m_airframeIata2Icao;
+    unordered_map<int, string> m_airlinesId2Icao;
 public:
 private:
 public:
     explicit OpenFlightDataReader(shared_ptr<HostServices> _host) : m_host(_host)
     {
-        m_datas = make_shared<OpenFlightsRoutes>(m_host);
     };
 
 public:
-    shared_ptr<WorldRoutes> getWorldRoutes() { return m_datas; }
+    shared_ptr<RandomRouteProvider> getRoutes() {
+        if (m_routes == nullptr)
+        {
+            throw runtime_error("OPNFLT : unread routes");
+        }
+        return m_routes;
+    }
 
     // Parsing OpenFlights airpors.dat file.
     // Generates a mapping from iata to icao
@@ -275,10 +172,10 @@ public:
                              {
                                  string iata(row[4].substr(1, row[4].size() - 2));
                                  string icao(row[5].substr(1, row[5].size() - 2));
-                                 m_datas->m_airportIata2Icao[iata] = icao;
+                                 m_airportIata2Icao[iata] = icao;
                              }
                          });
-        m_host->writeLog("OPENFLIGHTS| Airports parsed : %d association IATA->ICAO found", m_datas->m_airportIata2Icao.size());
+        m_host->writeLog("OPNFLT| Airports parsed : %d association IATA->ICAO found", m_airportIata2Icao.size());
     }
 
     // Parsing OpenFlights planes.dat file.
@@ -297,10 +194,10 @@ public:
                              {
                                  string iata(row[1].substr(1, row[1].size() - 2));
                                  string icao(row[2].substr(1, row[2].size() - 2));
-                                 m_datas->m_airframeIata2Icao[iata] = icao;
+                                 m_airframeIata2Icao[iata] = icao;
                              }
                          });
-        m_host->writeLog("OPENFLIGHTS| Planes parsed : %d association IATA->ICAO found", m_datas->m_airframeIata2Icao.size());
+        m_host->writeLog("OPNFLT| Planes parsed : %d association IATA->ICAO found", m_airframeIata2Icao.size());
     }
 
     // Parsing OpenFlights airlines.dat file.
@@ -327,23 +224,21 @@ public:
                                  try
                                  {
                                      int openflightAirlineId = stoi(row[0]);
-                                     shared_ptr<OpenFlightsAirline> airline = make_shared<OpenFlightsAirline>(
-                                         row[4].substr(1, row[4].size() - 2),
-                                         row[5].substr(1, row[5].size() - 2));
-                                     m_datas->m_airlines[openflightAirlineId] = airline;
+                                     string airlineIcao =(row[4].substr(1, row[4].size() - 2));
+                                     m_airlinesId2Icao[openflightAirlineId] = airlineIcao;
                                  }
                                  catch (const exception &e)
                                  {
-                                     m_host->writeLog("OPENFLIGHTS| Exception [%s] airline route at line %d", e.what(), lineCount);
+                                     m_host->writeLog("OPNFLT| Exception [%s] airline route at line %d", e.what(), lineCount);
                                  }
                              }
                          });
         // An airline can be invalid if the ICAO or callsign is invalid
-        m_host->writeLog("OPENFLIGHTS| Airlines parsed : %d/%d valid airlines found", m_datas->m_airlines.size(), lineCount);
+        m_host->writeLog("OPNFLT| Airlines parsed : %d/%d valid airlines found", m_airlinesId2Icao.size(), lineCount);
     }
 
     // Parsing OpenFlights routes.dat file.
-    // Stores routes cf. world::WorldRoutes::Route.
+    // Stores routes cf. world::RouteProvider::Route.
     //
     // Columns are :
     //
@@ -359,6 +254,7 @@ public:
     void readRoutes(istream &input)
     {
         int lineCount = 0;
+        vector<shared_ptr<world::RouteProvider::Route>> routes;
         CsvParser::parse(input,
                          [&, this](CSVRow &row) {
                              lineCount++;
@@ -367,15 +263,15 @@ public:
                                  try
                                  {
                                      int openflightAirlineId = stoi(row[1]);
-                                     auto icaoDeparture = getValueOrThrow(m_datas->m_airportIata2Icao, row[2]);
-                                     auto icaoArrival = getValueOrThrow(m_datas->m_airportIata2Icao, row[4]);
+                                     auto icaoDeparture = getValueOrThrow(m_airportIata2Icao, row[2]);
+                                     auto icaoArrival = getValueOrThrow(m_airportIata2Icao, row[4]);
                                      auto iataAirframes = split(string(row[8]), ' ');
                                      vector<string> icaoAirframes;
                                      for (string iataAirframe : iataAirframes)
                                      {
                                          try
                                          {
-                                             icaoAirframes.push_back(getValueOrThrow(m_datas->m_airframeIata2Icao, iataAirframe));
+                                             icaoAirframes.push_back(getValueOrThrow(m_airframeIata2Icao, iataAirframe));
                                          }
                                          catch (const exception &e)
                                          {
@@ -383,26 +279,25 @@ public:
                                              // has no ICAO equivalent. but the route might still be valid
                                          }
                                      }
-                                     auto airline = getValueOrThrow(m_datas->m_airlines, openflightAirlineId);
-                                     auto route = make_shared<world::WorldRoutes::Route>(
+                                     auto airlineIcao = getValueOrThrow(m_airlinesId2Icao, openflightAirlineId);
+                                     auto route = make_shared<world::RouteProvider::Route>(
                                          icaoDeparture,
                                          icaoArrival,
-                                         airline->icao(),
-                                         airline->callsign(),
+                                         airlineIcao,
                                          move(icaoAirframes));
 
-                                     m_datas->m_routes.push_back(route);
-                                     m_datas->m_routesFrom[icaoDeparture].push_back(route);
-                                     m_datas->m_routesTo[icaoArrival].push_back(route);
+                                     routes.push_back(route);
                                  }
                                  catch (const exception &e)
                                  {
-                                     //  m_host->writeLog("OPENFLIGHTS| Exception [%s] parsing route at line %d", e.what(), lineCount);
+                                     //  m_host->writeLog("OPNFLT| Exception [%s] parsing route at line %d", e.what(), lineCount);
                                  }
                              }
                          });
         // A route can be invalid if we cannot find the icao code of one of the airports (stored as iata in openflights files)
-        m_host->writeLog("OPENFLIGHTS| Routes parsed : %d/%d valid routes found", m_datas->m_routes.size(), lineCount);
+        m_host->writeLog("OPNFLT| Routes parsed : %d/%d valid routes found", routes.size(), lineCount);
+
+        m_routes = make_shared<RandomRouteProvider>(m_host, routes);
     }
 
 private:

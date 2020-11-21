@@ -28,6 +28,7 @@
 #include "nativeTextToSpeechService.hpp"
 #include "pluginHostServices.hpp"
 #include "xpmp2AircraftObjectService.hpp"
+#include "airlineReferenceTable.hpp"
 
 using namespace std;
 using namespace PPL;
@@ -100,7 +101,7 @@ private:
 
     void initDemoSchedules(float loadFactor, time_t firstDepartureTime, time_t firstArrivalTime)
     {
-        auto flightdatas = m_world->worldRoutes();
+        auto routeProvider = m_world->routeProvider();
         string activeDepartureRunway;
         string activeArrivalRunway1;
         string activeArrivalRunway2;
@@ -174,36 +175,35 @@ private:
             );
         };
 
-        const world::WorldRoutes::Route defaultRoute(
+        const world::RouteProvider::Route defaultRoute(
             m_airport->header().icao(),
             m_airport->header().icao(),
             string("UFO"),
-            string("UNKNOWN"),
             {}
         );
 
-        typedef function<const world::WorldRoutes::Route &(const string airportIcao, const string aircraftModel, const vector<string>allowedAirlines )> RouteFinder;
+        typedef function<const world::RouteProvider::Route &(const string airportIcao, const string aircraftModel, const vector<string>allowedAirlines )> RouteFinder;
 
         auto routeFromFinder = 
-            [flightdatas]
+            [routeProvider]
             (const string airportIcao, const string aircraftModel, const vector<string>allowedAirlines )
-            -> const world::WorldRoutes::Route&
+            -> const world::RouteProvider::Route&
         {
-            return flightdatas->findRandomRouteFrom(airportIcao, aircraftModel, allowedAirlines);
+            return routeProvider->findRandomRouteFrom(airportIcao, aircraftModel, allowedAirlines);
         };
 
         auto routeToFinder = 
-            [flightdatas]
+            [routeProvider]
             (const string airportIcao, const string aircraftModel, const vector<string>allowedAirlines )
-            -> const world::WorldRoutes::Route&
+            -> const world::RouteProvider::Route&
         {
-            return flightdatas->findRandomRouteTo(airportIcao, aircraftModel, allowedAirlines);
+            return routeProvider->findRandomRouteTo(airportIcao, aircraftModel, allowedAirlines);
         };
 
         auto findRoute = 
             [this, defaultRoute]
             (RouteFinder finder, const string airportIcao, const string aircraftModel, const vector<string>allowedAirlines )
-            -> const world::WorldRoutes::Route&
+            -> const world::RouteProvider::Route&
         {
             try
             {
@@ -224,6 +224,19 @@ private:
             }
             
             return defaultRoute;
+        };
+
+        auto getAirlineCallsign = [] (const string &airlineIcao)
+        {
+            AirlineReferenceTable::Entry airlineDescr;
+            if ( AirlineReferenceTable::tryFindByIcao(airlineIcao, airlineDescr))
+            {
+                return airlineDescr.callsign;
+            }
+            else
+            {
+                return string("UNKNOWN");
+            } 
         };
 
         const float normalSecondsBetweenDepartures = 210;
@@ -263,7 +276,8 @@ private:
 
                     time_t departureTime = nextDepartureTime;
                     nextDepartureTime += secondsBetweenDepartures;
-                    addOutboundFlight(model, route.airline(), route.callsign(), flightId, route.destination(), departureTime, gate);
+
+                    addOutboundFlight(model, route.airline(), getAirlineCallsign(route.airline()), flightId, route.destination(), departureTime, gate);
                 }
                 else
                 {
@@ -271,7 +285,7 @@ private:
 
                     time_t arrivalTime = nextArrivalTime;
                     nextArrivalTime += secondsBetweenArrivals;
-                    addInboundFlight(model, route.airline(), route.callsign(), flightId, route.departure(), arrivalTime, gate);
+                    addInboundFlight(model, route.airline(), getAirlineCallsign(route.airline()), flightId, route.departure(), arrivalTime, gate);
                 }
             }
             catch(const std::exception& e)

@@ -26,7 +26,7 @@
 #include "nativeTextToSpeechService.hpp"
 #include "pluginHostServices.hpp"
 #include "xpmp2AircraftObjectService.hpp"
-#include "openflights.hpp"
+#include "libopenflights.hpp"
 
 using namespace std;
 using namespace PPL;
@@ -49,7 +49,7 @@ public:
         vector<shared_ptr<Airport>> airports;
         loadAirports(airports);
 
-        m_world = WorldBuilder::assembleSampleWorld(m_host, airports, loadWorldRoutes());
+        m_world = WorldBuilder::assembleSampleWorld(m_host, airports, loadOpenFlightsRoutes());
         m_host->writeLog("World initialized");
 
 #if 0
@@ -141,7 +141,7 @@ private:
         m_host->writeLog("LWORLD|--- end load airports ---");
     }
 
-    shared_ptr<WorldRoutes> loadWorldRoutes()
+    shared_ptr<RandomRouteProvider> loadOpenFlightsRoutes()
     {
         OpenFlightDataReader ofdReader(m_host);
 
@@ -169,6 +169,6 @@ private:
         input = m_host->openFileForRead(filePath);
         ofdReader.readRoutes(*input);
 
-        return ofdReader.getWorldRoutes();
+        return ofdReader.getRoutes();
     }
 };
