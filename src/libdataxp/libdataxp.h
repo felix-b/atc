@@ -74,6 +74,7 @@ private:
     void parseGroundEdge1206(istream &input);
     void parseRunwayActiveZone1204(istream& input, shared_ptr<TaxiEdge> edge);
     void parseStartupLocation1300(istream &input);
+    void parseStartupLocation15(istream &input);
     void parseMetadata1302(istream &input);
     void parseControlFrequency(int lineCode, istream &input);
     bool isControlFrequencyLine(int lineCode);

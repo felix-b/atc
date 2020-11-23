@@ -1549,6 +1549,7 @@ namespace world
             Airline = 0x02,
             Cargo = 0x04,
             Military = 0x08,
+            All = 0x01 | 0x02 | 0x04 | 0x08
         };
         enum class LightBits
         {

@@ -501,6 +501,47 @@ TEST(XPAirportReaderTest, readAptDat_parkingStands) {
     //writeAirportJson(airport, cout);
 }
 
+TEST(XPAirportReaderTest, readAptDat_parkingStands_oldCode15) {
+    XPAirportReader reader(makeHost());
+    stringstream aptDat = makeAptDat({
+        "15  40.100 -073.200 152.39 T1 5",
+        "15  40.110 -073.220 105.95 T1 3",
+    });
+
+    reader.readAirport(aptDat);
+    const auto airport = reader.getAirport();
+    const vector<shared_ptr<ParkingStand>>& parkingStands = airport->parkingStands();
+
+    shared_ptr<ParkingStand> gate_t15 = airport->getParkingStandOrThrow("T1 5");
+    shared_ptr<ParkingStand> gate_t13 = airport->getParkingStandOrThrow("T1 3");
+
+    ASSERT_EQ(parkingStands.size(), 2);
+    EXPECT_EQ(parkingStands[0], gate_t15);
+    EXPECT_EQ(parkingStands[1], gate_t13);
+
+    EXPECT_EQ(gate_t15->id(), 301);
+    EXPECT_EQ(gate_t15->name(), "T1 5");
+    EXPECT_EQ(gate_t15->type(), ParkingStand::Type::Unknown);
+    EXPECT_FLOAT_EQ(gate_t15->location().latitude(), 40.100);
+    EXPECT_FLOAT_EQ(gate_t15->location().longitude(), -73.200);
+    EXPECT_FLOAT_EQ(gate_t15->heading(), 152.39);
+    EXPECT_EQ(gate_t15->widthCode(), "F");
+    EXPECT_EQ(gate_t15->aircraftCategories(), Aircraft::Category::All);
+    EXPECT_EQ(gate_t15->operationTypes(), Aircraft::OperationType::All);
+    EXPECT_TRUE(gate_t15->airlines().empty());
+
+    EXPECT_EQ(gate_t13->id(), 302);
+    EXPECT_EQ(gate_t13->name(), "T1 3");
+    EXPECT_EQ(gate_t13->type(), ParkingStand::Type::Unknown);
+    EXPECT_FLOAT_EQ(gate_t13->location().latitude(), 40.110);
+    EXPECT_FLOAT_EQ(gate_t13->location().longitude(), -73.220);
+    EXPECT_FLOAT_EQ(gate_t13->heading(), 105.95);
+    EXPECT_EQ(gate_t13->widthCode(), "F");
+    EXPECT_EQ(gate_t13->aircraftCategories(), Aircraft::Category::All);
+    EXPECT_EQ(gate_t13->operationTypes(), Aircraft::OperationType::All);
+    EXPECT_TRUE(gate_t13->airlines().empty());
+}
+
 TEST(XPAirportReaderTest, readAptDat_skipUnrecognizedLines) {
     XPAirportReader builder(makeHost());
     stringstream aptDat = makeAptDat({

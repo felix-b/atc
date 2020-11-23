@@ -260,6 +260,9 @@ bool XPAirportReader::rootContextParser(int lineCode, istream& input)
     case 1300:
         parseStartupLocation1300(input);
         break;
+    case 15:
+        parseStartupLocation15(input);
+        break;
     case 1302:
         parseMetadata1302(input);
         break;
@@ -473,6 +476,30 @@ void XPAirportReader::parseStartupLocation1300(istream &input)
 
     auto parkingStand = shared_ptr<ParkingStand>(new ParkingStand(
         m_nextParkingStandId++, name, type, location, heading, widthCode, categories, operationTypes, airlines));
+
+    m_parkingStands.push_back(parkingStand);
+}
+
+void XPAirportReader::parseStartupLocation15(istream &input)
+{
+    double latitude;
+    double longitude;
+    float heading;
+    string name;
+
+    input >> latitude >> longitude >> heading;
+    name = readToEndOfLine(input);
+
+    auto parkingStand = shared_ptr<ParkingStand>(new ParkingStand(
+        m_nextParkingStandId++,
+        name,
+        ParkingStand::Type::Unknown,
+        UniPoint(GeoPoint(latitude, longitude)),
+        heading,
+        "F",
+        Aircraft::Category::All,
+        Aircraft::OperationType::All,
+        {}));
 
     m_parkingStands.push_back(parkingStand);
 }
