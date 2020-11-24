@@ -32,7 +32,7 @@ protected:
         {
             auto ofreader = OpenFlightDataReader(m_host);
 
-            m_routeFinder = ofreader.getRoutes("./testinputs/openflights", {});
+            m_routeFinder = ofreader.getRoutes("./testInputs/openflights", {});
         }
     }
 
@@ -134,14 +134,14 @@ TEST_F(OpenFlightsRoutesTest, checkAircraftFiltering)
     static shared_ptr<WorldRoutes> b738Finder;
     auto ofreader = OpenFlightDataReader(m_host);
 
-    ASSERT_NO_THROW(b738Finder = ofreader.getRoutes("./testinputs/openflights", {"B738"}));
+    ASSERT_NO_THROW(b738Finder = ofreader.getRoutes("./testInputs/openflights", {"B738"}));
     ASSERT_EQ(b738Finder->routesToCount("KJFK"), 8);
     ASSERT_EQ(b738Finder->routesToCount("KWAL"), 1);
 
     static shared_ptr<WorldRoutes> a320Finder;
     ofreader = OpenFlightDataReader(m_host);
 
-    ASSERT_NO_THROW(a320Finder = ofreader.getRoutes("./testinputs/openflights", {"A320"}));
+    ASSERT_NO_THROW(a320Finder = ofreader.getRoutes("./testInputs/openflights", {"A320"}));
     ASSERT_EQ(a320Finder->routesToCount("KJFK"), 0);
     ASSERT_EQ(a320Finder->routesToCount("KWAL"), 1);
     
@@ -156,7 +156,7 @@ TEST_F(OpenFlightsRoutesTest, checkRandomness)
     shared_ptr<WorldRoutes> s1Finder;
     auto ofreader = OpenFlightDataReader(m_host);
     auto rng1 = default_random_engine(1);
-    ASSERT_NO_THROW(s1Finder = ofreader.getRoutes("./testinputs/openflights", {}, rng1));
+    ASSERT_NO_THROW(s1Finder = ofreader.getRoutes("./testInputs/openflights", {}, rng1));
     size_t nbRoutes = s1Finder->routesToCount("KJFK");
 
     m_host->writeLog("TEST|  Sequence 1");
@@ -179,7 +179,7 @@ TEST_F(OpenFlightsRoutesTest, checkRandomness)
     shared_ptr<WorldRoutes> s2Finder;
     ofreader = OpenFlightDataReader(m_host);
     auto rng2 = default_random_engine(2);
-    ASSERT_NO_THROW(s2Finder = ofreader.getRoutes("./testinputs/openflights", {}, rng2));
+    ASSERT_NO_THROW(s2Finder = ofreader.getRoutes("./testInputs/openflights", {}, rng2));
     ASSERT_EQ(s2Finder->routesToCount("KJFK"), nbRoutes);
 
     m_host->writeLog("TEST|  Sequence 2");
