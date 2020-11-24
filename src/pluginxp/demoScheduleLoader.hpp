@@ -101,7 +101,7 @@ private:
 
     void initDemoSchedules(float loadFactor, time_t firstDepartureTime, time_t firstArrivalTime)
     {
-        auto routeProvider = m_world->routeProvider();
+        auto worldRoutes = m_world->worldRoutes();
         string activeDepartureRunway;
         string activeArrivalRunway1;
         string activeArrivalRunway2;
@@ -175,57 +175,6 @@ private:
             );
         };
 
-        const world::RouteProvider::Route defaultRoute(
-            m_airport->header().icao(),
-            m_airport->header().icao(),
-            string("UFO"),
-            {}
-        );
-
-        typedef function<const world::RouteProvider::Route &(const string airportIcao, const string aircraftModel, const vector<string>allowedAirlines )> RouteFinder;
-
-        auto routeFromFinder = 
-            [routeProvider]
-            (const string airportIcao, const string aircraftModel, const vector<string>allowedAirlines )
-            -> const world::RouteProvider::Route&
-        {
-            return routeProvider->findRandomRouteFrom(airportIcao, aircraftModel, allowedAirlines);
-        };
-
-        auto routeToFinder = 
-            [routeProvider]
-            (const string airportIcao, const string aircraftModel, const vector<string>allowedAirlines )
-            -> const world::RouteProvider::Route&
-        {
-            return routeProvider->findRandomRouteTo(airportIcao, aircraftModel, allowedAirlines);
-        };
-
-        auto findRoute = 
-            [this, defaultRoute]
-            (RouteFinder finder, const string airportIcao, const string aircraftModel, const vector<string>allowedAirlines )
-            -> const world::RouteProvider::Route&
-        {
-            try
-            {
-                return finder(airportIcao, aircraftModel, allowedAirlines);
-            }
-            catch(const std::runtime_error& e)
-            {
-                m_host->writeLog("SCHEDL|Cannot find a route from/to [%s] with airlines constraint", airportIcao.c_str());
-            }
-            
-            try
-            {
-                return finder(airportIcao, aircraftModel, {});
-            }
-            catch(const std::runtime_error& e)
-            {
-                m_host->writeLog("SCHEDL|Cannot find a route from/to [%s] with aircraft only constraint", airportIcao.c_str());
-            }
-            
-            return defaultRoute;
-        };
-
         auto getAirlineCallsign = [] (const string &airlineIcao)
         {
             AirlineReferenceTable::Entry airlineDescr;
@@ -271,8 +220,8 @@ private:
             {
                 if ((index % 2) == 1)
                 {
-
-                    auto route = findRoute(routeFromFinder, m_airport->header().icao(), model, gate->airlines() );
+                    // Routes are already filtered by plane, don't try to match the route airline with the gate allowed ones for now
+                    auto route = worldRoutes->getNextRouteFrom(m_airport->header().icao());
 
                     time_t departureTime = nextDepartureTime;
                     nextDepartureTime += secondsBetweenDepartures;
@@ -281,7 +230,7 @@ private:
                 }
                 else
                 {
-                    auto route = findRoute(routeToFinder, m_airport->header().icao(), model, gate->airlines());
+                    auto route = worldRoutes->getNextRouteTo(m_airport->header().icao());
 
                     time_t arrivalTime = nextArrivalTime;
                     nextArrivalTime += secondsBetweenArrivals;

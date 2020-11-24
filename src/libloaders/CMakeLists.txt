@@ -5,6 +5,7 @@ add_library(libloaders STATIC
     libdataxp.h
     xpAirportReader.cpp
     xpFmsxReader.cpp
+    libopenflights.hpp
 )
 
 set_property(TARGET libloaders PROPERTY CXX_STANDARD 14)

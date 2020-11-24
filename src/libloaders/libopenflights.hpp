@@ -125,19 +125,49 @@ class OpenFlightDataReader
 {
 private:
     shared_ptr<HostServices> m_host;
-    shared_ptr<RandomRouteProvider> m_routes;
+    shared_ptr<WorldRoutes> m_routes;
     unordered_map<string, string> m_airportIata2Icao;
     unordered_map<string, string> m_airframeIata2Icao;
     unordered_map<int, string> m_airlinesId2Icao;
-public:
-private:
-public:
-    explicit OpenFlightDataReader(shared_ptr<HostServices> _host) : m_host(_host)
-    {
-    };
 
 public:
-    shared_ptr<RandomRouteProvider> getRoutes() {
+    explicit OpenFlightDataReader(shared_ptr<HostServices> _host) : m_host(_host){};
+
+public:
+    shared_ptr<WorldRoutes> getRoutes(const string &dataDirectoryPath, const vector<string>& allowedAircrafts)
+    {
+        default_random_engine rng = default_random_engine(chrono::system_clock::now().time_since_epoch().count());
+        return getRoutes(dataDirectoryPath, allowedAircrafts, rng);
+
+    } 
+    // This one should only ber used directly for testing purposes
+    shared_ptr<WorldRoutes> getRoutes(const string &dataDirectoryPath, const vector<string>& allowedAircrafts, default_random_engine &rng)
+    {
+        // If this is gonna last in the plugin, it might be better
+        // to generate a binary version of all this at build time.
+        if (m_routes == nullptr)
+        {
+            // Initialize airport iata -> icao conversion
+            string filePath = m_host->pathAppend(dataDirectoryPath, {"airports.dat"});
+            m_host->writeLog("OPNFLT|Reading [%s]", filePath.c_str());
+            shared_ptr<istream> input = m_host->openFileForRead(filePath);
+            readAirports(*input);
+
+            filePath = m_host->pathAppend(dataDirectoryPath, {"planes.dat"});
+            m_host->writeLog("OPNFLT|Reading [%s]", filePath.c_str());
+            input = m_host->openFileForRead(filePath);
+            readPlanes(*input);
+
+            filePath = m_host->pathAppend(dataDirectoryPath, {"airlines.dat"});
+            m_host->writeLog("OPNFLT|Reading [%s]", filePath.c_str());
+            input = m_host->openFileForRead(filePath);
+            readAirlines(*input);
+
+            filePath = m_host->pathAppend(dataDirectoryPath, {"routes.dat"});
+            m_host->writeLog("OPNFLT|Reading [%s]", filePath.c_str());
+            input = m_host->openFileForRead(filePath);
+            readRoutes(*input, allowedAircrafts, rng);
+        }
         if (m_routes == nullptr)
         {
             throw runtime_error("OPNFLT : unread routes");
@@ -224,7 +254,7 @@ public:
                                  try
                                  {
                                      int openflightAirlineId = stoi(row[0]);
-                                     string airlineIcao =(row[4].substr(1, row[4].size() - 2));
+                                     string airlineIcao = (row[4].substr(1, row[4].size() - 2));
                                      m_airlinesId2Icao[openflightAirlineId] = airlineIcao;
                                  }
                                  catch (const exception &e)
@@ -238,7 +268,7 @@ public:
     }
 
     // Parsing OpenFlights routes.dat file.
-    // Stores routes cf. world::RouteProvider::Route.
+    // Stores routes cf. world::Route.
     //
     // Columns are :
     //
@@ -251,10 +281,10 @@ public:
     // Codeshare                "Y" if this flight is a codeshare (that is, not operated by Airline, but another carrier), empty otherwise.
     // Stops                    Number of stops on this flight ("0" for direct)
     // Equipment                3-letter codes for plane type(s) generally used on this flight, separated by spaces
-    void readRoutes(istream &input)
+    void readRoutes(istream &input, const vector<string>& allowedAircrafts, default_random_engine &rng)
     {
         int lineCount = 0;
-        vector<shared_ptr<world::RouteProvider::Route>> routes;
+        vector<shared_ptr<world::Route>> routes;
         CsvParser::parse(input,
                          [&, this](CSVRow &row) {
                              lineCount++;
@@ -280,13 +310,28 @@ public:
                                          }
                                      }
                                      auto airlineIcao = getValueOrThrow(m_airlinesId2Icao, openflightAirlineId);
-                                     auto route = make_shared<world::RouteProvider::Route>(
-                                         icaoDeparture,
-                                         icaoArrival,
-                                         airlineIcao,
-                                         move(icaoAirframes));
 
-                                     routes.push_back(route);
+                                     // Compare list of allowed aircrafts if neither of them is empty
+                                     bool aircraftValid = !((allowedAircrafts.size() > 0) && (icaoAirframes.size() > 0));
+
+                                     for (auto allowedAtAirport : allowedAircrafts)
+                                     {
+                                         if (hasStringInsensitive(icaoAirframes, allowedAtAirport))
+                                         {
+                                             aircraftValid = true;
+                                             break;
+                                         }
+                                     }
+                                     if (aircraftValid)
+                                     {
+                                         auto route = make_shared<world::Route>(
+                                             icaoDeparture,
+                                             icaoArrival,
+                                             airlineIcao,
+                                             std::move(icaoAirframes));
+
+                                         routes.push_back(route);
+                                     }
                                  }
                                  catch (const exception &e)
                                  {
@@ -297,7 +342,24 @@ public:
         // A route can be invalid if we cannot find the icao code of one of the airports (stored as iata in openflights files)
         m_host->writeLog("OPNFLT| Routes parsed : %d/%d valid routes found", routes.size(), lineCount);
 
-        m_routes = make_shared<RandomRouteProvider>(m_host, routes);
+        unordered_map<string, vector<shared_ptr<Route>>> routesFrom;
+        unordered_map<string, vector<shared_ptr<Route>>> routesTo;
+        // Build the route indexes
+        for (auto route : routes)
+        {
+            routesFrom[route->departure()].push_back(route);
+            routesTo[route->destination()].push_back(route);
+        }
+
+        // And shuffle them
+        for (auto entry : routesFrom)
+        {
+            auto airport = entry.first;
+            shuffle(routesFrom[airport].begin(), routesFrom[airport].end(), rng);
+            shuffle(routesTo[airport].begin(), routesTo[airport].end(), rng);
+        }
+
+        m_routes = make_shared<WorldRoutes>(m_host, routes, routesFrom, routesTo, true);
     }
 
 private:
@@ -309,6 +371,33 @@ private:
     bool isValidString(const string &value)
     {
         return (isValidEntry(value) && (value.front() == '"') && (value.back() == '"'));
+    }
+
+    static bool iequals(const string &a, const string &b)
+    {
+        if (a.length() == b.length())
+        {
+            return equal(b.begin(), b.end(), a.begin(),
+                         [](unsigned char ca, unsigned char cb) {
+                             return (tolower(ca) == tolower(cb));
+                         });
+        }
+        return false;
+    }
+
+    static bool hasStringInsensitive(const vector<string> v, const string &s)
+    {
+        // An empty string is always valid
+        if (s.size() == 0)
+            return true;
+
+        // An empty vector is valid : there are no constraints
+        if (v.size() == 0)
+            return true;
+
+        return hasAny<string>(v, [s](string test) {
+            return (iequals(s, test));
+        });
     }
 
 private:

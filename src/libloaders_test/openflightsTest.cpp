@@ -21,63 +21,22 @@ stringstream makeStream(const vector<string> &lines)
 class OpenFlightsRoutesTest : public ::testing::Test
 {
 protected:
-    static shared_ptr<RandomRouteProvider> m_routeFinder;
+    static shared_ptr<WorldRoutes> m_routeFinder;
     static shared_ptr<TestHostServices> m_host;
 
     void SetUp() override
     {
         m_host = TestHostServices::create();
         m_host->enableLogs(true);
-
         if (m_routeFinder == nullptr)
         {
             auto ofreader = OpenFlightDataReader(m_host);
 
-            auto testAirports = makeStream({"3797,,,,\"JFK\",\"KJFK\",,,,,,,, ",
-                                            "3798,,,,\"RAL\",\"KRAL\",,,,,,,,",
-                                            "3799,,,,\"FLV\",\"KFLV\",,,,,,,,",
-                                            "3800,,,,\"WAL\",\"KWAL\",,,,,,,,",
-                                            "3801,,,,\"HMN\",\"KHMN\",,,,,,,,",
-                                            "3802,,,,\"NXX\",\"KNXX\",,,,,,,,",
-                                            "3803,,,,\"CYS\",\"KCYS\",,,,,,,,",
-                                            "3804,,,,\"SCK\",\"KSCK\",,,,,,,,",
-                                            "3805,,,,\"CHS\",\"KCHS\",,,,,,,,",
-                                            "3806,,,,\"RNO\",\"KRNO\",,,,,,,,"});
-            ofreader.readAirports(testAirports);
-            auto testPlanes = makeStream({"\"Boeing 737-800\",\"738\",\"B738\"",
-                                          "\"Airbus A320\",\"320\",\"A320\"",
-                                          "\"Cessna 172\",\"CN1\",\"C172\""});
-            ofreader.readPlanes(testPlanes);
-
-            auto testAirlines = makeStream({"137,\"Air France\",\\N,\"AF\",\"AFR\",\"AIRFRANS\",\"France\",\"Y\"",
-                                            "324,\"All Nippon Airways\",\"ANA All Nippon Airways\",\"NH\",\"ANA\",\"ALL NIPPON\",\"Japan\",\"Y\"",
-                                            "4089,\"Qantas\",\"Qantas Airways\",\"QF\",\"QFA\",\"QANTAS\",\"Australia\",\"Y\"",
-                                            "4547,\"Southwest Airlines\",\\N,\"WN\",\"SWA\",\"SOUTHWEST\",\"United States\",\"Y\"",
-                                            "5209,\"United Airlines\",\\N,\"UA\",\"UAL\",\"UNITED\",\"United States\",\"Y\""});
-            ofreader.readAirlines(testAirlines);
-            auto testRoutes = makeStream({"UA,5209,JFK,3797,RAL,3798,,0,738",
-                                          "UA,5209,RAL,3798,JFK,3797,,0,738",
-                                          "WN,4547,JFK,3797,FLV,3799,,0,738",
-                                          "WN,4547,FLV,3799,JFK,3797,,0,738",
-                                          "QF,4089,WAL,3800,HMN,3801,,0,320",
-                                          "QF,4089,HMN,3801,WAL,3800,,0,320",
-                                          "UA,5209,JFK,3797,WAL,3800,,0,738",
-                                          "UA,5209,WAL,3800,JFK,3797,,0,738",
-                                          "UA,5209,JFK,3797,HMN,3801,,0,738",
-                                          "UA,5209,HMN,3801,JFK,3797,,0,738",
-                                          "UA,5209,JFK,3797,NXX,3802,,0,738",
-                                          "UA,5209,NXX,3802,JFK,3797,,0,738",
-                                          "UA,5209,JFK,3797,CYS,3803,,0,738",
-                                          "UA,5209,CYS,3803,JFK,3797,,0,738",
-                                          "UA,5209,JFK,3797,SCK,3804,,0,738",
-                                          "UA,5209,SCK,3804,JFK,3797,,0,738",
-                                          "UA,5209,JFK,3797,CHS,3805,,0,738",
-                                          "UA,5209,CHS,3805,JFK,3797,,0,738"});
-            ofreader.readRoutes(testRoutes);
-            m_routeFinder = ofreader.getRoutes();
+            m_routeFinder = ofreader.getRoutes("./testinputs/openflights", {});
         }
     }
-    void printRoute(const world::RouteProvider::Route &route)
+
+    void printRoute(const world::Route &route)
     {
         m_host->writeLog("TEST|Route found from [%s] to [%s]", route.departure().c_str(), route.destination().c_str());
         m_host->writeLog("TEST|  Used airframes on this route :");
@@ -87,201 +46,159 @@ protected:
         }
     }
 };
-shared_ptr<RandomRouteProvider> OpenFlightsRoutesTest::m_routeFinder;
+shared_ptr<WorldRoutes> OpenFlightsRoutesTest::m_routeFinder;
 shared_ptr<TestHostServices> OpenFlightsRoutesTest::m_host;
 
 // Check that the datas delivered with the plugin are parsable (they do not throw)
 TEST(OpenFlightsRoutesTestNoFixture, parseTest)
 {
     auto host = TestHostServices::create();
-    // host->enableLogs(true);
+    shared_ptr<WorldRoutes> routes = nullptr;
+    host->enableLogs(true);
 
     auto ofreader = OpenFlightDataReader(host);
-
-    ifstream input;
-    input.exceptions(ifstream::failbit | ifstream::badbit);
-    input.open("../../assets/openflights/airports.dat");
-    EXPECT_NO_THROW(ofreader.readAirports(input));
-    EXPECT_THROW(ofreader.getRoutes(), std::runtime_error);
-    input.close();
-    input.clear();
-
-    input.open("../../assets/openflights/planes.dat");
-    EXPECT_NO_THROW(ofreader.readPlanes(input));
-    EXPECT_THROW(ofreader.getRoutes(), std::runtime_error);
-    input.close();
-    input.clear();
-
-    input.open("../../assets/openflights/airlines.dat");
-    EXPECT_NO_THROW(ofreader.readAirlines(input));
-    EXPECT_THROW(ofreader.getRoutes(), std::runtime_error);
-    input.close();
-    input.clear();
-
-    input.open("../../assets/openflights//routes.dat");
-    EXPECT_NO_THROW(ofreader.readRoutes(input));
-    EXPECT_NO_THROW(ofreader.getRoutes());
-    input.close();
-    input.clear();
+    ASSERT_NO_THROW(routes = ofreader.getRoutes("../../assets/openflights", {}));
+    // Check that some routes are available at JFK
+    ASSERT_GT(routes->routesFromCount("KJFK"), 0);
+    ASSERT_GT(routes->routesToCount("KJFK"), 0);
 }
 
 TEST_F(OpenFlightsRoutesTest, findOutboundRouteFixture)
 {
-    auto defaultRoute = world::RouteProvider::Route("", "", "", {});
-    world::RouteProvider::Route &route = defaultRoute;
+    auto defaultRoute = world::Route("", "", "", {});
+    const world::Route &route = defaultRoute;
+    vector<string> seq1;
+    vector<string> seq2;
 
-    // Never throws with valid parameters
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "B738", {"UAL"})));
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "b738", {"ual"})));
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "b738", {"qfa", "ual"})));
+    size_t nbRoutes = m_routeFinder->routesFromCount("KJFK");
 
-    // Route constraints unmet
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "B738", {"ANA", "afr"})), std::runtime_error);
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "B738", {})));
+    for (int i = 0 ; i < nbRoutes ; i++)
+    {
+        ASSERT_NO_THROW({
+            const world::Route & _route =  m_routeFinder->getNextRouteFrom("KJFK");
+            seq1.push_back(_route.destination());
+        });
+    }
+    for (int i = 0 ; i < nbRoutes ; i++)
+    {
+        ASSERT_NO_THROW({
+            const world::Route & _route =  m_routeFinder->getNextRouteFrom("KJFK");
+            seq2.push_back(_route.destination());
+        });
+    }
 
-    // Aircraft constraints unmet
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "A320", {"UAL"})), std::runtime_error);
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "", {"UAL"})));
+    // The sequence of routes is the same
+    ASSERT_TRUE(std::equal(seq1.begin(), seq1.end(), seq2.begin()));
 
-    // Both constraints unmet
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "A320", {"QFA"})), std::runtime_error);
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "A320", {})), std::runtime_error);
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "", {"QFA"})), std::runtime_error);
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KJFK", "", {})));
-
-    // No routes at known airport
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteFrom("KRNO", "", {})), std::runtime_error);
-
-    // Unknown airport
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteFrom("LFPG", "", {})), std::runtime_error);
 }
 
 TEST_F(OpenFlightsRoutesTest, findInboundRouteFixture)
 {
-    auto defaultRoute = world::RouteProvider::Route("", "", "", {});
-    world::RouteProvider::Route &route = defaultRoute;
+    auto defaultRoute = world::Route("", "", "", {});
+    const world::Route &route = defaultRoute;
+    vector<string> seq1;
+    vector<string> seq2;
 
-    // Never throws with valid parameters
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "B738", {"UAL"})));
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "b738", {"ual"})));
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "b738", {"qfa", "ual"})));
+    size_t nbRoutes = m_routeFinder->routesToCount("KJFK");
 
-    // Route constraints unmet
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "B738", {"ANA", "afr"})), std::runtime_error);
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "B738", {})));
+    for (int i = 0 ; i < nbRoutes ; i++)
+    {
+        ASSERT_NO_THROW({
+            const world::Route & _route =  m_routeFinder->getNextRouteTo("KJFK");
+            seq1.push_back(_route.departure());
+        });
+    }
+    for (int i = 0 ; i < nbRoutes ; i++)
+    {
+        ASSERT_NO_THROW({
+            const world::Route & _route =  m_routeFinder->getNextRouteTo("KJFK");
+            seq2.push_back(_route.departure());
+        });
+    }
 
-    // Aircraft constraints unmet
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "A320", {"UAL"})), std::runtime_error);
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "", {"UAL"})));
+    // The sequence of routes is the same
+    ASSERT_TRUE(std::equal(seq1.begin(), seq1.end(), seq2.begin()));
+    // Every element in a sequence is unique
+    sort(seq1.begin(), seq1.end());
+    unique(seq1.begin(), seq1.end());
+    ASSERT_EQ(seq1.size(), nbRoutes);
+}
 
-    // Both constraints unmet
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "A320", {"QFA"})), std::runtime_error);
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "A320", {})), std::runtime_error);
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "", {"QFA"})), std::runtime_error);
-    EXPECT_NO_THROW(printRoute(m_routeFinder->findRandomRouteTo("KJFK", "", {})));
+TEST_F(OpenFlightsRoutesTest, checkAircraftFiltering)
+{
+    // m_routeFinder is loaded without filter
+    ASSERT_EQ(m_routeFinder->routesToCount("KJFK"), 8);
+    ASSERT_EQ(m_routeFinder->routesToCount("KWAL"), 2);
 
-    // No routes at known airport
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteTo("KRNO", "", {})), std::runtime_error);
+    // Reload routes with only B738 routes
+    static shared_ptr<WorldRoutes> b738Finder;
+    auto ofreader = OpenFlightDataReader(m_host);
 
-    // Unknown airport
-    EXPECT_THROW(printRoute(m_routeFinder->findRandomRouteTo("LFPG", "", {})), std::runtime_error);
+    ASSERT_NO_THROW(b738Finder = ofreader.getRoutes("./testinputs/openflights", {"B738"}));
+    ASSERT_EQ(b738Finder->routesToCount("KJFK"), 8);
+    ASSERT_EQ(b738Finder->routesToCount("KWAL"), 1);
+
+    static shared_ptr<WorldRoutes> a320Finder;
+    ofreader = OpenFlightDataReader(m_host);
+
+    ASSERT_NO_THROW(a320Finder = ofreader.getRoutes("./testinputs/openflights", {"A320"}));
+    ASSERT_EQ(a320Finder->routesToCount("KJFK"), 0);
+    ASSERT_EQ(a320Finder->routesToCount("KWAL"), 1);
+    
 }
 
 TEST_F(OpenFlightsRoutesTest, checkRandomness)
 {
-    // By default, the rng is the local time, we should have different flights every time
-    m_routeFinder->setRng(std::mt19937(2));
-    auto defaultRoute = world::RouteProvider::Route("", "", "", {});
-    world::RouteProvider::Route &route = defaultRoute;
-    vector<string> seq1;
-    vector<string> seq2;
-    vector<string> seq3;
+    auto defaultRoute = world::Route("", "", "", {});
+    const world::Route &route = defaultRoute;
+    vector<string> seq1F, seq1T;
+    vector<string> seq2F, seq2T;
+    shared_ptr<WorldRoutes> s1Finder;
+    auto ofreader = OpenFlightDataReader(m_host);
+    auto rng1 = default_random_engine(1);
+    ASSERT_NO_THROW(s1Finder = ofreader.getRoutes("./testinputs/openflights", {}, rng1));
+    size_t nbRoutes = s1Finder->routesToCount("KJFK");
 
-    // Set the first RNG
-    m_routeFinder->setRng(std::mt19937(2));
-    // outbound
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteFrom("KJFK", "", {}));
-    printRoute(route);
-    seq1.push_back(route.destination());
+    m_host->writeLog("TEST|  Sequence 1");
+    for (int i = 0 ; i < nbRoutes ; i++)
+    {
+        ASSERT_NO_THROW({
+            const world::Route & _routeT =  s1Finder->getNextRouteTo("KJFK");
+            seq1T.push_back(_routeT.departure());
+            m_host->writeLog("TEST| %s -> %s", _routeT.departure().c_str(),  _routeT.destination().c_str());
+        });
+        ASSERT_NO_THROW({
+            const world::Route & _routeF =  s1Finder->getNextRouteFrom("KJFK");
+            seq1F.push_back(_routeF.destination());
+            m_host->writeLog("TEST| %s <- %s",  _routeF.destination().c_str(), _routeF.departure().c_str());
 
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteFrom("KJFK", "", {}));
-    printRoute(route);
-    seq1.push_back(route.destination());
+        });
+    }
 
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteFrom("KJFK", "", {}));
-    printRoute(route);
-    seq1.push_back(route.destination());
+    // Reload routes with another instance of the reader
+    shared_ptr<WorldRoutes> s2Finder;
+    ofreader = OpenFlightDataReader(m_host);
+    auto rng2 = default_random_engine(2);
+    ASSERT_NO_THROW(s2Finder = ofreader.getRoutes("./testinputs/openflights", {}, rng2));
+    ASSERT_EQ(s2Finder->routesToCount("KJFK"), nbRoutes);
 
-    // Inbound
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteTo("KJFK", "", {}));
-    printRoute(route);
-    seq1.push_back(route.departure());
+    m_host->writeLog("TEST|  Sequence 2");
+    for (int i = 0 ; i < nbRoutes ; i++)
+    {
+        ASSERT_NO_THROW({
+            const world::Route & _routeT =  s2Finder->getNextRouteTo("KJFK");
+            seq2T.push_back(_routeT.departure());
+            m_host->writeLog("TEST| %s -> %s", _routeT.departure().c_str(),  _routeT.destination().c_str());
+        });
+        ASSERT_NO_THROW({
+            const world::Route & _routeF =  s2Finder->getNextRouteFrom("KJFK");
+            seq2F.push_back(_routeF.destination());
+            m_host->writeLog("TEST| %s <- %s",  _routeF.destination().c_str(), _routeF.departure().c_str());
 
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteTo("KJFK", "", {}));
-    printRoute(route);
-    seq1.push_back(route.departure());
+        });
+    }
 
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteTo("KJFK", "", {}));
-    printRoute(route);
-    seq1.push_back(route.departure());
-
-    // Reset the first RNG, check that the sequence is the same
-    m_routeFinder->setRng(std::mt19937(2));
-    // outbound
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteFrom("KJFK", "", {}));
-    printRoute(route);
-    seq2.push_back(route.destination());
-
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteFrom("KJFK", "", {}));
-    printRoute(route);
-    seq2.push_back(route.destination());
-
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteFrom("KJFK", "", {}));
-    printRoute(route);
-    seq2.push_back(route.destination());
-
-    // Inbound
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteTo("KJFK", "", {}));
-    printRoute(route);
-    seq2.push_back(route.departure());
-
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteTo("KJFK", "", {}));
-    printRoute(route);
-    seq2.push_back(route.departure());
-
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteTo("KJFK", "", {}));
-    printRoute(route);
-    seq2.push_back(route.departure());
-
-    // Change the seed and check that the sequences are different
-    m_routeFinder->setRng(std::mt19937(4));
-
-    // outbound
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteFrom("KJFK", "", {}));
-    printRoute(route);
-    seq3.push_back(route.departure());
-
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteFrom("KJFK", "", {}));
-    printRoute(route);
-    seq3.push_back(route.departure());
-
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteFrom("KJFK", "", {}));
-    printRoute(route);
-    seq3.push_back(route.departure());
-
-    // Inbound
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteTo("KJFK", "", {}));
-    printRoute(route);
-    seq3.push_back(route.departure());
-
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteTo("KJFK", "", {}));
-    printRoute(route);
-    seq3.push_back(route.departure());
-
-    ASSERT_NO_THROW(route = m_routeFinder->findRandomRouteTo("KJFK", "", {}));
-    printRoute(route);
-    seq3.push_back(route.departure());
-
-    ASSERT_TRUE(std::equal(seq1.begin(), seq1.end(), seq2.begin()));
-    ASSERT_FALSE(std::equal(seq1.begin(), seq1.end(), seq3.begin()));
+    // The two sequences ared different
+    ASSERT_FALSE(std::equal(seq1F.begin(), seq1F.end(), seq2F.begin()));
+    ASSERT_FALSE(std::equal(seq1T.begin(), seq1T.end(), seq2T.begin()));
 }

@@ -141,34 +141,12 @@ private:
         m_host->writeLog("LWORLD|--- end load airports ---");
     }
 
-    shared_ptr<RandomRouteProvider> loadOpenFlightsRoutes()
+    shared_ptr<WorldRoutes> loadOpenFlightsRoutes()
     {
         OpenFlightDataReader ofdReader(m_host);
 
-        // If this is gonna last in the plugin, it might be better 
-        // to generate a binary version of all this at build time.
-
-        // Initialize airport iata -> icao conversion
-        string filePath  = m_host->getResourceFilePath({"openflights", "airports.dat"});
-        m_host->writeLog("OPENFLIGHTS|Reading [%s]", filePath.c_str());
-        shared_ptr<istream> input = m_host->openFileForRead(filePath);
-        ofdReader.readAirports(*input);
-        
-        filePath  = m_host->getResourceFilePath({"openflights", "planes.dat"});
-        m_host->writeLog("OPENFLIGHTS|Reading [%s]", filePath.c_str());
-        input = m_host->openFileForRead(filePath);
-        ofdReader.readPlanes(*input);
-
-        filePath  = m_host->getResourceFilePath({"openflights", "airlines.dat"});
-        m_host->writeLog("OPENFLIGHTS|Reading [%s]", filePath.c_str());
-        input = m_host->openFileForRead(filePath);
-        ofdReader.readAirlines(*input);
-
-        filePath  = m_host->getResourceFilePath({"openflights", "routes.dat"});
-        m_host->writeLog("OPENFLIGHTS|Reading [%s]", filePath.c_str());
-        input = m_host->openFileForRead(filePath);
-        ofdReader.readRoutes(*input);
-
-        return ofdReader.getRoutes();
+        string openFlightsDataPath  = m_host->getResourceFilePath({"openflights"});
+        // Only load routes for B738
+        return ofdReader.getRoutes(openFlightsDataPath, {"B738"});
     }
 };

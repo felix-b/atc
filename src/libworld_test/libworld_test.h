@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <functional>
+#include <fstream>
 #include "libworld.h"
 #include "intentFactory.hpp"
 #include "clearanceTypes.hpp"
@@ -304,26 +305,27 @@ namespace world
             HostServices::formatLogString(timestamp, buffer, format, args);
             va_end(args);
             cout << buffer;
+            cout.flush();
         }
-        string getResourceFilePath(const vector<string>& relativePathParts) override
+
+        string pathAppend(const string &rootPath, const vector<string>& relativePathParts)
         {
-            string fullPath = "PLUGIN_DIR";
+            string fullPath = rootPath;
             for (const string& part : relativePathParts)
             {
                 fullPath.append("/");
                 fullPath.append(part);
             }
             return fullPath;
+        }
+
+        string getResourceFilePath(const vector<string>& relativePathParts) override
+        {
+            return pathAppend("PLUGIN_DIR", relativePathParts);
         }
         string getHostFilePath(const vector<string>& relativePathParts) override
         {
-            string fullPath = "HOST_DIR";
-            for (const string& part : relativePathParts)
-            {
-                fullPath.append("/");
-                fullPath.append(part);
-            }
-            return fullPath;
+            return pathAppend("HOST_DIR", relativePathParts);
         }
         vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts) override
         {
@@ -331,7 +333,10 @@ namespace world
         }
         shared_ptr<istream> openFileForRead(const string& filePath) override
         {
-            return shared_ptr<istream>(new stringstream());
+            auto file = shared_ptr<ifstream>(new ifstream());
+            file->exceptions(ifstream::failbit | ifstream::badbit);
+            file->open(filePath);
+            return file;
         }
         void showMessageBox(const string& title, const char *format, ...) override
         {
@@ -449,7 +454,7 @@ namespace world
                 airports.push_back(factory(testHost));
             }
 
-            auto world = WorldBuilder::assembleSampleWorld(testHost, airports, shared_ptr<RandomRouteProvider>(NULL));
+            auto world = WorldBuilder::assembleSampleWorld(testHost, airports, nullptr);
             testHost->useWorld(world);
 
             return testHost;
