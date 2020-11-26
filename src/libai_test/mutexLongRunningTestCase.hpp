@@ -224,6 +224,18 @@ public:
             cell.expectedEvent.immediate = expectImmediate != 0;
             return cell;
         }
+        Cell HS_CHK_LUAW(int numberInLine,
+            const TrafficAdvisory& traffic1 = { TrafficAdvisoryType::NotSpecified },
+            const TrafficAdvisory& traffic2 = { TrafficAdvisoryType::NotSpecified }) const
+        {
+            Cell cell = HS(numberInLine);
+            cell.action = CellAction::CheckInDeparture;
+            cell.expectedEvent.type = MutexEventType::AuthorizedLineUpAndWait;
+            cell.expectedEvent.reason = DeclineReason::None;
+            m_test.addCellTraffic(cell, traffic1, traffic2);
+
+            return cell;
+        }
         Cell HSCRS_CLR(
             const TrafficAdvisory& traffic1 = { TrafficAdvisoryType::NotSpecified },
             const TrafficAdvisory& traffic2 = { TrafficAdvisoryType::NotSpecified }) const
@@ -387,6 +399,10 @@ public:
         TrafficAdvisory TA_LNDRWY(const string& typeIcao) const
         {
             return { TrafficAdvisoryType::LandedOnRunway, typeIcao };
+        }
+        TrafficAdvisory TA_CRSRWY() const
+        {
+            return { TrafficAdvisoryType::CrossingRunway, "" };
         }
     };
 private:
