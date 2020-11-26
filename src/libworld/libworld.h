@@ -2530,10 +2530,12 @@ namespace world
             const string& operatorIcao,
             const string& tailNo,
             Aircraft::Category category) = 0;
+        virtual string combineFilePath(const string& basePath, const vector<string>& relativePathParts) = 0;
         virtual string getResourceFilePath(const vector<string>& relativePathParts) = 0;
         virtual string getHostFilePath(const vector<string>& relativePathParts) = 0;
         virtual vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts) = 0;
         virtual shared_ptr<istream> openFileForRead(const string& filePath) = 0;
+        virtual bool checkFileExists(const string& filePath) = 0;
         virtual void showMessageBox(const string& title, const char *format, ...) = 0;
         virtual void writeLog(const char* format, ...) = 0;
     public:

@@ -305,9 +305,9 @@ namespace world
             va_end(args);
             cout << buffer;
         }
-        string getResourceFilePath(const vector<string>& relativePathParts) override
+        string combineFilePath(const string& basePath, const vector<string>& relativePathParts) override
         {
-            string fullPath = "PLUGIN_DIR";
+            string fullPath = basePath;
             for (const string& part : relativePathParts)
             {
                 fullPath.append("/");
@@ -315,15 +315,13 @@ namespace world
             }
             return fullPath;
         }
+        string getResourceFilePath(const vector<string>& relativePathParts) override
+        {
+            return combineFilePath("PLUGIN_DIR", relativePathParts);
+        }
         string getHostFilePath(const vector<string>& relativePathParts) override
         {
-            string fullPath = "HOST_DIR";
-            for (const string& part : relativePathParts)
-            {
-                fullPath.append("/");
-                fullPath.append(part);
-            }
-            return fullPath;
+            return combineFilePath("HOST_DIR", relativePathParts);
         }
         vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts) override
         {
@@ -332,6 +330,10 @@ namespace world
         shared_ptr<istream> openFileForRead(const string& filePath) override
         {
             return shared_ptr<istream>(new stringstream());
+        }
+        bool checkFileExists(const string& filePath) override
+        {
+            return true;
         }
         void showMessageBox(const string& title, const char *format, ...) override
         {

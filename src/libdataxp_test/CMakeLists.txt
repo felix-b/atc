@@ -11,6 +11,7 @@ add_executable(libdataxp_test
     xpAirportReaderTest.cpp
     airportOpsTest.cpp
     xpFmsxReaderTest.cpp
+    xpSceneryPacksIniReaderTest.cpp
     hydrationTest.cpp
 )
 

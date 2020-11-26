@@ -808,6 +808,68 @@ void XPAptDatReader::readAptDat(
         }
     } while (XPAirportReader::isAirportHeaderLineCode(unparsedLineCode));
 
-    m_host->writeLog("APTDAT|done loading airports, %d loaded, %d skipped.", loadedCount, skippedCount);
+    //m_host->writeLog("APTDAT|done loading airports, %d loaded, %d skipped.", loadedCount, skippedCount);
 }
 
+XPSceneryAptDatReader::XPSceneryAptDatReader(shared_ptr<HostServices> _host) :
+    m_host(_host)
+{
+}
+
+void XPSceneryAptDatReader::readSceneryAirports(
+    const XPAirportReader::QueryAirspaceCallback& onQueryAirspace,
+    const XPAirportReader::FilterAirportCallback& onFilterAirport,
+    const XPAptDatReader::AirportLoadedCallback& onAirportLoaded)
+{
+    vector<string> sceneryFolders;
+    loadSceneryFolderList(sceneryFolders);
+
+    for (const string& folder : sceneryFolders)
+    {
+        auto aptDatFile = tryOpenAptDat(folder);
+        if (!aptDatFile)
+        {
+            continue;
+        }
+
+        int loadedCount = 0;
+
+        XPAptDatReader aptDatReader(m_host);
+        aptDatReader.readAptDat(
+            *aptDatFile,
+            onQueryAirspace,
+            onFilterAirport,
+            [&](shared_ptr<Airport> airport) {
+                loadedCount++;
+                onAirportLoaded(airport);
+            }
+        );
+
+        m_host->writeLog("LSCNRY|Loaded [%d] airport(s) from [%s]", loadedCount, folder.c_str());
+    }
+}
+
+void XPSceneryAptDatReader::loadSceneryFolderList(vector<string>& list)
+{
+    string sceneryPacksIniPath = m_host->getHostFilePath({
+        "Custom Scenery", "scenery_packs.ini"
+    });
+
+    m_host->writeLog("LSCNRY|scenery_packs.ini file path [%s]", sceneryPacksIniPath.c_str());
+
+    shared_ptr<istream> iniFile = m_host->openFileForRead(sceneryPacksIniPath);
+    XPSceneryPacksIniReader iniReader(m_host);
+    iniReader.readSceneryFolderList(*iniFile, list);
+}
+
+shared_ptr<istream> XPSceneryAptDatReader::tryOpenAptDat(const string& sceneryFolder)
+{
+    string aptDatFilePath = m_host->getHostFilePath({ sceneryFolder, "Earth nav data", "apt.dat" });
+    if (m_host->checkFileExists(aptDatFilePath))
+    {
+        m_host->writeLog("LSCNRY|will load airports from [%s]", aptDatFilePath.c_str());
+        return m_host->openFileForRead(aptDatFilePath);
+    }
+
+    return nullptr;
+}

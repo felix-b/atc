@@ -140,9 +140,9 @@ public:
         return services().get<AIAircraftFactory>()->createAircraft(modelIcao, operatorIcao, tailNo, category);
     }
 
-    string getResourceFilePath(const vector<string>& relativePathParts) override
+    string combineFilePath(const string& basePath, const vector<string>& relativePathParts) override
     {
-        string fullPath = m_pluginDirectory;
+        string fullPath = basePath;
         for (const string& part : relativePathParts)
         {
             fullPath.append(m_directorySeparator);
@@ -151,17 +151,14 @@ public:
         return fullPath;
     }
 
+    string getResourceFilePath(const vector<string>& relativePathParts) override
+    {
+        return combineFilePath(m_pluginDirectory, relativePathParts);
+    }
+
     string getHostFilePath(const vector<string>& relativePathParts) override
     {
-        string resultPath = getHostDirectory();
-
-        for (const string& part : relativePathParts)
-        {
-            resultPath.append(m_directorySeparator);
-            resultPath.append(part);
-        }
-
-        return resultPath;
+        return combineFilePath(getHostDirectory(), relativePathParts);
     }
 
     vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts)
@@ -205,6 +202,12 @@ public:
         file->exceptions(ifstream::failbit | ifstream::badbit);
         file->open(filePath);
         return file;
+    }
+
+    bool checkFileExists(const string& filePath) override
+    {
+        ifstream f(filePath.c_str());
+        return f.good();
     }
 
     void showMessageBox(const string& title, const char *format, ...) override

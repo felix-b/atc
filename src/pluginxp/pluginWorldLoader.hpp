@@ -107,53 +107,27 @@ public:
 private:
     void loadAirports(vector<shared_ptr<Airport>>& airports)
     {
-        // X-Plane 11\Resources\default scenery\default apt dat\Earth nav data\apt.dat
-        string globalAptDatFilePath = m_host->getHostFilePath({
-            "Resources", "default scenery", "default apt dat", "Earth nav data", "apt.dat"
-            //TODO: what about this one? "Custom Scenery", "Global Airports", "Earth nav data", "apt.dat"
-        });
-//        string customAptDatFilePath = m_host->getHostFilePath({
-//            "Custom Scenery", "KCHA - Chattanooga Tennessee", "Earth nav data", "apt.dat"
-//        });
-
         unordered_set<string> loadedIcaos;
-
-//        m_host->writeLog("LWORLD|custom apt.dat file path [%s]", customAptDatFilePath.c_str());
-//        shared_ptr<istream> customAptDatFile = m_host->openFileForRead(customAptDatFilePath);
-//        XPAptDatReader customAptDatReader(m_host);
-//
-//        customAptDatReader.readAptDat(
-//            *customAptDatFile,
-//            WorldBuilder::assembleSampleAirportControlZone,
-//            [&](const Airport::Header header) {
-//                loadedIcaos.insert(header.icao());
-//                return true;
-//            },
-//            [this, &airports, &customAptDatFilePath](shared_ptr<Airport> airport) {
-//                m_host->writeLog("LWORLD|LOADAPT [%s] from [%s]", airport->header().icao().c_str(), customAptDatFilePath.c_str());
-//                airports.push_back(airport);
-//            }
-//        );
-
-        m_host->writeLog("LWORLD|global apt.dat file path [%s]", globalAptDatFilePath.c_str());
-        shared_ptr<istream> aptDatFile = m_host->openFileForRead(globalAptDatFilePath);
-        XPAptDatReader aptDatReader(m_host);
+        int overrideCount = 0;
 
         m_host->writeLog("LWORLD|--- begin load airports ---");
 
-        aptDatReader.readAptDat(
-            *aptDatFile,
+        XPSceneryAptDatReader aptDatReader(m_host);
+        aptDatReader.readSceneryAirports(
             WorldBuilder::assembleSampleAirportControlZone,
             [&](const Airport::Header header) {
                 bool isNewIcao = loadedIcaos.insert(header.icao()).second;
+                overrideCount += (isNewIcao ? 0 : 1);
                 return isNewIcao;
             },
             [this, &airports](shared_ptr<Airport> airport) {
-                //m_host->writeLog("LWORLD|LOADAPT %s", airport->header().icao().c_str());
                 airports.push_back(airport);
             }
         );
 
-        m_host->writeLog("LWORLD|--- end load airports ---");
+        m_host->writeLog(
+            "LWORLD|--- end load airports: [%d] loaded, [%d] overrides ---",
+            loadedIcaos.size(),
+            overrideCount);
     }
 };
