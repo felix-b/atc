@@ -2540,7 +2540,6 @@ namespace world
             const string& operatorIcao,
             const string& tailNo,
             Aircraft::Category category) = 0;
-        virtual string combineFilePath(const string& basePath, const vector<string>& relativePathParts) = 0;
         virtual string pathAppend(const string &rootPath, const vector<string>& relativePathParts) = 0;
         virtual string getResourceFilePath(const vector<string>& relativePathParts) = 0;
         virtual string getHostFilePath(const vector<string>& relativePathParts) = 0;
