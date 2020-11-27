@@ -140,9 +140,9 @@ public:
         return services().get<AIAircraftFactory>()->createAircraft(modelIcao, operatorIcao, tailNo, category);
     }
 
-    string getResourceFilePath(const vector<string>& relativePathParts) override
+    string pathAppend(const string &rootPath, const vector<string>& relativePathParts)
     {
-        string fullPath = m_pluginDirectory;
+        string fullPath = rootPath;
         for (const string& part : relativePathParts)
         {
             fullPath.append(m_directorySeparator);
@@ -151,17 +151,14 @@ public:
         return fullPath;
     }
 
+    string getResourceFilePath(const vector<string>& relativePathParts) override
+    {
+        return pathAppend(m_pluginDirectory, relativePathParts);
+    }
+
     string getHostFilePath(const vector<string>& relativePathParts) override
     {
-        string resultPath = getHostDirectory();
-
-        for (const string& part : relativePathParts)
-        {
-            resultPath.append(m_directorySeparator);
-            resultPath.append(part);
-        }
-
-        return resultPath;
+        return pathAppend(getHostDirectory(), relativePathParts);
     }
 
     vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts)

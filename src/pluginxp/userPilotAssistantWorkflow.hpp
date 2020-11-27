@@ -267,7 +267,7 @@ private:
     {
         STATE(PilotState::PerformingPreflightProcedures, {
             ON_TRIGGER(PilotTrigger::FileFlightPlan, [this]() {
-                bool filed = fileUserFlightPlan(m_flightPlanFilePath); //"D:\\TnC\\atc\\src\\libdataxp_test\\testInputs\\kjfk_kord.fmx");
+                bool filed = fileUserFlightPlan(m_flightPlanFilePath); //"D:\\TnC\\atc\\src\\libloaders_test\\testInputs\\kjfk_kord.fmx");
                 return filed
                     ? PilotState::FlightPlanFiled
                     : PilotState::PerformingPreflightProcedures;

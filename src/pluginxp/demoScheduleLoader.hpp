@@ -28,6 +28,7 @@
 #include "nativeTextToSpeechService.hpp"
 #include "pluginHostServices.hpp"
 #include "xpmp2AircraftObjectService.hpp"
+#include "airlineReferenceTable.hpp"
 
 using namespace std;
 using namespace PPL;
@@ -100,12 +101,7 @@ private:
 
     void initDemoSchedules(float loadFactor, time_t firstDepartureTime, time_t firstArrivalTime)
     {
-        unordered_map<string, string> callSignByAirline = {
-            { "DAL", "Delta" },
-            { "AAL", "American" },
-            { "SWA", "Southwest" },
-        };
-
+        auto worldRoutes = m_world->worldRoutes();
         string activeDepartureRunway;
         string activeArrivalRunway1;
         string activeArrivalRunway2;
@@ -120,10 +116,12 @@ private:
             activeArrivalRunway2 = !arrival.empty() ? arrival.at(arrival.size() - 1) : "";
         };
 
-        const auto addOutboundFlight = [this, &callSignByAirline, &activeDepartureRunway](
-            const string& model, const string& airline, int flightId, const string& destination, time_t departureTime, shared_ptr<ParkingStand> gate
+        const auto addOutboundFlight = [this, &activeDepartureRunway](
+            const string& model, const string& airline, const string& callSign, int flightId, const string& destination, time_t departureTime, shared_ptr<ParkingStand> gate
         ) {
-            string callSign = getValueOrThrow(callSignByAirline, airline);
+            m_host->writeLog("SCHEDL|adding outbound flight id[%d] [%s] -> [%s]", flightId, m_airport->header().icao().c_str(), destination.c_str());
+
+
             auto flightPlan = shared_ptr<FlightPlan>(new FlightPlan(departureTime, departureTime + 60 * 60 * 3, m_airport->header().icao(), destination));
             flightPlan->setDepartureGate(gate->name());
             flightPlan->setDepartureRunway(activeDepartureRunway);
@@ -145,12 +143,11 @@ private:
             m_world->addFlightColdAndDark(flight);
         };
 
-        const auto addInboundFlight = [this, &callSignByAirline, &activeArrivalRunway1, &activeArrivalRunway2, &arrivalIndex](
-            const string& model, const string& airline, int flightId, const string& origin, time_t arrivalTime, shared_ptr<ParkingStand> gate
+        const auto addInboundFlight = [this, &activeArrivalRunway1, &activeArrivalRunway2, &arrivalIndex](
+            const string& model, const string& airline, const string& callSign, int flightId, const string& origin, time_t arrivalTime, shared_ptr<ParkingStand> gate
         ) {
-            m_host->writeLog("SCHEDL|adding inbound flight id[%d]", flightId);
+            m_host->writeLog("SCHEDL|adding inbound flight id[%d] [%s] -> [%s]", flightId, origin.c_str(), m_airport->header().icao().c_str());
 
-            string callSign = getValueOrThrow(callSignByAirline, airline);
             string arrivalRunway = ((arrivalIndex++) % 2) == 0 ? activeArrivalRunway1 : activeArrivalRunway2;
             auto flightPlan = shared_ptr<FlightPlan>(new FlightPlan(arrivalTime - 60 * 60 * 3, arrivalTime, origin, m_airport->header().icao()));
             flightPlan->setArrivalGate(gate->name());
@@ -178,6 +175,19 @@ private:
             );
         };
 
+        auto getAirlineCallsign = [] (const string &airlineIcao)
+        {
+            AirlineReferenceTable::Entry airlineDescr;
+            if ( AirlineReferenceTable::tryFindByIcao(airlineIcao, airlineDescr))
+            {
+                return airlineDescr.callsign;
+            }
+            else
+            {
+                return string("UNKNOWN");
+            } 
+        };
+
         const float normalSecondsBetweenDepartures = 210;
         const float normalSecondsBetweenArrivals = 210;
         const float normalLoadFactor = 0.7f;
@@ -196,29 +206,35 @@ private:
         time_t nextDepartureTime = firstDepartureTime;
         time_t nextArrivalTime = firstArrivalTime;
 
-        vector<string> airlineOptions = { "DAL", "AAL", "SWA" };
+        // vector<string> airlineOptions = { "DAL", "AAL", "SWA" };
         vector<string> modelOptions = { "B738" /*, "A320"*/ };
 
         for (const auto& gate : gates)
         {
             index++;
             int flightId = 100 + index;
-            const string& airline = airlineOptions[index % airlineOptions.size()];
+            // const string& airline = airlineOptions[index % airlineOptions.size()];
             const string& model = modelOptions[index % modelOptions.size()];
             
             try
             {
                 if ((index % 2) == 1)
                 {
+                    // Routes are already filtered by plane, don't try to match the route airline with the gate allowed ones for now
+                    auto route = worldRoutes->getNextRouteFrom(m_airport->header().icao());
+
                     time_t departureTime = nextDepartureTime;
                     nextDepartureTime += secondsBetweenDepartures;
-                    addOutboundFlight(model, airline, flightId, "KMIA", departureTime, gate);
+
+                    addOutboundFlight(model, route.airline(), getAirlineCallsign(route.airline()), flightId, route.destination(), departureTime, gate);
                 }
                 else
                 {
+                    auto route = worldRoutes->getNextRouteTo(m_airport->header().icao());
+
                     time_t arrivalTime = nextArrivalTime;
                     nextArrivalTime += secondsBetweenArrivals;
-                    addInboundFlight(model, airline, flightId, m_airport->header().icao(), arrivalTime, gate);
+                    addInboundFlight(model, route.airline(), getAirlineCallsign(route.airline()), flightId, route.departure(), arrivalTime, gate);
                 }
             }
             catch(const std::exception& e)

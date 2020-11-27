@@ -35,6 +35,11 @@ namespace world
             return m_host->getWorld()->getAirport(flight->plan()->arrivalAirportIcao());
         }
 
+        shared_ptr<Airport> getCurrentAirport(shared_ptr<Flight> flight)
+        {
+            return m_host->getWorld()->getAirport(flight->currentAirportIcao());
+        }
+
         shared_ptr<ControllerPosition> getClearanceDelivery(shared_ptr<Flight> flight)
         {
             auto airport = getDepartureAirport(flight);

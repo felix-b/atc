@@ -77,6 +77,8 @@ namespace world
     class TextToSpeechService;
     class AircraftObjectService;
     class HostServices;
+    class Route;
+    class WorldRoutes;
 
     struct GeoPoint
     {
@@ -642,6 +644,7 @@ namespace world
         shared_ptr<ChangeSet> m_changeSet;
         shared_ptr<HostServices> m_host;
     private:
+        shared_ptr<WorldRoutes> m_worldRoutes;
         vector<shared_ptr<ControlledAirspace>> m_airspaces;
         vector<shared_ptr<Airport>> m_airports;
         vector<shared_ptr<Flight>> m_flights;
@@ -684,6 +687,8 @@ namespace world
             const GeoPoint& topLeft,
             const GeoPoint& bottomRight,
             function<bool(shared_ptr<Aircraft> aircraft)> predicate);
+        const shared_ptr<WorldRoutes> worldRoutes() const {return m_worldRoutes;}
+        
     public:
         time_t startTime() const { return m_startTime; }
         chrono::microseconds timestamp() const { return m_timestamp; }
@@ -1870,6 +1875,10 @@ namespace world
         const string& airlineIcao() const { return m_airlineIcao; }
         const string& flightNo() const { return m_flightNo; }
         const string& callSign() const { return m_callSign; }
+        const string& currentAirportIcao() const {
+             static const string noCurrentAirport = "";
+             return ((m_phase == Phase::EnRoute) ? noCurrentAirport : ((m_phase == Phase::Arrival) ? m_plan->arrivalAirportIcao() : m_plan->departureAirportIcao())); 
+        }
         shared_ptr<Aircraft> aircraft() const { return m_aircraft; }
         shared_ptr<Pilot> pilot() const { return m_pilot; }
         shared_ptr<FlightPlan> plan() const { return m_plan; }
@@ -2387,7 +2396,8 @@ namespace world
     public:
         static shared_ptr<World> assembleSampleWorld(
             shared_ptr<HostServices> host, 
-            const vector<shared_ptr<Airport>>& airports);
+            const vector<shared_ptr<Airport>>& airports,
+            shared_ptr<WorldRoutes> worldRoutes);
 
         static shared_ptr<Airport> assembleAirport(
             shared_ptr<HostServices> host,
@@ -2529,6 +2539,7 @@ namespace world
             const string& operatorIcao,
             const string& tailNo,
             Aircraft::Category category) = 0;
+        virtual string pathAppend(const string &rootPath, const vector<string>& relativePathParts) = 0;
         virtual string getResourceFilePath(const vector<string>& relativePathParts) = 0;
         virtual string getHostFilePath(const vector<string>& relativePathParts) = 0;
         virtual vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts) = 0;
@@ -2541,6 +2552,104 @@ namespace world
         static chrono::milliseconds getLogTimestamp();
         static void formatLogString(chrono::milliseconds timestamp, char logString[512], const char* format, va_list args);
     };
-}
+
+    class Route
+    {
+    private:
+        string m_icaoDeparture;
+        string m_icaoDestination;
+        std::vector<string> m_icaoAirframes;
+        string m_AirlineIcao;
+
+    public:
+        const string &departure() const { return m_icaoDeparture; }
+        const string &destination() const { return m_icaoDestination; }
+        const std::vector<string> &usedAirframes() const { return m_icaoAirframes; }
+        const string &airline() const { return m_AirlineIcao; }
+
+    public:
+        Route(const string _departure, const string _destination, const string _airlineIcao, std::vector<string> _airframes) : m_icaoDeparture(_departure),
+                                                                                                                               m_icaoDestination(_destination),
+                                                                                                                               m_icaoAirframes(_airframes),
+                                                                                                                               m_AirlineIcao(_airlineIcao)
+        {
+        }
+    };
+
+    class WorldRoutes
+    {
+    private:
+        shared_ptr<HostServices> m_host;
+        vector<shared_ptr<Route>> m_routes;
+        unordered_map<string, vector<shared_ptr<Route>>> m_routesFrom;
+        unordered_map<string, vector<shared_ptr<Route>>::const_iterator> m_routesFromIter;
+        unordered_map<string, vector<shared_ptr<Route>>> m_routesTo;
+        unordered_map<string, vector<shared_ptr<Route>>::const_iterator> m_routesToIter;
+
+    public:
+        WorldRoutes(shared_ptr<HostServices> _host,
+                    vector<shared_ptr<Route>> _routes,
+                    unordered_map<string, vector<shared_ptr<Route>>> _routesFrom = unordered_map<string, vector<shared_ptr<Route>>>(),
+                    unordered_map<string, vector<shared_ptr<Route>>> _routesTo = unordered_map<string, vector<shared_ptr<Route>>>(),
+                    bool _canRestart = false) : m_host(_host),
+                                                m_routes(_routes),
+                                                m_routesFrom(_routesFrom),
+                                                m_routesTo(_routesTo)
+        {
+            if ((m_routesFrom.size() == 0) && (m_routes.size() > 0))
+            {
+                for (auto route : m_routes)
+                {
+                    m_routesFrom[route->departure()].push_back(route);
+                    m_routesTo[route->destination()].push_back(route);
+                }
+            }
+            for (auto entry : m_routesFrom)
+            {
+                m_routesFromIter[entry.first] = m_routesFrom[entry.first].begin();
+                m_routesToIter[entry.first] = m_routesTo[entry.first].begin();
+            }
+        };
+
+        const Route &getNextRouteFrom(const string &fromIcao)
+        {  
+            const vector<shared_ptr<Route>> & routesFrom = getValueOrThrow(m_routesFrom, fromIcao);
+            return getNextRoute(routesFrom, m_routesFromIter[fromIcao]);
+        };
+        const Route &getNextRouteTo(const string toIcao)
+        {
+            const vector<shared_ptr<Route>> & routesTo = getValueOrThrow(m_routesTo, toIcao);
+            return getNextRoute(routesTo, m_routesToIter[toIcao]);
+        }
+        size_t routesFromCount(const string &fromIcao)
+        {
+            return m_routesFrom[fromIcao].size();
+        }
+        size_t routesToCount(const string &toIcao)
+        {
+            return m_routesTo[toIcao].size();
+        }
+
+    private:
+        const Route &getNextRoute(const vector<shared_ptr<Route>> &routes, vector<shared_ptr<Route>>::const_iterator &iter)
+        {
+            if (iter == routes.end())
+            {
+                // we could get here if there are no more routes in the vector.
+
+                // The other possibility is that someoine played with the iterator
+                throw(runtime_error("No more routes or bad iterator usage"));
+            }
+            const Route &result = **iter;
+            iter++;
+            // This should not be allowed when routes have a schedule
+            if (iter == routes.end())
+            {
+                iter = routes.begin();
+            }
+            return result;
+        };
+    };
+} // namespace world
 
 int libWorldFunc();

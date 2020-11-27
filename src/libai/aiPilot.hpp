@@ -63,7 +63,7 @@ namespace ai
             //_host->writeLog("AIPilot::AIPilot() - enter");
 
             m_flightPlan = _flight->plan();
-            m_departureAirport = _host->getWorld()->getAirport(_flight->plan()->departureAirportIcao());
+            m_departureAirport = m_helper.getDepartureAirport(_flight);
 
             aircraft()->onCommTransmission([this](shared_ptr<Intent> intent) {
                 handleCommTransmission(intent);
@@ -606,7 +606,7 @@ namespace ai
         {
             auto intentFactory = host()->services().get<IntentFactory>();
             auto ifrClearanceRequest = intentFactory->pilotIfrClearanceRequest(flight());
-            auto airport = host()->getWorld()->getAirport(flight()->plan()->departureAirportIcao());
+            auto airport = m_helper.getDepartureAirport(flight());
             auto clearanceDelivery = airport->clearanceDeliveryAt(flight()->aircraft()->location());
             auto ground = airport->groundAt(flight()->aircraft()->location());
 
@@ -638,7 +638,7 @@ namespace ai
         {
             auto intentFactory = host()->services().get<IntentFactory>();
             auto pushAndStartRequest = intentFactory->pilotPushAndStartRequest(flight());
-            auto airport = host()->getWorld()->getAirport(flight()->plan()->departureAirportIcao());
+            auto airport = m_helper.getDepartureAirport(flight());
             auto ground = airport->groundAt(flight()->aircraft()->location());
 
             return M.sequence(Maneuver::Type::DepartureAwaitPushback, "await_pushback", {
@@ -879,7 +879,7 @@ namespace ai
                 }),
                 M.transmitIntent(flight(), I.pilotReportHoldingShort(
                     flight(),
-                    m_helper.getDepartureAirport(flight()),
+                    airport,
                     runwayName,
                     holdShortEdge->name()
                 )),

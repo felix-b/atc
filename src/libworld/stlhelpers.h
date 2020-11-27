@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <functional>
 #include <time.h>
+#include <random>
+#include <iterator>
 
 #ifdef WIN32
     #define timegm _mkgmtime
@@ -93,6 +95,42 @@ const T tryFindFirst(const vector<T>& source, function<bool(const T& item)> pred
         : nullptr);
 }   
 
+// From https://gist.github.com/cbsmith/5538174
+// Randomly select an entry from an STL container
+template <typename RandomGenerator = std::default_random_engine>
+struct random_selector
+{
+	//On most platforms, you probably want to use std::random_device("/dev/urandom")()
+	random_selector(RandomGenerator g = RandomGenerator(std::random_device()()))
+		: gen(g) {}
+
+	template <typename Iter>
+	Iter select(Iter start, Iter end) {
+		std::uniform_int_distribution<> dis(0, std::distance(start, end) - 1);
+		std::advance(start, dis(gen));
+		return start;
+	}
+
+	//convenience function
+	template <typename Iter>
+	Iter operator()(Iter start, Iter end) {
+		return select(start, end);
+	}
+
+	//convenience function that works on anything with a sensible begin() and end(), and returns with a ref to the value type
+	template <typename Container>
+	auto operator()(const Container& c) -> decltype(*begin(c))& {
+		return *select(begin(c), end(c));
+	}
+
+private:
+	RandomGenerator gen;
+};
+
 bool stringStartsWith(const string& s, const string& prefix);
 
 time_t initTime(int year, int month, int day, int hour, int min, int sec);
+
+// Split a string to a vector of strings 
+std::vector<std::string> split(const std::string& s, char delimiter);
+
