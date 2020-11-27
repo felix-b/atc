@@ -140,6 +140,17 @@ public:
         return services().get<AIAircraftFactory>()->createAircraft(modelIcao, operatorIcao, tailNo, category);
     }
 
+    string combineFilePath(const string& basePath, const vector<string>& relativePathParts) override
+    {
+        string fullPath = basePath;
+        for (const string& part : relativePathParts)
+        {
+            fullPath.append(m_directorySeparator);
+            fullPath.append(part);
+        }
+        return fullPath;
+    }
+	
     string pathAppend(const string &rootPath, const vector<string>& relativePathParts)
     {
         string fullPath = rootPath;
@@ -202,6 +213,12 @@ public:
         file->exceptions(ifstream::failbit | ifstream::badbit);
         file->open(filePath);
         return file;
+    }
+
+    bool checkFileExists(const string& filePath) override
+    {
+        ifstream f(filePath.c_str());
+        return f.good();
     }
 
     void showMessageBox(const string& title, const char *format, ...) override

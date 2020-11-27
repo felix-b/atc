@@ -308,6 +308,16 @@ namespace world
             cout.flush();
         }
 
+        string combineFilePath(const string& basePath, const vector<string>& relativePathParts) override
+        {
+            string fullPath = basePath;
+            for (const string& part : relativePathParts)
+            {
+                fullPath.append("/");
+                fullPath.append(part);
+            }
+            return fullPath;
+        }
         string pathAppend(const string &rootPath, const vector<string>& relativePathParts)
         {
             string fullPath = rootPath;
@@ -337,6 +347,10 @@ namespace world
             file->exceptions(ifstream::failbit | ifstream::badbit);
             file->open(filePath);
             return file;
+        }
+        bool checkFileExists(const string& filePath) override
+        {
+            return true;
         }
         void showMessageBox(const string& title, const char *format, ...) override
         {

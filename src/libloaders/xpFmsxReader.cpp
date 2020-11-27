@@ -3,8 +3,6 @@
 // Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
 //
 #include <memory>
-#include <iostream>
-#include <utility>
 #include <system_error>
 #include "stlhelpers.h"
 #include "libworld.h"
@@ -41,43 +39,6 @@ shared_ptr<FlightPlan> XPFmsxReader::readFrom(istream &input)
     }
 
     return plan;
-}
-
-void XPFmsxReader::parseInputLines(istream &input, vector<Line> &lines)
-{
-    while (!input.eof() && !input.bad())
-    {
-        string text;
-
-        try
-        {
-            getline(input, text);
-        }
-        catch(const exception &e)
-        {
-            break;
-        }
-
-        const char *delimiterChars = ",: ";
-        size_t delimitierIndex = text.find_first_of(delimiterChars);
-        size_t lastNonSpaceIndex = text.length() - 1;
-
-        while (lastNonSpaceIndex >= 0 && strchr(delimiterChars, text.at(lastNonSpaceIndex)))
-        {
-            lastNonSpaceIndex--;
-        }
-
-        if (delimitierIndex != text.npos && delimitierIndex < lastNonSpaceIndex)
-        {
-            string token = text.substr(0, delimitierIndex);
-            string suffix = text.substr(delimitierIndex + 1, lastNonSpaceIndex - delimitierIndex);
-
-            if (!token.empty())
-            {
-                lines.push_back({ token, suffix, text.at(delimitierIndex) });
-            }
-        }
-    }
 }
 
 bool XPFmsxReader::isFmsFormat(const vector<Line> &lines)

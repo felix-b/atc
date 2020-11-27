@@ -3,8 +3,10 @@ project(libloaders VERSION 0.1.0)
 
 add_library(libloaders STATIC 
     libdataxp.h
+    tokenValueFileReaderBase.cpp
     xpAirportReader.cpp
     xpFmsxReader.cpp
+    xpSceneryPacksIniReader.cpp
     libopenflights.hpp
 )
 
