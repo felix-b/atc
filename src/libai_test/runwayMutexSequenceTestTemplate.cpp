@@ -1,3 +1,4 @@
+#if 0
 //
 // This file is part of AT&C project which simulates virtual world of air traffic and ATC.
 // Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
@@ -17,7 +18,7 @@ using namespace std;
 using namespace world;
 using namespace ai;
 
-TEST(RunwayMutexTest, waiting_at_holding_point)
+TEST(RunwayMutexTest, test5)
 {
     MutexLongRunningTestCase t;
 
@@ -30,34 +31,29 @@ TEST(RunwayMutexTest, waiting_at_holding_point)
 
     const auto& C = t.CELL;
 
-    // 101 crossing the runway
-    t.ROW(  0, { C.HSCRS_CLR()             , C.GND_GATE()             , C.GND_GATE()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW(  5, { C.CROSSING()              , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 10, { C.CROSSING()              , C.HS(1)                   , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    //                                       102 on holding point is cleared for LUAW but the taxiway between the HP and the RW is pretty long
-    t.ROW( 15, { C.CROSSING()              , C.HS_CHK_LUAW(1, C.TA_CRSRWY()) , C.NOTHING()         , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 20, { C.CROSSING()              , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 25, { C.CROSSING()              , C.NOTHING()               , C.HS(1)                   , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    //                                                                 103 checks in with tower on holding point and has to wait
-    t.ROW( 30, { C.CROSSING()              , C.NOTHING()               , C.HS_CHK_HLD_DRLINE(1, true) , C.NOTHING()            , C.NOTHING()               , C.NOTHING()                });
-    // The second part of PR #248 fixes a problem that appeared here : 103 was cleared for takeoff here (just as 101 vacated the runway)
-    t.ROW( 35, { C.CRS_VACATED()           , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW(  0, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW(  5, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 10, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 15, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 20, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 25, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 30, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 35, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
     t.ROW( 40, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    //                                       102 arrives on the runway and is cleared for takeoff
-    t.ROW( 45, { C.NOTHING()               , C.LUAW_CLRTO()            , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 50, { C.NOTHING()               , C.TO_ROLL(1)              , C.LUAW()                  , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 55, { C.NOTHING()               , C.TO_ROLL(2)              , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 60, { C.NOTHING()               , C.TO_ROLL(3)              , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 65, { C.NOTHING()               , C.TO_ROLL(4)              , C.LINEDUP()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 70, { C.NOTHING()               , C.TO_ROLL(5)              , C.LINEDUP()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 75, { C.NOTHING()               , C.TO_VACATED()            , C.LUAW_CLRTO()            , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 80, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(1)              , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 85, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(2)              , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 90, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(3)              , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW( 95, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(4)              , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 45, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 50, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 55, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 60, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 65, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 70, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 75, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 80, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 85, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 90, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 95, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
 
-    t.ROW(100, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(5)              , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
-    t.ROW(105, { C.NOTHING()               , C.NOTHING()               , C.TO_VACATED()            , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW(100, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
+    t.ROW(105, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
     t.ROW(110, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
     t.ROW(115, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
     t.ROW(120, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()                });
@@ -146,3 +142,4 @@ TEST(RunwayMutexTest, waiting_at_holding_point)
     //        t.run(0, 500, 5)
     //    );
 }
+#endif

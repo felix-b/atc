@@ -17,6 +17,7 @@ add_executable(libai_test
     runwayMutexSequenceTest3.cpp
     runwayMutexSequenceTest4.cpp
     runwayMutexSequenceTest5.cpp
+    runwayMutexSequenceTest6.cpp
 )
 
 set_property(TARGET libai_test PROPERTY CXX_STANDARD 14)

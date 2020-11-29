@@ -666,7 +666,8 @@ namespace ai
 
         bool tryClearForTakeoff(shared_ptr<FlightStrip> subject, bool& immediate, DeclineReason& reason, vector<TrafficAdvisory>& traffic)
         {
-            if (m_board.flags != RWY_STATE_VACATED && m_board.flags != RWY_STATE_AUTHORIZED_LUAW)
+            // If someone has been cleared for luaw, we don't want someone else to be cleared for take off
+            if (m_board.flags != RWY_STATE_VACATED && ((m_board.flags != RWY_STATE_AUTHORIZED_LUAW) || (subject != m_board.authorizedLuaw)))
             {
                 m_host->writeLog(
                     "AICONT|TWR-RWY-MUTEX[%s] CONFLICT CANNOT CLEAR [%s] for takeoff: state[0x%X] INCOMPATIBLE WITH TAKEOFF CLEARANCE",
@@ -676,7 +677,7 @@ namespace ai
                 reason = getDeclineReasonForCurrentState();
                 return false;
             }
-
+            
             if (subject != m_board.authorizedLuaw && !isFirstInLine(subject, m_board.departuresLine))
             {
                 reason = DeclineReason::NotFirstInLine;
@@ -976,7 +977,7 @@ namespace ai
             {
                 return DeclineReason::TrafficLanding;
             }
-            if ((m_board.flags & RWY_STATE_CLEARED_TAKEOFF) != 0)
+            if ((m_board.flags & (RWY_STATE_CLEARED_TAKEOFF | RWY_STATE_AUTHORIZED_LUAW)) != 0)
             {
                 return DeclineReason::TrafficDeparting;
             }
