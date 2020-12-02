@@ -7,6 +7,7 @@ enable_testing()
 
 add_executable(libloaders_test
     libdataxp_test.h
+    testHelpers.cpp
     cppTest.cpp
     xpAirportReaderTest.cpp
     airportOpsTest.cpp
