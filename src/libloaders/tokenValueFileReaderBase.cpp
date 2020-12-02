@@ -26,10 +26,11 @@ void TokenValueFileReaderBase::parseInputLines(istream &input, vector<Line> &lin
         }
 
         const char *delimiterChars = ",: ";
+        const char *whitespaceChars = "\r\n\t ";
         size_t delimitierIndex = text.find_first_of(delimiterChars);
         int lastNonSpaceIndex = delimitierIndex == string::npos ? -1 : (int)text.length() - 1;
 
-        while (lastNonSpaceIndex >= 0 && strchr(delimiterChars, text.at(lastNonSpaceIndex)))
+        while (lastNonSpaceIndex >= 0 && strchr(whitespaceChars, text.at(lastNonSpaceIndex)))
         {
             lastNonSpaceIndex--;
         }
