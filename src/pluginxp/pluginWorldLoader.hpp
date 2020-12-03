@@ -8,6 +8,7 @@
 #include <chrono>
 #include <queue>
 #include <vector>
+#include <unordered_set>
 
 // SDK
 #include "XPLMProcessing.h"
@@ -36,14 +37,19 @@ using namespace ai;
 class PluginWorldLoader
 {
 private:
+
     shared_ptr<HostServices> m_host;
     shared_ptr<World> m_world;
+
 public:
+
     PluginWorldLoader(shared_ptr<HostServices> _host) :
         m_host(_host)
     {
     }
+
 public:
+
     void loadWorld()
     {
         vector<shared_ptr<Airport>> airports;
@@ -90,55 +96,39 @@ public:
     }
 
     shared_ptr<World> getWorld() const { return m_world; }
-//    void stop() override
-//    {
-//        m_host->writeLog("Stopping POC # 1");
-//
-//        XPLMUnregisterFlightLoopCallback(&worldFlightLoopCallback, this);
-//        m_host->writeLog("Unregistered flight loop callback");
-//
-//        m_world.reset();
-//        m_host->writeLog("World shut down");
-//    }
-//    void setTimeFactor(uint64_t factor) override
-//    {
-//        m_timeFactor = factor;
-//    }
+
 private:
+
     void loadAirports(vector<shared_ptr<Airport>>& airports)
     {
-        // X-Plane 11\Resources\default scenery\default apt dat\Earth nav data\apt.dat
-        string globalAptDatFilePath = m_host->getHostFilePath({
-            "Resources", "default scenery", "default apt dat", "Earth nav data", "apt.dat"
-            //TODO: what about this one? "Custom Scenery", "Global Airports", "Earth nav data", "apt.dat"
-        });
-        m_host->writeLog("LWORLD|global apt.dat file path [%s]", globalAptDatFilePath.c_str());
-
-        shared_ptr<istream> aptDatFile = m_host->openFileForRead(globalAptDatFilePath);
-        XPAptDatReader aptDatReader(m_host);
+        unordered_set<string> loadedIcaos;
+        int overrideCount = 0;
 
         m_host->writeLog("LWORLD|--- begin load airports ---");
 
-        aptDatReader.readAptDat(
-            *aptDatFile,
+        XPSceneryAptDatReader aptDatReader(m_host);
+        aptDatReader.readSceneryAirports(
             WorldBuilder::assembleSampleAirportControlZone,
             [&](const Airport::Header header) {
-                return true;
-//                return (header.icao() != "LCLK");
-//                return (
-//                    header.icao() == "KJFK" ||
-//                    header.icao() == "KMIA" ||
-//                    header.icao() == "KORD" ||
-//                    header.icao() == "YBBN"
-//                );
+                bool isNewIcao = loadedIcaos.insert(header.icao()).second;
+                overrideCount += (isNewIcao ? 0 : 1);
+                return isNewIcao;
             },
             [this, &airports](shared_ptr<Airport> airport) {
-                //m_host->writeLog("LWORLD|LOADAPT %s", airport->header().icao().c_str());
                 airports.push_back(airport);
             }
         );
 
-        m_host->writeLog("LWORLD|--- end load airports ---");
+        m_host->writeLog(
+            "LWORLD|--- end load airports: [%d] loaded, [%d] unique, [%d] overrides ---",
+            airports.size(),
+            loadedIcaos.size(),
+            overrideCount);
+
+//        for (const auto& airport : airports)
+//        {
+//            m_host->writeLog("ENUAPT|%s", airport->header().icao().c_str());
+//        }
     }
 
     shared_ptr<WorldRoutes> loadOpenFlightsRoutes()

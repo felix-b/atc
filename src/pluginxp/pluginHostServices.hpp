@@ -204,6 +204,12 @@ public:
         return file;
     }
 
+    bool checkFileExists(const string& filePath) override
+    {
+        ifstream f(filePath.c_str());
+        return f.good();
+    }
+
     void showMessageBox(const string& title, const char *format, ...) override
     {
         const size_t bufferSize = 1024;

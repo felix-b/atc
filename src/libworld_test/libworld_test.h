@@ -338,6 +338,10 @@ namespace world
             file->open(filePath);
             return file;
         }
+        bool checkFileExists(const string& filePath) override
+        {
+            return true;
+        }
         void showMessageBox(const string& title, const char *format, ...) override
         {
         }

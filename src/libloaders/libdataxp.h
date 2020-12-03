@@ -74,6 +74,7 @@ private:
     void parseGroundEdge1206(istream &input);
     void parseRunwayActiveZone1204(istream& input, shared_ptr<TaxiEdge> edge);
     void parseStartupLocation1300(istream &input);
+    void parseStartupLocation15(istream &input);
     void parseMetadata1302(istream &input);
     void parseControlFrequency(int lineCode, istream &input);
     bool isControlFrequencyLine(int lineCode);
@@ -106,15 +107,37 @@ public:
         const AirportLoadedCallback& onAirportLoaded);
 };
 
-class XPFmsxReader
+class XPSceneryAptDatReader
 {
 private:
+    const shared_ptr<HostServices> m_host;
+public:
+    explicit XPSceneryAptDatReader(shared_ptr<HostServices> _host);
+public:
+    void readSceneryAirports(
+        const XPAirportReader::QueryAirspaceCallback& onQueryAirspace,
+        const XPAirportReader::FilterAirportCallback& onFilterAirport,
+        const XPAptDatReader::AirportLoadedCallback& onAirportLoaded);
+private:
+    void loadSceneryFolderList(vector<string>& list);
+    shared_ptr<istream> tryOpenAptDat(const string& sceneryFolder);
+};
+
+class TokenValueFileReaderBase
+{
+protected:
     struct Line
     {
         string token;
         string suffix;
         char delimiter;
     };
+protected:
+    void parseInputLines(istream& input, vector<Line>& lines);
+};
+
+class XPFmsxReader : TokenValueFileReaderBase
+{
 private:
     shared_ptr<HostServices> m_host;
 public:
@@ -122,7 +145,6 @@ public:
 public:
     shared_ptr<FlightPlan> readFrom(istream& input);
 private:
-    void parseInputLines(istream& input, vector<Line>& lines);
     void addValue(shared_ptr<FlightPlan> plan, const string& key, const string& value);
     bool isFmsFormat(const vector<Line>& lines);
     bool isFmxFormat(const vector<Line>& lines);
@@ -132,4 +154,14 @@ private:
     static int countCharOccurrences(const string& s, char c);
     static string trimLead(const string& s, const string& prefix);
     static string getRunwayFromApproachName(const string &approachName);
+};
+
+class XPSceneryPacksIniReader : TokenValueFileReaderBase
+{
+private:
+    shared_ptr<HostServices> m_host;
+public:
+    XPSceneryPacksIniReader(shared_ptr<HostServices> _host);
+public:
+    void readSceneryFolderList(istream& input, vector<string>& sceneryFolders);
 };

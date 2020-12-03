@@ -1554,6 +1554,7 @@ namespace world
             Airline = 0x02,
             Cargo = 0x04,
             Military = 0x08,
+            All = 0x01 | 0x02 | 0x04 | 0x08
         };
         enum class LightBits
         {
@@ -2544,6 +2545,7 @@ namespace world
         virtual string getHostFilePath(const vector<string>& relativePathParts) = 0;
         virtual vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts) = 0;
         virtual shared_ptr<istream> openFileForRead(const string& filePath) = 0;
+        virtual bool checkFileExists(const string& filePath) = 0;
         virtual void showMessageBox(const string& title, const char *format, ...) = 0;
         virtual void writeLog(const char* format, ...) = 0;
     public:

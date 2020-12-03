@@ -501,6 +501,47 @@ TEST(XPAirportReaderTest, readAptDat_parkingStands) {
     //writeAirportJson(airport, cout);
 }
 
+TEST(XPAirportReaderTest, readAptDat_parkingStands_oldCode15) {
+    XPAirportReader reader(makeHost());
+    stringstream aptDat = makeAptDat({
+        "15  40.100 -073.200 152.39 T1 5",
+        "15  40.110 -073.220 105.95 T1 3",
+    });
+
+    reader.readAirport(aptDat);
+    const auto airport = reader.getAirport();
+    const vector<shared_ptr<ParkingStand>>& parkingStands = airport->parkingStands();
+
+    shared_ptr<ParkingStand> gate_t15 = airport->getParkingStandOrThrow("T1 5");
+    shared_ptr<ParkingStand> gate_t13 = airport->getParkingStandOrThrow("T1 3");
+
+    ASSERT_EQ(parkingStands.size(), 2);
+    EXPECT_EQ(parkingStands[0], gate_t15);
+    EXPECT_EQ(parkingStands[1], gate_t13);
+
+    EXPECT_EQ(gate_t15->id(), 301);
+    EXPECT_EQ(gate_t15->name(), "T1 5");
+    EXPECT_EQ(gate_t15->type(), ParkingStand::Type::Unknown);
+    EXPECT_FLOAT_EQ(gate_t15->location().latitude(), 40.100);
+    EXPECT_FLOAT_EQ(gate_t15->location().longitude(), -73.200);
+    EXPECT_FLOAT_EQ(gate_t15->heading(), 152.39);
+    EXPECT_EQ(gate_t15->widthCode(), "F");
+    EXPECT_EQ(gate_t15->aircraftCategories(), Aircraft::Category::All);
+    EXPECT_EQ(gate_t15->operationTypes(), Aircraft::OperationType::All);
+    EXPECT_TRUE(gate_t15->airlines().empty());
+
+    EXPECT_EQ(gate_t13->id(), 302);
+    EXPECT_EQ(gate_t13->name(), "T1 3");
+    EXPECT_EQ(gate_t13->type(), ParkingStand::Type::Unknown);
+    EXPECT_FLOAT_EQ(gate_t13->location().latitude(), 40.110);
+    EXPECT_FLOAT_EQ(gate_t13->location().longitude(), -73.220);
+    EXPECT_FLOAT_EQ(gate_t13->heading(), 105.95);
+    EXPECT_EQ(gate_t13->widthCode(), "F");
+    EXPECT_EQ(gate_t13->aircraftCategories(), Aircraft::Category::All);
+    EXPECT_EQ(gate_t13->operationTypes(), Aircraft::OperationType::All);
+    EXPECT_TRUE(gate_t13->airlines().empty());
+}
+
 TEST(XPAirportReaderTest, readAptDat_skipUnrecognizedLines) {
     XPAirportReader builder(makeHost());
     stringstream aptDat = makeAptDat({
@@ -539,11 +580,11 @@ TEST(XPAirportReaderTest, findTaxiPath_KJFK_1) {
     XPAirportReader reader(makeHost());
     ifstream aptDat;
     aptDat.exceptions(ifstream::failbit | ifstream::badbit);
-    aptDat.open("../../src/libloaders_test/testInputs/apt_kjfk.dat");
+    aptDat.open(getTestInputFilePath("apt_kjfk.dat"));
     reader.readAirport(aptDat);
     ofstream jsonOutput;
     jsonOutput.exceptions(ofstream::failbit | ofstream::badbit);
-    jsonOutput.open("../../src/libloaders_test/testOutputs/taxi_kjfk_79_378.json", std::ios_base::out | std::ios_base::trunc);
+    jsonOutput.open(getTestOutputFilePath("taxi_kjfk_79_378.json"), std::ios_base::out | std::ios_base::trunc);
     
     const auto airport = reader.getAirport();
     const auto taxiNet = airport->taxiNet();
@@ -559,11 +600,11 @@ TEST(XPAirportReaderTest, findTaxiPath_KJFK_2) {
     XPAirportReader reader(makeHost());
     ifstream aptDat;
     aptDat.exceptions(ifstream::failbit | ifstream::badbit);
-    aptDat.open("../../src/libloaders_test/testInputs/apt_kjfk.dat");
+    aptDat.open(getTestInputFilePath("apt_kjfk.dat"));
     reader.readAirport(aptDat);
     ofstream jsonOutput;
     jsonOutput.exceptions(ofstream::failbit | ofstream::badbit);
-    jsonOutput.open("../../src/libloaders_test/testOutputs/taxi_kjfk_79_581.json", std::ios_base::out | std::ios_base::trunc);
+    jsonOutput.open(getTestOutputFilePath("taxi_kjfk_79_581.json"), std::ios_base::out | std::ios_base::trunc);
     
     const auto airport = reader.getAirport();
     const auto taxiNet = airport->taxiNet();
@@ -848,130 +889,10 @@ TEST(XPAptDatReaderTest, readAll_realDefaultAptDat)
 }
 #endif
 
-shared_ptr<HostServices> makeHost()
-{
-    return make_shared<TestHostServices>();
-}
-
-shared_ptr<ControlledAirspace> makeAirspace(
-    double centerLat, 
-    double centerLon, 
-    float radiusNm, 
-    const string& name)
-{
-    GeoPolygon airspaceBounds({ 
-        GeoPolygon::circleEdge(GeoPoint(centerLat, centerLon), radiusNm)
-    });
-    auto airspaceGeometry = shared_ptr<AirspaceGeometry>(new AirspaceGeometry(airspaceBounds, false, 0, true, 10000));
-    auto airspace = shared_ptr<ControlledAirspace>(new ControlledAirspace(
-        1, 
-        "USA", 
-        "TST", 
-        name, 
-        name, 
-        ControlledAirspace::Type::ControlZone, 
-        AirspaceClass::ClassB, 
-        airspaceGeometry));
-    return airspace;
-}
-
-stringstream makeAptDat(const vector<string>& lines)
-{
-    stringstream output;
-    output.exceptions(ios::failbit | ios::badbit);
-
-    for (const auto& line : lines)
-    {
-        output << line << endl;
-    }
-
-    output.seekg(0);
-    return output;
-}
-
-void openTestInputStream(const string& fileName, ifstream& str)
-{
-    string fullPath = "../../src/libloaders_test/testInputs/" + fileName;
-    str.exceptions(ifstream::failbit | ifstream::badbit);
-    str.open(fullPath.c_str());
-}
-
 void createTestOutputStream(const string& fileName, ofstream& str)
 {
-    string fullPath = "../../src/libloaders_test/testInputs/" + fileName;
+    string fullPath = getTestInputFilePath(fileName);
     str.exceptions(ofstream::failbit | ofstream::badbit);
     str.open(fullPath.c_str(), ofstream::out | ofstream::trunc);
 }
 
-void assertRunwaysExist(shared_ptr<Airport> airport, const vector<string>& names)
-{
-    for (const string& name : names)
-    {
-        try
-        {
-            auto runway = airport->getRunwayOrThrow(name);
-            runway->getEndOrThrow(name);
-        }
-        catch (const exception& e)
-        {
-            stringstream message;
-            message << "assertRunwaysExist FAILED name [" << name << "] error [" << e.what() << "]";
-            throw runtime_error(message.str());
-        }
-    }
-}
-
-void assertGatesExist(shared_ptr<Airport> airport, const vector<string>& names)
-{
-    for (const string& name : names)
-    {
-        try
-        {
-            airport->getParkingStandOrThrow(name);
-        }
-        catch (const exception& e)
-        {
-            stringstream message;
-            message << "assertGatesExist FAILED name [" << name << "] error [" << e.what() << "]";
-            throw runtime_error(message.str());
-        }
-    }
-}
-
-void assertTaxiEdgesExist(shared_ptr<Airport> airport, const unordered_set<string>& names)
-{
-    unordered_set<string> remainingNames = names;
-
-    for (auto edge : airport->taxiNet()->edges())
-    {
-        if (edge->type() == TaxiEdge::Type::Taxiway)
-        {
-            remainingNames.erase(edge->name());
-        }
-    }
-
-    if (!remainingNames.empty())
-    {
-        stringstream message;
-        message << "assertTaxiEdgesExist FAILED missing:";
-        for (const auto& name : remainingNames)
-        {
-            message << " [" << name << "]";
-        }
-        throw runtime_error(message.str());
-    }
-}
-
-// void writeAirportJson(shared_ptr<const Airport> airport, ostream& output)
-// {
-//     console::JsonWriter writer(output);
-//     console::JsonProtocol protocol(writer);
-//     protocol.writeAirport(airport);
-// }
-
-// void writeTaxiPathJson(shared_ptr<const TaxiPath> taxiPath, ostream& output)
-// {
-//     console::JsonWriter writer(output);
-//     console::JsonProtocol protocol(writer);
-//     protocol.writeTaxiPath(taxiPath);
-// }
