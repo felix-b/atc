@@ -68,6 +68,10 @@ public:
 
     int getNextRandom(int maxValue) override
     {
+        if (maxValue < 2)
+        {
+            return 0;
+        }
         uniform_int_distribution<> distribution(0, maxValue - 1);
         return distribution(m_randomGenerator);
     }
