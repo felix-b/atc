@@ -82,9 +82,9 @@ We manage the complete roadmap in the [GitHub issues](https://github.com/felix-b
 
 *DISCLAIMER: While we all want to have this plugin working as soon as possible, we do NOT commit to any specific priorities or timeframes.*
 
-# How to contribute
+# How to Get Involved
 
-## We appreciate any help, not only programming!
+## Not only programming! 
 
 If you like the idea of this project, if you would like to include a realistic ATC in your flying simulation experience as soon as possible, you can actually help this happen faster! 
 
@@ -97,7 +97,7 @@ Creating the most comprehensive and accurate ATC simulation involves a diversity
 - [*not yet possible*] Writing workflows for AI pilots and AI controllers
 - [*not yet possible*] Writing airport-specific or airspace-specific procedures
 - Improving taxi network in WED airports
-- [*not yet possible*] Specifying testing scenarios (this is **not** programming) 
+- [*not yet possible*] Specifying testing scenarios (**not** programming) 
 - Writing documentation
 - C++ programming (g++/CMake) for the plugin
 - Lua programming for automated testing
