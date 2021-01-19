@@ -70,6 +70,8 @@ If you don't have a GitHub account and you don't want to sign up, please just po
 
 AT&C is a long term project in the early development phase. Reaching the ultimate goal will take time, and our strategy is to continuously provide the most valuable functions through frequent incremental releases. 
 
+See also: [The complete up-to-date feature diagram](docs/roadmap/atc-roadmap.jpg)
+
 **[UPDATE 28-Dec-2020] After evaluating initial success of the Alpha 1, we updated the roadmap, and now working on Alpha 2. 
 You can track the progress in [our Kanban board](https://github.com/felix-b/atc/projects/1). Latest changes are available immediately in the [beeding-edge builds](https://github.com/felix-b/atc/releases).**
 
