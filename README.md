@@ -46,7 +46,7 @@ See detailed instructions in the [Alpha 1 Release Notes](https://github.com/feli
 1. GND will hand you off to TWR; comply with TWR instructions
 1. Take off according to the clearance
 
-# We <3 Feedback!
+# We :heart: Feedback!
 
 ## General feedback or suggestions
 
