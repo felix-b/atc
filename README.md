@@ -1,20 +1,17 @@
 # Welcome to virtual world of air traffic and control simulation [early development]
 
-Our goal is to create the most comprehensive and most accurate ATC (air traffic control) simulation. We simulate both air traffic and the ATC units as two halves of a whole. The platform for user interaction is the [X-Plane flight simulator](https://www.x-plane.com/), where AT&C loads as a plugin and lets the user choose between 1st-person pilot or 1st-person controller experience. The project aims at adding both educational and entertainment value for X-Plane users. **[See demo video](https://youtu.be/o0yAqO8ZdUo)**.
+Our goal is to create a comprehensive and accurate ATC (air traffic control) simulation. We simulate both air traffic and the ATC units as two halves of a whole. The platform for user interaction is the [X-Plane flight simulator](https://www.x-plane.com/), where AT&C loads as a plugin and lets the user choose between 1st-person pilot or 1st-person controller experience. The project aims at adding both educational and entertainment value for X-Plane users. **[See demo video](https://youtu.be/VeK6mcrzLWk)**.
 
-# How to use
+# Getting started
 
-We provide the ["bleeding edge" build](https://github.com/felix-b/atc/releases) for download, which we automatically update with every addition or bugfix. As the name suggests, it isn't thoroughly tested. 
+## Where to download
 
-## We value early testing by potential users
+   - The last released version (Alpha 1) is available at [AT&C Download Page at X-Plane.org](https://forums.x-plane.org/index.php?/files/file/67391-atc-air-traffic-control-plugin/)
+   - To get the very latest changes, download the [beeding-edge build](https://github.com/felix-b/atc/releases)
 
-No two computers are the same, and we want to make sure the plugin successfully runs on as many different installations as possible. If the plugin doesn't work on *your* machine, it is good for *you* to let us know, so we can fix it early. 
+## Installation
 
-We appreciate feedback and suggestions. If you would like certain features to be implemented early or in a certain way, letting us know increases the chances of this happening.
-
-## Getting started
-
-1. Go to the [bleeding edge build](https://github.com/felix-b/atc/releases) and download **airTrafficAndControl.buildNN.zip**
+1. Download **airTrafficAndControl.buildNN.zip** from one of the above sources
 1. Make sure X-Plane is not running
 1. Unpack **airTrafficAndControl.buildNN.zip** under the X-Plane **plugins** folder. Your directory structure should be like this:
    ```
@@ -31,19 +28,27 @@ We appreciate feedback and suggestions. If you would like certain features to be
                        +-- speech
                        +-- sounds
    ```
-1. Start X-Plane and start a flight at an airport or your choice
-1. In the main menu, select **Plugins** -> **Air Traffic and Control** -> **Start World**
+1. Start X-Plane
 
-### What to expect by far
+## How to Use
 
-- Switch to an external camera. You should see some AI aircraft at the gates.
-- Back to your flight deck, turn on radios and tune COM1 to Clearance Delivery, Ground, or Tower
-- Shortly you should hear chatter of AI pilots with AI controllers
-- Observe some AI aircraft landing, and other AI aircraft departing
+See detailed instructions in the [Alpha 1 Release Notes](https://github.com/felix-b/atc/wiki/Alpha-1-Release-Notes)
 
-# How to give feedback
+1. Start a flight at a towered airport with taxiways and at least 3 ATC frequencies (CLR/DEL, GND, and TWR).
+1. Observe AI aircraft parking at some of the gates
+1. Power on the radios, and tune COM1 to CLR/DEL, GND, or TWR frequency; listen to chatter of AI pilots with AI controllers
+1. Use menus to file a flight plan and transmit requests to ATC
+1. Talk to CLR/DEL to get IFR clearance
+1. When ready, talk to GND to get pushback approval
+1. When ready to taxi, talk to GND again to get the taxi clearance
+1. Taxi to departure runway as instructed; beware of AI aircraft taxiing around
+1. Report to GND when holding short of runways
+1. GND will hand you off to TWR; comply with TWR instructions
+1. Take off according to the clearance
 
-### General feedback or suggestions
+# We <3 Feedback!
+
+## General feedback or suggestions
 
 Please discuss with us! and with other potential users! Visit
 [Developing a comprehensive ATC - thoughts and demos](https://forums.x-plane.org/index.php?/forums/topic/224703-developing-a-comprehensive-atc-thoughts-and-demos/) thread on X-Plane.org forum.
@@ -57,32 +62,61 @@ Please discuss with us! and with other potential users! Visit
   - State expected behavior, step by step
   - State actual behavior, step by step
   
-Note: in order to comment or create issues, you need a free [GitHub account](https://github.com/join). If you don't have a GitHub account and you don't want to sign up, please just post [in the forum thread](https://forums.x-plane.org/index.php?/forums/topic/224703-developing-a-comprehensive-atc-thoughts-and-demos/) instead.
+Note: in order to comment or create issues on GitHub, you need a free [GitHub account](https://github.com/join). 
 
-# Current status and roadmap
+If you don't have a GitHub account and you don't want to sign up, please just post [in the forum thread](https://forums.x-plane.org/index.php?/forums/topic/224703-developing-a-comprehensive-atc-thoughts-and-demos/).
 
-**[UPDATE 25-Sep-2020] We are currently working on the minimal viable product (MVP) release, which we expect to happen in upcoming week(s). You can track the progress in [this Kanban board](https://github.com/felix-b/atc/projects/1).**
+# Status and roadmap
 
 AT&C is a long term project in the early development phase. Reaching the ultimate goal will take time, and our strategy is to continuously provide the most valuable functions through frequent incremental releases. 
 
-### Essential roadmap highlights in no particular order
+**[UPDATE 28-Dec-2020] After evaluating initial success of the Alpha 1, we updated the roadmap, and now working on Alpha 2. 
+You can track the progress in [our Kanban board](https://github.com/felix-b/atc/projects/1). Latest changes are available immediately in the [beeding-edge builds](https://github.com/felix-b/atc/releases).**
+
+**[UPDATE 11-Nov-2020] Alpha 1 was released for preview and testing.**
+
+## Alpha 1
+
+The currently available Alpha 1 version partially covers airline IFR operations at the departure airport, including:
+
+- Partially implemented Clearance Delivery, Ground, and Tower controllers
+- Arriving and departing AI traffic, limited to B738 aircraft, 3 airline liveries, and randomly generated routes
+
+## Alpha 2
+
+Available in the [bleeding-edge builds](https://github.com/felix-b/atc/releases):
+
+- Load airport data from custom scenery
+- Use historical real life routes from [OpenFlights.org](https://openflights.org/data.html) (temporarily, this creates airline/livery mismatch because now there are a lot of airlines, but still only 3 liveries).
+
+The upcoming Alpha 2 release is planned to:
+
+- Fix bugs found during Alpha 1 testing
+- Use complete BlueBell CSL package (all AI aircraft types, all available liveries)
+- Add Cessna 172 AI aircraft doing IFR (the first step into GA)
+- Add experimental speech recognition (Windows only)
+- Run on macOS
+
+## Roadmap 
+
+Essential highlights in no particular order:
 
 - Cross-platform: Windows, macOS, Linux
 - Player experience: 1-st person pilot, 1-st person controller
 - Operations: IFR/airline, VFR/GA, IFR/GA, Cargo, Helicopters, Military 
-- Controller positions: CLRDEL, GND, TWR, APP, DEP, CTR, oceanic operations
-- ATC interface: radio (speech synthesis and recognition), assistance mode (text transcript, non-speech inputs), CPDLC 
-- Human pilot AI assistance: PF/PM
+- Controller positions: CLRDEL, GND, TWR, APP, DEP, Center, oceanic operations
+- ATC interface: radio (speech synthesis and recognition), assistance mode (text transcript, mouse inputs), CPDLC 
+- Workload assistance: User Pilot-Flying & AI Pilot-Monitoring
 - AI ground handling (preferably, integration with existing ground handling solutions)
-- Offline mode, MMO mode
-- Flight schedules: real-life or fine-tuned by the user
+- Offline mode, possibly MMO mode in the future
+- AI flight routes and schedules: real-life or fine-tuned by the user
 - World console (flight tracker/planner): in X-Plane, external desktop app, website
 
 We manage the complete roadmap in the [GitHub issues](https://github.com/felix-b/atc/issues), where you can find info on every planned feature.
 
 *DISCLAIMER: While we all want to have this plugin working as soon as possible, we do NOT commit to any specific priorities or timeframes.*
 
-# How to contribute
+# How to help
 
 ## We appreciate any help, not only programming!
 
