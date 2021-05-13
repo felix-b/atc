@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Atc.Data
+namespace Atc.Data.Buffers
 {
     public interface IBufferContext
     {
@@ -14,8 +14,12 @@ namespace Atc.Data
     {
         private readonly Dictionary<Type, ITypedBuffer> _bufferByType = new();
 
-        public BufferContext()
+        public BufferContext(params Type[] recordTypes)
         {
+            foreach (var type in recordTypes)
+            {
+                _bufferByType.Add(type, TypedBuffer.CreateEmpty(type, initialCapacity: DefaultBufferCapacity));
+            }
         }
 
         private BufferContext(Stream input)
@@ -60,12 +64,19 @@ namespace Atc.Data
                 entry.Value.WriteTo(output);
             }
         }
+
+        public int RecordTypeCount => _bufferByType.Count;
+
+        public IEnumerable<Type> RecordTypes => _bufferByType.Keys;
         
+       
         public static BufferContext ReadFrom(Stream input)
         {
             return new BufferContext(input);
         }
 
-        public static BufferContextScope Current => BufferContextScope.CurrentContext;
+        public static readonly int DefaultBufferCapacity = 1024;
+        
+        public static IBufferContext Current => BufferContextScope.CurrentContext;
     }
 }

@@ -1,7 +1,7 @@
-﻿ using System;
+﻿using System;
 using System.Threading;
 
-namespace Atc.Data
+namespace Atc.Data.Buffers
 {
     public class BufferContextScope : IDisposable
     {
@@ -25,12 +25,14 @@ namespace Atc.Data
             return _context.GetBuffer<T>();
         }
 
+        public IBufferContext Context => _context;
+        
         private static readonly AsyncLocal<BufferContextScope?> _current = new();
 
         public static bool HasCurrent => _current.Value != null; 
         
-        public static BufferContextScope CurrentContext => 
-            _current.Value 
+        public static IBufferContext CurrentContext => 
+            _current.Value?.Context 
             ?? throw new InvalidOperationException("No BufferContext exists in the current scope");
     }
 }

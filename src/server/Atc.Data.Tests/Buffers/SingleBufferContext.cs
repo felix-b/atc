@@ -1,7 +1,8 @@
 ﻿using System;
 using System.IO;
+using Atc.Data.Buffers;
 
-namespace Atc.Data.Tests
+namespace Atc.Data.Tests.Buffers
 {
     public class SingleBufferContext<R> : IBufferContext, IDisposable 
         where R : struct
@@ -18,7 +19,7 @@ namespace Atc.Data.Tests
         public SingleBufferContext(Stream input)
         {
             _scope = new BufferContextScope(this);
-            Buffer = TypedBuffer.ReadFrom<R>(input);
+            Buffer = TypedBuffer.CreateFromStreamOf<R>(input);
         }
         
         public TypedBuffer<T> GetBuffer<T>() where T : struct

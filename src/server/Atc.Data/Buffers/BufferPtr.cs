@@ -1,4 +1,4 @@
-﻿namespace Atc.Data
+﻿namespace Atc.Data.Buffers
 {
     public readonly struct BufferPtr<T>
         where T : struct
