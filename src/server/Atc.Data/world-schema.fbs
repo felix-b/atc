@@ -1,0 +1,20 @@
+namespace Atc;
+
+table WorldData (fs_serializer:"greedymutable") 
+{
+    Airports: [AirportData];
+}
+
+table AirportData
+{
+    Icao: string;
+    Datum: GeoPoint;    
+}
+
+struct GeoPoint
+{
+    Lat: double;
+    Lon: double;
+}
+
+root_type WorldData;
