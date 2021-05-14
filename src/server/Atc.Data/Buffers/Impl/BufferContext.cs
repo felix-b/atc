@@ -3,13 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Atc.Data.Buffers
+namespace Atc.Data.Buffers.Impl
 {
-    public interface IBufferContext
-    {
-        public TypedBuffer<T> GetBuffer<T>() where T : struct;
-    }
-    
     public class BufferContext : IBufferContext
     {
         private readonly Dictionary<Type, ITypedBuffer> _bufferByType = new();

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using Atc.Data.Buffers.Impl;
 
 namespace Atc.Data.Buffers
 {
@@ -23,24 +24,38 @@ namespace Atc.Data.Buffers
             return context.GetBuffer<T>().Allocate(value);
         }
 
-        public static BufferPtr<StringRecord> AllocateString(this IBufferContext context, string value)
+        public static StringRef AllocateString(this IBufferContext context, string value)
+        {
+            var innerPtr = StringRecord.Allocate(value, context);
+            return new StringRef(innerPtr);
+        }
+
+        public static BufferPtr<StringRecord> AllocateStringRecord(this IBufferContext context, string value)
         {
             return StringRecord.Allocate(value, context);
         }
-        
-        public static BufferPtr<VectorRecord<T>> AllocateVector<T>(this IBufferContext context, int minBlockEntryCount)
+
+        public static Vector<T> AllocateVector<T>(this IBufferContext context, params BufferPtr<T>[] items)
             where T : struct
         {
-            return AllocateVector(context, Array.Empty<BufferPtr<T>>(), minBlockEntryCount);
+            var minBlockEntryCount = items.Length > 0 ? 0 : 10;
+            var innerPtr = context.AllocateVectorRecord<T>(items, minBlockEntryCount);
+            return new Vector<T>(innerPtr);
         }
 
-        public static BufferPtr<VectorRecord<T>> AllocateVector<T>(this IBufferContext context, params BufferPtr<T>[] items)
+        public static BufferPtr<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, int minBlockEntryCount)
             where T : struct
         {
-            return AllocateVector(context, items, minBlockEntryCount: 10);
+            return AllocateVectorRecord(context, Array.Empty<BufferPtr<T>>(), minBlockEntryCount);
         }
 
-        public static BufferPtr<VectorRecord<T>> AllocateVector<T>(this IBufferContext context, BufferPtr<T>[] items, int minBlockEntryCount)
+        public static BufferPtr<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, params BufferPtr<T>[] items)
+            where T : struct
+        {
+            return AllocateVectorRecord(context, items, minBlockEntryCount: 10);
+        }
+
+        public static BufferPtr<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, BufferPtr<T>[] items, int minBlockEntryCount)
             where T : struct
         {
             var itemsAsSpan = items.AsSpan(); 

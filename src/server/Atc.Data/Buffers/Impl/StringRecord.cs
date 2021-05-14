@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace Atc.Data.Buffers
+namespace Atc.Data.Buffers.Impl
 {
     public unsafe struct StringRecord : IVariableSizeRecord
     {

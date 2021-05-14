@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Atc.Data.Buffers
+namespace Atc.Data.Buffers.Impl
 {
     public interface ITypedBuffer
     {

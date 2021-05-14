@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Atc.Data.Buffers;
+using Atc.Data.Buffers.Impl;
 using FluentAssertions;
 using NUnit.Framework;
 

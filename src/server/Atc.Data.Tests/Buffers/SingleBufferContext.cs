@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using Atc.Data.Buffers;
+using Atc.Data.Buffers.Impl;
 
 namespace Atc.Data.Tests.Buffers
 {

@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Atc.Data.Buffers
+namespace Atc.Data.Buffers.Impl
 {
     public unsafe struct VectorBlockRecord
     {

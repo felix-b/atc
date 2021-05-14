@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using Atc.Data.Buffers;
+using Atc.Data.Buffers.Impl;
 using FluentAssertions;
 using NUnit.Framework;
 
@@ -13,7 +14,7 @@ namespace Atc.Data.Tests.Buffers
         {
             using var context = new SingleBufferContext<VectorRecord<TestItem>>();
 
-            var vector = context.AllocateVector<TestItem>(minBlockEntryCount: 4);
+            var vector = context.AllocateVectorRecord<TestItem>(minBlockEntryCount: 4);
 
             vector.Get().Count.Should().Be(0);
             vector.Get().BlockEntryCount.Should().Be(4);
@@ -27,7 +28,7 @@ namespace Atc.Data.Tests.Buffers
             var context = new BufferContext(typeof(VectorRecord<TestItem>), typeof(TestItem));
             using var scope = new BufferContextScope(context);
             
-            var vector = context.AllocateVector<TestItem>(minBlockEntryCount: 4);
+            var vector = context.AllocateVectorRecord<TestItem>(minBlockEntryCount: 4);
             var item1 = context.AllocateRecord<TestItem>(new TestItem {N = 123, X = 111.11});
             var item2 = context.AllocateRecord<TestItem>(new TestItem {N = 456, X = 222.22});
             
@@ -45,7 +46,7 @@ namespace Atc.Data.Tests.Buffers
         {
             var context = new BufferContext(typeof(VectorRecord<TestItem>), typeof(TestItem));
             using var scope = new BufferContextScope(context);
-            var vector = context.AllocateVector<TestItem>(minBlockEntryCount: 4);
+            var vector = context.AllocateVectorRecord<TestItem>(minBlockEntryCount: 4);
             var item1 = context.AllocateRecord<TestItem>(new TestItem {N = 123, X = 111.11});
             var item2 = context.AllocateRecord<TestItem>(new TestItem {N = 456, X = 222.22});
             
@@ -65,7 +66,7 @@ namespace Atc.Data.Tests.Buffers
             var context = new BufferContext(typeof(VectorRecord<TestItem>), typeof(TestItem));
             using var scope = new BufferContextScope(context);
             
-            var vector = context.AllocateVector<TestItem>(minBlockEntryCount: 2);
+            var vector = context.AllocateVectorRecord<TestItem>(minBlockEntryCount: 2);
             var item1 = context.AllocateRecord<TestItem>(new TestItem {N = 123, X = 111.11});
             var item2 = context.AllocateRecord<TestItem>(new TestItem {N = 456, X = 222.22});
             var item3 = context.AllocateRecord<TestItem>(new TestItem {N = 789, X = 333.33});
@@ -79,7 +80,7 @@ namespace Atc.Data.Tests.Buffers
             vector.Get().BlockAllocatedEntryCount.Should().Be(2);
             vector.Get().NextBlock.HasValue.Should().BeTrue();
 
-            var nextBlock = vector.Get().NextBlock.Value;
+            var nextBlock = vector.Get().NextBlock!.Value;
             nextBlock.Get().Count.Should().Be(1);
             nextBlock.Get().BlockEntryCount.Should().Be(4);
             nextBlock.Get().BlockAllocatedEntryCount.Should().Be(1);
@@ -91,7 +92,7 @@ namespace Atc.Data.Tests.Buffers
         {
             var context = new BufferContext(typeof(VectorRecord<TestItem>), typeof(TestItem));
             using var scope = new BufferContextScope(context);
-            var vector = context.AllocateVector<TestItem>(minBlockEntryCount: 2);
+            var vector = context.AllocateVectorRecord<TestItem>(minBlockEntryCount: 2);
             var item1 = context.AllocateRecord<TestItem>(new TestItem {N = 123, X = 111.11});
             var item2 = context.AllocateRecord<TestItem>(new TestItem {N = 456, X = 222.22});
             var item3 = context.AllocateRecord<TestItem>(new TestItem {N = 789, X = 333.33});
@@ -126,7 +127,7 @@ namespace Atc.Data.Tests.Buffers
             var contextBefore = new BufferContext(typeof(VectorRecord<TestItem>), typeof(TestItem));
             using (new BufferContextScope(contextBefore))
             {
-                vector = contextBefore.AllocateVector<TestItem>(minBlockEntryCount: 2);
+                vector = contextBefore.AllocateVectorRecord<TestItem>(minBlockEntryCount: 2);
                 vector.Get().Add(contextBefore.AllocateRecord<TestItem>(new TestItem {N = 123, X = 111.11}));
                 vector.Get().Add(contextBefore.AllocateRecord<TestItem>(new TestItem {N = 456, X = 222.22}));
                 vector.Get().Add(contextBefore.AllocateRecord<TestItem>(new TestItem {N = 789, X = 333.33}));
