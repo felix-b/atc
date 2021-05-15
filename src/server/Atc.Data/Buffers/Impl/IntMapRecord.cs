@@ -123,7 +123,7 @@ namespace Atc.Data.Buffers.Impl
 
         private BufferPtr<TValue>? TryMatchEntryAndGetValue(int key, ref VectorRecord<MapRecordEntry> entryVector)
         {
-            Console.WriteLine(entryVector.ToString());
+            //Console.WriteLine(entryVector.ToString());
             
             for (int i = 0; i < entryVector.Count; i++)
             {
