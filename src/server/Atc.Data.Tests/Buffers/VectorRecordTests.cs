@@ -70,20 +70,22 @@ namespace Atc.Data.Tests.Buffers
             var item1 = context.AllocateRecord<TestItem>(new TestItem {N = 123, X = 111.11});
             var item2 = context.AllocateRecord<TestItem>(new TestItem {N = 456, X = 222.22});
             var item3 = context.AllocateRecord<TestItem>(new TestItem {N = 789, X = 333.33});
+            var item4 = context.AllocateRecord<TestItem>(new TestItem {N = 101112, X = 444.44});
             
             vector.Get().Add(item1);
             vector.Get().Add(item2);
             vector.Get().Add(item3);
+            vector.Get().Add(item4);
             
-            vector.Get().Count.Should().Be(3);
+            vector.Get().Count.Should().Be(4);
             vector.Get().BlockEntryCount.Should().Be(2);
             vector.Get().BlockAllocatedEntryCount.Should().Be(2);
             vector.Get().NextBlock.HasValue.Should().BeTrue();
 
             var nextBlock = vector.Get().NextBlock!.Value;
-            nextBlock.Get().Count.Should().Be(1);
+            nextBlock.Get().Count.Should().Be(2);
             nextBlock.Get().BlockEntryCount.Should().Be(4);
-            nextBlock.Get().BlockAllocatedEntryCount.Should().Be(1);
+            nextBlock.Get().BlockAllocatedEntryCount.Should().Be(2);
             nextBlock.Get().NextBlock.HasValue.Should().BeFalse();
         }
 

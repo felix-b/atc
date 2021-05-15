@@ -1,4 +1,4 @@
-﻿namespace Atc.Data
+﻿namespace Atc.Data.Primitives
 {
     public readonly struct GeoPoint
     {

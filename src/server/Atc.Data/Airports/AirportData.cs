@@ -1,7 +1,7 @@
 ﻿using Atc.Data.Buffers;
-using Atc.Data.Buffers.Impl;
+using Atc.Data.Primitives;
 
-namespace Atc.Data
+namespace Atc.Data.Airports
 {
     public struct AirportData
     {

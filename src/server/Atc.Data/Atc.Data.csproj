@@ -7,4 +7,9 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
+    <ItemGroup>
+      <Folder Include="Navaids" />
+      <Folder Include="Traffic" />
+    </ItemGroup>
+
 </Project>
