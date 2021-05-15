@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -15,6 +16,11 @@ namespace Atc.Data.Buffers.Impl
     public interface IVariableSizeRecord
     {
         int SizeOf();
+    }
+
+    public interface IRecordDebugUtility
+    {
+        void DumpToConsole();
     }
 
     [AttributeUsage(AttributeTargets.Struct, AllowMultiple = false)]
@@ -62,6 +68,7 @@ namespace Atc.Data.Buffers.Impl
         private byte[] _buffer;
         private int _count;
         private int _freeByteIndex = 0;
+        private readonly List<int> _recordPtrs = new List<int>();
 
         public TypedBuffer(Stream input)
         {
@@ -88,6 +95,11 @@ namespace Atc.Data.Buffers.Impl
                 throw new InvalidDataException($"Stored Count value cannot be negative");
             }
 
+            for (int i = 0; i < _count; i++)
+            {
+                _recordPtrs.Add(reader.ReadInt32());
+            }
+            
             InitialCapacity = _count; 
             _freeByteIndex = storedSize;
             _buffer = new byte[storedSize];
@@ -163,6 +175,7 @@ namespace Atc.Data.Buffers.Impl
             var byteIndex = _freeByteIndex;
             _freeByteIndex += sizeInBytes;
             _count++;
+            _recordPtrs.Add(byteIndex);
             
             var ptr = new BufferPtr<T>(byteIndex);
             return ptr;
@@ -170,13 +183,48 @@ namespace Atc.Data.Buffers.Impl
 
         public void WriteTo(Stream output)
         {
-            using var writer = new BinaryWriter(output, Encoding.UTF8, leaveOpen: true);
+            using var writer = new BinaryWriter(output, Encoding.Unicode, leaveOpen: true);
 
             writer.Write(_freeByteIndex);
             writer.Write(RecordSize);
             writer.Write(_count);
+
+            for (int i = 0; i < _count; i++)
+            {
+                writer.Write(_recordPtrs[i]);
+            }
+            
             output.Write(_buffer, 0, _freeByteIndex);
             output.Flush();
+        }
+
+        public void DumpToConsole()
+        {
+            Console.WriteLine($"###### BEGIN TYPED BUFFER <{typeof(T).FullName}> ######");
+            Console.WriteLine($"RecordSize     = {RecordSize}");
+            Console.WriteLine($"IsVarRecSize   = {IsVariableRecordSize}");
+            Console.WriteLine($"RecordCount    = {RecordCount}");
+            Console.WriteLine($"TotalBytes     = {TotalBytes}");
+            Console.WriteLine($"AllocatedBytes = {AllocatedBytes}");
+
+            for (int i = 0; i < _count; i++)
+            {
+                var ptr = new BufferPtr<T>(_recordPtrs[i]);
+                ref T record = ref ptr.Get();
+                Console.WriteLine($"=== begin RECORD {i}/{_count} ===");
+                Console.WriteLine(record.ToString());
+                Console.WriteLine($"=== end RECORD {i}/{_count} ===");
+            }
+            
+            Console.WriteLine($"###### END TYPED BUFFER <{typeof(T).FullName}> ######");
+            Console.WriteLine();
+        }
+
+        public void DumpToDisk(string filePath)
+        {
+            using var file = File.Create(filePath);
+            WriteTo(file);
+            file.Flush();
         }
         
         public int RecordCount => _count;

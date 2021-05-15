@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
 using Atc.Data.Buffers.Impl;
 
 namespace Atc.Data.Buffers
@@ -43,19 +44,20 @@ namespace Atc.Data.Buffers
             return new Vector<T>(innerPtr);
         }
 
-        public static BufferPtr<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, int minBlockEntryCount)
+        public static IntMap<TValue> AllocateIntMap<TValue>(this IBufferContext context, int bucketCount = 1024)
+            where TValue : struct
+        {
+            var innerPtr = IntMapRecord<TValue>.Allocate(bucketCount, context);
+            return new IntMap<TValue>(innerPtr);
+        }
+
+        internal static BufferPtr<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, int minBlockEntryCount)
             where T : struct
         {
             return AllocateVectorRecord(context, Array.Empty<BufferPtr<T>>(), minBlockEntryCount);
         }
 
-        public static BufferPtr<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, params BufferPtr<T>[] items)
-            where T : struct
-        {
-            return AllocateVectorRecord(context, items, minBlockEntryCount: 10);
-        }
-
-        public static BufferPtr<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, BufferPtr<T>[] items, int minBlockEntryCount)
+        internal static BufferPtr<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, BufferPtr<T>[] items, int minBlockEntryCount)
             where T : struct
         {
             var itemsAsSpan = items.AsSpan(); 
