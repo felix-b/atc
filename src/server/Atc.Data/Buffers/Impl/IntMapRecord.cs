@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Atc.Data.Buffers.Impl
 {
-    [RecordOptions(SizeOfType = typeof(MapInternalState))]
+    //[RecordOptions(SizeOfType = typeof(MapInternalState))]
     public unsafe struct IntMapRecord<TValue> : IVariableSizeRecord
         where TValue : struct
     {

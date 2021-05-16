@@ -8,27 +8,6 @@ using System.Text;
 
 namespace Atc.Data.Buffers.Impl
 {
-    public interface ITypedBuffer
-    {
-        void WriteTo(Stream output);
-    }
-
-    public interface IVariableSizeRecord
-    {
-        int SizeOf();
-    }
-
-    public interface IRecordDebugUtility
-    {
-        void DumpToConsole();
-    }
-
-    [AttributeUsage(AttributeTargets.Struct, AllowMultiple = false)]
-    public class RecordOptionsAttribute : Attribute
-    {
-        public Type? SizeOfType { get; set; }
-    }
-
     public class TypedBuffer
     {
         public static ITypedBuffer CreateEmpty(Type recordType, int initialCapacity)
@@ -59,11 +38,9 @@ namespace Atc.Data.Buffers.Impl
     public unsafe class TypedBuffer<T> : ITypedBuffer
         where T : struct
     {
-        public readonly int RecordSize = GetSizeOfRecord();
-
-        public readonly bool IsVariableRecordSize = typeof(T).IsAssignableTo(typeof(IVariableSizeRecord));
-        public readonly bool ReadOnly;
-        public readonly int InitialCapacity;
+        private readonly StructTypeHandler _typeHandler;
+        private readonly bool _readOnly;
+        private readonly int _initialCapacity;
 
         private byte[] _buffer;
         private int _count;
@@ -72,7 +49,8 @@ namespace Atc.Data.Buffers.Impl
 
         public TypedBuffer(Stream input)
         {
-            ReadOnly = true;
+            _typeHandler = new StructTypeHandler(typeof(T));
+            _readOnly = true;
 
             using var reader = new BinaryReader(input, Encoding.UTF8, leaveOpen: true);
 
@@ -83,10 +61,10 @@ namespace Atc.Data.Buffers.Impl
             }
             
             var storedRecordSize = reader.ReadInt32();
-            if (storedRecordSize != RecordSize)
+            if (storedRecordSize != _typeHandler.Size)
             {
                 throw new InvalidDataException(
-                    $"Expected record size of {RecordSize}, but stored record size is {storedRecordSize}");
+                    $"Expected record size of {_typeHandler.Size}, but stored record size is {storedRecordSize}");
             }
 
             _count = reader.ReadInt32();
@@ -100,7 +78,7 @@ namespace Atc.Data.Buffers.Impl
                 _recordPtrs.Add(reader.ReadInt32());
             }
             
-            InitialCapacity = _count; 
+            _initialCapacity = _count; 
             _freeByteIndex = storedSize;
             _buffer = new byte[storedSize];
             input.Read(_buffer, 0, _buffer.Length);
@@ -108,11 +86,12 @@ namespace Atc.Data.Buffers.Impl
 
         public TypedBuffer(int initialCapacity)
         {
-            ReadOnly = false;
-            InitialCapacity = initialCapacity > 0 
+            _typeHandler = new StructTypeHandler(typeof(T));
+            _readOnly = false;
+            _initialCapacity = initialCapacity > 0 
                 ? initialCapacity 
                 : throw new ArgumentOutOfRangeException(nameof(initialCapacity), "Must be positive");
-            _buffer = new byte[InitialCapacity * RecordSize];
+            _buffer = new byte[_initialCapacity * _typeHandler.Size];
         }
 
         public ref T this[int firstByteIndex]
@@ -133,7 +112,7 @@ namespace Atc.Data.Buffers.Impl
 
         public BufferPtr<T> Allocate()
         {
-            return InternalAllocate(RecordSize);
+            return InternalAllocate(_typeHandler.Size);
         }
 
         public BufferPtr<T> Allocate(int sizeInBytes)
@@ -143,9 +122,9 @@ namespace Atc.Data.Buffers.Impl
 
         public BufferPtr<T> Allocate(in T value)
         {
-            var size = IsVariableRecordSize
+            var size = _typeHandler.IsVariableSize
                 ? ((IVariableSizeRecord)value).SizeOf()
-                : RecordSize;
+                : _typeHandler.Size;
             
             var ptr = InternalAllocate(size);
             ref T recordRef = ref this[ptr.ByteIndex];
@@ -153,9 +132,23 @@ namespace Atc.Data.Buffers.Impl
             return ptr;
         }
 
+        public ref byte[] GetRawBytesRef(int firstByteIndex)
+        {
+
+            if (firstByteIndex < 0 || firstByteIndex >= _buffer.Length)
+            {
+                throw new IndexOutOfRangeException();
+            }
+
+            fixed (byte* p = &_buffer[firstByteIndex])
+            {
+                return ref Unsafe.AsRef<byte[]>(p);
+            }
+        }
+
         private BufferPtr<T> InternalAllocate(int sizeInBytes)
         {
-            if (ReadOnly)
+            if (_readOnly)
             {
                 throw new InvalidOperationException("Cannot allocate in this TypeStream - it is read-only");
             }
@@ -167,7 +160,7 @@ namespace Atc.Data.Buffers.Impl
                 
             if (_freeByteIndex + sizeInBytes > _buffer.Length)
             {
-                var temp = new byte[_buffer.Length + InitialCapacity * RecordSize];
+                var temp = new byte[_buffer.Length + _initialCapacity * _typeHandler.Size];
                 Array.Copy(_buffer, temp, _buffer.Length);
                 _buffer = temp;
             }
@@ -186,7 +179,7 @@ namespace Atc.Data.Buffers.Impl
             using var writer = new BinaryWriter(output, Encoding.Unicode, leaveOpen: true);
 
             writer.Write(_freeByteIndex);
-            writer.Write(RecordSize);
+            writer.Write(_typeHandler.Size);
             writer.Write(_count);
 
             for (int i = 0; i < _count; i++)
@@ -201,8 +194,8 @@ namespace Atc.Data.Buffers.Impl
         public void DumpToConsole()
         {
             Console.WriteLine($"###### BEGIN TYPED BUFFER <{typeof(T).FullName}> ######");
-            Console.WriteLine($"RecordSize     = {RecordSize}");
-            Console.WriteLine($"IsVarRecSize   = {IsVariableRecordSize}");
+            Console.WriteLine($"RecordSize     = {_typeHandler.Size}");
+            Console.WriteLine($"IsVarRecSize   = {_typeHandler.IsVariableSize}");
             Console.WriteLine($"RecordCount    = {RecordCount}");
             Console.WriteLine($"TotalBytes     = {TotalBytes}");
             Console.WriteLine($"AllocatedBytes = {AllocatedBytes}");
@@ -220,34 +213,40 @@ namespace Atc.Data.Buffers.Impl
             Console.WriteLine();
         }
 
+       
         public void DumpToDisk(string filePath)
         {
             using var file = File.Create(filePath);
             WriteTo(file);
             file.Flush();
         }
+
+        public Memory<byte> GetRecordMemory(int index, out int offset)
+        {
+            offset = _recordPtrs[index];
+            var nextOffset = index < _count - 1 ? _recordPtrs[index + 1] : _freeByteIndex;
+            var size = nextOffset - offset;
+            return _buffer.AsMemory(offset, size);
+        }
+
+        public bool ReadOnly => _readOnly;
         
+        public Type RecordType => typeof(T);
+
+        public StructTypeHandler TypeHandler => _typeHandler;
+
+        public int RecordSize => _typeHandler.Size;
+
+        public bool IsVariableRecordSize => _typeHandler.IsVariableSize;
+
         public int RecordCount => _count;
+
+        public int InitialCapacity => _initialCapacity;
 
         public int TotalBytes => _buffer.Length;
 
         public int AllocatedBytes => _freeByteIndex;
 
-        private static int GetSizeOfRecord()
-        {
-            var recordType = typeof(T);
-            if (!recordType.IsGenericType)
-            {
-                return Marshal.SizeOf(recordType);
-            }
-
-            var optionsAttribute = recordType.GetCustomAttribute<RecordOptionsAttribute>();
-            if (optionsAttribute != null && optionsAttribute.SizeOfType != null)
-            {
-                return Marshal.SizeOf(optionsAttribute.SizeOfType);
-            }
-
-            throw new InvalidDataException("Record of generic type must specify SizeOfType in RecordOptionsAttribute");
-        }
+        public IReadOnlyList<int> RecordOffsets => _recordPtrs;
     }
 }

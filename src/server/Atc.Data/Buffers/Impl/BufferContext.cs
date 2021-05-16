@@ -45,6 +45,11 @@ namespace Atc.Data.Buffers.Impl
             return (TypedBuffer<T>)_bufferByType[typeof(T)];
         }
 
+        public ITypedBuffer GetBuffer(Type recordType)
+        {
+            return _bufferByType[recordType];
+        }
+
         public void WriteTo(Stream output)
         {
             using var writer = new BinaryWriter(output, Encoding.UTF8, leaveOpen: true);
@@ -58,6 +63,11 @@ namespace Atc.Data.Buffers.Impl
 
                 entry.Value.WriteTo(output);
             }
+        }
+        
+        public BufferContextWalker GetWalker()
+        {
+            return new BufferContextWalker(this);
         }
 
         public int RecordTypeCount => _bufferByType.Count;

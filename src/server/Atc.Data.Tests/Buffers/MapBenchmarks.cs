@@ -12,7 +12,7 @@ namespace Atc.Data.Tests.Buffers
     [TestFixture]
     public class MapBenchmarks
     {
-        [Test, Ignore("WIP")]
+        [Test]
         public void Benchmarks()
         {
             TimeSpan tPopulateDicitonary, tPopulateIntMap, tLookupDictionary, tLookupIntMap;

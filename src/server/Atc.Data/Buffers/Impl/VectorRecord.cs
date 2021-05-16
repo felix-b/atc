@@ -15,7 +15,7 @@ namespace Atc.Data.Buffers.Impl
         public fixed int entryPtrs[1];
     }
     
-    [RecordOptions(SizeOfType = typeof(VectorBlockState))]
+    //[RecordOptions(SizeOfType = typeof(VectorBlockState))]
     public unsafe struct VectorRecord<T> : IVariableSizeRecord
         where T : struct
     {

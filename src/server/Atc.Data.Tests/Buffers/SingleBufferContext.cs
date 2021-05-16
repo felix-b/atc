@@ -33,6 +33,11 @@ namespace Atc.Data.Tests.Buffers
             return (TypedBuffer<T>)(object)Buffer;
         }
 
+        public BufferContextWalker GetWalker()
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _scope.Dispose();
