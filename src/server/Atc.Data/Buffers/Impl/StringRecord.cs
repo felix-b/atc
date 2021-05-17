@@ -20,17 +20,6 @@ namespace Atc.Data.Buffers.Impl
             _chars[0] = '\0';
         }
 
-        private void SetValue(string value)
-        {
-            _length = value.Length;
-            _inflated = null;
-
-            for (int i = 0; i < value.Length; i++)
-            {
-                _chars[i] = value[i];
-            }
-        }
-
         public override string ToString()
         {
             if (_inflated == null)
@@ -50,8 +39,20 @@ namespace Atc.Data.Buffers.Impl
         }
 
         public string Str => ToString();
-        
-        private static readonly int _baseSize = Marshal.SizeOf(typeof(StringRecord));
+
+        internal void SetValue(string value)
+        {
+            _length = value.Length;
+            _inflated = null;
+
+            for (int i = 0; i < value.Length; i++)
+            {
+                _chars[i] = value[i];
+            }
+        }
+
+        //TODO: having a managed ref changes the layout; remove _inflated, to use simple layout assumptions  
+        private static readonly int _baseSize = 18;//Marshal.SizeOf(typeof(StringRecord));
 
         public static BufferPtr<StringRecord> Allocate(string value, IBufferContext? context = null)
         {

@@ -1,18 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Atc.Data.Buffers.Impl
 {
-    //[RecordOptions(SizeOfType = typeof(MapInternalState))]
     public unsafe struct IntMapRecord<TValue> : IVariableSizeRecord
         where TValue : struct
     {
-        private MapInternalState _state;
+        private int _itemCount;
+        private int _bucketCount;
+        private fixed int _bucketPtrs[1];
 
         public int SizeOf()
         {
-            return SizeOf(_state.BucketCount);
+            return SizeOf(_bucketCount);
         }
         
         public bool Contains(int key)
@@ -42,13 +44,13 @@ namespace Atc.Data.Buffers.Impl
         public BufferPtr<TValue>? TryGetValue(int key)
         {
             var bucketIndex = GetBucketIndex(key);
-            if (_state.BucketPtrs[bucketIndex] < 0)
+            if (_bucketPtrs[bucketIndex] < 0)
             {
                 return null;
             }
             
             // Console.WriteLine($"======= BEGIN TRY GET VALUE: {key} =========");
-            // Console.WriteLine($">>> KEY [${key}] -> BUCKET PTR [{_state.BucketPtrs[bucketIndex]}]");
+            // Console.WriteLine($">>> KEY [${key}] -> BUCKET PTR [{BucketPtrs[bucketIndex]}]");
 
             ref VectorRecord<MapRecordEntry> entryVector = ref GetOrAddEntryVector(bucketIndex);
 
@@ -75,7 +77,7 @@ namespace Atc.Data.Buffers.Impl
             }
         }
 
-        public int Count => _state.ItemCount;
+        public int Count => _itemCount;
 
         public IEnumerable<int> Keys => throw new NotImplementedException();
 
@@ -83,12 +85,12 @@ namespace Atc.Data.Buffers.Impl
 
         internal void Initialize(int bucketCount)
         {
-            _state.ItemCount = 0;
-            _state.BucketCount = bucketCount;
+            _itemCount = 0;
+            _bucketCount = bucketCount;
 
             for (int i = 0; i < bucketCount; i++)
             {
-                _state.BucketPtrs[i] = -1;
+                _bucketPtrs[i] = -1;
             }
         }
 
@@ -116,7 +118,7 @@ namespace Atc.Data.Buffers.Impl
                 ValuePtr = value.ByteIndex
             });
             entryVector.Add(newEntryPtr);
-            _state.ItemCount++;
+            _itemCount++;
 
             return true;
         }
@@ -140,7 +142,7 @@ namespace Atc.Data.Buffers.Impl
 
         private ref VectorRecord<MapRecordEntry> GetOrAddEntryVector(int bucketIndex)
         {
-            var ptrValue = _state.BucketPtrs[bucketIndex];
+            var ptrValue = _bucketPtrs[bucketIndex];
             var entryVectorPtr = ptrValue >= 0
                 ? new BufferPtr<VectorRecord<MapRecordEntry>>(ptrValue)
                 : VectorRecord<MapRecordEntry>.Allocate(
@@ -149,7 +151,7 @@ namespace Atc.Data.Buffers.Impl
 
             if (ptrValue < 0)
             {
-                _state.BucketPtrs[bucketIndex] = entryVectorPtr.ByteIndex;
+                _bucketPtrs[bucketIndex] = entryVectorPtr.ByteIndex;
             }
 
             return ref entryVectorPtr.Get();
@@ -157,11 +159,11 @@ namespace Atc.Data.Buffers.Impl
 
         private int GetBucketIndex(int key)
         {
-            var bucketIndex = key % _state.BucketCount;
+            var bucketIndex = key % _bucketCount;
             return bucketIndex;
         }
-        
-        private static readonly int _baseSize = Marshal.SizeOf(typeof(MapInternalState));
+
+        private static readonly int _baseSize = Unsafe.SizeOf<IntMapRecord<TValue>>();
         
         public static BufferPtr<IntMapRecord<TValue>> Allocate(int bucketCount, IBufferContext? context = null)
         {
@@ -182,12 +184,5 @@ namespace Atc.Data.Buffers.Impl
     {
         public int Key { get; init; }
         public int ValuePtr { get; set; }
-    }
-
-    public unsafe struct MapInternalState
-    {
-        public int ItemCount;
-        public int BucketCount;
-        public fixed int BucketPtrs[1];
     }
 }

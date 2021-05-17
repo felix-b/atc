@@ -15,7 +15,8 @@ namespace Atc.Data.Buffers.Impl
         private readonly int _size;
         private readonly bool _isVariableSize;
         private readonly StructFieldInfo[] _fields;
-        private readonly VariableSizeGetterFunc? _getVariableSize;
+        private readonly VariableSizeGetterFunc _getVariableSize;
+        private readonly VariableBufferGetterFunc _getVariableBuffer;
 
         public StructTypeHandler(Type type)
             : this(type, new HashSet<Type>())
@@ -37,13 +38,18 @@ namespace Atc.Data.Buffers.Impl
                 .Select(t => GetStructFieldInfo(t, pendingTypeHandlers))
                 .ToArray();
 
+            var variableBufferField = _fields.FirstOrDefault(f => f.IsVariableBuffer);
             _isVariableSize = 
-                type.IsAssignableTo(typeof(IVariableSizeRecord)) || 
-                _fields.Any(f => f.IsVariableBuffer);
+                type.IsAssignableTo(typeof(IVariableSizeRecord)) && 
+                variableBufferField != null;
             
             _getVariableSize = _isVariableSize
                 ? GetVariableSizeGetterFunc(_type)
-                : null;
+                : (_) => throw new NotSupportedException("This type handler does not support variable size");
+            
+            _getVariableBuffer = _isVariableSize && variableBufferField != null
+                ? GetVariableBufferGetterFunc(_type, variableBufferField)
+                : (_, _) => throw new NotSupportedException("This type handler does not support variable size");
         }
 
         
@@ -58,7 +64,7 @@ namespace Atc.Data.Buffers.Impl
             foreach (var field in _fields)
             {
                 object? value = field.IsVariableBuffer
-                    ? GetVariableBufferValue(field, (byte*)pStruct)
+                    ? _getVariableBuffer(field, (byte*)pStruct)
                     : GetFieldValue(field, (byte*)pStruct);
                 
                 result.Add(new FieldValuePair(field, value));
@@ -67,20 +73,27 @@ namespace Atc.Data.Buffers.Impl
             return result.ToArray();
         }
 
-        private byte[] GetVariableBufferValue(StructFieldInfo field, byte* pStruct)
+        public int GetInstanceSize(void* pStruct)
         {
-            if (_getVariableSize == null)
-            {
-                throw new InvalidOperationException($"Struct '{_type.Name}' has no variable size getter.");
-            }
-            
-            byte* pField = pStruct + field.Offset;
-            var totalSize = _getVariableSize(pStruct);
-            var bufferSize = totalSize - field.Offset;
-
-            var valueSpan = new Span<byte>(pField, bufferSize);
-            return valueSpan.ToArray();
+            return _isVariableSize
+                ? _getVariableSize((byte*) pStruct)
+                : _size;
         }
+
+        // private byte[] GetVariableBufferValue(StructFieldInfo field, byte* pStruct)
+        // {
+        //     if (_getVariableSize == null)
+        //     {
+        //         throw new InvalidOperationException($"Struct '{_type.Name}' has no variable size getter.");
+        //     }
+        //     
+        //     byte* pField = pStruct + field.Offset;
+        //     var totalSize = _getVariableSize(pStruct);
+        //     var bufferSize = totalSize - field.Offset;
+        //
+        //     var valueSpan = new Span<byte>(pField, bufferSize);
+        //     return valueSpan.ToArray();
+        // }
 
         private object? GetFieldValue(StructFieldInfo field, byte* pStruct)
         {
@@ -152,7 +165,7 @@ namespace Atc.Data.Buffers.Impl
             var attribute = field.GetCustomAttribute<FixedBufferAttribute>();
             if (attribute != null)
             {
-                treatAsType = typeof(byte[]); //always return value as byte[] //attribute.ElementType.MakeArrayType();
+                treatAsType = attribute.ElementType.MakeArrayType();
                 return true;
             }
 
@@ -160,25 +173,25 @@ namespace Atc.Data.Buffers.Impl
             return false;
         }
 
-        private static int GetRecordSize(Type recordType)
-        {
-            var sizeOfFunc = GetSizeOfFunc(recordType);
-            return sizeOfFunc();
-            
-            //
-            // if (!recordType.IsGenericType)
-            // {
-            //     return Marshal.SizeOf(recordType);
-            // }
-            //
-            // var optionsAttribute = recordType.GetCustomAttribute<RecordOptionsAttribute>();
-            // if (optionsAttribute != null && optionsAttribute.SizeOfType != null)
-            // {
-            //     return Marshal.SizeOf(optionsAttribute.SizeOfType);
-            // }
-            //
-            // throw new InvalidDataException("Record of generic type must specify SizeOfType in RecordOptionsAttribute");
-        }
+        // private static int GetRecordSize(Type recordType)
+        // {
+        //     var sizeOfFunc = GetSizeOfFunc(recordType);
+        //     return sizeOfFunc();
+        //     
+        //     //
+        //     // if (!recordType.IsGenericType)
+        //     // {
+        //     //     return Marshal.SizeOf(recordType);
+        //     // }
+        //     //
+        //     // var optionsAttribute = recordType.GetCustomAttribute<RecordOptionsAttribute>();
+        //     // if (optionsAttribute != null && optionsAttribute.SizeOfType != null)
+        //     // {
+        //     //     return Marshal.SizeOf(optionsAttribute.SizeOfType);
+        //     // }
+        //     //
+        //     // throw new InvalidDataException("Record of generic type must specify SizeOfType in RecordOptionsAttribute");
+        // }
 
         // private int GetFieldSize(FieldInfo info)
         // {
@@ -202,6 +215,8 @@ namespace Atc.Data.Buffers.Impl
 
         public delegate int VariableSizeGetterFunc(byte* pValue);
 
+        public delegate object? VariableBufferGetterFunc(StructFieldInfo field, byte* pStruct);
+
         private static readonly MethodInfo _getSizeOfTypeMethodInfo =
             typeof(StructTypeHandler).GetMethod(nameof(GetSizeOfType), BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new Exception("RecordTypeHandler init fail: method 'GetSizeOfType' not found");
@@ -213,12 +228,18 @@ namespace Atc.Data.Buffers.Impl
         private static readonly MethodInfo _getStructVariableSizeMethodInfo =
             typeof(StructTypeHandler).GetMethod(nameof(GetStructVariableSize), BindingFlags.Static | BindingFlags.NonPublic)
             ?? throw new Exception("RecordTypeHandler init fail: method 'GetStructVariableSize' not found");
-        
+
+        private static readonly MethodInfo _getVariableBufferMethodInfo =
+            typeof(StructTypeHandler).GetMethod(nameof(GetVariableBufferValue), BindingFlags.Static | BindingFlags.NonPublic)
+            ?? throw new Exception("RecordTypeHandler init fail: method 'GetVariableBufferValue' not found");
+
         private static readonly Dictionary<Type, Func<int>> _sizeOfDelegateByType = new();
 
         private static readonly Dictionary<Type, ValueOfFunc> _valueOfDelegateByType = new();
 
         private static readonly Dictionary<Type, VariableSizeGetterFunc> _variableSizeGetterByType = new();
+
+        private static readonly Dictionary<Type, VariableBufferGetterFunc> _variableBufferGetterByType = new();
 
         private static readonly Dictionary<Type, StructTypeHandler> _handlerByType = new();
 
@@ -301,6 +322,23 @@ namespace Atc.Data.Buffers.Impl
             return newDelegate;
         }
 
+        private static VariableBufferGetterFunc GetVariableBufferGetterFunc(Type structType, StructFieldInfo field)
+        {
+            if (_variableBufferGetterByType.TryGetValue(structType, out var existingDelegate))
+            {
+                return existingDelegate;
+            }
+
+            var elementType = field.Type.GetElementType()
+                ?? throw new InvalidOperationException($"Variable buffer element type unknown: struct '{structType.FullName}'");
+            
+            var newDelegate = _getVariableBufferMethodInfo
+                .MakeGenericMethod(structType, elementType)
+                .CreateDelegate<VariableBufferGetterFunc>();
+            _variableBufferGetterByType.Add(structType, newDelegate);
+            return newDelegate;
+        }
+
         private static int GetFieldOffset(FieldInfo info)
         {
             //WARNING: this relies on CLR implementation details
@@ -321,9 +359,22 @@ namespace Atc.Data.Buffers.Impl
         private static int GetStructVariableSize<T>(byte *pStruct)
         {
             ref T instanceRef = ref Unsafe.AsRef<T>(pStruct);
-            return ((IVariableSizeRecord) instanceRef).SizeOf();
+            return ((IVariableSizeRecord) instanceRef!).SizeOf();
         }
 
+        private static object GetVariableBufferValue<TStruct, TElement>(StructFieldInfo field, byte* pStruct)
+        {
+            ref TStruct instanceRef = ref Unsafe.AsRef<TStruct>(pStruct);
+            var totalSize = ((IVariableSizeRecord) instanceRef!).SizeOf();
+            
+            byte* pField = pStruct + field.Offset;
+            var bufferByteSize = totalSize - field.Offset;
+            var bufferItemCount = bufferByteSize / Unsafe.SizeOf<TElement>();
+
+            var valueSpan = new Span<TElement>(pField, bufferItemCount);
+            return valueSpan.ToArray();
+        }
+        
         public record StructFieldInfo(
             string Name, 
             Type Type, 

@@ -81,6 +81,11 @@ namespace Atc.Data.Tests.Buffers
                 var itemPtr = context.AllocateRecord<TestItem>();
                 itemPtr.Get().X = i;
                 map.Set(i, itemPtr);
+                
+                if (i == 7000 || i == 8190 || i == 8191 || i == 8192 || i == 8193)
+                {
+                    HumanReadableTextDump.WriteToFile(BufferContext.Current, $"D:\\intmap-bench.dump-{i}.txt");                    
+                }
             }
         }
 

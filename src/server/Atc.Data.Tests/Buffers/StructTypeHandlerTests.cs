@@ -292,7 +292,7 @@ namespace Atc.Data.Tests.Buffers
             handler.Fields[2].Name.Should().Be("Buf");
             handler.Fields[2].Offset.Should().Be(8);
             handler.Fields[2].Size.Should().Be(4);
-            handler.Fields[2].Type.Should().BeSameAs(typeof(byte[]));
+            handler.Fields[2].Type.Should().BeSameAs(typeof(int[]));
             handler.Fields[2].IsVariableBuffer.Should().Be(true);
             handler.Fields[2].ValueTypeHandler.Should().Be(null);
         }
@@ -318,15 +318,68 @@ namespace Atc.Data.Tests.Buffers
             values[1].Value.Should().Be(true);
 
             values[2].Field.Should().BeSameAs(handler.Fields[2]);
-            values[2].Value.Should().BeOfType<byte[]>();
-            values[2].Value.Should().BeEquivalentTo(new byte[] {
-                0x7B, 0, 0, 0, 
-                0xC8, 0x01, 0, 0,
-                0x15, 0x03, 0, 0,
-                0xFF, 0xFF, 0xFF, 0xFF
-            });
+            values[2].Value.Should().BeOfType<int[]>();
+            values[2].Value.Should().BeEquivalentTo(new int[] { 123, 456, 789, -1 });
         }
 
+        [Test]
+        public void LayoutOfStringRecord()
+        {
+            Unsafe.SizeOf<StringRecord>().Should().Be(24);
+
+            var handler = new StructTypeHandler(typeof(StringRecord));
+
+            handler.Size.Should().Be(24);
+            handler.IsVariableSize.Should().Be(true);
+            handler.Fields.Count.Should().Be(3);
+            
+            handler.Fields[0].Name.Should().Be("_length");
+            handler.Fields[0].Offset.Should().Be(8);
+            handler.Fields[0].Size.Should().Be(4);
+            handler.Fields[0].Type.Should().BeSameAs(typeof(int));
+            handler.Fields[0].IsVariableBuffer.Should().Be(false);
+            handler.Fields[0].ValueTypeHandler.Should().Be(null);
+
+            handler.Fields[1].Name.Should().Be("_inflated");
+            handler.Fields[1].Offset.Should().Be(0);
+            handler.Fields[1].Size.Should().Be(8);
+            handler.Fields[1].Type.Should().BeSameAs(typeof(string));
+            handler.Fields[1].IsVariableBuffer.Should().Be(false);
+            handler.Fields[1].ValueTypeHandler.Should().Be(null);
+
+            handler.Fields[2].Name.Should().Be("_chars");
+            handler.Fields[2].Offset.Should().Be(16);
+            handler.Fields[2].Size.Should().Be(2);
+            handler.Fields[2].Type.Should().BeSameAs(typeof(char[]));
+            handler.Fields[2].IsVariableBuffer.Should().Be(true);
+            handler.Fields[2].ValueTypeHandler.Should().Be(null);
+        }
+
+        [Test]
+        public void ValuesOfStringRecord()
+        {
+            var handler = new StructTypeHandler(typeof(StringRecord));
+            byte* pBytes = stackalloc byte[128];
+            
+            ref StringRecord instance = ref Unsafe.AsRef<StringRecord>(pBytes); 
+            instance.SetValue("ABCD");
+
+            var values = handler.GetFieldValues(pBytes);
+            handler.GetInstanceSize(pBytes).Should().Be(24); 
+
+            values.Length.Should().Be(3);
+            values[0].Field.Should().BeSameAs(handler.Fields[0]);
+            values[0].Value.Should().BeOfType<int>();
+            values[0].Value.Should().Be(4);
+
+            values[1].Field.Should().BeSameAs(handler.Fields[1]);
+            values[1].Value.Should().BeNull();
+
+            values[2].Field.Should().BeSameAs(handler.Fields[2]);
+            values[2].Value.Should().BeOfType<char[]>();
+            values[2].Value.Should().BeEquivalentTo(new char[] { 'A', 'B', 'C', 'D' });
+        }
+        
         public struct ATrivialStruct
         {
             public int X;

@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
 using Atc.Data.Buffers.Impl;
 
 namespace Atc.Data.Buffers
@@ -20,7 +22,13 @@ namespace Atc.Data.Buffers
         {
             return new BufferWalker(_context, _context.GetBuffer(recordType));
         }
-        
+
+        public BufferWalker GetBuffer<T>() where T : struct
+        {
+            return GetBuffer(typeof(T));
+        }
+
+
         public IReadOnlyList<Type> RecordTypes => _recordTypes;
 
         public class BufferWalker 
@@ -40,10 +48,12 @@ namespace Atc.Data.Buffers
             {
                 return new RecordWalker(_context, _buffer, index, _typeHandler);
             }
-            
+
             public BufferContext Context => _context;
             public ITypedBuffer Buffer => _buffer;
+            public Type RecordType => _buffer.RecordType;
             public StructTypeHandler TypeHandler => _typeHandler;
+            public int RecordCount => _buffer.RecordCount;
         }
 
         public unsafe class RecordWalker
@@ -64,8 +74,24 @@ namespace Atc.Data.Buffers
                 _typeHandler = typeHandler;
             }
 
+            public StructTypeHandler.FieldValuePair[] GetFieldValues()
+            {
+                ref var bytesRef = ref _buffer.GetRawBytesRef(_offset);
+                void* pRecord = Unsafe.AsPointer(ref bytesRef);
+                return _typeHandler.GetFieldValues(pRecord);
+            }
+
+            public int GetByteSize()
+            {
+                ref var bytesRef = ref _buffer.GetRawBytesRef(_offset);
+                void* pRecord = Unsafe.AsPointer(ref bytesRef);
+                return _typeHandler.GetInstanceSize(pRecord);
+            }
+            
             public BufferContext Context => _context;
             public ITypedBuffer Buffer => _buffer;
+            public int Index => _index;
+            public int Offset => _offset;
             public Memory<byte> Memory => _memory;
             public StructTypeHandler TypeHandler => _typeHandler;
         }
