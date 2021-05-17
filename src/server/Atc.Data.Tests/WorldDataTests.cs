@@ -1,24 +1,18 @@
 ﻿using System;
 using System.IO;
 using System.Threading;
-using Atc.Data.Airports;
-using Atc.Data.Buffers;
-using Atc.Data.Buffers.Impl;
+using Atc.Data.World;
+using Atc.Data.World.Airports;
 using FluentAssertions;
 using NUnit.Framework;
+using Zero.Serialization.Buffers;
+using Zero.Serialization.Buffers.Impl;
 
 namespace Atc.Data.Tests
 {
     [TestFixture]
     public class WorldDataTests
     {
-        private static readonly Type[] _bufferElementTypes = new[] {
-            typeof(WorldData), 
-            typeof(AirportData), 
-            typeof(VectorRecord<AirportData>), 
-            typeof(StringRecord), 
-        };
-
         [Test]
         public void SampleDataDiskRoundtrip()
         {
@@ -51,24 +45,36 @@ namespace Atc.Data.Tests
             efgh.Datum.Lon.Should().Be(60);
         }
         
+        private BufferContextScope CreateContextScope(out BufferContext context)
+        {
+            IBufferContext contextTemp;
+            var scope = BufferContextBuilder
+                .Begin()
+                .WithString()
+                    .WithType<WorldData>()
+                    .WithType<AirportData>(alsoAsVectorItem: true)
+                .End(out contextTemp);
+
+            context = (BufferContext)contextTemp;
+            return scope;
+        }
+        
         private void WriteSampleData(string filePath)
         {
-            var context = new BufferContext(_bufferElementTypes);
-            using (new BufferContextScope(context))
-            {
-                context.AllocateRecord(new WorldData {
-                    Airports = context.AllocateVector(new[] {
-                        context.AllocateRecord(new AirportData {
-                            Icao = context.AllocateString("ABCD"),
-                            Datum = new() { Lat = 30, Lon = 40 }
-                        }),
-                        context.AllocateRecord(new AirportData {
-                            Icao = context.AllocateString("EFGH"),
-                            Datum = new() { Lat = 50, Lon = 60 }
-                        })
+            using var scope = CreateContextScope(out var context);
+
+            context.AllocateRecord(new WorldData {
+                Airports = context.AllocateVector(new[] {
+                    context.AllocateRecord(new AirportData {
+                        Icao = context.AllocateString("ABCD"),
+                        Datum = new() { Lat = 30, Lon = 40 }
+                    }),
+                    context.AllocateRecord(new AirportData {
+                        Icao = context.AllocateString("EFGH"),
+                        Datum = new() { Lat = 50, Lon = 60 }
                     })
-                });
-            }
+                })
+            });
 
             using (var file = File.Create(filePath))
             {

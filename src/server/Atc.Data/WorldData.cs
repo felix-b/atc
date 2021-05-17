@@ -1,10 +1,10 @@
-﻿using Atc.Data.Airports;
-using Atc.Data.Buffers;
+﻿using Zero.Serialization.Buffers;
+using Atc.Data.World.Airports;
 
-namespace Atc.Data
+namespace Atc.Data.World
 {
     public struct WorldData
     {
-        public Vector<AirportData> Airports { get; init; }
+        public Vector<AirportData> Airports;
     }
 }

@@ -1,4 +1,4 @@
-namespace Atc.Data.Airports
+namespace Atc.Data.World.Airports
 {
     public struct RunwayEndData
     {

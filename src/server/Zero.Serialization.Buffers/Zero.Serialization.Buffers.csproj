@@ -7,12 +7,4 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
-    <ItemGroup>
-      <Folder Include="Fleets" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\Zero.Serialization.Buffers\Zero.Serialization.Buffers.csproj" />
-    </ItemGroup>
-
 </Project>
