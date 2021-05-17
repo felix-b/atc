@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Runtime.CompilerServices;
 using Atc.Data.Buffers;
 using Atc.Data.Buffers.Impl;
 using FluentAssertions;
@@ -156,6 +157,40 @@ namespace Atc.Data.Tests.Buffers
 
                 vector.Get()[3].Get().N.Should().Be(101112);
                 vector.Get()[3].Get().X.Should().Be(444.44);
+            }
+        }
+ 
+        [Test, Ignore("Bugfix pending")]
+        public void AddItems_MassiveNumberOfItems_BufferRoundtrip()
+        {
+            var context = new BufferContext(typeof(VectorRecord<TestItem>), typeof(TestItem));
+            using var scope = new BufferContextScope(context);
+            var vectorPtf = context.AllocateVectorRecord<TestItem>(minBlockEntryCount: 4);
+            
+            for (int i = 0; i < 5000; i++)
+            {
+                // if (i == 4093)
+                // {
+                //     HumanReadableTextDump.WriteToFile(BufferContext.Current,@"D:\AddItems_MassiveNumberOfItems_BufferRoundtrip-1.dump");
+                // }
+                
+                ref var vector = ref vectorPtf.Get();
+                var itemPtr = context.AllocateRecord<TestItem>(new TestItem {N = i, X = 111.11});
+                vector.Add(itemPtr);
+
+                // if (i == 4093)
+                // {
+                //     HumanReadableTextDump.WriteToFile(BufferContext.Current,@"D:\AddItems_MassiveNumberOfItems_BufferRoundtrip-2.dump");
+                // }
+            }
+
+            //vector.Count.Should().Be(5000);
+
+            for (int i = 0; i < 5000; i++)
+            {
+                ref var vector = ref vectorPtf.Get();
+                ref var item = ref vector[i].Get();
+                item.N.Should().Be(i);
             }
         }
         

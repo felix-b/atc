@@ -19,15 +19,15 @@ namespace Atc.Data.Buffers
 
         public void Add(int key, BufferPtr<TValue> value) => _inner.Get().Add(key, value);
 
-        public void Add(int key, in TValue value) => _inner.Get().Add(key, AllocateValue(value));
+        public void Add(int key, TValue value) => _inner.Get().Add(key, AllocateValue(value));
 
         public void Set(int key, BufferPtr<TValue> value) => _inner.Get().Set(key, value);
 
-        public void Set(int key, in TValue value) => _inner.Get().Set(key, AllocateValue(value));
+        public void Set(int key, TValue value) => _inner.Get().Set(key, AllocateValue(value));
 
         public bool TryAdd(int key, BufferPtr<TValue> value) => _inner.Get().TryAdd(key, value);
 
-        public bool TryAdd(int key, in TValue value) => _inner.Get().TryAdd(key, AllocateValue(value));
+        public bool TryAdd(int key, TValue value) => _inner.Get().TryAdd(key, AllocateValue(value));
 
         public BufferPtr<TValue>? TryGetValue(int key) => _inner.Get().TryGetValue(key);
 
@@ -39,7 +39,7 @@ namespace Atc.Data.Buffers
 
         public ref TValue this[int key] => ref _inner.Get()[key].Get();
 
-        private BufferPtr<TValue> AllocateValue(in TValue value)
+        private BufferPtr<TValue> AllocateValue(TValue value)
         {
             return BufferContext.Current.AllocateRecord(value);
         }

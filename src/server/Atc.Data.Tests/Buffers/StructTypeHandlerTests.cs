@@ -379,7 +379,21 @@ namespace Atc.Data.Tests.Buffers
             values[2].Value.Should().BeOfType<char[]>();
             values[2].Value.Should().BeEquivalentTo(new char[] { 'A', 'B', 'C', 'D' });
         }
-        
+
+
+
+        [Test]
+        public void LayoutOfVectorRecord()
+        {
+            Unsafe.SizeOf<VectorRecord<MapRecordEntry>>().Should().Be(32);
+
+            var handler = new StructTypeHandler(typeof(VectorRecord<MapRecordEntry>));
+
+            handler.Size.Should().Be(32);
+            handler.IsVariableSize.Should().Be(true);
+            handler.Fields.Count.Should().Be(6);
+        }
+
         public struct ATrivialStruct
         {
             public int X;

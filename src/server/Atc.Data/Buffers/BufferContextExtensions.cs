@@ -19,7 +19,7 @@ namespace Atc.Data.Buffers
             return context.GetBuffer<T>().Allocate(sizeInBytes);
         }
 
-        public static BufferPtr<T> AllocateRecord<T>(this IBufferContext context, in T value)
+        public static BufferPtr<T> AllocateRecord<T>(this IBufferContext context, T value)
             where T : struct
         {
             return context.GetBuffer<T>().Allocate(value);
@@ -61,7 +61,7 @@ namespace Atc.Data.Buffers
             where T : struct
         {
             var itemsAsSpan = items.AsSpan(); 
-            return VectorRecord<T>.Allocate(in itemsAsSpan, minBlockEntryCount, context);
+            return VectorRecord<T>.Allocate(itemsAsSpan, minBlockEntryCount, context);
         }
     }
 }

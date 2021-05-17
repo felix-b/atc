@@ -9,6 +9,7 @@ namespace Atc.Data.Buffers.Impl
     public unsafe struct VectorRecord<T> : IVariableSizeRecord
         where T : struct
     {
+        private IntPtr _thisPtr;
         private int _vectorItemCount;
         private int _blockEntryCount;
         private int _blockAllocatedEntryCount;
@@ -69,11 +70,27 @@ namespace Atc.Data.Buffers.Impl
             return SizeOf(_blockEntryCount);
         }
 
-        public void Add(in BufferPtr<T> item)
+        public void Add(BufferPtr<T> item)
         {
+            fixed (void* p = &_vectorItemCount)
+            {
+                if (_thisPtr != new IntPtr(p))
+                {
+                    //Console.WriteLine("VectorRecord memory address changed!!!");
+                    _thisPtr = new IntPtr(p);
+                    //throw new InvalidOperationException("VectorRecord memory address changed!!!");
+                }
+            }
+
             if (_blockAllocatedEntryCount >= _blockEntryCount && !_nextBlockPtr.HasValue)
             {
-                _nextBlockPtr = Allocate(Span<BufferPtr<T>>.Empty, _blockEntryCount * 2).ByteIndex;
+                var nextBlockByteSize = SizeOf(_blockEntryCount * 2);
+                var nextBlockPtr = BufferContext.Current.GetBuffer<VectorRecord<T>>().Allocate(nextBlockByteSize);
+                ref var nextBlockRecord = ref nextBlockPtr.Get();
+                nextBlockRecord.Initialize(_blockEntryCount * 2);
+
+                var nextBlockPtrNewValue = new Nullable<int>(nextBlockPtr.ByteIndex);
+                _nextBlockPtr = nextBlockPtrNewValue;
             }
             
             if (_nextBlockPtr.HasValue)
@@ -135,16 +152,21 @@ namespace Atc.Data.Buffers.Impl
         
         internal int BlockAllocatedEntryCount => _blockAllocatedEntryCount;
 
-        private void Initialize(int blockEntryCount, in Span<BufferPtr<T>> items)
+        private void Initialize(int blockEntryCount)
         {
-            _vectorItemCount = items.Length;
+            fixed (void* p = &_vectorItemCount)
+            {
+                _thisPtr = new IntPtr(p);
+            }
+
+            _vectorItemCount = 0;
             _blockEntryCount = blockEntryCount;
-            _blockAllocatedEntryCount = Math.Min(_blockEntryCount, items.Length);
+            _blockAllocatedEntryCount = 0;
             _nextBlockPtr = null;
             
             for (int i = 0; i < _blockEntryCount; i++)
             {
-                _entryPtrs[i] = i < items.Length ? items[i].ByteIndex : -1;
+                _entryPtrs[i] = -1;
             }
         }
         
@@ -161,13 +183,21 @@ namespace Atc.Data.Buffers.Impl
 
         private static readonly int _baseSize = Unsafe.SizeOf<VectorRecord<T>>();
 
-        public static BufferPtr<VectorRecord<T>> Allocate(in Span<BufferPtr<T>> items, int minBlockEntryCount, IBufferContext? context = null)
+        public static BufferPtr<VectorRecord<T>> Allocate(Span<BufferPtr<T>> items, int minBlockEntryCount, IBufferContext? context = null)
         {
             var blockEntryCount = Math.Max(minBlockEntryCount, items.Length);
-            var byteSize = SizeOf(blockEntryCount);
             var effectiveContext = context ?? BufferContext.Current; 
+            var byteSize = SizeOf(blockEntryCount);
+
             var ptr = effectiveContext.GetBuffer<VectorRecord<T>>().Allocate(byteSize);
-            ptr.Get().Initialize(blockEntryCount, in items);
+            ref var vector = ref ptr.Get();
+            vector.Initialize(blockEntryCount);
+
+            for (int i = 0; i < items.Length; i++)
+            {
+                vector.Add(items[i]);
+            }
+            
             return ptr;
         }
         

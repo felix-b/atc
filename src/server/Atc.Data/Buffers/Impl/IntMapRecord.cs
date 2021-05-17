@@ -117,7 +117,9 @@ namespace Atc.Data.Buffers.Impl
                 Key = key,
                 ValuePtr = value.ByteIndex
             });
+
             entryVector.Add(newEntryPtr);
+
             _itemCount++;
 
             return true;

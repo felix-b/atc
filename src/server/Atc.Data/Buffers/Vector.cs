@@ -19,7 +19,7 @@ namespace Atc.Data.Buffers
             return itemPtr;
         }
 
-        public BufferPtr<T> Add(in T value)
+        public BufferPtr<T> Add(T value)
         {
             var itemPtr = BufferContext.Current.GetBuffer<T>().Allocate(value);
             _inner.Get().Add(itemPtr);

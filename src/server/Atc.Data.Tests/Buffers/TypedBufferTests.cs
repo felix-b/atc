@@ -412,6 +412,54 @@ namespace Atc.Data.Tests.Buffers
             }
         }
 
+        [Test]
+        public void FixedSizeRecord_MassiveAllocations()
+        {
+            using var stream = new MemoryStream();
+            var context = new BufferContext(typeof(ASimpleRecord));
+            using var scope = new BufferContextScope(context);
+
+            for (int i = 0; i < 10000; i++)
+            {
+                context.AllocateRecord<ASimpleRecord>(new ASimpleRecord() {
+                    N = i,
+                    B = true,
+                    X = 123.45
+                });
+            }
+
+            for (int i = 0; i < 10000; i++)
+            {
+                ref var record = ref context.GetBuffer<ASimpleRecord>()[i * sizeof(ASimpleRecord)];
+                record.N.Should().Be(i);
+                record.B.Should().Be(true);
+                record.X.Should().Be(123.45);
+            }
+        }
+
+        [Test]
+        public void VariableSizeRecord_MassiveAllocations()
+        {
+            using var stream = new MemoryStream();
+            var context = new BufferContext(typeof(AVariableSizeRecord));
+            using var scope = new BufferContextScope(context);
+
+            for (int i = 0; i < 10000; i++)
+            {
+                var recordPtr = context.AllocateRecord<AVariableSizeRecord>(new AVariableSizeRecord(4));
+                ref var record = ref recordPtr.Get();
+                record.SetNumbers(new[] { i,222,333,444 });
+            }
+
+            var buffer = context.GetBuffer<AVariableSizeRecord>();
+            
+            for (int i = 0; i < 10000; i++)
+            {
+                ref var record = ref buffer[buffer.RecordOffsets[i]];
+                record.GetNumbers().Should().BeEquivalentTo(new[] { i, 222, 333, 444 });
+            }
+        }
+
         public struct ASimpleRecord
         {
             public int N { get; set; }

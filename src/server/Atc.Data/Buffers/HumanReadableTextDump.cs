@@ -40,7 +40,9 @@ namespace Atc.Data.Buffers
             {
                 var record = buffer.GetRecord(i);
                 var byteSize = record.GetByteSize();
-                output.WriteLine($"------------ record [{i}/{buffer.RecordCount-1}] @ 0x{record.Offset:X4}, {byteSize} bytes ------------");
+                var address = record.GetAbsoluteAddress();
+                
+                output.WriteLine($"------------ record [{i}/{buffer.RecordCount-1}] @ byte[0x{record.Offset:X4}] ram[0x{address:X8}], {byteSize} bytes ------------");
                 WriteRecord(record, output);
             }
         }
@@ -131,7 +133,7 @@ namespace Atc.Data.Buffers
 
             string formatAsNumber<N>(N value)
             {
-                var valueString = string.Format(hexFormatString, value);
+                var valueString = string.Format(hexFormatString!, value);
                 return $"0x{valueString}";
             }
 

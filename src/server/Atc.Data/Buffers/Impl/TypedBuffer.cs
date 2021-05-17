@@ -34,8 +34,8 @@ namespace Atc.Data.Buffers.Impl
                 ?? throw new InvalidDataException($"Could not create typed buffer for record type '{recordType}'");
         }
     }
-    
-    public unsafe class TypedBuffer<T> : ITypedBuffer
+
+    public unsafe class TypedBuffer<T> : ITypedBuffer, IDisposable
         where T : struct
     {
         private readonly StructTypeHandler _typeHandler;
@@ -43,6 +43,7 @@ namespace Atc.Data.Buffers.Impl
         private readonly int _initialCapacity;
 
         private byte[] _buffer;
+        //private GCHandle? _pinnedHandle;
         private int _count;
         private int _freeByteIndex = 0;
         private readonly List<int> _recordPtrs = new List<int>();
@@ -59,7 +60,7 @@ namespace Atc.Data.Buffers.Impl
             {
                 throw new InvalidDataException($"Stored Size value cannot be negative");
             }
-            
+
             var storedRecordSize = reader.ReadInt32();
             if (storedRecordSize != _typeHandler.Size)
             {
@@ -77,10 +78,12 @@ namespace Atc.Data.Buffers.Impl
             {
                 _recordPtrs.Add(reader.ReadInt32());
             }
-            
-            _initialCapacity = _count; 
+
+            _initialCapacity = _count;
             _freeByteIndex = storedSize;
             _buffer = new byte[storedSize];
+            //_pinnedHandle = GCHandle.Alloc(_buffer, GCHandleType.Pinned);            
+            
             input.Read(_buffer, 0, _buffer.Length);
         }
 
@@ -88,10 +91,20 @@ namespace Atc.Data.Buffers.Impl
         {
             _typeHandler = new StructTypeHandler(typeof(T));
             _readOnly = false;
-            _initialCapacity = initialCapacity > 0 
-                ? initialCapacity 
+            _initialCapacity = initialCapacity > 0
+                ? initialCapacity
                 : throw new ArgumentOutOfRangeException(nameof(initialCapacity), "Must be positive");
             _buffer = new byte[_initialCapacity * _typeHandler.Size];
+            //_pinnedHandle = null;
+        }
+
+        public void Dispose()
+        {
+            // if (_pinnedHandle.HasValue)
+            // {
+            //     _pinnedHandle.Value.Free();
+            //     _pinnedHandle = null;
+            // }
         }
 
         public ref T this[int firstByteIndex]
@@ -120,7 +133,7 @@ namespace Atc.Data.Buffers.Impl
             return InternalAllocate(sizeInBytes);
         }
 
-        public BufferPtr<T> Allocate(in T value)
+        public BufferPtr<T> Allocate(T value)
         {
             var size = _typeHandler.IsVariableSize
                 ? ((IVariableSizeRecord)value).SizeOf()

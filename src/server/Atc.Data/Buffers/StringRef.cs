@@ -17,6 +17,6 @@ namespace Atc.Data.Buffers
 
         public char this[int index] => Value[index];
         
-        public static implicit operator string(in StringRef r) => r.Value;
+        public static implicit operator string(StringRef r) => r.Value;
     }
 }

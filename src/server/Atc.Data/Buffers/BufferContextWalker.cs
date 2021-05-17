@@ -87,6 +87,13 @@ namespace Atc.Data.Buffers
                 void* pRecord = Unsafe.AsPointer(ref bytesRef);
                 return _typeHandler.GetInstanceSize(pRecord);
             }
+
+            public IntPtr GetAbsoluteAddress()
+            {
+                ref var bytesRef = ref _buffer.GetRawBytesRef(_offset);
+                void* pRecord = Unsafe.AsPointer(ref bytesRef);
+                return new IntPtr(pRecord);
+            }
             
             public BufferContext Context => _context;
             public ITypedBuffer Buffer => _buffer;
