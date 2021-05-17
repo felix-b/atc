@@ -62,7 +62,6 @@ namespace Atc.Data.Buffers
             private readonly ITypedBuffer _buffer;
             private readonly int _index;
             private readonly int _offset;
-            private readonly Memory<byte> _memory;
             private readonly StructTypeHandler _typeHandler;
 
             public RecordWalker(BufferContext context, ITypedBuffer buffer, int index, StructTypeHandler typeHandler)
@@ -70,7 +69,7 @@ namespace Atc.Data.Buffers
                 _context = context;
                 _buffer = buffer;
                 _index = index;
-                _memory = buffer.GetRecordMemory(index, out _offset);
+                _offset = buffer.RecordOffsets[index];
                 _typeHandler = typeHandler;
             }
 
@@ -99,7 +98,6 @@ namespace Atc.Data.Buffers
             public ITypedBuffer Buffer => _buffer;
             public int Index => _index;
             public int Offset => _offset;
-            public Memory<byte> Memory => _memory;
             public StructTypeHandler TypeHandler => _typeHandler;
         }
     }

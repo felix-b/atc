@@ -77,8 +77,8 @@ namespace Atc.Data.Buffers.Impl
                 if (_thisPtr != new IntPtr(p))
                 {
                     //Console.WriteLine("VectorRecord memory address changed!!!");
-                    _thisPtr = new IntPtr(p);
-                    //throw new InvalidOperationException("VectorRecord memory address changed!!!");
+                    //_thisPtr = new IntPtr(p);
+                    throw new InvalidOperationException("VectorRecord memory location changed!!!");
                 }
             }
 

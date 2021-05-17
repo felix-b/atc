@@ -7,7 +7,6 @@ namespace Atc.Data.Buffers.Impl
     public interface ITypedBuffer
     {
         void WriteTo(Stream output);
-        Memory<byte> GetRecordMemory(int index, out int offset);        
         ref byte[] GetRawBytesRef(int firstByteIndex);
         bool ReadOnly { get; }
         int InitialCapacity { get; }

@@ -41,12 +41,14 @@ namespace Atc.Data.Buffers.Impl
         private readonly StructTypeHandler _typeHandler;
         private readonly bool _readOnly;
         private readonly int _initialCapacity;
+        private readonly int _pageSizeBytes;
 
-        private byte[] _buffer;
+        //private byte[] _buffer;
         //private GCHandle? _pinnedHandle;
         private int _count;
         private int _freeByteIndex = 0;
         private readonly List<int> _recordPtrs = new List<int>();
+        private readonly List<byte[]> _pages = new List<byte[]>();
 
         public TypedBuffer(Stream input)
         {
@@ -81,10 +83,13 @@ namespace Atc.Data.Buffers.Impl
 
             _initialCapacity = _count;
             _freeByteIndex = storedSize;
-            _buffer = new byte[storedSize];
+            _pageSizeBytes = storedSize;
+
+            var buffer = new byte[storedSize]; 
+            input.Read(buffer, 0, buffer.Length);
+
+            _pages.Add(buffer);
             //_pinnedHandle = GCHandle.Alloc(_buffer, GCHandleType.Pinned);            
-            
-            input.Read(_buffer, 0, _buffer.Length);
         }
 
         public TypedBuffer(int initialCapacity)
@@ -94,7 +99,8 @@ namespace Atc.Data.Buffers.Impl
             _initialCapacity = initialCapacity > 0
                 ? initialCapacity
                 : throw new ArgumentOutOfRangeException(nameof(initialCapacity), "Must be positive");
-            _buffer = new byte[_initialCapacity * _typeHandler.Size];
+            _pageSizeBytes = _initialCapacity * _typeHandler.Size;
+            _pages.Add(new byte[_pageSizeBytes]);
             //_pinnedHandle = null;
         }
 
@@ -111,15 +117,8 @@ namespace Atc.Data.Buffers.Impl
         {
             get
             {
-                if (firstByteIndex < 0 || firstByteIndex >= _buffer.Length)
-                {
-                    throw new IndexOutOfRangeException();
-                }
-
-                fixed (byte* p = &_buffer[firstByteIndex])
-                {
-                    return ref Unsafe.AsRef<T>(p);
-                }
+                var pRecord = GetRawRecordPointer(firstByteIndex);
+                return ref Unsafe.AsRef<T>(pRecord);
             }
         }
 
@@ -147,18 +146,36 @@ namespace Atc.Data.Buffers.Impl
 
         public ref byte[] GetRawBytesRef(int firstByteIndex)
         {
+            var pRecord = GetRawRecordPointer(firstByteIndex);
+            return ref Unsafe.AsRef<byte[]>(pRecord);
+        }
 
-            if (firstByteIndex < 0 || firstByteIndex >= _buffer.Length)
+        private byte* GetRawRecordPointer(int firstByteIndex)
+        {
+            if (firstByteIndex < 0 || firstByteIndex >= _freeByteIndex)
             {
                 throw new IndexOutOfRangeException();
             }
 
-            fixed (byte* p = &_buffer[firstByteIndex])
+            TranslateBufferByteIndex(firstByteIndex, out var pageIndex, out var byteIndex);
+            var page = _pages[pageIndex];
+
+            fixed (byte* p = &page[byteIndex])
             {
-                return ref Unsafe.AsRef<byte[]>(p);
+                return p;
             }
         }
 
+        private void TranslateBufferByteIndex(int bufferByteIndex, out int pageIndex, out int byteIndex)
+        {
+            pageIndex = _readOnly 
+                ? 0  
+                : bufferByteIndex / _pageSizeBytes;
+            byteIndex = _readOnly
+                ? bufferByteIndex
+                : bufferByteIndex % _pageSizeBytes;
+        }
+        
         private BufferPtr<T> InternalAllocate(int sizeInBytes)
         {
             if (_readOnly)
@@ -170,12 +187,13 @@ namespace Atc.Data.Buffers.Impl
             {
                 throw new ArgumentOutOfRangeException(nameof(sizeInBytes), "Allocation size must be a positive number.");
             }
-                
-            if (_freeByteIndex + sizeInBytes > _buffer.Length)
+
+            TranslateBufferByteIndex(_freeByteIndex, out var freePageIndex, out var freePageByteIndex);
+
+            if (freePageIndex >= _pages.Count || freePageByteIndex + sizeInBytes > _pageSizeBytes)
             {
-                var temp = new byte[_buffer.Length + _initialCapacity * _typeHandler.Size];
-                Array.Copy(_buffer, temp, _buffer.Length);
-                _buffer = temp;
+                _freeByteIndex = _pages.Count * _pageSizeBytes;
+                _pages.Add(new byte[_pageSizeBytes]);
             }
 
             var byteIndex = _freeByteIndex;
@@ -199,8 +217,17 @@ namespace Atc.Data.Buffers.Impl
             {
                 writer.Write(_recordPtrs[i]);
             }
+
+            TranslateBufferByteIndex(_freeByteIndex, out var lastPageIndex, out var lastByteIndex);
             
-            output.Write(_buffer, 0, _freeByteIndex);
+            for (int i = 0 ; i < _pages.Count ; i++)
+            {
+                var sizeToWrite = i < lastPageIndex
+                    ? _pageSizeBytes
+                    : lastByteIndex;
+                output.Write(_pages[i], 0, sizeToWrite);
+            }
+
             output.Flush();
         }
 
@@ -234,14 +261,6 @@ namespace Atc.Data.Buffers.Impl
             file.Flush();
         }
 
-        public Memory<byte> GetRecordMemory(int index, out int offset)
-        {
-            offset = _recordPtrs[index];
-            var nextOffset = index < _count - 1 ? _recordPtrs[index + 1] : _freeByteIndex;
-            var size = nextOffset - offset;
-            return _buffer.AsMemory(offset, size);
-        }
-
         public bool ReadOnly => _readOnly;
         
         public Type RecordType => typeof(T);
@@ -256,7 +275,7 @@ namespace Atc.Data.Buffers.Impl
 
         public int InitialCapacity => _initialCapacity;
 
-        public int TotalBytes => _buffer.Length;
+        public int TotalBytes => _pages.Count * _pageSizeBytes;
 
         public int AllocatedBytes => _freeByteIndex;
 

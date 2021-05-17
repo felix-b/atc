@@ -160,7 +160,7 @@ namespace Atc.Data.Tests.Buffers
             }
         }
  
-        [Test, Ignore("Bugfix pending")]
+        [Test]
         public void AddItems_MassiveNumberOfItems_BufferRoundtrip()
         {
             var context = new BufferContext(typeof(VectorRecord<TestItem>), typeof(TestItem));
