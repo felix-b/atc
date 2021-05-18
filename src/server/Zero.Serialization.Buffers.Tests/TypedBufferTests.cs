@@ -143,7 +143,7 @@ namespace Zero.Serialization.Buffers.Tests
         public void StreamRoundtrip_BufferStateSurvived()
         {
             using var stream = new MemoryStream();
-            BufferPtr<ASimpleRecord> ptr1;
+            ZRef<ASimpleRecord> ptr1;
             void* rawPtr1Before;
             
             using (var context = new SingleBufferContext<ASimpleRecord>(capacity: 10))
@@ -177,7 +177,7 @@ namespace Zero.Serialization.Buffers.Tests
         public void StreamRoundtrip_ScalarValuesSurvived()
         {
             using var stream = new MemoryStream();
-            BufferPtr<ASimpleRecord> ptr1, ptr2, ptr3;
+            ZRef<ASimpleRecord> ptr1, ptr2, ptr3;
             
             using (var context = new SingleBufferContext<ASimpleRecord>(capacity: 10))
             {
@@ -223,7 +223,7 @@ namespace Zero.Serialization.Buffers.Tests
         public void MultipleRecordTypesStreamRoundtrip_BufferStateSurvived()
         {
             using var stream = new MemoryStream();
-            BufferPtr<ARecordWithPointers> ptr1, ptr2;
+            ZRef<ARecordWithPointers> ptr1, ptr2;
             void* rawPtr1Before;
 
             var contextBefore = new BufferContext(typeof(ASimpleRecord), typeof(ARecordWithPointers));
@@ -282,7 +282,7 @@ namespace Zero.Serialization.Buffers.Tests
         public void MultipleRecordTypesStreamRoundtrip_PointersAcrossRecordTypesSurvived()
         {
             using var stream = new MemoryStream();
-            BufferPtr<ARecordWithPointers> ptr1, ptr2;
+            ZRef<ARecordWithPointers> ptr1, ptr2;
 
             var contextBefore = new BufferContext(typeof(ASimpleRecord), typeof(ARecordWithPointers));
             using (var scope = new BufferContextScope(contextBefore))
@@ -341,7 +341,7 @@ namespace Zero.Serialization.Buffers.Tests
         public void VariableSizeRecord_StreamRoundtrip_BufferStateSurvived()
         {
             using var stream = new MemoryStream();
-            BufferPtr<AVariableSizeRecord> ptr1;
+            ZRef<AVariableSizeRecord> ptr1;
             void* rawPtr1Before;
 
             var contextBefore = new BufferContext(typeof(AVariableSizeRecord));
@@ -382,7 +382,7 @@ namespace Zero.Serialization.Buffers.Tests
         public void VariableSizeRecord_StreamRoundtrip_DataSurvived()
         {
             using var stream = new MemoryStream();
-            BufferPtr<AVariableSizeRecord> ptr1, ptr2, ptr3;
+            ZRef<AVariableSizeRecord> ptr1, ptr2, ptr3;
 
             var contextBefore = new BufferContext(typeof(AVariableSizeRecord));
             using (var scope = new BufferContextScope(contextBefore))
@@ -457,6 +457,27 @@ namespace Zero.Serialization.Buffers.Tests
             }
         }
 
+        [Test]
+        public void InjectSelfByteIndexRecord()
+        {
+            var context = new BufferContext(typeof(ARecordWithSelfByteIndex));
+            using var scope = new BufferContextScope(context);
+
+            var ptr1 = context.AllocateRecord(new ARecordWithSelfByteIndex() {
+                ABool = true,
+                Num1 = 123
+            });
+            var ptr2 = context.AllocateRecord(new ARecordWithSelfByteIndex() {
+                ABool = false,
+                Num1 = 456
+            });
+            var ptr3 = context.AllocateRecord<ARecordWithSelfByteIndex>();
+
+            ptr1.Get().GetSelfByteIndex().Should().Be(0);
+            ptr2.Get().GetSelfByteIndex().Should().Be(1 * sizeof(ARecordWithSelfByteIndex));
+            ptr3.Get().GetSelfByteIndex().Should().Be(2 * sizeof(ARecordWithSelfByteIndex));
+        }
+
         public struct ASimpleRecord
         {
             public int N { get; set; }
@@ -467,9 +488,9 @@ namespace Zero.Serialization.Buffers.Tests
         public readonly struct ARecordWithPointers
         {
             public int Num1 { get; init; }
-            public BufferPtr<ASimpleRecord> Simple1 { get; init; }
+            public ZRef<ASimpleRecord> Simple1 { get; init; }
             public int Num2 { get; init; }
-            public BufferPtr<ASimpleRecord> Simple2 { get; init; }
+            public ZRef<ASimpleRecord> Simple2 { get; init; }
         }
 
         public struct AVariableSizeRecord : IVariableSizeRecord
@@ -527,6 +548,20 @@ namespace Zero.Serialization.Buffers.Tests
             {
                 return sizeof(AVariableSizeRecord) + (numberCount - 1) * sizeof(int);
             }
+        }
+        
+        public struct ARecordWithSelfByteIndex
+        {
+            public bool ABool;
+            
+            #pragma warning disable 0649
+            [InjectSelfByteIndex]
+            private int _selfByteIndex;
+            #pragma warning restore 0649
+
+            public int Num1;
+
+            public int GetSelfByteIndex() => _selfByteIndex;
         }
     }
 }

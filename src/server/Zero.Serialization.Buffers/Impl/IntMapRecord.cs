@@ -1,12 +1,20 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Zero.Serialization.Buffers.Impl
 {
-    public unsafe struct IntMapRecord<TValue> : IVariableSizeRecord
-        where TValue : struct
+    public unsafe struct IntMapRecord<TValue> : IVariableSizeRecord, IEnumerable<ZCursor<MapRecordEntry<TValue>>>
+        where TValue : unmanaged
     {
+        #pragma warning disable 0649
+        [InjectSelfByteIndex]
+        private int _selfByteIndex;
+        #pragma warning restore 0649
+        
         private int _itemCount;
         private int _bucketCount;
         private fixed int _bucketPtrs[1];
@@ -18,69 +26,109 @@ namespace Zero.Serialization.Buffers.Impl
         
         public bool Contains(int key)
         {
-            return TryGetValue(key).HasValue;
+            return !Unsafe.IsNullRef(ref TryGetValue(key));
         }
 
-        public void Add(int key, BufferPtr<TValue> value)
+        public void Add(int key, TValue value)
         {
-            if (!TryAddOrReplace(key, value, shouldReplace: false))
+            Add(key, ref value);
+        }
+
+        public void Add(int key, ref TValue value)
+        {
+            if (!TryAddOrReplace(key, ref value, shouldReplace: false))
             {
                 throw new ArgumentException(
                     $"Key {key} already exists in IntMapRecord<{typeof(TValue)}>");
             }
         }
 
-        public void Set(int key, BufferPtr<TValue> value)
+        public void Set(int key, TValue value)
         {
-            TryAddOrReplace(key, value, shouldReplace: true);
+            Set(key, ref value);
         }
 
-        public bool TryAdd(int key, BufferPtr<TValue> value)
+        public void Set(int key, ref TValue value)
         {
-            return TryAddOrReplace(key, value, shouldReplace: false);
+            TryAddOrReplace(key, ref value, shouldReplace: true);
         }
 
-        public BufferPtr<TValue>? TryGetValue(int key)
+        public bool TryAdd(int key, TValue value)
+        {
+            return TryAdd(key, ref value);
+        }
+
+        public bool TryAdd(int key, ref TValue value)
+        {
+            return TryAddOrReplace(key, ref value, shouldReplace: false);
+        }
+
+        public ref TValue TryGetValue(int key)
         {
             var bucketIndex = GetBucketIndex(key);
             if (_bucketPtrs[bucketIndex] < 0)
             {
-                return null;
+                return ref Unsafe.NullRef<TValue>();
             }
             
             // Console.WriteLine($"======= BEGIN TRY GET VALUE: {key} =========");
             // Console.WriteLine($">>> KEY [${key}] -> BUCKET PTR [{BucketPtrs[bucketIndex]}]");
 
-            ref VectorRecord<MapRecordEntry> entryVector = ref GetOrAddEntryVector(bucketIndex);
+            ref VectorRecord<MapRecordEntry<TValue>> entryVector = ref GetOrAddEntryVector(bucketIndex);
 
             //Console.WriteLine(entryVector.ToString());
                 
-            var result = TryMatchEntryAndGetValue(key, ref entryVector);
+            ref var result = ref TryMatchEntryAndGetValue(key, ref entryVector);
             //Console.WriteLine($"======= END TRY GET VALUE: {key} =========");
-            return result;
+            return ref result;
         }
 
-        public BufferPtr<TValue> this[int key]
+        public IEnumerator<ZCursor<MapRecordEntry<TValue>>> GetEnumerator()
+        {
+            return new EntriesEnumerator(BufferContext.Current.GetBuffer(this.GetType()), _selfByteIndex);
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        public ref TValue this[int key]
         {
             get
             {
-                var ptr = TryGetValue(key);
+                ref var result = ref TryGetValue(key);
 
-                if (ptr.HasValue)
+                if (!Unsafe.IsNullRef(ref result))
                 {
-                    return ptr.Value;
+                    return ref result;
                 }
 
-                throw new KeyNotFoundException(
-                    $"IntMapRecord<{typeof(TValue)}> has no key {key}");
+                throw new KeyNotFoundException($"IntMapRecord<{typeof(TValue)}> has no key {key}");
             }
         }
 
         public int Count => _itemCount;
 
-        public IEnumerable<int> Keys => throw new NotImplementedException();
+        public IEnumerable<int> Keys
+        {
+            get
+            {
+                return this.Select(
+                    entry => entry.Get().Key
+                );
+            }
+        }
 
-        public IEnumerable<BufferPtr<TValue>> Values => throw new NotImplementedException();
+        public IEnumerable<ZCursor<TValue>> Values
+        {
+            get
+            {
+                return this.Select(
+                    entry => entry.AccessField<TValue>(offsetBytes: sizeof(int))
+                );
+            }
+        }
 
         internal void Initialize(int bucketCount)
         {
@@ -93,61 +141,60 @@ namespace Zero.Serialization.Buffers.Impl
             }
         }
 
-        private bool TryAddOrReplace(int key, BufferPtr<TValue> value, bool shouldReplace)
+        private bool TryAddOrReplace(int key, ref TValue value, bool shouldReplace)
         {
             var bucketIndex = GetBucketIndex(key);
-            ref VectorRecord<MapRecordEntry> entryVector = ref GetOrAddEntryVector(bucketIndex);
+            ref VectorRecord<MapRecordEntry<TValue>> entryVector = ref GetOrAddEntryVector(bucketIndex);
             
             for (int i = 0; i < entryVector.Count; i++)
             {
-                ref MapRecordEntry entry = ref entryVector[i].Get();
+                ref var entry = ref entryVector[i];
                 if (entry.Key == key)
                 {
                     if (shouldReplace)
                     {
-                        entry.ValuePtr = value.ByteIndex;
+                        entry.Value = value;
                         return true;
                     }
                     return false;
                 }
             }
 
-            var newEntryPtr = BufferContext.Current.AllocateRecord(new MapRecordEntry {
+            var newEntry = new MapRecordEntry<TValue> {
                 Key = key,
-                ValuePtr = value.ByteIndex
-            });
+                Value = value
+            };
 
-            entryVector.Add(newEntryPtr);
+            entryVector.Add(ref newEntry);
 
             _itemCount++;
 
             return true;
         }
 
-        private BufferPtr<TValue>? TryMatchEntryAndGetValue(int key, ref VectorRecord<MapRecordEntry> entryVector)
+        private ref TValue TryMatchEntryAndGetValue(int key, ref VectorRecord<MapRecordEntry<TValue>> entryVector)
         {
             //Console.WriteLine(entryVector.ToString());
             
             for (int i = 0; i < entryVector.Count; i++)
             {
-                var entryPtr = entryVector[i];
-                ref MapRecordEntry entry = ref entryPtr.Get();
+                ref var entry = ref entryVector[i];
                 if (entry.Key == key)
                 {
-                    return new BufferPtr<TValue>(entry.ValuePtr);
+                    return ref entry.Value;
                 }
             }
 
-            return null;
+            return ref Unsafe.NullRef<TValue>();
         }
 
-        private ref VectorRecord<MapRecordEntry> GetOrAddEntryVector(int bucketIndex)
+        private ref VectorRecord<MapRecordEntry<TValue>> GetOrAddEntryVector(int bucketIndex)
         {
             var ptrValue = _bucketPtrs[bucketIndex];
             var entryVectorPtr = ptrValue >= 0
-                ? new BufferPtr<VectorRecord<MapRecordEntry>>(ptrValue)
-                : VectorRecord<MapRecordEntry>.Allocate(
-                    items: Span<BufferPtr<MapRecordEntry>>.Empty,
+                ? new ZRef<VectorRecord<MapRecordEntry<TValue>>>(ptrValue)
+                : VectorRecord<MapRecordEntry<TValue>>.Allocate(
+                    items: Span<MapRecordEntry<TValue>>.Empty,
                     minBlockEntryCount: 4);
 
             if (ptrValue < 0)
@@ -166,7 +213,7 @@ namespace Zero.Serialization.Buffers.Impl
 
         private static readonly int _baseSize = Unsafe.SizeOf<IntMapRecord<TValue>>();
         
-        public static BufferPtr<IntMapRecord<TValue>> Allocate(int bucketCount, IBufferContext? context = null)
+        public static ZRef<IntMapRecord<TValue>> Allocate(int bucketCount, IBufferContext? context = null)
         {
             var byteSize = SizeOf(bucketCount);
             var effectiveContext = context ?? BufferContext.Current; 
@@ -179,11 +226,95 @@ namespace Zero.Serialization.Buffers.Impl
         {
             return _baseSize + (bucketCount - 1) * sizeof(int);
         }
+
+        private class EntriesEnumerator : IEnumerator<ZCursor<MapRecordEntry<TValue>>>
+        {
+            private readonly ITypedBuffer _buffer;
+            private readonly int _recordByteIndex;
+            private int _currentBucketIndex;
+            private IEnumerator<ZCursor<MapRecordEntry<TValue>>>? _currentEntryVector;
+            private bool _hasCurrent;
+
+            public EntriesEnumerator(ITypedBuffer buffer, int recordByteIndex)
+            {
+                _buffer = buffer;
+                _recordByteIndex = recordByteIndex;
+                Reset();
+            }
+
+            public bool MoveNext()
+            {
+                ref var record = ref GetIntMapRecord();
+
+                if (_currentEntryVector != null && _currentEntryVector.MoveNext())
+                {
+                    _hasCurrent = true;
+                }
+                else
+                {
+                    while (++_currentBucketIndex < record._bucketCount)
+                    {
+                        if (record._bucketPtrs[_currentBucketIndex] >= 0)
+                        {
+                            break;
+                        }
+                    }
+
+                    if (_currentBucketIndex < record._bucketCount)
+                    {
+                        _currentEntryVector?.Dispose();
+                        _currentEntryVector = record.GetOrAddEntryVector(_currentBucketIndex).GetEnumerator();
+                        _hasCurrent = _currentEntryVector.MoveNext();
+                    }
+                    else
+                    {
+                        _hasCurrent = false;
+                    }
+                }
+
+                return _hasCurrent;
+            }
+
+            public void Reset()
+            {
+                _currentBucketIndex = -1;
+                _currentEntryVector = null;
+                _hasCurrent = false;
+            }
+
+            public ZCursor<MapRecordEntry<TValue>> Current
+            {
+                get
+                {
+                    if (_hasCurrent && _currentEntryVector != null)
+                    {
+                        return _currentEntryVector.Current;
+                    }
+                    throw new InvalidOperationException("Current item is not available");
+                }
+            }
+
+            object IEnumerator.Current => Current;
+
+            public void Dispose()
+            {
+                _currentEntryVector?.Dispose();
+                _currentEntryVector = null;
+            }
+
+            private ref IntMapRecord<TValue> GetIntMapRecord()
+            {
+                var ptr = _buffer.GetRawRecordPointer(_recordByteIndex);
+                ref var record = ref Unsafe.AsRef<IntMapRecord<TValue>>(ptr);
+                return ref record;
+            }
+        }
     }
 
-    public struct MapRecordEntry
+    public struct MapRecordEntry<T> 
+        where T : unmanaged
     {
-        public int Key { get; init; }
-        public int ValuePtr { get; set; }
+        public int Key;
+        public T Value;
     }
 }

@@ -1,8 +1,45 @@
-﻿namespace Atc.Data.Primitives
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+
+namespace Atc.Data.Primitives
 {
-    public readonly struct GeoPoint
+    public readonly struct GeoPoint : IComparable<GeoPoint>
     {
-        public double Lat { get; init; }
-        public double Lon { get; init; }
+        public GeoPoint(double lat, double lon)
+        {
+            Lat = lat;
+            Lon = lon;
+        }
+
+        public readonly double Lat;
+        public readonly double Lon;
+
+        public int CompareTo(GeoPoint other)
+        {
+            var latComparison = Lat.CompareTo(other.Lat);
+            if (latComparison != 0) return latComparison;
+            return Lon.CompareTo(other.Lon);
+        }
+
+        public static bool operator <(GeoPoint left, GeoPoint right)
+        {
+            return left.CompareTo(right) < 0;
+        }
+
+        public static bool operator >(GeoPoint left, GeoPoint right)
+        {
+            return left.CompareTo(right) > 0;
+        }
+
+        public static bool operator <=(GeoPoint left, GeoPoint right)
+        {
+            return left.CompareTo(right) <= 0;
+        }
+
+        public static bool operator >=(GeoPoint left, GeoPoint right)
+        {
+            return left.CompareTo(right) >= 0;
+        }
     }
 }

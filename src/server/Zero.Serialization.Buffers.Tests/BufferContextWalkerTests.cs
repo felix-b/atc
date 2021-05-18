@@ -41,7 +41,7 @@ namespace Zero.Serialization.Buffers.Tests
                     .WithString()
                     .WithTypes<TestContainer, OuterItem, InnerItemA>()
                     .WithType<InnerItemB>(alsoAsVectorItem: true)
-                    .WithIntMap<OuterItem>()
+                    .WithMapTo<ZRef<OuterItem>>()
                 .End(out contextTemp);
 
             context = (BufferContext)contextTemp;
@@ -52,12 +52,12 @@ namespace Zero.Serialization.Buffers.Tests
         {
             var containerPtr = context.AllocateRecord<TestContainer>(new TestContainer() {
                 N = 123,
-                M = context.AllocateIntMap<OuterItem>(bucketCount: 5)
+                M = context.AllocateIntMap<ZRef<OuterItem>>(bucketCount: 5)
             });
 
             ref var outerMap = ref containerPtr.Get().M;
             
-            outerMap.Set(111, new OuterItem() {
+            outerMap.Set(111, context.AllocateRecord(new OuterItem() {
                 Num = 1010,
                 BoolOrNull = false,
                 Inner = new InnerItemA() {
@@ -65,7 +65,7 @@ namespace Zero.Serialization.Buffers.Tests
                     Y = 567.8
                 },
                 Day = DayOfWeek.Friday,
-                Second = context.AllocateVector<InnerItemB>(new BufferPtr<InnerItemB>[] {
+                Second = context.AllocateVector<ZRef<InnerItemB>>(new ZRef<InnerItemB>[] {
                     context.AllocateRecord<InnerItemB>(new InnerItemB() {
                         S = context.AllocateString("ABC") 
                     }),
@@ -73,9 +73,9 @@ namespace Zero.Serialization.Buffers.Tests
                         S = context.AllocateString("DEF") 
                     })
                 })
-            });
+            }));
 
-            outerMap.Set(222, new OuterItem() {
+            outerMap.Set(222, context.AllocateRecord(new OuterItem() {
                 Num = 2020,
                 BoolOrNull = null,
                 Inner = new InnerItemA() {
@@ -83,18 +83,18 @@ namespace Zero.Serialization.Buffers.Tests
                     Y = 543.2
                 },
                 Day = DayOfWeek.Monday,
-                Second = context.AllocateVector<InnerItemB>(new BufferPtr<InnerItemB>[] {
+                Second = context.AllocateVector<ZRef<InnerItemB>>(new ZRef<InnerItemB>[] {
                     context.AllocateRecord<InnerItemB>(new InnerItemB() {
                         S = context.AllocateString("GHI") 
                     })
                 })
-            });
+            }));
         }
         
         public struct TestContainer
         {
             public int N;
-            public IntMap<OuterItem> M;
+            public ZIntMapRef<ZRef<OuterItem>> M;
         }
 
         public struct OuterItem
@@ -102,7 +102,7 @@ namespace Zero.Serialization.Buffers.Tests
             public int Num;
             public bool? BoolOrNull;
             public InnerItemA Inner;
-            public Vector<InnerItemB>? Second;
+            public ZVectorRef<ZRef<InnerItemB>>? Second;
             public DayOfWeek Day;
         }
 
@@ -114,7 +114,7 @@ namespace Zero.Serialization.Buffers.Tests
         
         public struct InnerItemB
         {
-            public StringRef S { get; init; }
+            public ZStringRef S { get; init; }
         }
     }
 }

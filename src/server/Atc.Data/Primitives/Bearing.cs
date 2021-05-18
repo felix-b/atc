@@ -1,6 +1,6 @@
 ﻿namespace Atc.Data.Primitives
 {
-    public struct Bearing
+    public readonly struct Bearing
     {
         private readonly Angle _value;
         private readonly BearingType _type;
@@ -13,6 +13,11 @@
 
         public Angle Value => _value;
         public BearingType Type => _type;
+
+        public static Bearing FromTrueDegrees(float degrees)
+        {
+            return new Bearing(Angle.FromDegrees(degrees), BearingType.True);
+        }
     }
 
     public enum BearingType

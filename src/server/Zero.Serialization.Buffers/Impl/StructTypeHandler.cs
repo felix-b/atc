@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -13,6 +14,8 @@ namespace Zero.Serialization.Buffers.Impl
         private readonly int _size;
         private readonly bool _isVariableSize;
         private readonly StructFieldInfo[] _fields;
+        private readonly StructFieldInfo? _selfByteIndexField;
+        private readonly StructFieldInfo? _variableBufferField;
         private readonly VariableSizeGetterFunc _getVariableSize;
         private readonly VariableBufferGetterFunc _getVariableBuffer;
 
@@ -36,20 +39,21 @@ namespace Zero.Serialization.Buffers.Impl
                 .Select(t => GetStructFieldInfo(t, pendingTypeHandlers))
                 .ToArray();
 
-            var variableBufferField = _fields.FirstOrDefault(f => f.IsVariableBuffer);
+            _variableBufferField = _fields.FirstOrDefault(f => f.IsVariableBuffer);
             _isVariableSize = 
                 type.IsAssignableTo(typeof(IVariableSizeRecord)) && 
-                variableBufferField != null;
-            
+                _variableBufferField != null;
+
             _getVariableSize = _isVariableSize
                 ? GetVariableSizeGetterFunc(_type)
                 : (_) => throw new NotSupportedException("This type handler does not support variable size");
             
-            _getVariableBuffer = _isVariableSize && variableBufferField != null
-                ? GetVariableBufferGetterFunc(_type, variableBufferField)
+            _getVariableBuffer = _isVariableSize && _variableBufferField != null
+                ? GetVariableBufferGetterFunc(_type, _variableBufferField)
                 : (_, _) => throw new NotSupportedException("This type handler does not support variable size");
-        }
 
+            _selfByteIndexField = _fields.FirstOrDefault(field => field.IsInjectSelfByteIndex);
+        }
         
         public FieldValuePair[] GetFieldValues(void *pStruct)
         {
@@ -121,22 +125,46 @@ namespace Zero.Serialization.Buffers.Impl
             // }
         }
 
+        public void InjectSelfByteIndex(byte* pStruct, int byteIndex)
+        {
+            if (_selfByteIndexField == null)
+            {
+                throw new InvalidOperationException($"Type '{_type.Name}' has no InjectSelfByteIndex field");
+            }
+
+            int *pSelfByteIndex = (int*)(pStruct + _selfByteIndexField.Offset);
+            *pSelfByteIndex = byteIndex;
+        }
+
         public Type Type => _type;
         
         public int Size => _size;
 
         public bool IsVariableSize => _isVariableSize;
+
+        public bool ExpectsInjectedSelfByteIndex => _selfByteIndexField != null;
         
         public IReadOnlyList<StructFieldInfo> Fields => _fields;
+
+        public StructFieldInfo? VariableBufferField => _variableBufferField;
+
+        public StructFieldInfo? SelfByteIndexField => _selfByteIndexField;
 
         private StructFieldInfo GetStructFieldInfo(FieldInfo field, HashSet<Type> pendingTypeHandlers)
         {
             var hasFixedBufferAttribute = field.GetCustomAttribute<FixedBufferAttribute>() != null;
+            var hasInjectSelfByteIndexAttribute = field.GetCustomAttribute<InjectSelfByteIndexAttribute>() != null;
             var size = SizeOf(field.FieldType);
             var offset = GetFieldOffset(field);
             var isVariableBuffer = IsVariableBufferField(field, out var variableBufferType);
             var effectiveType = variableBufferType ?? field.FieldType;
             var valueOf = GetValueOfFunc(effectiveType);
+
+            if (hasInjectSelfByteIndexAttribute && effectiveType != typeof(int))
+            {
+                throw new InvalidDataException(
+                    $"Field '{_type.Name}.{field.Name}' must be of type 'System.Int32' because it has InjectSelfByteIndexAttribute");
+            }
             
             StructTypeHandler? handler = ShouldHaveTypeHandler(effectiveType)
                 ? GetOrAddHandler(field.FieldType, pendingTypeHandlers)
@@ -148,6 +176,7 @@ namespace Zero.Serialization.Buffers.Impl
                 Offset: offset,
                 Size: size,
                 IsVariableBuffer: hasFixedBufferAttribute,
+                IsInjectSelfByteIndex: hasInjectSelfByteIndexAttribute,
                 GetValue: valueOf,
                 ValueTypeHandler: handler
             );
@@ -379,6 +408,7 @@ namespace Zero.Serialization.Buffers.Impl
             int Offset, 
             int Size, 
             bool IsVariableBuffer,
+            bool IsInjectSelfByteIndex,
             ValueOfFunc GetValue,
             StructTypeHandler? ValueTypeHandler
         );

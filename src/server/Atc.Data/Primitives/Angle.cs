@@ -13,6 +13,11 @@
 
         public float Value => _value;
         public AngleUnit Unit => _unit;
+
+        public static Angle FromDegrees(float value)
+        {
+            return new Angle(value, AngleUnit.Degrees);
+        }
     }
 
     public enum AngleUnit

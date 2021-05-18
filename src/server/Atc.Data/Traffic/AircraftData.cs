@@ -1,15 +1,14 @@
-﻿using Atc.Data.World;
-using Zero.Serialization.Buffers;
+﻿using Zero.Serialization.Buffers;
 
 namespace Atc.Data.Traffic
 {
-    public readonly struct AircraftData
+    public struct AircraftData
     {
-        public readonly BufferPtr<AircraftTypeData> Type;
-        public readonly StringRef TailNo;
-        public readonly AircraftCategories Category;
-        public readonly OperationTypes Operations;
-        public readonly BufferPtr<AirlineData>? Airline;
-        public readonly StringRef LiveryId;
+        public ZRef<AircraftTypeData> Type { get; init; }
+        public ZStringRef TailNo { get; init; }
+        public AircraftCategories Category { get; init; }
+        public OperationTypes Operations { get; init; }
+        public ZStringRef AirlineIcao { get; init; }
+        public ZStringRef LiveryId { get; init; }
     }
 }

@@ -36,7 +36,7 @@ namespace Zero.Serialization.Buffers.Impl
         {
             return SizeOf(_length);
         }
-
+        
         public string Str => ToString();
 
         internal void SetValue(string value)
@@ -50,15 +50,31 @@ namespace Zero.Serialization.Buffers.Impl
             }
         }
 
+        internal string GetStrAndDeflate()
+        {
+            var temp = ToString();
+            _inflated = null;
+            return temp;
+        }
+
         //TODO: having a managed ref changes the layout; remove _inflated, to use simple layout assumptions  
         private static readonly int _baseSize = 18;//Marshal.SizeOf(typeof(StringRecord));
 
-        public static BufferPtr<StringRecord> Allocate(string value, IBufferContext? context = null)
+        public static ZRef<StringRecord> Allocate(string value, IBufferContext? context = null)
         {
+            var effectiveContext = context ?? BufferContext.Current;
+            var realContext = effectiveContext as BufferContext;
+
+            if (realContext != null && realContext.TryGetString(value, out var stringRef))
+            {
+                return stringRef!.Value;
+            }
+            
             var size = SizeOf(charCount: value.Length);
-            var effectiveContext = context ?? BufferContext.Current; 
             var ptr = effectiveContext.GetBuffer<StringRecord>().Allocate(size);
             ptr.Get().SetValue(value);
+
+            realContext?.RegisterAllocatedString(value, ptr);
             return ptr;
         }
         

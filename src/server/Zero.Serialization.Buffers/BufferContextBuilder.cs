@@ -15,58 +15,72 @@ namespace Zero.Serialization.Buffers
             return this;
         }
         
-        public BufferContextBuilder WithType<T>(bool alsoAsVectorItem = false)
-            where T : struct
+        public BufferContextBuilder WithType<T>(
+            bool alsoAsVectorItem = false, 
+            bool alsoAsMapItemValue = false)
+            where T : unmanaged
         {
             _recordTypes.Add(typeof(T));
 
             if (alsoAsVectorItem)
             {
                 _recordTypes.Add(typeof(VectorRecord<T>));
+                _recordTypes.Add(typeof(VectorRecord<ZRef<T>>));
+            }
+
+            if (alsoAsMapItemValue)
+            {
+                WithMapTo<T>();
+                WithMapTo<ZRef<T>>();
             }
             
             return this;
         }
 
-        public BufferContextBuilder WithTypes<T1, T2>(bool alsoAsVectorItem = false)
-            where T1 : struct
-            where T2 : struct
+        public BufferContextBuilder WithTypes<T1, T2>(
+            bool alsoAsVectorItem = false, 
+            bool alsoAsMapItemValue = false)
+            where T1 : unmanaged
+            where T2 : unmanaged
         {
-            WithType<T1>(alsoAsVectorItem);
-            WithType<T2>(alsoAsVectorItem);
+            WithType<T1>(alsoAsVectorItem, alsoAsMapItemValue);
+            WithType<T2>(alsoAsVectorItem, alsoAsMapItemValue);
             return this;
         }
 
-        public BufferContextBuilder WithTypes<T1, T2, T3>(bool alsoAsVectorItem = false)
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
+        public BufferContextBuilder WithTypes<T1, T2, T3>(
+            bool alsoAsVectorItem = false, 
+            bool alsoAsMapItemValue = false)
+            where T1 : unmanaged
+            where T2 : unmanaged
+            where T3 : unmanaged
         {
-            WithType<T1>(alsoAsVectorItem);
-            WithType<T2>(alsoAsVectorItem);
-            WithType<T3>(alsoAsVectorItem);
+            WithType<T1>(alsoAsVectorItem, alsoAsMapItemValue);
+            WithType<T2>(alsoAsVectorItem, alsoAsMapItemValue);
+            WithType<T3>(alsoAsVectorItem, alsoAsMapItemValue);
             return this;
         }
 
-        public BufferContextBuilder WithTypes<T1, T2, T3, T4>(bool alsoAsVectorItem = false)
-            where T1 : struct
-            where T2 : struct
-            where T3 : struct
-            where T4 : struct
+        public BufferContextBuilder WithTypes<T1, T2, T3, T4>(
+            bool alsoAsVectorItem = false, 
+            bool alsoAsMapItemValue = false)
+            where T1 : unmanaged
+            where T2 : unmanaged
+            where T3 : unmanaged
+            where T4 : unmanaged
         {
-            WithType<T1>(alsoAsVectorItem);
-            WithType<T2>(alsoAsVectorItem);
-            WithType<T3>(alsoAsVectorItem);
-            WithType<T4>(alsoAsVectorItem);
+            WithType<T1>(alsoAsVectorItem, alsoAsMapItemValue);
+            WithType<T2>(alsoAsVectorItem, alsoAsMapItemValue);
+            WithType<T3>(alsoAsVectorItem, alsoAsMapItemValue);
+            WithType<T4>(alsoAsVectorItem, alsoAsMapItemValue);
             return this;
         }
 
-        public BufferContextBuilder WithIntMap<TValue>(bool alsoAsVectorItem = false)
-            where TValue : struct
+        public BufferContextBuilder WithMapTo<TValue>(bool alsoAsVectorItem = false)
+            where TValue : unmanaged
         {
             _recordTypes.Add(typeof(IntMapRecord<TValue>));
-            _recordTypes.Add(typeof(MapRecordEntry));
-            _recordTypes.Add(typeof(VectorRecord<MapRecordEntry>));
+            _recordTypes.Add(typeof(VectorRecord<MapRecordEntry<TValue>>));
 
             return this;
         }

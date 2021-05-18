@@ -5,58 +5,54 @@ namespace Zero.Serialization.Buffers
 {
     public static class BufferContextExtensions
     {
-        public static BufferPtr<T> AllocateRecord<T>(this IBufferContext context)
-            where T : struct
+        public static ZRef<T> AllocateRecord<T>(this IBufferContext context)
+            where T : unmanaged
         {
             return context.GetBuffer<T>().Allocate();
         }
 
-        public static BufferPtr<T> AllocateRecord<T>(this IBufferContext context, int sizeInBytes)
-            where T : struct
-        {
-            return context.GetBuffer<T>().Allocate(sizeInBytes);
-        }
-
-        public static BufferPtr<T> AllocateRecord<T>(this IBufferContext context, T value)
-            where T : struct
+        public static ZRef<T> AllocateRecord<T>(this IBufferContext context, T value)
+            where T : unmanaged
         {
             return context.GetBuffer<T>().Allocate(value);
         }
 
-        public static StringRef AllocateString(this IBufferContext context, string value)
+        public static ZStringRef AllocateString(this IBufferContext context, string value)
         {
             var innerPtr = StringRecord.Allocate(value, context);
-            return new StringRef(innerPtr);
+            return new ZStringRef(innerPtr);
         }
 
-        public static BufferPtr<StringRecord> AllocateStringRecord(this IBufferContext context, string value)
-        {
-            return StringRecord.Allocate(value, context);
-        }
-
-        public static Vector<T> AllocateVector<T>(this IBufferContext context, params BufferPtr<T>[] items)
-            where T : struct
+        public static ZVectorRef<T> AllocateVector<T>(this IBufferContext context, params T[] items)
+            where T : unmanaged
         {
             var minBlockEntryCount = items.Length > 0 ? 0 : 10;
             var innerPtr = context.AllocateVectorRecord<T>(items, minBlockEntryCount);
-            return new Vector<T>(innerPtr);
+            return new ZVectorRef<T>(innerPtr);
         }
 
-        public static IntMap<TValue> AllocateIntMap<TValue>(this IBufferContext context, int bucketCount = 1024)
-            where TValue : struct
+        public static ZIntMapRef<TValue> AllocateIntMap<TValue>(this IBufferContext context, int bucketCount = 1024)
+            where TValue : unmanaged
         {
             var innerPtr = IntMapRecord<TValue>.Allocate(bucketCount, context);
-            return new IntMap<TValue>(innerPtr);
+            return new ZIntMapRef<TValue>(innerPtr);
         }
 
-        internal static BufferPtr<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, int minBlockEntryCount)
-            where T : struct
+        public static ZStringMapRef<TValue> AllocateStringMap<TValue>(this IBufferContext context, int bucketCount = 1024)
+            where TValue : unmanaged
         {
-            return AllocateVectorRecord(context, Array.Empty<BufferPtr<T>>(), minBlockEntryCount);
+            var innerPtr = IntMapRecord<TValue>.Allocate(bucketCount, context);
+            return new ZStringMapRef<TValue>(innerPtr);
         }
 
-        internal static BufferPtr<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, BufferPtr<T>[] items, int minBlockEntryCount)
-            where T : struct
+        internal static ZRef<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, int minBlockEntryCount)
+            where T : unmanaged
+        {
+            return AllocateVectorRecord(context, Array.Empty<T>(), minBlockEntryCount);
+        }
+
+        internal static ZRef<VectorRecord<T>> AllocateVectorRecord<T>(this IBufferContext context, T[] items, int minBlockEntryCount)
+            where T : unmanaged
         {
             var itemsAsSpan = items.AsSpan(); 
             return VectorRecord<T>.Allocate(itemsAsSpan, minBlockEntryCount, context);

@@ -16,6 +16,11 @@ namespace Atc.Data.Primitives
         public float Value => _value;
         public AltitudeUnit Unit => _unit;
         public AltitudeType Type => _type;
+
+        public static Altitude FromFeetMsl(float value)
+        {
+            return new Altitude(value, AltitudeUnit.Feet, AltitudeType.Msl);
+        }
     }
 
     public enum AltitudeUnit

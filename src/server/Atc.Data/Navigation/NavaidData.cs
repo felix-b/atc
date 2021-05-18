@@ -1,4 +1,4 @@
-﻿namespace Atc.Data.World.Navigation
+﻿namespace Atc.Data.Navigation
 {
     public struct NavaidData
     {

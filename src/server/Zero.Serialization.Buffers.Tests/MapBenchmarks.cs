@@ -17,16 +17,16 @@ namespace Zero.Serialization.Buffers.Tests
             Stopwatch stopper;
             Dictionary<int, TestItem> dictionary;
 
-            BufferPtr<TestContainer> containerPtr;
+            ZRef<TestContainer> containerPtr;
             using var stream = new MemoryStream();
             using (CreateContextScope(out var contextBefore))
             {
                 containerPtr = contextBefore.AllocateRecord(new TestContainer {
-                    M = contextBefore.AllocateIntMap<TestItem>(bucketCount: 2048)
+                    M = contextBefore.AllocateIntMap<ZRef<TestItem>>(bucketCount: 2048)
                 });
 
                 dictionary = new Dictionary<int, TestItem>();                
-                ref IntMap<TestItem> map = ref containerPtr.Get().M;
+                ref ZIntMapRef<ZRef<TestItem>> map = ref containerPtr.Get().M;
 
                 stopper = Stopwatch.StartNew();
                 PopulateDictionary(dictionary);
@@ -49,7 +49,7 @@ namespace Zero.Serialization.Buffers.Tests
             
             using (CreateContextScope(stream, out var contextAfter))
             {
-                ref IntMap<TestItem> map = ref containerPtr.Get().M;
+                ref ZIntMapRef<ZRef<TestItem>> map = ref containerPtr.Get().M;
 
                 stopper = Stopwatch.StartNew();
                 LookupDictionary(dictionary);
@@ -74,7 +74,7 @@ namespace Zero.Serialization.Buffers.Tests
             }
         }
         
-        private void PopulateIntMap(ref IntMap<TestItem> map)
+        private void PopulateIntMap(ref ZIntMapRef<ZRef<TestItem>> map)
         {
             var context = BufferContext.Current;
             
@@ -103,7 +103,7 @@ namespace Zero.Serialization.Buffers.Tests
             }
         }
 
-        private void LookupIntMap(ref IntMap<TestItem> map)
+        private void LookupIntMap(ref ZIntMapRef<ZRef<TestItem>> map)
         {
             for (int i = 0; i < 30000; i++)
             {
@@ -112,7 +112,7 @@ namespace Zero.Serialization.Buffers.Tests
                 //     continue;
                 // }
                 
-                ref TestItem value = ref map[i];
+                ref TestItem value = ref map[i].Get();
                 if (Math.Abs(value.X - i) > 0.001)
                 {
                     throw new Exception();
@@ -126,7 +126,7 @@ namespace Zero.Serialization.Buffers.Tests
             var scope = BufferContextBuilder
                 .Begin()
                     .WithTypes<TestContainer, TestItem>()
-                    .WithIntMap<TestItem>()
+                    .WithMapTo<ZRef<TestItem>>()
                 .End(out contextTemp);
 
             context = (BufferContext)contextTemp;
@@ -146,7 +146,7 @@ namespace Zero.Serialization.Buffers.Tests
 
         public struct TestContainer
         {
-            public IntMap<TestItem> M;
+            public ZIntMapRef<ZRef<TestItem>> M;
         }
     }
 }

@@ -28,7 +28,7 @@ namespace Zero.Serialization.Buffers.Tests
         public void StreamRoundtripTest()
         {
             using var stream = new MemoryStream();
-            BufferPtr<StringRecord> ptr1, ptr2, ptr3, ptr4;
+            ZRef<StringRecord> ptr1, ptr2, ptr3, ptr4;
             
             using (var context = new SingleBufferContext<StringRecord>())
             {

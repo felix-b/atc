@@ -4,10 +4,11 @@ using System.IO;
 
 namespace Zero.Serialization.Buffers.Impl
 {
-    public interface ITypedBuffer
+    public unsafe interface ITypedBuffer
     {
         void WriteTo(Stream output);
         ref byte[] GetRawBytesRef(int firstByteIndex);
+        byte* GetRawRecordPointer(int firstByteIndex);
         bool ReadOnly { get; }
         int InitialCapacity { get; }
         Type RecordType { get; }
@@ -18,5 +19,6 @@ namespace Zero.Serialization.Buffers.Impl
         IReadOnlyList<int> RecordOffsets { get; }
         int TotalBytes { get; }
         int AllocatedBytes { get; }
+        int MaxRecordSizeBytes { get; }
     }
 }

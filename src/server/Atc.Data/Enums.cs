@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Atc.Data.World
+namespace Atc.Data
 {
     [Flags]
     public enum WeekDays
@@ -37,6 +37,4 @@ namespace Atc.Data.World
         Cargo = 0x04,
         Military = 0x08,
     }
-    
-    
 }

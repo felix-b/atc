@@ -1,10 +1,14 @@
-﻿using Zero.Serialization.Buffers.Impl;
+﻿using System;
+using Zero.Serialization.Buffers.Impl;
 
 namespace Zero.Serialization.Buffers
 {
     public interface IBufferContext
     {
-        public TypedBuffer<T> GetBuffer<T>() where T : struct;
-        public BufferContextWalker GetWalker();
+        TypedBuffer<T> GetBuffer<T>() where T : struct;
+        ITypedBuffer GetBuffer(Type recordType);
+        BufferContextWalker GetWalker();
+        ZStringRef GetString(string s);
+        bool TryGetString(string s, out ZStringRef stringRef);
     }
 }

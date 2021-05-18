@@ -120,25 +120,27 @@ namespace Zero.Serialization.Buffers.Impl
             }
         }
 
-        public BufferPtr<T> Allocate()
+        public ZRef<T> Allocate()
         {
             return InternalAllocate(_typeHandler.Size);
         }
 
-        public BufferPtr<T> Allocate(int sizeInBytes)
+        public ZRef<T> Allocate(int sizeInBytes)
         {
             return InternalAllocate(sizeInBytes);
         }
 
-        public BufferPtr<T> Allocate(T value)
+        public ZRef<T> Allocate(T value)
         {
             var size = _typeHandler.IsVariableSize
                 ? ((IVariableSizeRecord)value).SizeOf()
                 : _typeHandler.Size;
             
-            var ptr = InternalAllocate(size);
+            var ptr = InternalAllocate(size, delayInitRecord: true);
             ref T recordRef = ref this[ptr.ByteIndex];
             recordRef = value;
+            
+            InitializeRecord(ptr.ByteIndex);
             return ptr;
         }
 
@@ -148,7 +150,7 @@ namespace Zero.Serialization.Buffers.Impl
             return ref Unsafe.AsRef<byte[]>(pRecord);
         }
 
-        private byte* GetRawRecordPointer(int firstByteIndex)
+        public byte* GetRawRecordPointer(int firstByteIndex)
         {
             if (firstByteIndex < 0 || firstByteIndex >= _freeByteIndex)
             {
@@ -173,8 +175,8 @@ namespace Zero.Serialization.Buffers.Impl
                 ? bufferByteIndex
                 : bufferByteIndex % _pageSizeBytes;
         }
-        
-        private BufferPtr<T> InternalAllocate(int sizeInBytes)
+
+        private ZRef<T> InternalAllocate(int sizeInBytes, bool delayInitRecord = false)
         {
             if (_readOnly)
             {
@@ -184,6 +186,13 @@ namespace Zero.Serialization.Buffers.Impl
             if (sizeInBytes <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(sizeInBytes), "Allocation size must be a positive number.");
+            }
+
+            if (sizeInBytes > _pageSizeBytes)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(sizeInBytes),
+                    $"Unable to allocate {sizeInBytes} bytes because the page size is {_pageSizeBytes} bytes.");
             }
 
             TranslateBufferByteIndex(_freeByteIndex, out var freePageIndex, out var freePageByteIndex);
@@ -198,9 +207,23 @@ namespace Zero.Serialization.Buffers.Impl
             _freeByteIndex += sizeInBytes;
             _count++;
             _recordPtrs.Add(byteIndex);
+
+            var ptr = new ZRef<T>(byteIndex);
+            if (!delayInitRecord)
+            {
+                InitializeRecord(ptr.ByteIndex);
+            }
             
-            var ptr = new BufferPtr<T>(byteIndex);
             return ptr;
+        }
+
+        private void InitializeRecord(int byteIndex)
+        {
+            if (_typeHandler.ExpectsInjectedSelfByteIndex)
+            {
+                var pRecord = GetRawRecordPointer(byteIndex);
+               _typeHandler.InjectSelfByteIndex(pRecord, byteIndex);
+            }
         }
 
         public void WriteTo(Stream output)
@@ -240,7 +263,7 @@ namespace Zero.Serialization.Buffers.Impl
 
             for (int i = 0; i < _count; i++)
             {
-                var ptr = new BufferPtr<T>(_recordPtrs[i]);
+                var ptr = new ZRef<T>(_recordPtrs[i]);
                 ref T record = ref ptr.Get();
                 Console.WriteLine($"=== begin RECORD {i}/{_count} ===");
                 Console.WriteLine(record.ToString());
@@ -276,6 +299,8 @@ namespace Zero.Serialization.Buffers.Impl
         public int TotalBytes => _pages.Count * _pageSizeBytes;
 
         public int AllocatedBytes => _freeByteIndex;
+
+        public int MaxRecordSizeBytes => _pageSizeBytes; 
 
         public IReadOnlyList<int> RecordOffsets => _recordPtrs;
     }

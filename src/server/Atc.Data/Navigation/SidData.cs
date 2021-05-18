@@ -1,6 +1,6 @@
-﻿namespace Atc.Data.World.Navigation
+﻿namespace Atc.Data.Navigation
 {
-    public readonly struct SidData
+    public struct SidData
     {
         
     }

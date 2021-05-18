@@ -24,15 +24,35 @@ namespace Zero.Serialization.Buffers.Tests
         
         public TypedBuffer<T> GetBuffer<T>() where T : struct
         {
-            if (typeof(T) != typeof(R))
+            return (TypedBuffer<T>)GetBuffer(typeof(T));
+        }
+
+        public ITypedBuffer GetBuffer(Type recordType)
+        {
+            if (recordType != typeof(R))
             {
-                throw new InvalidOperationException($"Record type mismatch! Expected '{typeof(R)}', got '{typeof(T)}'.");
+                throw new InvalidOperationException($"Record type mismatch! Expected '{typeof(R)}', got '{recordType}'.");
             }
 
-            return (TypedBuffer<T>)(object)Buffer;
+            return Buffer;
         }
 
         public BufferContextWalker GetWalker()
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryGetString(string s, out ZStringRef? stringRef)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ZStringRef GetString(string s)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryGetString(string s, out ZStringRef stringRef)
         {
             throw new NotImplementedException();
         }
