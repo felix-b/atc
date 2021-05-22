@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net5.0</TargetFramework>
+        <LangVersion>9.0</LangVersion>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AssemblyName>atcd</AssemblyName>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Atc.Data.Sources\Atc.Data.Sources.csproj" />
+      <ProjectReference Include="..\Atc.Data\Atc.Data.csproj" />
+      <ProjectReference Include="..\Atc.Server\Atc.Server.csproj" />
+      <ProjectReference Include="..\Zero.Serialization.Buffers\Zero.Serialization.Buffers.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -478,6 +478,40 @@ namespace Zero.Serialization.Buffers.Tests
             ptr3.Get().GetSelfByteIndex().Should().Be(2 * sizeof(ARecordWithSelfByteIndex));
         }
 
+        [Test]
+        public void FixedSizeRecord_GetRecordZRef()
+        {
+            var context = new BufferContext(typeof(ASimpleRecord));
+            using var scope = new BufferContextScope(context);
+
+            var ptr1 = context.AllocateRecord(new ASimpleRecord());
+            var ptr2 = context.AllocateRecord(new ASimpleRecord());
+            var ptr3 = context.AllocateRecord(new ASimpleRecord());
+
+            var buffer = context.GetBuffer<ASimpleRecord>();
+
+            buffer.GetRecordZRef(0).Should().Be(ptr1);
+            buffer.GetRecordZRef(1).Should().Be(ptr2);
+            buffer.GetRecordZRef(2).Should().Be(ptr3);
+        }
+        
+        [Test]
+        public void VariableSizeRecord_GetRecordZRef()
+        {
+            var context = new BufferContext(typeof(AVariableSizeRecord));
+            using var scope = new BufferContextScope(context);
+
+            var ptr1 = context.AllocateRecord(new AVariableSizeRecord(3));
+            var ptr2 = context.AllocateRecord(new AVariableSizeRecord(4));
+            var ptr3 = context.AllocateRecord(new AVariableSizeRecord(2));
+
+            var buffer = context.GetBuffer<AVariableSizeRecord>();
+
+            buffer.GetRecordZRef(0).Should().Be(ptr1);
+            buffer.GetRecordZRef(1).Should().Be(ptr2);
+            buffer.GetRecordZRef(2).Should().Be(ptr3);
+        }
+
         public struct ASimpleRecord
         {
             public int N { get; set; }

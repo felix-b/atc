@@ -14,12 +14,4 @@
         public float Value => _value;
         public SpeedUnit Unit => _unit;
     }
-
-    public enum SpeedUnit
-    {   
-        Kt,
-        Fpm,
-        Mph,
-        Kmh
-    }
 }

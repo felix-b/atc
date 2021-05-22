@@ -14,12 +14,12 @@ namespace Zero.Serialization.Buffers
         
         public ref T Get()
         {
-            if (IsNull)
+            if (_byteIndex < 0)
             {
                 throw new NullReferenceException($"Attempt to dereference a null ZRecord<{typeof(T).Name}>");
             }
-            
-            var buffer = BufferContextScope.CurrentContext.GetBuffer<T>(); 
+
+            var buffer = BufferContextScope.CurrentContext.GetBuffer<T>();
             return ref buffer[_byteIndex];
         }
 

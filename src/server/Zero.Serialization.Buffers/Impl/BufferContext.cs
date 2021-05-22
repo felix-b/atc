@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Zero.Serialization.Buffers.Impl
@@ -104,7 +105,7 @@ namespace Zero.Serialization.Buffers.Impl
                 return new ZStringRef(ptr);
             }
 
-            throw new ArgumentException("Specified string was not found in this BufferContext");
+            throw new ArgumentException($"String '{s}' was not found in this BufferContext");
         }
 
         public int RecordTypeCount => _bufferByType.Count;

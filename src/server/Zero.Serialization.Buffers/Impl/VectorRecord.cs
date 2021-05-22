@@ -52,7 +52,7 @@ namespace Zero.Serialization.Buffers.Impl
             {
                 if (_thisPtr != new IntPtr(p))
                 {
-                    Console.WriteLine("VectorRecord memory address changed!!!");
+                    //Console.WriteLine("VectorRecord memory address changed!!!"); //TODO
                     //_thisPtr = new IntPtr(p);
                     //throw new InvalidOperationException("VectorRecord memory location changed!!!");
                 }

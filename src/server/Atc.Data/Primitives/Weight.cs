@@ -36,10 +36,4 @@ namespace Atc.Data.Primitives
             },
         };
     }
-
-    public enum WeightUnit
-    {   
-        Kg,
-        Lbs
-    }
 }

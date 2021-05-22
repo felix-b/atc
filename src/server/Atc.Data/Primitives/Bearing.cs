@@ -13,16 +13,12 @@
 
         public Angle Value => _value;
         public BearingType Type => _type;
+        public float Degrees => _value.Degrees;
+        public float Radians => _value.Radians;
 
         public static Bearing FromTrueDegrees(float degrees)
         {
             return new Bearing(Angle.FromDegrees(degrees), BearingType.True);
         }
-    }
-
-    public enum BearingType
-    {
-        Magnetic,
-        True
     }
 }

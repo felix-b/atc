@@ -9,9 +9,14 @@ namespace Atc.Data.Sources
     {
         private delegate bool TryParseFunc<T>(string s, out T value);
 
+        public static bool FastEndOfStream(this StreamReader input)
+        {
+            return input.Peek() < 0;
+        }
+        
         public static void SkipToNextLine(this StreamReader input)
         {
-            while (!input.EndOfStream)
+            while (!input.FastEndOfStream())
             {
                 char c = (char) input.Peek();
                 if (c == '\r' || c == '\n')
@@ -21,7 +26,7 @@ namespace Atc.Data.Sources
                 input.Read();
             }
 
-            while (!input.EndOfStream)
+            while (!input.FastEndOfStream())
             {
                 char c = (char) input.Peek();
                 if (c != '\r' && c != '\n')
@@ -36,7 +41,7 @@ namespace Atc.Data.Sources
         {
             var result = new StringBuilder(capacity: 255);
             
-            while (!input.EndOfStream)
+            while (!input.FastEndOfStream())
             {
                 char c = (char) input.Peek();
                 if (c == '\r' || c == '\n')
@@ -47,7 +52,7 @@ namespace Atc.Data.Sources
                 input.Read();
             }
 
-            return result.ToString();
+            return result.ToString().Trim();
         }
 
         public static void Extract<T>(this StreamReader input, out T value)

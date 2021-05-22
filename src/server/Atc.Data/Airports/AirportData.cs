@@ -16,6 +16,7 @@ namespace Atc.Data.Airports
         }
 
         public HeaderData Header;
+        public ZVectorRef<ZRef<RunwayData>> Runways;
         public ZStringMapRef<ZRef<RunwayData>> RunwayByName;
         public ZStringMapRef<ZRef<TaxiwayData>> TaxiwayByName;
         public ZIntMapRef<ZRef<TaxiNodeData>> TaxiNodeById;

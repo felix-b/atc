@@ -7,9 +7,10 @@ namespace Atc.Data.Cli
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
-            var x = new AircraftData();
-            Console.WriteLine(x);
+            var test = new AtccAptDatReadTest();
+            test.ReadRealAirport_HUEN();
+            test.ReadRealAirport_HUEN();
+            test.ReadRealAirport_HUEN();
         }
     }
 }

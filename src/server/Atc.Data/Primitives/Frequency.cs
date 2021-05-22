@@ -19,11 +19,4 @@
             return new Frequency(value, FrequencyUnit.Khz);
         }
     }
-
-    public enum FrequencyUnit
-    {
-        Hz,
-        Khz,
-        Mhz
-    }
 }

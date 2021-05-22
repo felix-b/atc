@@ -81,14 +81,28 @@ namespace Atc.Data.Sources.Tests
         public void CanReadToEndOfLine()
         {
             using var reader = ReadInputStream(
-                contents: "First line \t \r\nSecond line", 
+                contents: "FIRST_LINE\r\nSECOND_LINE", 
                 skipToPosition: 5 
             );
 
             var value = reader.ReadToEndOfLine();
 
-            value.Should().Be(" line \t ");
-            reader.ReadToEnd().Should().Be("\r\nSecond line");
+            value.Should().Be("_LINE");
+            reader.ReadToEnd().Should().Be("\r\nSECOND_LINE");
+        }
+
+        [Test]
+        public void ReadToEndOfLine_TrimLeadingAndTrailingWhitespace()
+        {
+            using var reader = ReadInputStream(
+                contents: "First \t line to end \t \r\nSecond line to end", 
+                skipToPosition: 5 
+            );
+
+            var value = reader.ReadToEndOfLine();
+
+            value.Should().Be("line to end");
+            reader.ReadToEnd().Should().Be("\r\nSecond line to end");
         }
 
         [Test]

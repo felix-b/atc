@@ -57,7 +57,8 @@ namespace Atc.Data.Sources.XP.Airports
 
         public void ReadAirport(Stream apdDatStream)
         {
-            var reader = new StreamReader(apdDatStream, leaveOpen: true);
+            var reader = new StreamReader(apdDatStream, bufferSize: 4096, leaveOpen: true);
+            m_unparsedLineCode = -1;
 
             readAptDatInContext(reader, (int lineCode) => {
                 return rootContextParser(lineCode, reader);
@@ -74,7 +75,8 @@ namespace Atc.Data.Sources.XP.Airports
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"APTDAT|FAILED to assemble airport [{m_icao}]: {e.Message}");
+                    //TODO
+                    //Console.WriteLine($"APTDAT|FAILED to assemble airport [{m_icao}]: {e.Message}");
                 }
             }
 
@@ -168,19 +170,19 @@ namespace Atc.Data.Sources.XP.Airports
             {
                 //TODO: current implementation assumes two-way edges; TODO - handle one-way edges as well.
                 
-                var inEdge = nodeRef.Get().EdgesIn.SingleOrDefault(e => EdgeHasName(e, nameRef));
-                if (inEdge.IsNull)
+                var inEdges = nodeRef.Get().EdgesIn.Where(e => EdgeHasName(e, nameRef)).ToArray();
+                if (inEdges.Length != 1)
                 {
                     return false;
                 }
 
-                var outEdge = nodeRef.Get().EdgesOut.SingleOrDefault(e => EdgeHasName(e, nameRef));
-                if (outEdge.IsNull)
+                var outEdges = nodeRef.Get().EdgesOut.Where(e => EdgeHasName(e, nameRef)).ToArray();
+                if (outEdges.Length != 1)
                 {
                     return false;
                 }
                 
-                var isInOutSameEdge = inEdge.Get().Get().ReverseEdge == outEdge.Get();
+                var isInOutSameEdge = inEdges[0].Get().Get().ReverseEdge == outEdges[0].Get();
                 return isInOutSameEdge;
             }
 
@@ -229,16 +231,16 @@ namespace Atc.Data.Sources.XP.Airports
                 node1.EdgesOut.Add(edgeRef);
                 node2.EdgesIn.Add(edgeRef);
                 
-                if (edge.ReverseEdge.HasValue)
-                {
-                    ref var reverseEdge = ref edge.ReverseEdge.Value.GetAs<TaxiEdgeData>();
-                    reverseEdge.Node1 = edge.Node2;
-                    reverseEdge.Node2 = edge.Node1;
-                    reverseEdge.Length = geoLine.Length;
-                    reverseEdge.Heading = geoLine.Bearing21;
-                    node2.EdgesOut.Add(edge.ReverseEdge.Value.AsZRef<TaxiEdgeData>());
-                    node1.EdgesIn.Add(edge.ReverseEdge.Value.AsZRef<TaxiEdgeData>());
-                }
+                // if (edge.ReverseEdge.HasValue)
+                // {
+                //     ref var reverseEdge = ref edge.ReverseEdge.Value.GetAs<TaxiEdgeData>();
+                //     reverseEdge.Node1 = edge.Node2;
+                //     reverseEdge.Node2 = edge.Node1;
+                //     reverseEdge.Length = geoLine.Length;
+                //     reverseEdge.Heading = geoLine.Bearing21;
+                //     node2.EdgesOut.Add(edge.ReverseEdge.Value.AsZRef<TaxiEdgeData>());
+                //     node1.EdgesIn.Add(edge.ReverseEdge.Value.AsZRef<TaxiEdgeData>());
+                // }
             }
         }
         
@@ -283,7 +285,7 @@ namespace Atc.Data.Sources.XP.Airports
                 {
                     string errorMessage = formatErrorMessage(input, saveInputPosition, saveLineCode, e);
                     //throw runtime_error(errorMessage);
-                    Console.WriteLine(errorMessage);//TODO: ?
+                    //Console.WriteLine(errorMessage);//TODO: ?
                     m_skippingAirport = true;
                 }
             }
@@ -329,7 +331,7 @@ namespace Atc.Data.Sources.XP.Airports
         {
             input.ExtractWhitespace(includeCrlf: true);
 
-            if (input.EndOfStream)
+            if (input.FastEndOfStream())
             {
                 return -1;
             }
@@ -469,18 +471,22 @@ namespace Atc.Data.Sources.XP.Airports
             end1.Heading = centerLine.Bearing12;
             end2.Heading = centerLine.Bearing21;
 
-            var fullName = $"{end1Name}-{end2Name}";
+            var fullName12 = $"{end1Name}-{end2Name}";
+            var fullName21 = $"{end2Name}-{end1Name}";
             var runwayRef = _output.AllocateRecord<RunwayData>(new RunwayData {
-                Name = _output.AllocateString(fullName),
+                Name = _output.AllocateString(fullName12),
                 End1 = end1, 
                 End2 = end2, 
                 Length = centerLine.Length, 
-                Width = Distance.FromMeters(widthMeters)
+                Width = Distance.FromMeters(widthMeters),
+                BitmaskFlag = 1UL << _parts.Runways.Count
             });
             
+            _parts.Runways.Add(runwayRef);
             _parts.RunwayByName.Add(end1Name, runwayRef);
             _parts.RunwayByName.Add(end2Name, runwayRef);
-            _parts.RunwayByName.Add(fullName, runwayRef);
+            _parts.RunwayByName.Add(fullName12, runwayRef);
+            _parts.RunwayByName.Add(fullName21, runwayRef);
         }
 
         void parseTaxiNode1201(StreamReader input)
@@ -514,7 +520,11 @@ namespace Atc.Data.Sources.XP.Airports
                 ? TaxiEdgeType.Runway 
                 : TaxiEdgeType.Taxiway;
 
-            var edgeRef = ParseTaxiOrGroundEdge(type, name, direction, nodeId1, nodeId2);
+            char widthCode = typeString.StartsWith("taxiway_") && typeString.Length == 9
+                ? typeString[8]
+                : '\x0';
+            
+            var edgeRef = ParseTaxiOrGroundEdge(type, name, direction, widthCode, nodeId1, nodeId2);
 
             readAptDatInContext(input, lineCode => {
                 if (lineCode == 1204)
@@ -530,13 +540,15 @@ namespace Atc.Data.Sources.XP.Airports
         {
             input.Extract(out int nodeId1, out int nodeId2, out string direction);
             var name = input.ReadToEndOfLine();
-            ParseTaxiOrGroundEdge(TaxiEdgeType.Groundway, name, direction, nodeId1, nodeId2);
+            char widthCode = '\x0'; 
+            ParseTaxiOrGroundEdge(TaxiEdgeType.Groundway, name, direction, widthCode, nodeId1, nodeId2);
         }
 
         private ZRef<TaxiEdgeData> ParseTaxiOrGroundEdge(
             TaxiEdgeType type,
             string name, 
             string direction, 
+            char widthCode,
             int nodeId1,
             int nodeId2)
         {
@@ -549,6 +561,7 @@ namespace Atc.Data.Sources.XP.Airports
                     Id = assignId, 
                     Name = nameRef, 
                     Type = type,
+                    WidthCode = widthCode,
                     IsOneWay = isOneWay,
                     // temporary, we store node ids not the actual pointers 
                     // because the nodes may not be parsed yet
@@ -655,7 +668,8 @@ namespace Atc.Data.Sources.XP.Airports
                 }
                 else
                 {
-                    Console.WriteLine($"WARNING gate airline not found: [{item}]");
+                    //TODO
+                    //Console.WriteLine($"WARNING gate airline not found: [{item}]");
                 }
             });
             
@@ -805,6 +819,7 @@ namespace Atc.Data.Sources.XP.Airports
         private class AirportAssemblyParts
         {
             public AirportData.HeaderData Header { get; set; }
+            public List<ZRef<RunwayData>> Runways { get; } = new();
             public Dictionary<string, ZRef<RunwayData>> RunwayByName { get; } = new();
             public Dictionary<int, ZRef<TaxiNodeData>> TaxiNodeById { get; } = new();
             public Dictionary<int, ZRef<TaxiEdgeData>> TaxiEdgeById { get; } = new();
@@ -830,6 +845,7 @@ namespace Atc.Data.Sources.XP.Airports
             {
                 _airportRef = _output.AllocateRecord(new AirportData() {
                     Header = _parts.Header,
+                    Runways = _output.AllocateVector<ZRef<RunwayData>>(),
                     RunwayByName = _output.AllocateStringMap<ZRef<RunwayData>>(),
                     TaxiwayByName = _output.AllocateStringMap<ZRef<TaxiwayData>>(),
                     TaxiNodeById = _output.AllocateIntMap<ZRef<TaxiNodeData>>(),
@@ -842,8 +858,8 @@ namespace Atc.Data.Sources.XP.Airports
                 PopulateStringMap(_parts.RunwayByName, airport.RunwayByName);
                 PopulateStringMap(_parts.ParkingStandByName, airport.ParkingStandByName);
                 PopulateStringMap(_parts.TaxiwayByName, airport.TaxiwayByName);
-                PopulateStringMap(_parts.RunwayByName, airport.RunwayByName);
                 PopulateIntMap(_parts.TaxiNodeById, airport.TaxiNodeById);
+                PopulateVector(_parts.Runways, airport.Runways);
 
                 if (_parts.Airpsace.HasValue)
                 {
@@ -876,7 +892,15 @@ namespace Atc.Data.Sources.XP.Airports
                     target.Add(pair.Key, pair.Value);
                 }
             }
-            
+
+            private void PopulateVector<T>(List<T> source, ZVectorRef<T> target)
+                where T : unmanaged
+            {
+                foreach (var value in source)
+                {
+                    target.Add(value);
+                }
+            }
         }
     }
 }

@@ -1,0 +1,157 @@
+<html>
+    <head>
+        <style>
+            canvas {
+                background: #808080;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="plot">
+            
+        </canvas>
+
+        <script>
+            var canvas = document.getElementById('plot');
+            var scale = window.devicePixelRatio;
+            canvas.width = 1000 * scale;
+            canvas.height = 1000 * scale;
+
+            var ctx = canvas.getContext('2d');
+
+            let bike = { Xfront: 200, Yfront: 100, Xrear: 100, Yrear: 100, L: 100, V: 10, theta: 0, delta:0, phi: 0 };
+            let trailFront = [ { x:0, y:0 }, {x:50, y:50}, {x:50, y:100}, {x:100, y:100}, {x:200, y:100} ];
+            let trailRear = [ { x:0, y:0 }, {x:50, y:50}, {x:0, y:100}, {x:100, y:100} ];
+            let iterations = 0;
+            let steeringDirection = 0;
+
+            draw();
+
+            const intervalId = window.setInterval(() => {
+                if (++iterations >= 400) {
+                    window.clearInterval(intervalId);
+                }
+
+                const nextBike = calcNextBike();
+                update(nextBike);
+                draw();
+            }, 200);
+
+
+            function calcNextBike() {
+                const { Xfront, Yfront, Xrear, Yrear, L, V, theta, delta, phi } = bike;
+
+                //front-ref
+                // const Xfront_dot = V * Math.cos(delta + theta);
+                // const Yfront_dot = V * Math.sin(delta + theta);
+                // const theta_dot = V * Math.sin(delta)/L;
+                // const delta_dot = phi;
+
+                function controlPhi() {
+                    if (theta <= Math.PI/2 && Math.abs(delta) < 0.00001) {
+                        return Math.PI/4;
+                    }
+                    if (theta >= Math.PI/2 && delta > Math.PI/8) {
+                        return -Math.PI/2;
+                    }
+                    if (theta <= -Math.PI/2 && delta < -Math.PI/8) {
+                        return Math.PI/2;
+                    }
+                    return 0;
+                }
+
+                //rear-ref
+                const delta_dot = controlPhi();
+                const theta_dot = V * Math.tan(delta + delta_dot)/L;
+                // const nextXfront = nextXrear + L * Math.cos(theta);
+                // const nextYfront = nextYrear + L * Math.sin(theta);
+                const nextTheta = normalizeAngle(theta + theta_dot);
+                const nextDelta = normalizeAngle(delta + delta_dot);
+                const nextPhi = 0; // normalizeAngle(steeringDirection * Math.PI/100);
+
+                const Xrear_dot = V * Math.cos(theta + theta_dot);
+                const Yrear_dot = V * Math.sin(theta + theta_dot);
+                const nextXrear = Xrear + Xrear_dot;
+                const nextYrear = Yrear + Yrear_dot;
+                const [nextXfront, nextYfront] = moveBy(nextXrear, nextYrear, L, theta);
+
+                // if (delta > Math.PI/4) {
+                //     steeringDirection = -2;
+                // } else if (delta < -Math.PI/4) {
+                //     steeringDirection = 2;
+                // }
+
+                const nextBike = {
+                    ...bike,
+                    Xfront: nextXfront,  
+                    Yfront: nextYfront, 
+                    Xrear: nextXrear,  
+                    Yrear: nextYrear, 
+                    theta: nextTheta,
+                    delta: nextDelta,
+                    phi: nextPhi,
+                    //Xrear: Xrear + 4, 
+                    //Yrear: Yrear + 2,
+                };
+                //console.log(theta, phi, steeringDirection); //nextBike);
+                return nextBike;
+            }
+
+            function moveBy(x, y, length, angle) {
+                return [
+                    x + length * Math.cos(angle),
+                    y + length * Math.sin(angle),
+                ];
+            }
+
+            function normalizeAngle(alpha) {
+                if (alpha > Math.PI * 2) {
+                    return alpha - Math.PI * 2;
+                }
+                if (alpha < -Math.PI * 2) {
+                    return alpha + Math.PI * 2;
+                }
+                return alpha;
+            }
+
+            function update(nextBike) {
+                const { Xfront, Yfront, Xrear, Yrear } = nextBike;
+                trailFront.push({ x: Xfront, y: Yfront});
+                trailRear.push({x: Xrear, y: Yrear});
+                bike = nextBike;
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                drawPath(trailFront, 'orange', 7);
+                drawPath(trailRear, 'red', 3);
+             
+                const [rwx0, rwy0] = moveBy(bike.Xrear, bike.Yrear, -15, bike.theta);
+                const [rwx1, rwy1] = moveBy(bike.Xrear, bike.Yrear, 15, bike.theta);
+                const [fwx0, fwy0] = moveBy(bike.Xfront, bike.Yfront, -15, bike.theta + bike.delta);
+                const [fwx1, fwy1] = moveBy(bike.Xfront, bike.Yfront, 15, bike.theta + bike.delta);
+
+                drawPath([{x: rwx0, y: rwy0}, {x: rwx1, y: rwy1}], 'black', 12);
+                drawPath([{x: fwx0, y: fwy0}, {x: fwx1, y: fwy1}], 'black', 12);
+
+                drawPath([{x: bike.Xrear, y: bike.Yrear}, {x: bike.Xfront, y: bike.Yfront}], 'blue', 5);
+            }
+
+            function drawPath(points, color, lineWidth) {
+                ctx.lineWidth = lineWidth;
+                ctx.strokeStyle = color;
+
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1 ; i < points.length ; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+
+                ctx.stroke();
+            }
+            
+
+        </script>
+    </body>
+</html>

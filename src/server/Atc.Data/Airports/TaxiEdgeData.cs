@@ -8,6 +8,7 @@ namespace Atc.Data.Airports
         public int Id;
         public ZStringRef Name;
         public TaxiEdgeType Type;
+        public char WidthCode;
         public bool IsOneWay;
         public ZRefAny Node1;
         public ZRefAny Node2;

@@ -1,4 +1,7 @@
-﻿namespace Atc.Data.Primitives
+﻿using System;
+using System.Runtime.InteropServices.ComTypes;
+
+namespace Atc.Data.Primitives
 {
     public readonly struct Angle
     {
@@ -13,16 +16,12 @@
 
         public float Value => _value;
         public AngleUnit Unit => _unit;
+        public float Degrees => _unit == AngleUnit.Degrees ? _value : throw new NotImplementedException();
+        public float Radians => _unit == AngleUnit.Radians ? _value : throw new NotImplementedException();
 
         public static Angle FromDegrees(float value)
         {
             return new Angle(value, AngleUnit.Degrees);
         }
-    }
-
-    public enum AngleUnit
-    {
-        Degrees,
-        Radians
     }
 }

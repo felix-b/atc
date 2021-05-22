@@ -6,33 +6,6 @@ using System.Text;
 
 namespace Zero.Serialization.Buffers.Impl
 {
-    public class TypedBuffer
-    {
-        public static ITypedBuffer CreateEmpty(Type recordType, int initialCapacity)
-        {
-            return Create(recordType, initialCapacity);
-        }
-
-        public static ITypedBuffer CreateFromStream(Type recordType, Stream input)
-        {
-            return Create(recordType, input);
-        }
-
-        public static TypedBuffer<T> CreateFromStreamOf<T>(Stream input) where T : struct
-        {
-            return (TypedBuffer<T>) CreateFromStream(typeof(T), input);
-        }
-
-        private static ITypedBuffer Create(Type recordType, object constructorArg)
-        {
-            var bufferType = typeof(TypedBuffer<>).MakeGenericType(recordType);
-            var buffer = Activator.CreateInstance(bufferType, constructorArg);
-            
-            return buffer as ITypedBuffer 
-                ?? throw new InvalidDataException($"Could not create typed buffer for record type '{recordType}'");
-        }
-    }
-
     public unsafe class TypedBuffer<T> : ITypedBuffer, IDisposable
         where T : struct
     {
@@ -144,6 +117,16 @@ namespace Zero.Serialization.Buffers.Impl
             return ptr;
         }
 
+        public ZRef<T> GetRecordZRef(int recordIndex)
+        {
+            if (recordIndex < 0 || recordIndex >= _count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(recordIndex));
+            }
+
+            return new ZRef<T>(_recordPtrs[recordIndex]);
+        }
+
         public ref byte[] GetRawBytesRef(int firstByteIndex)
         {
             var pRecord = GetRawRecordPointer(firstByteIndex);
@@ -168,12 +151,15 @@ namespace Zero.Serialization.Buffers.Impl
 
         private void TranslateBufferByteIndex(int bufferByteIndex, out int pageIndex, out int byteIndex)
         {
-            pageIndex = _readOnly 
-                ? 0  
-                : bufferByteIndex / _pageSizeBytes;
-            byteIndex = _readOnly
-                ? bufferByteIndex
-                : bufferByteIndex % _pageSizeBytes;
+            unchecked
+            {
+                pageIndex = _readOnly 
+                    ? 0  
+                    : bufferByteIndex / _pageSizeBytes;
+                byteIndex = _readOnly
+                    ? bufferByteIndex
+                    : bufferByteIndex % _pageSizeBytes;
+            }
         }
 
         private ZRef<T> InternalAllocate(int sizeInBytes, bool delayInitRecord = false)
@@ -222,7 +208,7 @@ namespace Zero.Serialization.Buffers.Impl
             if (_typeHandler.ExpectsInjectedSelfByteIndex)
             {
                 var pRecord = GetRawRecordPointer(byteIndex);
-               _typeHandler.InjectSelfByteIndex(pRecord, byteIndex);
+                _typeHandler.InjectSelfByteIndex(pRecord, byteIndex);
             }
         }
 
@@ -303,5 +289,32 @@ namespace Zero.Serialization.Buffers.Impl
         public int MaxRecordSizeBytes => _pageSizeBytes; 
 
         public IReadOnlyList<int> RecordOffsets => _recordPtrs;
+    }
+
+    public class TypedBuffer
+    {
+        public static ITypedBuffer CreateEmpty(Type recordType, int initialCapacity)
+        {
+            return Create(recordType, initialCapacity);
+        }
+
+        public static ITypedBuffer CreateFromStream(Type recordType, Stream input)
+        {
+            return Create(recordType, input);
+        }
+
+        public static TypedBuffer<T> CreateFromStreamOf<T>(Stream input) where T : struct
+        {
+            return (TypedBuffer<T>) CreateFromStream(typeof(T), input);
+        }
+
+        private static ITypedBuffer Create(Type recordType, object constructorArg)
+        {
+            var bufferType = typeof(TypedBuffer<>).MakeGenericType(recordType);
+            var buffer = Activator.CreateInstance(bufferType, constructorArg);
+            
+            return buffer as ITypedBuffer 
+                ?? throw new InvalidDataException($"Could not create typed buffer for record type '{recordType}'");
+        }
     }
 }

@@ -1,14 +1,17 @@
-﻿using Atc.Data.Airports;
+﻿using System.IO;
+using Atc.Data.Airports;
 using Atc.Data.Control;
 using Atc.Data.Navigation;
+using Atc.Data.Primitives;
 using Atc.Data.Traffic;
 using Zero.Serialization.Buffers;
+using Zero.Serialization.Buffers.Impl;
 
 namespace Atc.Data.Sources
 {
     public static class AtcBufferContext
     {
-        public static BufferContextScope Create(out IBufferContext context)
+        public static BufferContextScope CreateEmpty(out IBufferContext context)
         {
             var builder = BufferContextBuilder.Begin()
                 .WithString()
@@ -36,11 +39,18 @@ namespace Atc.Data.Sources
             builder
                 .WithType<ControlledAirspaceData>(alsoAsMapItemValue: true)
                 .WithType<ControlFacilityData>(alsoAsMapItemValue: true)
-                .WithType<ControllerPositionData>(alsoAsVectorItem: true);
+                .WithType<ControllerPositionData>(alsoAsVectorItem: true)
+                .WithType<GeoPolygon.Edge>(alsoAsVectorItem: true);
 
             var scope = builder.End(out context);
             AllocateWorldDataRecord(context);
             return scope;
+        }
+
+        public static BufferContextScope LoadFrom(Stream stream, out IBufferContext context)
+        {
+            context = BufferContext.ReadFrom(stream);
+            return new BufferContextScope(context);
         }
 
         private static void AllocateWorldDataRecord(IBufferContext context)

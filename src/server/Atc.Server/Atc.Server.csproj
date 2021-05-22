@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <LangVersion>9.0</LangVersion>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <ProjectReference Include="..\Atc.Data\Atc.Data.csproj" />
+      <ProjectReference Include="..\Zero.Serialization.Buffers\Zero.Serialization.Buffers.csproj" />
+    </ItemGroup>
+    
+    <ItemGroup>
+      <PackageReference Include="protobuf-net" Version="3.0.101" />
+    </ItemGroup>
+
+</Project>
