@@ -78,6 +78,19 @@ namespace AtcProto
         public bool ShouldSerializequery_taxi_path() => __pbn__payload.Is(106);
         public void Resetquery_taxi_path() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 106);
 
+        public PayloadOneofCase PayloadCase => (PayloadOneofCase)__pbn__payload.Discriminator;
+
+        public enum PayloadOneofCase
+        {
+            None = 0,
+            connect = 101,
+            query_airport = 102,
+            create_aircraft = 103,
+            update_aircraft_situation = 104,
+            remove_aircraft = 105,
+            query_taxi_path = 106,
+        }
+
         [global::ProtoBuf.ProtoContract()]
         public partial class Connect : global::ProtoBuf.IExtensible
         {
@@ -272,6 +285,22 @@ namespace AtcProto
         }
         public bool ShouldSerializefault_not_found() => __pbn__payload.Is(3002);
         public void Resetfault_not_found() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 3002);
+
+        public PayloadOneofCase PayloadCase => (PayloadOneofCase)__pbn__payload.Discriminator;
+
+        public enum PayloadOneofCase
+        {
+            None = 0,
+            reply_connect = 1101,
+            reply_query_airport = 1102,
+            reply_create_aircraft = 1103,
+            reply_query_taxi_path = 1106,
+            notify_aircraft_created = 201,
+            notify_aircraft_situation_updated = 202,
+            notify_aircraft_removed = 203,
+            fault_declined = 3001,
+            fault_not_found = 3002,
+        }
 
         [global::ProtoBuf.ProtoContract()]
         public partial class FaultDeclined : global::ProtoBuf.IExtensible

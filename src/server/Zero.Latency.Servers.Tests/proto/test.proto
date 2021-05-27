@@ -1,0 +1,42 @@
+// To generate C# run this:
+// protogen --csharp_out=cs +langver=9.0 +oneof=enum test.proto 
+
+syntax = "proto3";
+package test_proto;
+
+message TestClientToServer {
+
+    message Hello {
+        string query = 1;
+    }
+
+    message Goodbye {
+        string farewell = 2;
+    }
+
+    uint64 id = 1;
+
+    oneof payload {
+        Hello hello = 101;
+        Goodbye goodbye = 102;
+    }
+}
+
+message TestServerToClient {
+
+    message ShowData {
+        string data = 1;
+    }
+
+    message HideData {
+        string data = 2;
+    }
+
+    uint64 id = 1;
+
+    oneof payload {
+        ShowData show = 101;
+        HideData hide = 102;
+    }
+    
+}

@@ -5,20 +5,21 @@
         <LangVersion>9.0</LangVersion>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <IsPackable>false</IsPackable>
     </PropertyGroup>
-    
+
     <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+        <PackageReference Include="FluentAssertions" Version="5.10.3" />
+        <PackageReference Include="NUnit" Version="3.12.0" />
+        <PackageReference Include="NUnit3TestAdapter" Version="3.16.1" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
     </ItemGroup>
-    
+
     <ItemGroup>
       <ProjectReference Include="..\Atc.Data\Atc.Data.csproj" />
+      <ProjectReference Include="..\Atc.Server\Atc.Server.csproj" />
       <ProjectReference Include="..\Atc.World\Atc.World.csproj" />
       <ProjectReference Include="..\Zero.Serialization.Buffers\Zero.Serialization.Buffers.csproj" />
-    </ItemGroup>
-    
-    <ItemGroup>
-      <PackageReference Include="protobuf-net" Version="3.0.101" />
     </ItemGroup>
 
 </Project>

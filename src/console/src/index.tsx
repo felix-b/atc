@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { WorldServiceEndpoint } from './worldServiceEndpoint';
+
+WorldServiceEndpoint.onMessage('replyConnect', () => { console.log('REPLIED!!!'); } )
 
 ReactDOM.render(
   <React.StrictMode>
