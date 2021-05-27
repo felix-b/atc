@@ -3,10 +3,8 @@ using System.Threading.Tasks;
 
 namespace Zero.Latency.Servers
 {
-    public interface IOperationDispatcher<TIncomingMessage, TOutgoingMessage> : IAsyncDisposable
-        where TIncomingMessage : class
-        where TOutgoingMessage : class
+    public interface IOperationDispatcher : IAsyncDisposable
     {
-        ValueTask DispatchOperation(IConnectionContext<TOutgoingMessage> connection, TIncomingMessage message);
+        void DispatchOperation(IConnectionContext connection, object message);
     }
 }

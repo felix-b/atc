@@ -9,17 +9,27 @@ namespace Zero.Latency.Servers
         T LastKnown { get; }
     }
 
-    public interface IObservableQuery<out T>
+    public interface IObservableQuery<T>
     {
-        IObserverSubscription Subscribe(QueryObserver<T> observer, QueryConsumer<T>? consumeCurrentResults = null);
+        IObserverSubscription Subscribe(QueryObserver<T> observer);
+        IEnumerable<T> GetResults();
     }
 
-    public delegate void QueryObserver<in T>(
-        IEnumerable<T> added,
-        IEnumerable<T> removed,
-        IEnumerator<T> updated);
-
-    public delegate void QueryConsumer<in T>(IEnumerable<T> results);
+    public readonly struct QueryObservation<T>
+    {
+        public QueryObservation(IEnumerable<T> added, IEnumerable<T> updated, IEnumerable<T> removed)
+        {
+            Added = added;
+            Updated = updated;
+            Removed = removed;
+        }
+    
+        public readonly IEnumerable<T> Added;
+        public readonly IEnumerable<T> Updated;
+        public readonly IEnumerable<T> Removed;
+    }
+    
+    public delegate void QueryObserver<T>(in QueryObservation<T> observation);
 
     public interface IObserverSubscription : IAsyncDisposable
     {

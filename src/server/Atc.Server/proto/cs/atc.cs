@@ -78,6 +78,15 @@ namespace AtcProto
         public bool ShouldSerializequery_taxi_path() => __pbn__payload.Is(106);
         public void Resetquery_taxi_path() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 106);
 
+        [global::ProtoBuf.ProtoMember(107)]
+        public QueryTraffic query_traffic
+        {
+            get => __pbn__payload.Is(107) ? ((QueryTraffic)__pbn__payload.Object) : default;
+            set => __pbn__payload = new global::ProtoBuf.DiscriminatedUnionObject(107, value);
+        }
+        public bool ShouldSerializequery_traffic() => __pbn__payload.Is(107);
+        public void Resetquery_traffic() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 107);
+
         public PayloadOneofCase PayloadCase => (PayloadOneofCase)__pbn__payload.Discriminator;
 
         public enum PayloadOneofCase
@@ -89,6 +98,7 @@ namespace AtcProto
             update_aircraft_situation = 104,
             remove_aircraft = 105,
             query_taxi_path = 106,
+            query_traffic = 107,
         }
 
         [global::ProtoBuf.ProtoContract()]
@@ -148,7 +158,7 @@ namespace AtcProto
                 => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
             [global::ProtoBuf.ProtoMember(1, Name = @"aircraft")]
-            public Aircraft Aircraft { get; set; }
+            public AircraftMessage Aircraft { get; set; }
 
         }
 
@@ -163,7 +173,7 @@ namespace AtcProto
             public int AircraftId { get; set; }
 
             [global::ProtoBuf.ProtoMember(2, Name = @"situation")]
-            public Aircraft.Situation Situation { get; set; }
+            public AircraftMessage.Situation Situation { get; set; }
 
         }
 
@@ -176,6 +186,27 @@ namespace AtcProto
 
             [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
             public int AircraftId { get; set; }
+
+        }
+
+        [global::ProtoBuf.ProtoContract()]
+        public partial class QueryTraffic : global::ProtoBuf.IExtensible
+        {
+            private global::ProtoBuf.IExtension __pbn__extensionData;
+            global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+                => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+            [global::ProtoBuf.ProtoMember(1, Name = @"min_lat")]
+            public double MinLat { get; set; }
+
+            [global::ProtoBuf.ProtoMember(2, Name = @"min_lon")]
+            public double MinLon { get; set; }
+
+            [global::ProtoBuf.ProtoMember(3, Name = @"max_lat")]
+            public double MaxLat { get; set; }
+
+            [global::ProtoBuf.ProtoMember(4, Name = @"max_lon")]
+            public double MaxLon { get; set; }
 
         }
 
@@ -241,6 +272,15 @@ namespace AtcProto
         public bool ShouldSerializereply_query_taxi_path() => __pbn__payload.Is(1106);
         public void Resetreply_query_taxi_path() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 1106);
 
+        [global::ProtoBuf.ProtoMember(1107)]
+        public ReplyQueryTraffic reply_query_traffic
+        {
+            get => __pbn__payload.Is(1107) ? ((ReplyQueryTraffic)__pbn__payload.Object) : default;
+            set => __pbn__payload = new global::ProtoBuf.DiscriminatedUnionObject(1107, value);
+        }
+        public bool ShouldSerializereply_query_traffic() => __pbn__payload.Is(1107);
+        public void Resetreply_query_traffic() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 1107);
+
         [global::ProtoBuf.ProtoMember(201)]
         public NotifyAircraftCreated notify_aircraft_created
         {
@@ -295,6 +335,7 @@ namespace AtcProto
             reply_query_airport = 1102,
             reply_create_aircraft = 1103,
             reply_query_taxi_path = 1106,
+            reply_query_traffic = 1107,
             notify_aircraft_created = 201,
             notify_aircraft_situation_updated = 202,
             notify_aircraft_removed = 203,
@@ -361,7 +402,7 @@ namespace AtcProto
                 => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
             [global::ProtoBuf.ProtoMember(1, Name = @"airport")]
-            public Airport Airport { get; set; }
+            public AirportMessage Airport { get; set; }
 
         }
 
@@ -376,7 +417,34 @@ namespace AtcProto
             public bool Success { get; set; }
 
             [global::ProtoBuf.ProtoMember(2, Name = @"taxi_path")]
-            public TaxiPath TaxiPath { get; set; }
+            public TaxiPathMessage TaxiPath { get; set; }
+
+        }
+
+        [global::ProtoBuf.ProtoContract()]
+        public partial class ReplyQueryTraffic : global::ProtoBuf.IExtensible
+        {
+            private global::ProtoBuf.IExtension __pbn__extensionData;
+            global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+                => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+            [global::ProtoBuf.ProtoMember(1, Name = @"min_lat")]
+            public double MinLat { get; set; }
+
+            [global::ProtoBuf.ProtoMember(2, Name = @"min_lon")]
+            public double MinLon { get; set; }
+
+            [global::ProtoBuf.ProtoMember(3, Name = @"max_lat")]
+            public double MaxLat { get; set; }
+
+            [global::ProtoBuf.ProtoMember(4, Name = @"max_lon")]
+            public double MaxLon { get; set; }
+
+            [global::ProtoBuf.ProtoMember(5, Name = @"traffic_batch")]
+            public global::System.Collections.Generic.List<AircraftMessage> TrafficBatchs { get; } = new global::System.Collections.Generic.List<AircraftMessage>();
+
+            [global::ProtoBuf.ProtoMember(6, Name = @"is_last_batch")]
+            public bool IsLastBatch { get; set; }
 
         }
 
@@ -388,7 +456,7 @@ namespace AtcProto
                 => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
             [global::ProtoBuf.ProtoMember(1, Name = @"aircraft")]
-            public Aircraft Aircraft { get; set; }
+            public AircraftMessage Aircraft { get; set; }
 
         }
 
@@ -403,7 +471,7 @@ namespace AtcProto
             public int AirctaftId { get; set; }
 
             [global::ProtoBuf.ProtoMember(2, Name = @"situation")]
-            public Aircraft.Situation Situation { get; set; }
+            public AircraftMessage.Situation Situation { get; set; }
 
         }
 
@@ -464,7 +532,7 @@ namespace AtcProto
     }
 
     [global::ProtoBuf.ProtoContract()]
-    public partial class Vector3d : global::ProtoBuf.IExtensible
+    public partial class Vector3dMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
         global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -482,7 +550,7 @@ namespace AtcProto
     }
 
     [global::ProtoBuf.ProtoContract()]
-    public partial class Attitude : global::ProtoBuf.IExtensible
+    public partial class AttitudeMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
         global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -500,7 +568,7 @@ namespace AtcProto
     }
 
     [global::ProtoBuf.ProtoContract()]
-    public partial class Airport : global::ProtoBuf.IExtensible
+    public partial class AirportMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
         global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -514,21 +582,21 @@ namespace AtcProto
         public GeoPoint Location { get; set; }
 
         [global::ProtoBuf.ProtoMember(3, Name = @"runways")]
-        public global::System.Collections.Generic.List<Runway> Runways { get; } = new global::System.Collections.Generic.List<Runway>();
+        public global::System.Collections.Generic.List<RunwayMessage> Runways { get; } = new global::System.Collections.Generic.List<RunwayMessage>();
 
         [global::ProtoBuf.ProtoMember(4, Name = @"parking_stands")]
-        public global::System.Collections.Generic.List<ParkingStand> ParkingStands { get; } = new global::System.Collections.Generic.List<ParkingStand>();
+        public global::System.Collections.Generic.List<ParkingStandMessage> ParkingStands { get; } = new global::System.Collections.Generic.List<ParkingStandMessage>();
 
         [global::ProtoBuf.ProtoMember(5, Name = @"taxi_nodes")]
-        public global::System.Collections.Generic.List<TaxiNode> TaxiNodes { get; } = new global::System.Collections.Generic.List<TaxiNode>();
+        public global::System.Collections.Generic.List<TaxiNodeMessage> TaxiNodes { get; } = new global::System.Collections.Generic.List<TaxiNodeMessage>();
 
         [global::ProtoBuf.ProtoMember(6, Name = @"taxi_edges")]
-        public global::System.Collections.Generic.List<TaxiEdge> TaxiEdges { get; } = new global::System.Collections.Generic.List<TaxiEdge>();
+        public global::System.Collections.Generic.List<TaxiEdgeMessage> TaxiEdges { get; } = new global::System.Collections.Generic.List<TaxiEdgeMessage>();
 
     }
 
     [global::ProtoBuf.ProtoContract()]
-    public partial class Runway : global::ProtoBuf.IExtensible
+    public partial class RunwayMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
         global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -577,7 +645,7 @@ namespace AtcProto
     }
 
     [global::ProtoBuf.ProtoContract()]
-    public partial class TaxiNode : global::ProtoBuf.IExtensible
+    public partial class TaxiNodeMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
         global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -595,7 +663,7 @@ namespace AtcProto
     }
 
     [global::ProtoBuf.ProtoContract()]
-    public partial class TaxiEdge : global::ProtoBuf.IExtensible
+    public partial class TaxiEdgeMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
         global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -653,7 +721,7 @@ namespace AtcProto
     }
 
     [global::ProtoBuf.ProtoContract()]
-    public partial class ParkingStand : global::ProtoBuf.IExtensible
+    public partial class ParkingStandMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
         global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -691,7 +759,7 @@ namespace AtcProto
     }
 
     [global::ProtoBuf.ProtoContract()]
-    public partial class AirspaceGeometry : global::ProtoBuf.IExtensible
+    public partial class AirspaceGeometryMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
         global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -709,7 +777,7 @@ namespace AtcProto
     }
 
     [global::ProtoBuf.ProtoContract()]
-    public partial class Aircraft : global::ProtoBuf.IExtensible
+    public partial class AircraftMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
         global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
@@ -745,52 +813,55 @@ namespace AtcProto
                 => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
             [global::ProtoBuf.ProtoMember(1, Name = @"location")]
-            public Vector3d Location { get; set; }
+            public GeoPoint Location { get; set; }
 
-            [global::ProtoBuf.ProtoMember(2, Name = @"attitude")]
-            public Attitude Attitude { get; set; }
+            [global::ProtoBuf.ProtoMember(2, Name = @"altitude_feet_msl")]
+            public float AltitudeFeetMsl { get; set; }
 
-            [global::ProtoBuf.ProtoMember(3, Name = @"velocity")]
-            public Vector3d Velocity { get; set; }
-
-            [global::ProtoBuf.ProtoMember(4, Name = @"acceleration")]
-            public Vector3d Acceleration { get; set; }
-
-            [global::ProtoBuf.ProtoMember(5, Name = @"is_on_ground")]
+            [global::ProtoBuf.ProtoMember(3, Name = @"is_on_ground")]
             public bool IsOnGround { get; set; }
 
-            [global::ProtoBuf.ProtoMember(6, Name = @"flap_ratio")]
+            [global::ProtoBuf.ProtoMember(4, Name = @"heading")]
+            public float Heading { get; set; }
+
+            [global::ProtoBuf.ProtoMember(5, Name = @"pitch")]
+            public float Pitch { get; set; }
+
+            [global::ProtoBuf.ProtoMember(6, Name = @"roll")]
+            public float Roll { get; set; }
+
+            [global::ProtoBuf.ProtoMember(7, Name = @"flap_ratio")]
             public float FlapRatio { get; set; }
 
-            [global::ProtoBuf.ProtoMember(7, Name = @"spoiler_ratio")]
+            [global::ProtoBuf.ProtoMember(8, Name = @"spoiler_ratio")]
             public float SpoilerRatio { get; set; }
 
-            [global::ProtoBuf.ProtoMember(8, Name = @"gear_ratio")]
+            [global::ProtoBuf.ProtoMember(9, Name = @"gear_ratio")]
             public float GearRatio { get; set; }
 
-            [global::ProtoBuf.ProtoMember(9, Name = @"nose_wheel_angle")]
+            [global::ProtoBuf.ProtoMember(10, Name = @"nose_wheel_angle")]
             public float NoseWheelAngle { get; set; }
 
-            [global::ProtoBuf.ProtoMember(10, Name = @"landing_lights")]
+            [global::ProtoBuf.ProtoMember(11, Name = @"landing_lights")]
             public bool LandingLights { get; set; }
 
-            [global::ProtoBuf.ProtoMember(11, Name = @"taxi_lights")]
+            [global::ProtoBuf.ProtoMember(12, Name = @"taxi_lights")]
             public bool TaxiLights { get; set; }
 
-            [global::ProtoBuf.ProtoMember(12, Name = @"strobe_lights")]
+            [global::ProtoBuf.ProtoMember(13, Name = @"strobe_lights")]
             public bool StrobeLights { get; set; }
 
-            [global::ProtoBuf.ProtoMember(13, Name = @"frequency_khz")]
+            [global::ProtoBuf.ProtoMember(14, Name = @"frequency_khz")]
             public int FrequencyKhz { get; set; }
 
-            [global::ProtoBuf.ProtoMember(14, Name = @"squawk")]
+            [global::ProtoBuf.ProtoMember(15, Name = @"squawk")]
             [global::System.ComponentModel.DefaultValue("")]
             public string Squawk { get; set; } = "";
 
-            [global::ProtoBuf.ProtoMember(15, Name = @"mode_c")]
+            [global::ProtoBuf.ProtoMember(16, Name = @"mode_c")]
             public bool ModeC { get; set; }
 
-            [global::ProtoBuf.ProtoMember(16, Name = @"mode_s")]
+            [global::ProtoBuf.ProtoMember(17, Name = @"mode_s")]
             public bool ModeS { get; set; }
 
         }
@@ -798,7 +869,7 @@ namespace AtcProto
     }
 
     [global::ProtoBuf.ProtoContract()]
-    public partial class TaxiPath : global::ProtoBuf.IExtensible
+    public partial class TaxiPathMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
         global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)

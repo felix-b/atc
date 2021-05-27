@@ -1,20 +1,19 @@
 using System;
 using System.Buffers;
-using ProtoBuf;
 
 namespace Zero.Latency.Servers
 {
-    public class ProtobufEnvelopeSerializer<TIncoming> : IMessageSerializer
-        where TIncoming : class
+    public class ProtobufEnvelopeSerializer<TEnvelopeIn> : IMessageSerializer
+        where TEnvelopeIn : class
     {
-        public void SerializeMessage(object message, IBufferWriter<byte> writer)
+        public void SerializeOutgoingEnvelope(object envelope, IBufferWriter<byte> writer)
         {
-            Serializer.Serialize(writer, message);
+            ProtoBuf.Serializer.Serialize(writer, envelope);
         }
 
-        public object DeserializeMessage(ArraySegment<byte> buffer)
+        public object DeserializeIncomingEnvelope(ArraySegment<byte> buffer)
         {
-            return Serializer.Deserialize<TIncoming>(buffer.AsSpan());
+            return ProtoBuf.Serializer.Deserialize<TEnvelopeIn>(buffer.AsSpan());
         }
     }
 }

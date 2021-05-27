@@ -4,12 +4,12 @@ using System.Threading.Tasks;
 
 namespace Zero.Latency.Servers.Tests
 {
-    public class TestConnectionContext : IConnectionContext<object>
+    public class TestConnectionContext<TEnvelopeOut> : IDeferredConnectionContext<TEnvelopeOut>
+        where TEnvelopeOut : class
     {
-        public ValueTask SendMessage(object message)
+        public void FireMessage(TEnvelopeOut message)
         {
-            OnSendMessage?.Invoke(message);
-            return ValueTask.CompletedTask;
+            OnFireMessage?.Invoke(message);
         }
 
         public void RegisterObserver(IObserverSubscription observer)
@@ -17,17 +17,23 @@ namespace Zero.Latency.Servers.Tests
             OnRegisterObserver?.Invoke(observer);
         }
 
-        public ValueTask CloseConnection()
+        public void RequestClose()
         {
-            OnCloseConnection?.Invoke();
-            return ValueTask.CompletedTask;
+            OnRequestClose?.Invoke();
+        }
+
+        public void RequestFlush()
+        {
+            OnRequestFlush?.Invoke();
         }
 
         public long Id { get; set; } = 123;
         public bool IsActive { get; set; } = true;
         public CancellationToken Cancellation { get; set; } = CancellationToken.None;
-        public Action<object>? OnSendMessage { get; set; }
+        public SessionItems Session { get; } = new(initialEntryCount: 4);
+        public Action<TEnvelopeOut>? OnFireMessage { get; set; }
         public Action<IObserverSubscription>? OnRegisterObserver { get; set; }
-        public Action? OnCloseConnection { get; set; }
+        public Action? OnRequestClose { get; set; }
+        public Action? OnRequestFlush { get; set; }
     }
 }

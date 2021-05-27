@@ -10,12 +10,12 @@ namespace Zero.Latency.Servers
     public class SocketConnectionManager : ISocketAcceptor, IServiceHostContext
     {
         private readonly IMessageSerializer _serializer;
-        private readonly IOperationDispatcher<object, object> _dispatcher;
+        private readonly IOperationDispatcher _dispatcher;
         private WriteLocked<ImmutableList<Connection>> _connections = ImmutableList<Connection>.Empty;
         private long _nextConnectionId = 1;
         private bool _disposed = false;
 
-        public SocketConnectionManager(IMessageSerializer serializer, IOperationDispatcher<object, object> dispatcher)
+        public SocketConnectionManager(IMessageSerializer serializer, IOperationDispatcher dispatcher)
         {
             _serializer = serializer;
             _dispatcher = dispatcher;
@@ -56,6 +56,6 @@ namespace Zero.Latency.Servers
 
         IMessageSerializer IServiceHostContext.Serializer => _serializer;
 
-        IOperationDispatcher<object, object> IServiceHostContext.Dispatcher => _dispatcher;
+        IOperationDispatcher IServiceHostContext.Dispatcher => _dispatcher;
     }
 }

@@ -14,6 +14,7 @@
     <ItemGroup>
       <ProjectReference Include="..\Atc.Data\Atc.Data.csproj" />
       <ProjectReference Include="..\Atc.World\Atc.World.csproj" />
+      <ProjectReference Include="..\Zero.Doubt.Logging\Zero.Doubt.Logging.csproj" />
       <ProjectReference Include="..\Zero.Serialization.Buffers\Zero.Serialization.Buffers.csproj" />
     </ItemGroup>
     

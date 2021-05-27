@@ -73,7 +73,7 @@ namespace Atc.Data.Sources.XP.Airports
                 {
                     return assembleAirportOrThrow();
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //TODO
                     //Console.WriteLine($"APTDAT|FAILED to assemble airport [{m_icao}]: {e.Message}");

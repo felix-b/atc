@@ -1,15 +1,17 @@
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Razor.TagHelpers;
 
 namespace Zero.Latency.Servers
 {
-    public class Connection : IAsyncDisposable, IConnectionContext<object>
+    public class Connection : IAsyncDisposable, IConnectionContext
     {
         private readonly IServiceHostContext _serviceHost;
         private readonly long _id;
@@ -17,6 +19,7 @@ namespace Zero.Latency.Servers
         private readonly CancellationToken _cancelByHost;
         private readonly CancellationTokenSource _cancelForAnyReason;
         private readonly ArrayBufferWriter<byte> _outgoingMessageBuffer = new(initialCapacity: 4096); //TODO: how to limit max buffer size?
+        private SessionItems _sessionItems = new(initialEntryCount: 4);
         private WriteLocked<ImmutableList<IObserverSubscription>> _observers = ImmutableList<IObserverSubscription>.Empty;
         private Task? _receiveLoopTask = null;
         private bool _disposed = false;
@@ -66,17 +69,17 @@ namespace Zero.Latency.Servers
             return _receiveLoopTask;
         }
         
-        ValueTask IConnectionContext<object>.CloseConnection()
+        public ValueTask CloseConnection()
         {
             return DisposeAsync();
         }
 
-        ValueTask IConnectionContext<object>.SendMessage(object message)
+        public ValueTask SendMessage(object message)
         {
             ValidateActive();
         
             _outgoingMessageBuffer.Clear();
-            _serviceHost.Serializer.SerializeMessage(message, _outgoingMessageBuffer);
+            _serviceHost.Serializer.SerializeOutgoingEnvelope(message, _outgoingMessageBuffer);
 
             return _socket.SendAsync(
                 _outgoingMessageBuffer.WrittenMemory, 
@@ -85,18 +88,20 @@ namespace Zero.Latency.Servers
                 _cancelForAnyReason.Token);
         }
 
-        void IConnectionContext<object>.RegisterObserver(IObserverSubscription observer)
+        public void RegisterObserver(IObserverSubscription observer)
         {
             ValidateActive();
             _observers.Replace(list => list.Add(observer));
         }
 
-        // service operations use this token as abort processing of a request
-        CancellationToken IConnectionContext<object>.Cancellation => _cancelForAnyReason.Token;
-
         public long Id => _id;
 
         public bool IsActive => !_disposed && !_cancelForAnyReason.IsCancellationRequested;
+
+        // service operations use this token as abort processing of a request
+        public CancellationToken Cancellation => _cancelForAnyReason.Token;
+
+        public SessionItems Session => _sessionItems;
 
         private void ValidateActive()
         {
@@ -158,8 +163,8 @@ namespace Zero.Latency.Servers
                     }
 
                     var bufferSegment = new ArraySegment<byte>(incomingMessageBuffer, 0, bytesReceived);
-                    var message = serializer.DeserializeMessage(bufferSegment);
-                    await dispatcher.DispatchOperation(this, message);
+                    var message = serializer.DeserializeIncomingEnvelope(bufferSegment);
+                    dispatcher.DispatchOperation(this, message);
                 }
 
                 return SocketReceiveStatus.ConnectionCanceled;

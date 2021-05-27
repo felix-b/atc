@@ -21,16 +21,23 @@ message ClientToServer {
     GeoPoint to_point = 4;
   }
   message CreateAircraft {
-    Aircraft aircraft = 1;
+    AircraftMessage aircraft = 1;
   }
   message UpdateAircraftSituation {
     int32 aircraft_id = 1;
-    Aircraft.Situation situation = 2;
+    AircraftMessage.Situation situation = 2;
   }
   message RemoveAircraft {
     int32 aircraft_id = 1;
   }
-
+  
+  message QueryTraffic {
+    double min_lat = 1;
+    double min_lon = 2;
+    double max_lat = 3;
+    double max_lon = 4;
+  }
+  
   uint64 id = 1;
   google.protobuf.Timestamp sent_at = 2;
   oneof payload {
@@ -40,6 +47,7 @@ message ClientToServer {
     UpdateAircraftSituation update_aircraft_situation = 104;
     RemoveAircraft remove_aircraft = 105;
     QueryTaxiPath query_taxi_path = 106;
+    QueryTraffic query_traffic = 107;
   }
 }
 
@@ -59,24 +67,32 @@ message ServerToClient {
     int32 created_aircraft_id = 1;
   }
   message ReplyQueryAirport {
-    Airport airport = 1;
+    AirportMessage airport = 1;
   }
   message ReplyQueryTaxiPath {
     bool success = 1;
-    TaxiPath taxi_path = 2;
+    TaxiPathMessage taxi_path = 2;
+  }
+  message ReplyQueryTraffic {
+    double min_lat = 1;
+    double min_lon = 2;
+    double max_lat = 3;
+    double max_lon = 4;
+    repeated AircraftMessage traffic_batch = 5;
+    bool is_last_batch = 6;
   }
 
   message NotifyAircraftCreated {
-    Aircraft aircraft = 1;
+    AircraftMessage aircraft = 1;
   }
   message NotifyAircraftSituationUpdated {
     int32 airctaft_id = 1;
-    Aircraft.Situation situation = 2;
+    AircraftMessage.Situation situation = 2;
   }
   message NotifyAircraftRemoved {
     int32 airctaft_id = 1;
   }
-
+  
   uint64 id = 2;
   uint64 reply_to_request_id = 3;
   google.protobuf.Timestamp sent_at = 4;
@@ -88,6 +104,7 @@ message ServerToClient {
     ReplyQueryAirport reply_query_airport = 1102;
     ReplyCreateAircraft reply_create_aircraft = 1103;
     ReplyQueryTaxiPath reply_query_taxi_path = 1106;
+    ReplyQueryTraffic reply_query_traffic = 1107;
     NotifyAircraftCreated notify_aircraft_created = 201;
     NotifyAircraftSituationUpdated notify_aircraft_situation_updated = 202;
     NotifyAircraftRemoved notify_aircraft_removed = 203;
@@ -158,13 +175,13 @@ message GeoPolygon {
   repeated GeoPolygon.GeoEdge edges = 1;
 }
 
-message Vector3d {
+message Vector3dMessage {
   double lat = 1;
   double lon = 2;
   double alt = 3;
 }
 
-message Attitude {
+message AttitudeMessage {
   float heading = 1;
   float pitch = 2;
   float roll = 3;
@@ -174,16 +191,16 @@ message Attitude {
 // AIRPORTS
 //-----------------------------------------------------------
 
-message Airport {
+message AirportMessage {
   string icao = 1;
   GeoPoint location = 2;
-  repeated Runway runways = 3;
-  repeated ParkingStand parking_stands = 4;
-  repeated TaxiNode taxi_nodes = 5;
-  repeated TaxiEdge taxi_edges = 6;
+  repeated RunwayMessage runways = 3;
+  repeated ParkingStandMessage parking_stands = 4;
+  repeated TaxiNodeMessage taxi_nodes = 5;
+  repeated TaxiEdgeMessage taxi_edges = 6;
 }
 
-message Runway {
+message RunwayMessage {
   message End {
     string name = 1;
     float heading = 2;
@@ -194,17 +211,17 @@ message Runway {
   float width_meters = 1;
   float length_meters = 2;
   uint32 mask_bit = 3;
-  Runway.End end_1 = 4;
-  Runway.End end_2 = 5;
+  RunwayMessage.End end_1 = 4;
+  RunwayMessage.End end_2 = 5;
 }
 
-message TaxiNode {
+message TaxiNodeMessage {
   int32 id = 1;
   GeoPoint location = 2;
   bool is_junction = 3;
 }
 
-message TaxiEdge {
+message TaxiEdgeMessage {
   message ActiveZoneMatrix {
     uint64 departure = 1;
     uint64 arrival = 2;
@@ -219,10 +236,10 @@ message TaxiEdge {
   bool is_high_speed_exit = 7;
   float length_meters = 8;
   float heading = 9;
-  TaxiEdge.ActiveZoneMatrix active_zones = 10;
+  TaxiEdgeMessage.ActiveZoneMatrix active_zones = 10;
 }
 
-message ParkingStand {
+message ParkingStandMessage {
   int32 id = 1;
   string name = 2;
   ParkingStandType type = 3;
@@ -238,7 +255,7 @@ message ParkingStand {
 // NAVIGATION
 //-----------------------------------------------------------
 
-message AirspaceGeometry {
+message AirspaceGeometryMessage {
   GeoPolygon lateral_bounds = 1;
   float lower_bound_feet = 2;
   float upper_bound_feet = 3;
@@ -248,38 +265,39 @@ message AirspaceGeometry {
 // TRAFFIC
 //-----------------------------------------------------------
 
-message Aircraft {
+message AircraftMessage {
   message Situation {
-    Vector3d location = 1;
-    Attitude attitude = 2;
-    Vector3d velocity = 3;
-    Vector3d acceleration = 4;
-    bool is_on_ground = 5;
-    float flap_ratio = 6;
-    float spoiler_ratio = 7;
-    float gear_ratio = 8;
-    float nose_wheel_angle = 9;
-    bool landing_lights = 10;
-    bool taxi_lights = 11;
-    bool strobe_lights = 12;
-    int32 frequency_khz = 13;
-    string squawk = 14;
-    bool mode_c = 15;
-    bool mode_s = 16;
+    GeoPoint location = 1;
+    float altitude_feet_msl = 2;
+    bool is_on_ground = 3;
+    float heading = 4;
+    float pitch = 5;
+    float roll = 6;
+    float flap_ratio = 7;
+    float spoiler_ratio = 8;
+    float gear_ratio = 9;
+    float nose_wheel_angle = 10;
+    bool landing_lights = 11;
+    bool taxi_lights = 12;
+    bool strobe_lights = 13;
+    int32 frequency_khz = 14;
+    string squawk = 15;
+    bool mode_c = 16;
+    bool mode_s = 17;
   }
   int32 id = 1;
   string model_icao = 2;
   string airline_icao = 3;
   string tail_no = 4;
   string call_sign = 5;
-  Aircraft.Situation situation = 6;
+  AircraftMessage.Situation situation = 6;
 }
 
 //-----------------------------------------------------------
 // CONTROL
 //-----------------------------------------------------------
 
-message TaxiPath {
+message TaxiPathMessage {
   int32 from_node_id = 1;
   int32 to_node_id = 2;
   repeated int32 edge_ids = 3;

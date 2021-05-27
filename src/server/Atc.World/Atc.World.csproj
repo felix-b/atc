@@ -14,4 +14,8 @@
       <ProjectReference Include="..\Zero.Serialization.Buffers\Zero.Serialization.Buffers.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <PackageReference Include="protobuf-net" Version="3.0.101" />
+    </ItemGroup>
+
 </Project>

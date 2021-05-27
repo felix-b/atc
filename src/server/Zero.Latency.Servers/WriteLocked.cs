@@ -3,7 +3,10 @@ using System.Threading;
 
 namespace Zero.Latency.Servers
 {
-    // Sequences replacement of immutable collections in multi-threaded scenarios
+    // Sequences replacement of an immutable value in multi-threaded scenarios (e.g. collections like ImmutableList<T>) 
+    // When replacing an immutable object, the new object is the result of a transformation applied to the current object: V1 = T(V0)
+    // Example of transformation for ImmutableList<T>: newList = oldList.Add(newItem)
+    // This class enforces transformations to run sequentially and always use result of the latest transformation. 
     public class WriteLocked<T> where T : class
     {
         private readonly object _syncRoot = new(); 
@@ -14,8 +17,10 @@ namespace Zero.Latency.Servers
             _immutableValue = immutableValue;
         }
 
+        // reads are not controlled
         public T Read() => _immutableValue;
 
+        // transform and replace, then return the new value
         public T Replace(Func<T, T> transform)
         {
             lock (_syncRoot)
@@ -26,6 +31,7 @@ namespace Zero.Latency.Servers
             }
         }
 
+        // transform and replace, but return the previous value
         public T Exchange(Func<T, T> transform)
         {
             lock (_syncRoot)

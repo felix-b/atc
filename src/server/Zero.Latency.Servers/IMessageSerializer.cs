@@ -5,7 +5,7 @@ namespace Zero.Latency.Servers
 {
     public interface IMessageSerializer
     {
-        void SerializeMessage(object message, IBufferWriter<byte> writer);
-        object DeserializeMessage(ArraySegment<byte> buffer);
+        void SerializeOutgoingEnvelope(object envelope, IBufferWriter<byte> writer);
+        object DeserializeIncomingEnvelope(ArraySegment<byte> buffer);
     }
 }

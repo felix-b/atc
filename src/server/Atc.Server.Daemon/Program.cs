@@ -2,9 +2,12 @@
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
-using AtcProto;
+using Atc.Data.Primitives;
+using Atc.World;
+using Atc.World.Redux;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
+using Zero.Doubt.Logging;
 using Zero.Latency.Servers;
 
 namespace Atc.Server.Daemon
@@ -17,26 +20,57 @@ namespace Atc.Server.Daemon
             // var hostBuilder = new ServiceHostBuilder(new EchoAcceptorMiddleware());
             // var host = hostBuilder.CreateHost();
             // host.Run();
-            RunDaemon().Wait();
+            RunEndpoint().Wait();
             
             Console.WriteLine("Goodbye World!");
         }
 
-        private static async Task RunDaemon()
+        private static async Task RunEndpoint()
         {
-            // await using var endpoint = new WebSocketEndpoint(port: 57000, urlPath: "/ws", new NoopSocketAcceptor());
-
-            var serviceInstance = new WorldService();
-            var endpoint = WebSocketEndpoint
+            ConsoleLog.Level = LogLevel.Debug;
+            
+            var store = new RuntimeStateStore();
+            var world = new RuntimeWorld(store, DateTime.Now);
+            var service = new WorldService(world, new WorldServiceLogger(ConsoleLog.Writer));
+            
+            await using var endpoint = WebSocketEndpoint
                 .Define()
-                    .ReceiveMessagesOfType<ClientToServer>()
+                    .ReceiveMessagesOfType<AtcProto.ClientToServer>()
                     .WithDiscriminator(m => m.PayloadCase)
-                    .SendMessagesOfType<ServerToClient>()
+                    .SendMessagesOfType<AtcProto.ServerToClient>()
                     .ListenOn(portNumber: 9002, urlPath: "/ws")
-                    .BindToServiceInstance(serviceInstance)
-                .Create();            
+                    .BindToServiceInstance(service)
+                .Create(out var taskSynchronizer);
+
+            AddDemoPlanes();
+            
+            var clock = new RuntimeClock(TimeSpan.FromSeconds(10), taskSynchronizer, world);
+            clock.Start();
             
             await endpoint.RunAsync();
+
+            void AddDemoPlanes()
+            {
+                var nextHeadingDegrees = 0;
+                
+                for (var lat = 10 ; lat <= 50 ; lat += 10)
+                {
+                    for (var lon = 10 ; lon <= 50 ; lon += 10)
+                    {
+                        var location = new GeoPoint(lat, lon);
+                        
+                        taskSynchronizer.SubmitTask(() => {
+                            world.AddAircraft(
+                                "B738",
+                                $"N{location.Lat}{location.Lon}",
+                                location,
+                                Bearing.FromTrueDegrees(nextHeadingDegrees % 360));
+                        });
+
+                        nextHeadingDegrees += 90;
+                    }
+                }
+            }
         }
 
         // private class NoopSocketAcceptor : ISocketAcceptor

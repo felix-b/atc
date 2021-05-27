@@ -98,14 +98,20 @@ namespace Zero.Latency.Servers
                 _serviceInstance = serviceInstance;
             }
 
-            public WebSocketEndpoint Create()
+            public WebSocketEndpoint Create(out IServiceTaskSynchronizer taskSynchronizer)
             {
-                var operationDispatcher = new MethodInvocationOperationDispatcher<TMessageIn, TMessageOut, TDiscriminatorIn>(
+                var operationDispatcher2 = new MethodInvocationOperationDispatcher<TMessageIn, TMessageOut, TDiscriminatorIn>(
                     _serviceInstance,
                     _extractDiscriminator
                 );
+                var operationDispatcher1 = new QueueOperationDispatcher<TMessageIn, TMessageOut>(
+                    outputThreadCount: 1, 
+                    operationDispatcher2
+                );
+                taskSynchronizer = operationDispatcher1;
+                
                 var messageSerializer = new ProtobufEnvelopeSerializer<TMessageIn>();
-                var connectionManager = new SocketConnectionManager(messageSerializer, operationDispatcher);
+                var connectionManager = new SocketConnectionManager(messageSerializer, operationDispatcher1);
             
                 var endpoint = new WebSocketEndpoint(_portNumber, _urlPath, connectionManager);
                 return endpoint;

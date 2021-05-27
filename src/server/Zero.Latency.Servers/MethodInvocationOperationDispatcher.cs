@@ -3,27 +3,26 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Zero.Latency.Servers
 {
-    public class MethodInvocationOperationDispatcher<TIn, TOut, TDiscriminatorIn> : IOperationDispatcher<object, object>
-        where TIn : class
-        where TOut : class
-        where TDiscriminatorIn : Enum
+    public class MethodInvocationOperationDispatcher<TEnvelopeIn, TEnvelopeOut, TPayloadCaseIn> : IDeferredOperationDispatcher<TEnvelopeIn, TEnvelopeOut>
+        where TEnvelopeIn : class
+        where TEnvelopeOut : class
+        where TPayloadCaseIn : Enum
     {
-        private delegate ValueTask OperationMethod(IConnectionContext<TOut> connection, TIn message); 
+        private delegate void OperationMethod(IDeferredConnectionContext<TEnvelopeOut> connection, TEnvelopeIn envelope); 
 
         private readonly object _serviceInstance;
-        private readonly Func<TIn, TDiscriminatorIn> _extractDiscriminator;
-        private readonly IReadOnlyDictionary<TDiscriminatorIn, OperationMethod> _methodByDiscriminator;
+        private readonly Func<TEnvelopeIn, TPayloadCaseIn> _extractPayloadCase;
+        private readonly IReadOnlyDictionary<TPayloadCaseIn, OperationMethod> _methodByPayloadCase;
 
-        public MethodInvocationOperationDispatcher(object serviceInstance, Func<TIn, TDiscriminatorIn> extractDiscriminator)
+        public MethodInvocationOperationDispatcher(object serviceInstance, Func<TEnvelopeIn, TPayloadCaseIn> extractPayloadCase)
         {
-            _extractDiscriminator = extractDiscriminator;
+            _extractPayloadCase = extractPayloadCase;
             _serviceInstance = serviceInstance;
-            _methodByDiscriminator = BuildMethodInvocationMap(serviceInstance);
+            _methodByPayloadCase = BuildMethodInvocationMap(serviceInstance);
         }
 
         public async ValueTask DisposeAsync()
@@ -38,31 +37,31 @@ namespace Zero.Latency.Servers
             }
         }
         
-        public ValueTask DispatchOperation(IConnectionContext<object> connection, object message)
+        public void DispatchOperation(IDeferredConnectionContext<TEnvelopeOut> connection, TEnvelopeIn message)
         {
-            var typedMessage = (TIn)message;
-            var typedConnection = new TypedConnectionContext(connection);
-            var discriminator = _extractDiscriminator(typedMessage);
+            //TODO: how are errors propagated back?
+            
+            var payloadCase = _extractPayloadCase(message);
 
-            if (_methodByDiscriminator.TryGetValue(discriminator, out var operation))
+            if (_methodByPayloadCase.TryGetValue(payloadCase, out var method))
             {
                 try
                 {
-                    //TODO: support methods that return ValueTask
-                    return operation(typedConnection, typedMessage);
+                    method(connection, message);
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine($"ERROR: OPERATION FAILED! {e}");
-                    return ValueTask.FromException(e);
+                    Console.WriteLine($"ERROR: OPERATION FAILED! {e}"); //TODO: how to propagate back?
                 }
             }
-
-            throw new KeyNotFoundException(
-                $"No operation method found for incoming message with discriminator value '{discriminator}'.");
+            else
+            {
+                throw new KeyNotFoundException(
+                    $"No operation method found for incoming message with discriminator value '{payloadCase}'.");
+            }
         }
 
-        private static IReadOnlyDictionary<TDiscriminatorIn, OperationMethod> BuildMethodInvocationMap(object serviceInstance)
+        private static IReadOnlyDictionary<TPayloadCaseIn, OperationMethod> BuildMethodInvocationMap(object serviceInstance)
         {
             var result = serviceInstance
                 .GetType()
@@ -74,7 +73,7 @@ namespace Zero.Latency.Servers
                 })
                 .Where(tuple => tuple.Attribute != null)
                 .Select(tuple => new {
-                    PayloadCase = (TDiscriminatorIn) tuple.Attribute!.Discriminator,
+                    PayloadCase = (TPayloadCaseIn) tuple.Attribute!.Discriminator,
                     Delegate = tuple.Method.CreateDelegate<OperationMethod>(target: serviceInstance) //TODO: compare performance with IL emit
                 })
                 .ToDictionary(
@@ -86,48 +85,14 @@ namespace Zero.Latency.Servers
 
             bool HasCompatibleSignature(MethodInfo info)
             {
-                if (info.ReturnType != typeof(ValueTask))
-                {
-                    return false;
-                }
-
                 var parameters = info.GetParameters();
+
                 return (
+                    info.ReturnType == typeof(void) &&
                     parameters.Length == 2 &&
-                    parameters[0].ParameterType == typeof(IConnectionContext<TOut>) &&
-                    parameters[1].ParameterType == typeof(TIn));
+                    parameters[0].ParameterType == typeof(IDeferredConnectionContext<TEnvelopeOut>) &&
+                    parameters[1].ParameterType == typeof(TEnvelopeIn));
             }
-        }
-        
-        private class TypedConnectionContext : IConnectionContext<TOut>
-        {
-            private readonly IConnectionContext<object> _inner;
-
-            public TypedConnectionContext(IConnectionContext<object> inner)
-            {
-                _inner = inner;
-            }
-
-            public ValueTask SendMessage(TOut message)
-            {
-                return _inner.SendMessage(message);
-            }
-
-            public void RegisterObserver(IObserverSubscription observer)
-            {
-                _inner.RegisterObserver(observer);
-            }
-
-            public ValueTask CloseConnection()
-            {
-                return _inner.CloseConnection();
-            }
-
-            public long Id => _inner.Id;
-
-            public bool IsActive => _inner.IsActive;
-
-            public CancellationToken Cancellation => _inner.Cancellation;
         }
     }
 }

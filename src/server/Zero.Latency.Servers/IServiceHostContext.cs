@@ -8,6 +8,6 @@ namespace Zero.Latency.Servers
         
         IMessageSerializer Serializer { get; }
         
-        IOperationDispatcher<object, object> Dispatcher { get; }
+        IOperationDispatcher Dispatcher { get; }
     }
 }

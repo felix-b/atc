@@ -44,6 +44,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Zero.Latency.Servers", "Zer
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zero.Latency.Servers.Tests", "Zero.Latency.Servers.Tests\Zero.Latency.Servers.Tests.csproj", "{0BB5DEC4-5C41-472E-87CF-310ED14B8C36}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zero.Doubt.Logging", "Zero.Doubt.Logging\Zero.Doubt.Logging.csproj", "{BE60E05B-77F9-41CF-BC44-29167F4258FA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zero.Doubt.Logging.Tests", "Zero.Doubt.Logging.Tests\Zero.Doubt.Logging.Tests.csproj", "{E81E284E-71B0-44F8-A9DE-C0EDF040C0E1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -110,6 +114,14 @@ Global
 		{0BB5DEC4-5C41-472E-87CF-310ED14B8C36}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0BB5DEC4-5C41-472E-87CF-310ED14B8C36}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0BB5DEC4-5C41-472E-87CF-310ED14B8C36}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE60E05B-77F9-41CF-BC44-29167F4258FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE60E05B-77F9-41CF-BC44-29167F4258FA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE60E05B-77F9-41CF-BC44-29167F4258FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE60E05B-77F9-41CF-BC44-29167F4258FA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E81E284E-71B0-44F8-A9DE-C0EDF040C0E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E81E284E-71B0-44F8-A9DE-C0EDF040C0E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E81E284E-71B0-44F8-A9DE-C0EDF040C0E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E81E284E-71B0-44F8-A9DE-C0EDF040C0E1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{EBEAAFA1-3578-4BD2-9E5E-4FD5D874BD68} = {0A349B2A-F72D-439D-8B71-0612F636FD18}

@@ -43,7 +43,7 @@ namespace Zero.Latency.Servers.Tests
                     .SendMessagesOfType<TestServerToClient>()
                     .ListenOn(portNumber: 57000, urlPath: "/ws")
                     .BindToServiceInstance(new TestServerToClient())
-                .Create();
+                .Create(out _);
         }
         
         private class NoopSocketAcceptor : ISocketAcceptor

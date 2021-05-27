@@ -23,7 +23,7 @@ namespace Zero.Latency.Servers.Tests
             var messageBytes = writer.WrittenSpan.ToArray();
             var serializerUnderTest = new ProtobufEnvelopeSerializer<TestClientToServer>();
 
-            var deserialized = (TestClientToServer)serializerUnderTest.DeserializeMessage(
+            var deserialized = (TestClientToServer)serializerUnderTest.DeserializeIncomingEnvelope(
                 new ArraySegment<byte>(messageBytes, 0, messageBytes.Length)
             ); 
                 
@@ -45,7 +45,7 @@ namespace Zero.Latency.Servers.Tests
 
             var writer = new ArrayBufferWriter<byte>(initialCapacity: 4096);
             var serializerUnderTest = new ProtobufEnvelopeSerializer<TestClientToServer>();
-            serializerUnderTest.SerializeMessage(original, writer);
+            serializerUnderTest.SerializeOutgoingEnvelope(original, writer);
 
             var deserialized = Serializer.Deserialize<TestServerToClient>(writer.WrittenSpan);
 

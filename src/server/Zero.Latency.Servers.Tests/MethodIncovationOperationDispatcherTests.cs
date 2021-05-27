@@ -33,7 +33,7 @@ namespace Zero.Latency.Servers.Tests
             );
 
             dispatcher.DispatchOperation(
-                new TestConnectionContext(), 
+                new TestConnectionContext<TestServerToClient>(), 
                 new TestClientToServer() {
                     Id = 123,
                     hello = new() {
@@ -42,7 +42,7 @@ namespace Zero.Latency.Servers.Tests
                 }
             );
             dispatcher.DispatchOperation(
-                new TestConnectionContext(), 
+                new TestConnectionContext<TestServerToClient>(), 
                 new TestClientToServer() {
                     Id = 123,
                     goodbye = new() {
