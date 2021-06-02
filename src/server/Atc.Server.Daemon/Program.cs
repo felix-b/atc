@@ -58,16 +58,17 @@ namespace Atc.Server.Daemon
                     for (var lon = 10 ; lon <= 50 ; lon += 10)
                     {
                         var location = new GeoPoint(lat, lon);
+                        var heading = nextHeadingDegrees % 360;
+                        nextHeadingDegrees += 45;
                         
                         taskSynchronizer.SubmitTask(() => {
+                            // this callback runs on the Input thread
                             world.AddAircraft(
                                 "B738",
                                 $"N{location.Lat}{location.Lon}",
                                 location,
-                                Bearing.FromTrueDegrees(nextHeadingDegrees % 360));
+                                Bearing.FromTrueDegrees(heading));
                         });
-
-                        nextHeadingDegrees += 90;
                     }
                 }
             }

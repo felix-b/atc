@@ -23,7 +23,8 @@ namespace Atc.World
                     currentState.AllAircraft.Add(newAircraft); 
                     
                     return currentState with {
-                        Version = currentState.Version + 1                      
+                        Version = currentState.Version + 1,
+                        NextAircraftId = currentState.NextAircraftId + 1
                     };
                 default:
                     return currentState;

@@ -1,12 +1,11 @@
-import React from 'react';
-import logo from './logo.svg';
 import './App.css';
-import MapView from './mapView';
+import WorldMapView from './worldMapView';
+import { AppServices } from './appServices';
 
-function App() {
-  return (
-    <MapView />
-  );
+function App(services: AppServices) {
+    return (
+        <WorldMapView {...services} />
+    );
 }
 
 export default App;

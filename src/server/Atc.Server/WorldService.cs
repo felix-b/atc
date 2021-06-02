@@ -53,25 +53,16 @@ namespace Atc.Server
             var requestId = message.Id;
             var request = message.query_traffic;
             var rect = new GeoRect(new(request.MinLat, request.MinLon), new(request.MaxLat, request.MaxLon));
-            
-            var query = _world.QueryTraffic(in rect);
 
+            var query = _world.QueryTraffic(in rect);
             var subscription = query.Subscribe(ObserveTrafficQuery);
             connection.RegisterObserver(subscription);
 
-            int count = 0;
-            foreach (var result in query.GetResults())
-            {
-                count++;
-                connection.FireMessage(new ServerToClient() {
-                    ReplyToRequestId = message.Id,
-                    notify_aircraft_created = new() {
-                        Aircraft = CreateAircraftMessage(result),
-                    }
-                });
-            }
-
-            _logger.SentTrafficQueryResults(connection.Id, count);
+            var replyMessage = CreateReplyMessage(message, query);
+            var foundAircraftCount = replyMessage.reply_query_traffic.TrafficBatchs.Count;
+            
+            connection.FireMessage(replyMessage);
+            _logger.SentTrafficQueryResults(connection.Id, foundAircraftCount);
 
             void ObserveTrafficQuery(in QueryObservation<RuntimeAircraft> observation)
             {
@@ -90,6 +81,20 @@ namespace Atc.Server
                     _logger.TrafficQueryObserverCompleted(connection.Id, updated, added, removed);
                     connection.RequestFlush();
                 }
+            }
+
+            static ServerToClient CreateReplyMessage(ClientToServer incoming, IObservableQuery<RuntimeAircraft> query)
+            {
+                var request = incoming.query_traffic;
+                var results = query.GetResults();
+                var reply = new ServerToClient() {
+                    ReplyToRequestId = incoming.Id,
+                    reply_query_traffic = new() {
+                        MinLat = request.MinLat, MinLon = request.MinLon, MaxLat = request.MaxLat, MaxLon = request.MaxLon,
+                    }
+                };
+                reply.reply_query_traffic.TrafficBatchs.AddRange(results.Select(CreateAircraftMessage));
+                return reply;
             }
         }
 
@@ -167,7 +172,7 @@ namespace Atc.Server
             return count;
         }
 
-        private AircraftMessage CreateAircraftMessage(RuntimeAircraft aircraft)
+        private static AircraftMessage CreateAircraftMessage(RuntimeAircraft aircraft)
         {
             var state = aircraft.GetState();
             return new AircraftMessage() {
@@ -179,7 +184,7 @@ namespace Atc.Server
             };
         }
         
-        private AircraftMessage.Situation CreateSituationMessage(RuntimeAircraft aircraft)
+        private static AircraftMessage.Situation CreateSituationMessage(RuntimeAircraft aircraft)
         {
             var state = aircraft.GetState();
             return new AircraftMessage.Situation() {
