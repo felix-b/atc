@@ -3,35 +3,67 @@ using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Atc.Data.Primitives;
+using Atc.Server;
+using Atc.Server.Daemon;
 using Atc.World;
 using Atc.World.Redux;
+using Autofac;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Zero.Doubt.Logging;
 using Zero.Latency.Servers;
 
+[assembly:GenerateLogger(typeof(IEndpointLogger))]
+[assembly:GenerateLogger(typeof(WorldService.ILogger))]
+[assembly:GenerateLogger(typeof(IAtcdLogger))]
+
 namespace Atc.Server.Daemon
 {
     class Program
     {
+        private static IServiceTaskSynchronizer? _taskSynchronizer = null;
+        
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
             // var hostBuilder = new ServiceHostBuilder(new EchoAcceptorMiddleware());
             // var host = hostBuilder.CreateHost();
             // host.Run();
-            RunEndpoint().Wait();
+
+            var container = CompositionRoot();
+            RunEndpoint(container).Wait();
             
             Console.WriteLine("Goodbye World!");
         }
 
-        private static async Task RunEndpoint()
+        private static IContainer CompositionRoot()
+        {
+            var builder = new ContainerBuilder();
+
+            builder.RegisterInstance(ConsoleLog.Writer).As<LogWriter>();
+            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<IEndpointLogger>()).As<IEndpointLogger>();
+            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<WorldService.ILogger>()).As<WorldService.ILogger>();
+
+            builder.RegisterType<RuntimeStateStore>().As<IRuntimeStateStore>().SingleInstance();
+            builder.RegisterType<RuntimeWorld>().SingleInstance().WithParameter("startTime", DateTime.Now);
+            builder.RegisterType<WorldService>().SingleInstance();
+
+            builder.Register(c => _taskSynchronizer!).SingleInstance().As<IServiceTaskSynchronizer>();
+            builder.RegisterType<RuntimeClock>().SingleInstance().WithParameter("interval", TimeSpan.FromSeconds(10));
+            
+            return builder.Build();
+        }
+
+        private static async Task RunEndpoint(IContainer container)
         {
             ConsoleLog.Level = LogLevel.Debug;
             
-            var store = new RuntimeStateStore();
-            var world = new RuntimeWorld(store, DateTime.Now);
-            var service = new WorldService(world, new WorldServiceLogger(ConsoleLog.Writer));
+            // var store = new RuntimeStateStore();
+            // var world = new RuntimeWorld(store, DateTime.Now);
+            // var service = new WorldService(world, new WorldService.Logger(ConsoleLog.Writer));
+
+            var service = container.Resolve<WorldService>();
+            var world = container.Resolve<RuntimeWorld>();
             
             await using var endpoint = WebSocketEndpoint
                 .Define()
@@ -40,11 +72,11 @@ namespace Atc.Server.Daemon
                     .SendMessagesOfType<AtcProto.ServerToClient>()
                     .ListenOn(portNumber: 9002, urlPath: "/ws")
                     .BindToServiceInstance(service)
-                .Create(out var taskSynchronizer);
+                .Create(out _taskSynchronizer);
 
             AddDemoPlanes();
-            
-            var clock = new RuntimeClock(TimeSpan.FromSeconds(10), taskSynchronizer, world);
+
+            var clock = container.Resolve<RuntimeClock>();// new RuntimeClock(TimeSpan.FromSeconds(10), taskSynchronizer, world);
             clock.Start();
             
             await endpoint.RunAsync();
@@ -61,7 +93,7 @@ namespace Atc.Server.Daemon
                         var heading = nextHeadingDegrees % 360;
                         nextHeadingDegrees += 45;
                         
-                        taskSynchronizer.SubmitTask(() => {
+                        _taskSynchronizer!.SubmitTask(() => {
                             // this callback runs on the Input thread
                             world.AddAircraft(
                                 "B738",

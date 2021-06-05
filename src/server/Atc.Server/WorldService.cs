@@ -11,12 +11,12 @@ using Zero.Latency.Servers;
 
 namespace Atc.Server
 {
-    public class WorldService
+    public partial class WorldService
     {
         private readonly RuntimeWorld _world;
-        private readonly IWorldServiceLogger _logger;
+        private readonly ILogger _logger;
 
-        public WorldService(RuntimeWorld world, IWorldServiceLogger logger)
+        public WorldService(RuntimeWorld world, ILogger logger)
         {
             _world = world;
             _logger = logger;
@@ -56,7 +56,7 @@ namespace Atc.Server
 
             var query = _world.QueryTraffic(in rect);
             var subscription = query.Subscribe(ObserveTrafficQuery);
-            connection.RegisterObserver(subscription);
+            connection.RegisterObserver(subscription, request.CancellationKey);
 
             var replyMessage = CreateReplyMessage(message, query);
             var foundAircraftCount = replyMessage.reply_query_traffic.TrafficBatchs.Count;
@@ -96,6 +96,12 @@ namespace Atc.Server
                 reply.reply_query_traffic.TrafficBatchs.AddRange(results.Select(CreateAircraftMessage));
                 return reply;
             }
+        }
+
+        [PayloadCase(ClientToServer.PayloadOneofCase.cancel_traffic_query)]
+        public void CancelTrafficQuery(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
+        {
+            connection.DisposeObserver(message.cancel_traffic_query.CancellationKey);
         }
 
         private void ValidateAuthentication(IDeferredConnectionContext<ServerToClient> connection)

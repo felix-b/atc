@@ -20,7 +20,7 @@ namespace Zero.Latency.Servers
         private readonly CancellationTokenSource _cancelForAnyReason;
         private readonly ArrayBufferWriter<byte> _outgoingMessageBuffer = new(initialCapacity: 4096); //TODO: how to limit max buffer size?
         private SessionItems _sessionItems = new(initialEntryCount: 4);
-        private WriteLocked<ImmutableList<IObserverSubscription>> _observers = ImmutableList<IObserverSubscription>.Empty;
+        private WriteLocked<ImmutableList<ObserverEntry>> _observers = ImmutableList<ObserverEntry>.Empty;
         private Task? _receiveLoopTask = null;
         private bool _disposed = false;
 
@@ -88,10 +88,31 @@ namespace Zero.Latency.Servers
                 _cancelForAnyReason.Token);
         }
 
-        public void RegisterObserver(IObserverSubscription observer)
+        public void RegisterObserver(IObserverSubscription observer, string? registrationKey)
         {
             ValidateActive();
-            _observers.Replace(list => list.Add(observer));
+            _observers.Replace(list => list.Add(new ObserverEntry(observer, registrationKey)));
+        }
+
+        public async ValueTask DisposeObserver(string registrationKey)
+        {
+            ValidateActive();
+            IObserverSubscription? foundSubscription = null;
+            
+            _observers.Replace(list => {
+                var index = list.FindIndex(entry => entry.RegistrationKey == registrationKey);
+                if (index >= 0)
+                {
+                    foundSubscription = list[index].Subscription;
+                    return list.RemoveAt(index);
+                }
+                return list;
+            });
+
+            if (foundSubscription != null)
+            {
+                await foundSubscription.DisposeAsync();
+            }
         }
 
         public long Id => _id;
@@ -111,15 +132,6 @@ namespace Zero.Latency.Servers
             }
         }
 
-        private enum SocketReceiveStatus
-        {
-            Unknown,
-            MessageReceived,
-            ProtocolError,
-            SocketClosing,
-            ConnectionCanceled
-        }
-        
         private async Task PrivateRunReceiveLoop()
         {
             var receiveStatus = SocketReceiveStatus.Unknown;
@@ -199,5 +211,25 @@ namespace Zero.Latency.Servers
                 return (-1, SocketReceiveStatus.ConnectionCanceled);
             }
         }
+
+        private enum SocketReceiveStatus
+        {
+            Unknown,
+            MessageReceived,
+            ProtocolError,
+            SocketClosing,
+            ConnectionCanceled
+        }
+
+        private partial record ObserverEntry(IObserverSubscription Subscription, string? RegistrationKey);
+
+        private partial record ObserverEntry : IAsyncDisposable
+        {
+            public ValueTask DisposeAsync()
+            {
+                return Subscription.DisposeAsync();
+            }
+        }
+        
     }
 }

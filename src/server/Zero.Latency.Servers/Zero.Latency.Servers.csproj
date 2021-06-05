@@ -15,4 +15,8 @@
         <PackageReference Include="protobuf-net" Version="3.0.101" />
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\Zero.Doubt.Logging\Zero.Doubt.Logging.csproj" />
+    </ItemGroup>
+
 </Project>

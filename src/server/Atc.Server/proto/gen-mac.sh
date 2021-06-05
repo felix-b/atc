@@ -9,4 +9,4 @@ cd "${0%/*}"
 protogen --csharp_out=cs +langver=9.0 +oneof=enum atc.proto 
 
 # generate TypeScript for client
-../../../../tools/protoc/mac/protoc --plugin="protoc-gen-ts_proto=../../../console/node_modules/.bin/protoc-gen-ts_proto.cmd" --ts_proto_opt=esModuleInterop=true --ts_proto_out=../../../console/src/proto -I. atc.proto
+../../../../tools/protoc/mac/protoc --plugin="protoc-gen-ts_proto=../../../console/node_modules/ts-proto/protoc-gen-ts_proto" --ts_proto_opt=esModuleInterop=true --ts_proto_out=../../../console/src/proto -I. atc.proto

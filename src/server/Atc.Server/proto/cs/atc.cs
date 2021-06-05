@@ -87,6 +87,15 @@ namespace AtcProto
         public bool ShouldSerializequery_traffic() => __pbn__payload.Is(107);
         public void Resetquery_traffic() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 107);
 
+        [global::ProtoBuf.ProtoMember(108)]
+        public CancelTrafficQuery cancel_traffic_query
+        {
+            get => __pbn__payload.Is(108) ? ((CancelTrafficQuery)__pbn__payload.Object) : default;
+            set => __pbn__payload = new global::ProtoBuf.DiscriminatedUnionObject(108, value);
+        }
+        public bool ShouldSerializecancel_traffic_query() => __pbn__payload.Is(108);
+        public void Resetcancel_traffic_query() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 108);
+
         public PayloadOneofCase PayloadCase => (PayloadOneofCase)__pbn__payload.Discriminator;
 
         public enum PayloadOneofCase
@@ -99,6 +108,7 @@ namespace AtcProto
             remove_aircraft = 105,
             query_taxi_path = 106,
             query_traffic = 107,
+            cancel_traffic_query = 108,
         }
 
         [global::ProtoBuf.ProtoContract()]
@@ -207,6 +217,23 @@ namespace AtcProto
 
             [global::ProtoBuf.ProtoMember(4, Name = @"max_lon")]
             public double MaxLon { get; set; }
+
+            [global::ProtoBuf.ProtoMember(5, Name = @"cancellation_key")]
+            [global::System.ComponentModel.DefaultValue("")]
+            public string CancellationKey { get; set; } = "";
+
+        }
+
+        [global::ProtoBuf.ProtoContract()]
+        public partial class CancelTrafficQuery : global::ProtoBuf.IExtensible
+        {
+            private global::ProtoBuf.IExtension __pbn__extensionData;
+            global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+                => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+            [global::ProtoBuf.ProtoMember(1, Name = @"cancellation_key")]
+            [global::System.ComponentModel.DefaultValue("")]
+            public string CancellationKey { get; set; } = "";
 
         }
 

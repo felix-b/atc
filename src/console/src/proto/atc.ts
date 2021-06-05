@@ -271,6 +271,7 @@ export interface ClientToServer {
   removeAircraft: ClientToServer_RemoveAircraft | undefined;
   queryTaxiPath: ClientToServer_QueryTaxiPath | undefined;
   queryTraffic: ClientToServer_QueryTraffic | undefined;
+  cancelTrafficQuery: ClientToServer_CancelTrafficQuery | undefined;
 }
 
 export interface ClientToServer_Connect {
@@ -306,6 +307,11 @@ export interface ClientToServer_QueryTraffic {
   minLon: number;
   maxLat: number;
   maxLon: number;
+  cancellationKey: string;
+}
+
+export interface ClientToServer_CancelTrafficQuery {
+  cancellationKey: string;
 }
 
 export interface ServerToClient {
@@ -562,6 +568,12 @@ export const ClientToServer = {
         writer.uint32(858).fork()
       ).ldelim();
     }
+    if (message.cancelTrafficQuery !== undefined) {
+      ClientToServer_CancelTrafficQuery.encode(
+        message.cancelTrafficQuery,
+        writer.uint32(866).fork()
+      ).ldelim();
+    }
     return writer;
   },
 
@@ -619,6 +631,12 @@ export const ClientToServer = {
           break;
         case 107:
           message.queryTraffic = ClientToServer_QueryTraffic.decode(
+            reader,
+            reader.uint32()
+          );
+          break;
+        case 108:
+          message.cancelTrafficQuery = ClientToServer_CancelTrafficQuery.decode(
             reader,
             reader.uint32()
           );
@@ -694,6 +712,16 @@ export const ClientToServer = {
     } else {
       message.queryTraffic = undefined;
     }
+    if (
+      object.cancelTrafficQuery !== undefined &&
+      object.cancelTrafficQuery !== null
+    ) {
+      message.cancelTrafficQuery = ClientToServer_CancelTrafficQuery.fromJSON(
+        object.cancelTrafficQuery
+      );
+    } else {
+      message.cancelTrafficQuery = undefined;
+    }
     return message;
   },
 
@@ -730,6 +758,10 @@ export const ClientToServer = {
     message.queryTraffic !== undefined &&
       (obj.queryTraffic = message.queryTraffic
         ? ClientToServer_QueryTraffic.toJSON(message.queryTraffic)
+        : undefined);
+    message.cancelTrafficQuery !== undefined &&
+      (obj.cancelTrafficQuery = message.cancelTrafficQuery
+        ? ClientToServer_CancelTrafficQuery.toJSON(message.cancelTrafficQuery)
         : undefined);
     return obj;
   },
@@ -796,6 +828,17 @@ export const ClientToServer = {
       );
     } else {
       message.queryTraffic = undefined;
+    }
+    if (
+      object.cancelTrafficQuery !== undefined &&
+      object.cancelTrafficQuery !== null
+    ) {
+      message.cancelTrafficQuery =
+        ClientToServer_CancelTrafficQuery.fromPartial(
+          object.cancelTrafficQuery
+        );
+    } else {
+      message.cancelTrafficQuery = undefined;
     }
     return message;
   },
@@ -1316,6 +1359,7 @@ const baseClientToServer_QueryTraffic: object = {
   minLon: 0,
   maxLat: 0,
   maxLon: 0,
+  cancellationKey: "",
 };
 
 export const ClientToServer_QueryTraffic = {
@@ -1334,6 +1378,9 @@ export const ClientToServer_QueryTraffic = {
     }
     if (message.maxLon !== 0) {
       writer.uint32(33).double(message.maxLon);
+    }
+    if (message.cancellationKey !== "") {
+      writer.uint32(42).string(message.cancellationKey);
     }
     return writer;
   },
@@ -1361,6 +1408,9 @@ export const ClientToServer_QueryTraffic = {
           break;
         case 4:
           message.maxLon = reader.double();
+          break;
+        case 5:
+          message.cancellationKey = reader.string();
           break;
         default:
           reader.skipType(tag & 7);
@@ -1394,6 +1444,14 @@ export const ClientToServer_QueryTraffic = {
     } else {
       message.maxLon = 0;
     }
+    if (
+      object.cancellationKey !== undefined &&
+      object.cancellationKey !== null
+    ) {
+      message.cancellationKey = String(object.cancellationKey);
+    } else {
+      message.cancellationKey = "";
+    }
     return message;
   },
 
@@ -1403,6 +1461,8 @@ export const ClientToServer_QueryTraffic = {
     message.minLon !== undefined && (obj.minLon = message.minLon);
     message.maxLat !== undefined && (obj.maxLat = message.maxLat);
     message.maxLon !== undefined && (obj.maxLon = message.maxLon);
+    message.cancellationKey !== undefined &&
+      (obj.cancellationKey = message.cancellationKey);
     return obj;
   },
 
@@ -1431,6 +1491,90 @@ export const ClientToServer_QueryTraffic = {
       message.maxLon = object.maxLon;
     } else {
       message.maxLon = 0;
+    }
+    if (
+      object.cancellationKey !== undefined &&
+      object.cancellationKey !== null
+    ) {
+      message.cancellationKey = object.cancellationKey;
+    } else {
+      message.cancellationKey = "";
+    }
+    return message;
+  },
+};
+
+const baseClientToServer_CancelTrafficQuery: object = { cancellationKey: "" };
+
+export const ClientToServer_CancelTrafficQuery = {
+  encode(
+    message: ClientToServer_CancelTrafficQuery,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.cancellationKey !== "") {
+      writer.uint32(10).string(message.cancellationKey);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ClientToServer_CancelTrafficQuery {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseClientToServer_CancelTrafficQuery,
+    } as ClientToServer_CancelTrafficQuery;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.cancellationKey = reader.string();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ClientToServer_CancelTrafficQuery {
+    const message = {
+      ...baseClientToServer_CancelTrafficQuery,
+    } as ClientToServer_CancelTrafficQuery;
+    if (
+      object.cancellationKey !== undefined &&
+      object.cancellationKey !== null
+    ) {
+      message.cancellationKey = String(object.cancellationKey);
+    } else {
+      message.cancellationKey = "";
+    }
+    return message;
+  },
+
+  toJSON(message: ClientToServer_CancelTrafficQuery): unknown {
+    const obj: any = {};
+    message.cancellationKey !== undefined &&
+      (obj.cancellationKey = message.cancellationKey);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<ClientToServer_CancelTrafficQuery>
+  ): ClientToServer_CancelTrafficQuery {
+    const message = {
+      ...baseClientToServer_CancelTrafficQuery,
+    } as ClientToServer_CancelTrafficQuery;
+    if (
+      object.cancellationKey !== undefined &&
+      object.cancellationKey !== null
+    ) {
+      message.cancellationKey = object.cancellationKey;
+    } else {
+      message.cancellationKey = "";
     }
     return message;
   },

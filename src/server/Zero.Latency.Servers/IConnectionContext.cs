@@ -17,7 +17,8 @@ namespace Zero.Latency.Servers
     public interface IConnectionContext : IReadOnlyConnectionContext
     {
         ValueTask SendMessage(object outgoingMessageEnvelope);
-        void RegisterObserver(IObserverSubscription observer);
+        void RegisterObserver(IObserverSubscription observer, string? registrationKey);
+        ValueTask DisposeObserver(string registrationKey);
         ValueTask CloseConnection();
         SessionItems Session { get; }
     }

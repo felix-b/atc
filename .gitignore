@@ -2,3 +2,4 @@
 *.sln.DotSettings.user
 bin/
 obj/
+Generated/

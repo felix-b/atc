@@ -36,8 +36,13 @@ message ClientToServer {
     double min_lon = 2;
     double max_lat = 3;
     double max_lon = 4;
+    string cancellation_key = 5;
   }
-  
+
+  message CancelTrafficQuery {
+    string cancellation_key = 1;
+  }
+
   uint64 id = 1;
   google.protobuf.Timestamp sent_at = 2;
   oneof payload {
@@ -48,6 +53,7 @@ message ClientToServer {
     RemoveAircraft remove_aircraft = 105;
     QueryTaxiPath query_taxi_path = 106;
     QueryTraffic query_traffic = 107;
+    CancelTrafficQuery cancel_traffic_query = 108;
   }
 }
 

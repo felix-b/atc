@@ -22,9 +22,14 @@ namespace Zero.Latency.Servers
             AddOutputRequest(new FireMessageRequest(outgoingMessageEnvelope)); 
         }
 
-        void IDeferredConnectionContext<TEnvelopeOut>.RegisterObserver(IObserverSubscription observer)
+        void IDeferredConnectionContext<TEnvelopeOut>.RegisterObserver(IObserverSubscription observer, string? registrationKey)
         {
-            AddOutputRequest(new RegisterObserverRequest(observer)); 
+            AddOutputRequest(new RegisterObserverRequest(observer, registrationKey)); 
+        }
+
+        void IDeferredConnectionContext<TEnvelopeOut>.DisposeObserver(string registrationKey)
+        {
+            AddOutputRequest(new DisposeObserverRequest(registrationKey)); 
         }
 
         void IDeferredConnectionContext<TEnvelopeOut>.RequestClose()
@@ -55,7 +60,10 @@ namespace Zero.Latency.Servers
                         await _inner.SendMessage(messageRequest.Envelope);
                         break;
                     case RegisterObserverRequest observerRequest:
-                        _inner.RegisterObserver(observerRequest.Observer);
+                        _inner.RegisterObserver(observerRequest.Observer, observerRequest.RegistrationKey);
+                        break;
+                    case DisposeObserverRequest disposeRequest:
+                        await _inner.DisposeObserver(disposeRequest.RegistrationKey);
                         break;
                 }
             }
@@ -83,7 +91,8 @@ namespace Zero.Latency.Servers
         public abstract record OutputRequest; 
         public record CloseConnectionRequest : OutputRequest; 
         public record FireMessageRequest(TEnvelopeOut Envelope) : OutputRequest;
-        public record RegisterObserverRequest(IObserverSubscription Observer) : OutputRequest;
+        public record RegisterObserverRequest(IObserverSubscription Observer, string? RegistrationKey) : OutputRequest;
+        public record DisposeObserverRequest(string RegistrationKey) : OutputRequest;
 
         private void AddOutputRequest(OutputRequest request)
         {

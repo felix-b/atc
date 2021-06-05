@@ -12,9 +12,13 @@ namespace Zero.Latency.Servers.Tests
             OnFireMessage?.Invoke(message);
         }
 
-        public void RegisterObserver(IObserverSubscription observer)
+        public void RegisterObserver(IObserverSubscription observer, string? registrationKey)
         {
             OnRegisterObserver?.Invoke(observer);
+        }
+
+        public void DisposeObserver(string registrationKey)
+        {
         }
 
         public void RequestClose()
