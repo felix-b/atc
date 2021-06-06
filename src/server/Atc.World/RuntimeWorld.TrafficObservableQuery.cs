@@ -42,10 +42,14 @@ namespace Atc.World
                 {
                     _target = target;
                     _rect = rect;
+
+                    target._logger.TrafficQueryObserverCreated(rect.Min.Lat, rect.Min.Lon, rect.Max.Lat, rect.Max.Lon);
                 }
 
                 public ValueTask DisposeAsync()
                 {
+                    _target._logger.TrafficQueryObserverDisposing(_rect.Min.Lat, _rect.Min.Lon, _rect.Max.Lat, _rect.Max.Lon);
+                    
                     _target._observers.Remove(this);
                     return ValueTask.CompletedTask;
                 }

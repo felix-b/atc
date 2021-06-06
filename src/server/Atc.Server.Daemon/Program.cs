@@ -13,9 +13,10 @@ using Microsoft.Extensions.Hosting;
 using Zero.Doubt.Logging;
 using Zero.Latency.Servers;
 
+[assembly:GenerateLogger(typeof(IAtcdLogger))]
 [assembly:GenerateLogger(typeof(IEndpointLogger))]
 [assembly:GenerateLogger(typeof(WorldService.ILogger))]
-[assembly:GenerateLogger(typeof(IAtcdLogger))]
+[assembly:GenerateLogger(typeof(RuntimeWorld.ILogger))]
 
 namespace Atc.Server.Daemon
 {
@@ -41,8 +42,10 @@ namespace Atc.Server.Daemon
             var builder = new ContainerBuilder();
 
             builder.RegisterInstance(ConsoleLog.Writer).As<LogWriter>();
-            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<IEndpointLogger>()).As<IEndpointLogger>();
-            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<WorldService.ILogger>()).As<WorldService.ILogger>();
+            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<IAtcdLogger>()).AsImplementedInterfaces();
+            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<IEndpointLogger>()).AsImplementedInterfaces();
+            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<WorldService.ILogger>()).AsImplementedInterfaces();
+            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<RuntimeWorld.ILogger>()).AsImplementedInterfaces();
 
             builder.RegisterType<RuntimeStateStore>().As<IRuntimeStateStore>().SingleInstance();
             builder.RegisterType<RuntimeWorld>().SingleInstance().WithParameter("startTime", DateTime.Now);
@@ -76,7 +79,7 @@ namespace Atc.Server.Daemon
 
             AddDemoPlanes();
 
-            var clock = container.Resolve<RuntimeClock>();// new RuntimeClock(TimeSpan.FromSeconds(10), taskSynchronizer, world);
+            var clock = container.Resolve<RuntimeClock>();
             clock.Start();
             
             await endpoint.RunAsync();

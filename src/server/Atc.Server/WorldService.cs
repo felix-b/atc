@@ -63,6 +63,13 @@ namespace Atc.Server
             
             connection.FireMessage(replyMessage);
             _logger.SentTrafficQueryResults(connection.Id, foundAircraftCount);
+            _logger.TrafficQueryObserverCreated(
+                connection.Id, 
+                request.CancellationKey, 
+                request.MinLat, 
+                request.MinLon,
+                request.MaxLat,
+                request.MinLon);
 
             void ObserveTrafficQuery(in QueryObservation<RuntimeAircraft> observation)
             {

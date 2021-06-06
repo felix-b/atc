@@ -44,6 +44,7 @@ export interface TrafficService {
 
 export type TrafficQuery = {
     bounds: GeoRect;
+    cancellationKey?: string;
 }
 
 export interface TrafficEntry {

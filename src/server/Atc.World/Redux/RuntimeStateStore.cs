@@ -8,7 +8,7 @@ namespace Atc.World.Redux
         {
             // note: all reducers subscribe to "find me" data structure
             // 1. lookup the "find me" data structure and locate the target reducer
-            // 2. invoke the target reducer with the second method
+            // 2. invoke the target reducer with the second overload of Dispatch
             throw new System.NotImplementedException();
         }
 
@@ -26,7 +26,7 @@ namespace Atc.World.Redux
         }
 
         // This event is useful for replication of state events to followers
-        // and also for recording state events to enable replay
+        // and also for recording state events with the purpose of replaying them later
         public event Action<IRuntimeStateEvent>? StateEventDispatched;
     }
 }

@@ -5,7 +5,7 @@ namespace Zero.Doubt.Logging
 {
     public static class ZLoggerFactory
     {
-        public static T CreateGeneratedLogger<T>(LogWriter writer) where T : class
+        public static T CreateLogger<T>(LogWriter writer) where T : class
         {
             var loggerType = GetGeneratedLoggerType<T>();
             return (T)Activator.CreateInstance(loggerType, new object[] { writer });

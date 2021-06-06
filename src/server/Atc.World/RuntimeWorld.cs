@@ -11,14 +11,16 @@ namespace Atc.World
     public partial class RuntimeWorld
     {
         private readonly IRuntimeStateStore _store;
+        private readonly ILogger _logger;
         private readonly HashSet<IWorldObserver> _observers = new(); 
         private RuntimeState _state;
         private ulong _tickCount;
         private TimeSpan _timestamp;
 
-        public RuntimeWorld(IRuntimeStateStore store, DateTime startTime)
+        public RuntimeWorld(IRuntimeStateStore store, ILogger logger, DateTime startTime)
         {
             _store = store;
+            _logger = logger;
             _state = new RuntimeState(
                 Version: 1, 
                 AllAircraft: new HashSet<RuntimeAircraft>(capacity: 32768),
@@ -53,10 +55,11 @@ namespace Atc.World
         
         public void ProgressBy(TimeSpan delta)
         {
-            using var lifecycle = new OperationLifecycle(this);
-
             _tickCount++;
             _timestamp += delta;
+
+            using var logSpan = _logger.ProgressBy((int) delta.TotalMilliseconds, (int) _timestamp.TotalMilliseconds, _tickCount);
+            using var lifecycle = new OperationLifecycle(this);
 
             // 1. create new empty ChangeSet and make it current in the context
             // 2. call ProgressBy on all parties involved   

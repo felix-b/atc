@@ -14,6 +14,7 @@ export function createTrafficService(worldService: WorldServiceClient): TrafficS
 
     let entries: TrafficEntryMap = createEntryMap();
     let lastQuery: TrafficQuery | undefined = undefined;
+    let queryCancellationKeyCounter = 1;
     let lastNotifySubscribersTimestamp = 0;
     
     //const getElapsed = (t0: Timestamp, t1: Timestamp): Timestamp => t1 - t0;
@@ -163,6 +164,8 @@ export function createTrafficService(worldService: WorldServiceClient): TrafficS
         );
     }
 
+    const getQueryCancellationKey = (counter: number) => `tqck@${queryCancellationKeyCounter++}`;
+
     const service: TrafficService = {
         beginQuery(query: TrafficQuery) {
             service.start();
@@ -170,15 +173,26 @@ export function createTrafficService(worldService: WorldServiceClient): TrafficS
                 return;
             }
 
+            if (lastQuery) {
+                worldService.sendMessage({ 
+                    cancelTrafficQuery: { 
+                        cancellationKey: lastQuery.cancellationKey 
+                    }
+                })
+            }
+            
+            query.cancellationKey = getQueryCancellationKey(queryCancellationKeyCounter++);
             lastQuery = query;
-
+            
             const { bounds } = query;
+
             worldService.sendMessage({
                 queryTraffic: {
                     minLat: bounds.minLat,
                     minLon: bounds.minLon,
                     maxLat: bounds.maxLat,
                     maxLon: bounds.maxLon,
+                    cancellationKey: query.cancellationKey
                 }
             });
         },
