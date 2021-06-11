@@ -82,6 +82,18 @@ namespace Atc.Data.Sources.Tests.XP.Airports
             }
         }
 
+        [Test]
+        public void ReadAirport_CutDatumFields_Ignore()
+        {
+            using var scope = AtcBufferContext.CreateEmpty(out var context);
+            var airportRef = ReadSingleTestAirport(context, "apt_cut_datum.dat");
+
+            airportRef.Get().Header.Icao.Value.Should().Be("ABCD");
+            airportRef.Get().Header.Elevation.Feet.Should().Be(1000);
+            airportRef.Get().Runways.Count.Should().Be(1);
+        }
+
+
         private ZRef<AirportData> ReadSingleTestAirport(IBufferContext context, string aptDatFileName)
         {
             using var aptDat = File.Open(

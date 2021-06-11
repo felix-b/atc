@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
+using Atc.Data;
 using Atc.Data.Primitives;
 using Atc.Server;
 using Atc.Server.Daemon;
@@ -108,20 +109,24 @@ namespace Atc.Server.Daemon
             {
                 var nextHeadingDegrees = 0;
                 
-                for (var lat = 10 ; lat <= 50 ; lat += 10)
+                for (var lat = 10 ; lat <= 50 ; lat += 2)
                 {
-                    for (var lon = 10 ; lon <= 50 ; lon += 10)
+                    for (var lon = 10 ; lon <= 50 ; lon += 2)
                     {
                         var location = new GeoPoint(lat, lon);
                         var heading = nextHeadingDegrees % 360;
-                        nextHeadingDegrees += 45;
+                        nextHeadingDegrees += 15;
                         
                         _taskSynchronizer!.SubmitTask(() => {
                             // this callback runs on the Input thread
-                            world.AddAircraft(
+                            world.AddNewAircraft(
                                 "B738",
                                 $"N{location.Lat}{location.Lon}",
+                                airlineIcao: null,
+                                AircraftCategories.Jet,
+                                OperationTypes.Airline,
                                 location,
+                                Altitude.FromFeetMsl(20000 + lat * 100 + lon * 100), 
                                 Bearing.FromTrueDegrees(heading));
                         });
                     }

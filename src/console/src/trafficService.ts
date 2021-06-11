@@ -16,8 +16,14 @@ export function createTrafficService(worldService: WorldServiceClient): TrafficS
     let lastQuery: TrafficQuery | undefined = undefined;
     let queryCancellationKeyCounter = 1;
     let lastNotifySubscribersTimestamp = 0;
+    let notificationThrottlingMilliseconds = 0;
     
     //const getElapsed = (t0: Timestamp, t1: Timestamp): Timestamp => t1 - t0;
+
+    const getNotificationThrottlingMilliseconds = (numEntries: number): number => {
+        var result = Math.pow((numEntries + 20) / 5, 2);
+        return Math.max(Math.min(result, 10000), 100);
+    }
 
     const performLocalExtrapolation = (situation: AircraftMessage_Situation, elapsed: Timestamp): AircraftMessage_Situation => {
         
@@ -94,15 +100,16 @@ export function createTrafficService(worldService: WorldServiceClient): TrafficS
             createAircraftEntryInMap(result, now, newMap);
         }
 
-        console.log('>>> TrafficService > receiveQueryResults', results.length, 'ids:', results.map(r => r.id).join(','));
+        //console.log('>>> TrafficService > receiveQueryResults', results.length, 'ids:', results.map(r => r.id).join(','));
         entries = newMap;
+        notificationThrottlingMilliseconds = 0;
     };
 
     const onAircraftUpdatedNotification = (envelope: ServerToClient) => {
         // update entries with latest data from server
 
         const notification = envelope.notifyAircraftSituationUpdated!;
-        const { airctaftId: aircraftId, situation } = notification; //TODO fix the typo in proto
+        const { aircraftId: aircraftId, situation } = notification; //TODO fix the typo in proto
 
         let entry = entries.get(`${aircraftId}`);
         if (entry) {
@@ -123,7 +130,7 @@ export function createTrafficService(worldService: WorldServiceClient): TrafficS
 
     const onAircraftRemovedNotification = (envelope: ServerToClient) => {
         const notification = envelope.notifyAircraftRemoved!;
-        entries.delete(`${notification.airctaftId}`);
+        entries.delete(`${notification.aircraftId}`);
     };
 
     const performUpdates = () => {
@@ -142,8 +149,12 @@ export function createTrafficService(worldService: WorldServiceClient): TrafficS
             }
         });
 
-        if (!!lastQuery && mostRecentDataTimestamp > lastNotifySubscribersTimestamp) {
+        if (!!lastQuery && mostRecentDataTimestamp > lastNotifySubscribersTimestamp + notificationThrottlingMilliseconds) {
             lastNotifySubscribersTimestamp = now;
+            if (notificationThrottlingMilliseconds < 1) {
+                notificationThrottlingMilliseconds = getNotificationThrottlingMilliseconds(entries.size);
+                //console.log('getNotificationThrottlingMilliseconds(', entries.size, ') =>', notificationThrottlingMilliseconds);
+            }
             subscribers.forEach(callback => callback(lastQuery!, entries));
         }
     }

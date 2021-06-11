@@ -71,7 +71,7 @@ namespace Atc.Data.Sources.Tests
                 skipToPosition: 4 
             );
 
-            reader.Extract(out int value);
+            reader.Extract(out int value, crossLine: true);
 
             value.Should().Be(12345);
             reader.ReadToEnd().Should().Be("\t THE-END");

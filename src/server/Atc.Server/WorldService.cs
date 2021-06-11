@@ -151,11 +151,10 @@ namespace Atc.Server
             {
                 count++;
                 
-                var state = updated.GetState();
                 connection.FireMessage(new ServerToClient() {
                     ReplyToRequestId = replyToMessageId,
                     notify_aircraft_situation_updated = new() {
-                        AirctaftId = state.Id,
+                        AircraftId = updated.Id,
                         Situation = CreateSituationMessage(updated)
                     }
                 });
@@ -177,7 +176,7 @@ namespace Atc.Server
                 connection.FireMessage(new ServerToClient() {
                     ReplyToRequestId = replyToMessageId,
                     notify_aircraft_removed = new() {
-                        AirctaftId = removed.Id
+                        AircraftId = removed.Id
                     }
                 });
             }
@@ -191,8 +190,8 @@ namespace Atc.Server
             return new AircraftMessage() {
                 Id = aircraft.Id,
                 AirlineIcao = aircraft.AirlineData?.Get().Icao.Value,
-                ModelIcao = state.TypeIcao,
-                TailNo = state.TailNo,
+                ModelIcao = aircraft.TypeIcao,
+                TailNo = aircraft.TailNo,
                 situation = CreateSituationMessage(aircraft)
             };
         }

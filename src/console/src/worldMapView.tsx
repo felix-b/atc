@@ -70,6 +70,8 @@ function WorldMapView(props: AppServices) {
             const bounds = globalMapInstance?.getBounds();
             console.log('>>> GOOGLE MAPS > onIdle', bounds);
 
+            console.log('globalMapInstance.getZoom()', globalMapInstance?.getZoom());
+
             props.trafficService.beginQuery({
                 bounds: geoRectFromBounds(bounds)
             });
@@ -83,19 +85,24 @@ function WorldMapView(props: AppServices) {
         }
     }, []);
 
+    const getZoomLevel = () => {
+        const result = (globalMapInstance?.getZoom()) || 1;
+        console.log('>>> getZoomLevel():', result);
+        return result;
+    }
+
     return isLoaded ? (
         <GoogleMap
             mapContainerStyle={containerStyle}
             center={center}
             zoom={50}
             onLoad={onLoad}
-            onIdle={onIdle} 
+            onIdle={onIdle}
             onUnmount={onUnmount}
         >
             {true /*!!state.bounds*/
                 ? <AirTrafficLayer 
                     services={props} 
-                    bounds={ /*state.bounds*/  { minLat: -90, minLon: -180, maxLat: 90, maxLon: 180 } } 
                 /> 
                 : <></> 
             }

@@ -4,8 +4,11 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using Atc.Data;
 using Atc.Data.Primitives;
+using Atc.Data.Traffic;
 using Atc.World.Redux;
 using Zero.Latency.Servers;
+using Zero.Serialization.Buffers;
+using Zero.Serialization.Buffers.Impl;
 
 namespace Atc.World
 {
@@ -16,11 +19,11 @@ namespace Atc.World
             switch (stateEvent)
             {
                 case AircraftAddedEvent aircraftAdded:
-                    var newAircraft = new RuntimeAircraft(_store, aircraftAdded.ToAircraftInitialState());
+                    var newAircraft = new RuntimeAircraft(_store, aircraftAdded);
                     
                     // here we're sinful of mutating a HashSet<T> rather than transforming an ImmutableHashSet<T>
                     // this is because we might be dealing with a very large number of items 
-                    currentState.AllAircraft.Add(newAircraft); 
+                    currentState.AircraftById.Add(newAircraft.Id, newAircraft); 
                     
                     return currentState with {
                         Version = currentState.Version + 1,
@@ -35,10 +38,11 @@ namespace Atc.World
 
         void IHaveRuntimeState<RuntimeState>.SetState(RuntimeState newState) => _state = newState;
 
+        
         public record RuntimeState(
             ulong Version,
-            int NextAircraftId,
-            HashSet<RuntimeAircraft> AllAircraft
+            uint NextAircraftId,
+            Dictionary<uint, RuntimeAircraft> AircraftById
         );
 
         // only used for replication to followers, sent once per every N ticks
@@ -51,12 +55,14 @@ namespace Atc.World
         ) : IRuntimeStateEvent;
         
         public partial record AircraftAddedEvent(
-            int Id,
+            uint Id,
             string TypeIcao,
             string TailNo,
-            string LiveryId,
+            uint? ModeS, 
             AircraftCategories Category,
             OperationTypes Operations,
+            string? AirlineIcao,
+            string LiveryId,
             GeoPoint Location,
             Altitude Altitude,
             Angle Pitch,
@@ -65,28 +71,5 @@ namespace Atc.World
             Bearing Track,
             Speed GroundSpeed
         ) : IRuntimeStateEvent;
-
-        public partial record AircraftAddedEvent
-        {
-            public RuntimeAircraft.RuntimeState ToAircraftInitialState()
-            {
-                return new(
-                    Version: 1,
-                    Id,
-                    TypeIcao,
-                    TailNo,
-                    LiveryId,
-                    Category,
-                    Operations,
-                    Location,
-                    Altitude,
-                    Pitch,
-                    Roll,
-                    Heading,
-                    Track,
-                    GroundSpeed                    
-                );
-            }
-        }
     }
 }

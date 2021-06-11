@@ -373,12 +373,12 @@ export interface ServerToClient_NotifyAircraftCreated {
 }
 
 export interface ServerToClient_NotifyAircraftSituationUpdated {
-  airctaftId: number;
+  aircraftId: number;
   situation: AircraftMessage_Situation | undefined;
 }
 
 export interface ServerToClient_NotifyAircraftRemoved {
-  airctaftId: number;
+  aircraftId: number;
 }
 
 export interface GeoPoint {
@@ -1196,7 +1196,7 @@ export const ClientToServer_UpdateAircraftSituation = {
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     if (message.aircraftId !== 0) {
-      writer.uint32(8).int32(message.aircraftId);
+      writer.uint32(8).uint32(message.aircraftId);
     }
     if (message.situation !== undefined) {
       AircraftMessage_Situation.encode(
@@ -1220,7 +1220,7 @@ export const ClientToServer_UpdateAircraftSituation = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.aircraftId = reader.int32();
+          message.aircraftId = reader.uint32();
           break;
         case 2:
           message.situation = AircraftMessage_Situation.decode(
@@ -1293,7 +1293,7 @@ export const ClientToServer_RemoveAircraft = {
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     if (message.aircraftId !== 0) {
-      writer.uint32(8).int32(message.aircraftId);
+      writer.uint32(8).uint32(message.aircraftId);
     }
     return writer;
   },
@@ -1311,7 +1311,7 @@ export const ClientToServer_RemoveAircraft = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.aircraftId = reader.int32();
+          message.aircraftId = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -2310,7 +2310,7 @@ export const ServerToClient_ReplyCreateAircraft = {
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     if (message.createdAircraftId !== 0) {
-      writer.uint32(8).int32(message.createdAircraftId);
+      writer.uint32(8).uint32(message.createdAircraftId);
     }
     return writer;
   },
@@ -2328,7 +2328,7 @@ export const ServerToClient_ReplyCreateAircraft = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.createdAircraftId = reader.int32();
+          message.createdAircraftId = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -2790,7 +2790,7 @@ export const ServerToClient_NotifyAircraftCreated = {
 };
 
 const baseServerToClient_NotifyAircraftSituationUpdated: object = {
-  airctaftId: 0,
+  aircraftId: 0,
 };
 
 export const ServerToClient_NotifyAircraftSituationUpdated = {
@@ -2798,8 +2798,8 @@ export const ServerToClient_NotifyAircraftSituationUpdated = {
     message: ServerToClient_NotifyAircraftSituationUpdated,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    if (message.airctaftId !== 0) {
-      writer.uint32(8).int32(message.airctaftId);
+    if (message.aircraftId !== 0) {
+      writer.uint32(8).uint32(message.aircraftId);
     }
     if (message.situation !== undefined) {
       AircraftMessage_Situation.encode(
@@ -2823,7 +2823,7 @@ export const ServerToClient_NotifyAircraftSituationUpdated = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.airctaftId = reader.int32();
+          message.aircraftId = reader.uint32();
           break;
         case 2:
           message.situation = AircraftMessage_Situation.decode(
@@ -2843,10 +2843,10 @@ export const ServerToClient_NotifyAircraftSituationUpdated = {
     const message = {
       ...baseServerToClient_NotifyAircraftSituationUpdated,
     } as ServerToClient_NotifyAircraftSituationUpdated;
-    if (object.airctaftId !== undefined && object.airctaftId !== null) {
-      message.airctaftId = Number(object.airctaftId);
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = Number(object.aircraftId);
     } else {
-      message.airctaftId = 0;
+      message.aircraftId = 0;
     }
     if (object.situation !== undefined && object.situation !== null) {
       message.situation = AircraftMessage_Situation.fromJSON(object.situation);
@@ -2858,7 +2858,7 @@ export const ServerToClient_NotifyAircraftSituationUpdated = {
 
   toJSON(message: ServerToClient_NotifyAircraftSituationUpdated): unknown {
     const obj: any = {};
-    message.airctaftId !== undefined && (obj.airctaftId = message.airctaftId);
+    message.aircraftId !== undefined && (obj.aircraftId = message.aircraftId);
     message.situation !== undefined &&
       (obj.situation = message.situation
         ? AircraftMessage_Situation.toJSON(message.situation)
@@ -2872,10 +2872,10 @@ export const ServerToClient_NotifyAircraftSituationUpdated = {
     const message = {
       ...baseServerToClient_NotifyAircraftSituationUpdated,
     } as ServerToClient_NotifyAircraftSituationUpdated;
-    if (object.airctaftId !== undefined && object.airctaftId !== null) {
-      message.airctaftId = object.airctaftId;
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = object.aircraftId;
     } else {
-      message.airctaftId = 0;
+      message.aircraftId = 0;
     }
     if (object.situation !== undefined && object.situation !== null) {
       message.situation = AircraftMessage_Situation.fromPartial(
@@ -2888,15 +2888,15 @@ export const ServerToClient_NotifyAircraftSituationUpdated = {
   },
 };
 
-const baseServerToClient_NotifyAircraftRemoved: object = { airctaftId: 0 };
+const baseServerToClient_NotifyAircraftRemoved: object = { aircraftId: 0 };
 
 export const ServerToClient_NotifyAircraftRemoved = {
   encode(
     message: ServerToClient_NotifyAircraftRemoved,
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
-    if (message.airctaftId !== 0) {
-      writer.uint32(8).int32(message.airctaftId);
+    if (message.aircraftId !== 0) {
+      writer.uint32(8).uint32(message.aircraftId);
     }
     return writer;
   },
@@ -2914,7 +2914,7 @@ export const ServerToClient_NotifyAircraftRemoved = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.airctaftId = reader.int32();
+          message.aircraftId = reader.uint32();
           break;
         default:
           reader.skipType(tag & 7);
@@ -2928,17 +2928,17 @@ export const ServerToClient_NotifyAircraftRemoved = {
     const message = {
       ...baseServerToClient_NotifyAircraftRemoved,
     } as ServerToClient_NotifyAircraftRemoved;
-    if (object.airctaftId !== undefined && object.airctaftId !== null) {
-      message.airctaftId = Number(object.airctaftId);
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = Number(object.aircraftId);
     } else {
-      message.airctaftId = 0;
+      message.aircraftId = 0;
     }
     return message;
   },
 
   toJSON(message: ServerToClient_NotifyAircraftRemoved): unknown {
     const obj: any = {};
-    message.airctaftId !== undefined && (obj.airctaftId = message.airctaftId);
+    message.aircraftId !== undefined && (obj.aircraftId = message.aircraftId);
     return obj;
   },
 
@@ -2948,10 +2948,10 @@ export const ServerToClient_NotifyAircraftRemoved = {
     const message = {
       ...baseServerToClient_NotifyAircraftRemoved,
     } as ServerToClient_NotifyAircraftRemoved;
-    if (object.airctaftId !== undefined && object.airctaftId !== null) {
-      message.airctaftId = object.airctaftId;
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = object.aircraftId;
     } else {
-      message.airctaftId = 0;
+      message.aircraftId = 0;
     }
     return message;
   },
@@ -4668,7 +4668,7 @@ export const AircraftMessage = {
     writer: _m0.Writer = _m0.Writer.create()
   ): _m0.Writer {
     if (message.id !== 0) {
-      writer.uint32(8).int32(message.id);
+      writer.uint32(8).uint32(message.id);
     }
     if (message.modelIcao !== "") {
       writer.uint32(18).string(message.modelIcao);
@@ -4699,7 +4699,7 @@ export const AircraftMessage = {
       const tag = reader.uint32();
       switch (tag >>> 3) {
         case 1:
-          message.id = reader.int32();
+          message.id = reader.uint32();
           break;
         case 2:
           message.modelIcao = reader.string();

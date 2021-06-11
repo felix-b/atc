@@ -180,7 +180,7 @@ namespace AtcProto
                 => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
             [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
-            public int AircraftId { get; set; }
+            public uint AircraftId { get; set; }
 
             [global::ProtoBuf.ProtoMember(2, Name = @"situation")]
             public AircraftMessage.Situation Situation { get; set; }
@@ -195,7 +195,7 @@ namespace AtcProto
                 => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
             [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
-            public int AircraftId { get; set; }
+            public uint AircraftId { get; set; }
 
         }
 
@@ -417,7 +417,7 @@ namespace AtcProto
                 => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
             [global::ProtoBuf.ProtoMember(1, Name = @"created_aircraft_id")]
-            public int CreatedAircraftId { get; set; }
+            public uint CreatedAircraftId { get; set; }
 
         }
 
@@ -494,8 +494,8 @@ namespace AtcProto
             global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
                 => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
-            [global::ProtoBuf.ProtoMember(1, Name = @"airctaft_id")]
-            public int AirctaftId { get; set; }
+            [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
+            public uint AircraftId { get; set; }
 
             [global::ProtoBuf.ProtoMember(2, Name = @"situation")]
             public AircraftMessage.Situation Situation { get; set; }
@@ -509,8 +509,8 @@ namespace AtcProto
             global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
                 => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
-            [global::ProtoBuf.ProtoMember(1, Name = @"airctaft_id")]
-            public int AirctaftId { get; set; }
+            [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
+            public uint AircraftId { get; set; }
 
         }
 
@@ -811,7 +811,7 @@ namespace AtcProto
             => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
 
         [global::ProtoBuf.ProtoMember(1, Name = @"id")]
-        public int Id { get; set; }
+        public uint Id { get; set; }
 
         [global::ProtoBuf.ProtoMember(2, Name = @"model_icao")]
         [global::System.ComponentModel.DefaultValue("")]

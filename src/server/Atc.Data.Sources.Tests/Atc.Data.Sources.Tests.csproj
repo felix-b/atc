@@ -23,7 +23,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="TestInputs" />
       <Folder Include="TestOutputs" />
     </ItemGroup>
 

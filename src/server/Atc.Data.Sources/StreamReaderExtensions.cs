@@ -55,11 +55,18 @@ namespace Atc.Data.Sources
             return result.ToString().Trim();
         }
 
-        public static void Extract<T>(this StreamReader input, out T value)
+        public static void Extract<T>(this StreamReader input, out T value, bool crossLine = false)
         {
-            ExtractWhitespace(input, includeCrlf: true);
+            ExtractWhitespace(input, includeCrlf: crossLine);
             var extractor = (Extractor<T>) _extractorByType[typeof(T)];
             extractor.Extract(input, out value, throwOnFailure: true);
+        }
+
+        public static bool TryExtract<T>(this StreamReader input, out T value, bool crossLine = false)
+        {
+            ExtractWhitespace(input, includeCrlf: crossLine);
+            var extractor = (Extractor<T>) _extractorByType[typeof(T)];
+            return extractor.Extract(input, out value, throwOnFailure: false);
         }
 
         public static void Extract<T1,T2>(this StreamReader input, out T1 value1, out T2 value2)
@@ -145,7 +152,7 @@ namespace Atc.Data.Sources
                 while (true)
                 {
                     var c = (char)input.Peek();
-                    if (c >= 0 && _charPredicate(c))
+                    if (c >= 0 && c != '\uffff' && _charPredicate(c))
                     {
                         if (length >= _maxLength)
                         {

@@ -36,7 +36,7 @@ namespace Atc.World
             {
                 private RuntimeWorld _target;
                 private readonly GeoRect _rect;
-                private Dictionary<RuntimeAircraft, int>? _lastResult = null;
+                private Dictionary<RuntimeAircraft, int>? _lastResult;
 
                 public Observer(RuntimeWorld target, GeoRect rect)
                 {
@@ -56,7 +56,7 @@ namespace Atc.World
 
                 public Dictionary<RuntimeAircraft, int> Run()
                 {
-                    var result = _target._state.AllAircraft
+                    var result = _target._state.AircraftById.Values
                         .Where(IsAircraftInRect)
                         .ToDictionary(
                             ac => ac, 

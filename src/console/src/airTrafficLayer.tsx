@@ -6,7 +6,6 @@ import { AppServices } from './appServices';
 
 
 type AirTrafficLayerProps = {
-    bounds: GeoRect;
     services: AppServices;
 };
 
@@ -27,6 +26,19 @@ type AirplaneMarkerProps = {
     wasUpdatedFromServer: boolean;
 };
 
+const getRefreshIntervalMilliseconds = (zoomLevel: number): number => {
+    return 5000;
+    // if (zoomLevel < 5) {
+    //     return 5000;
+    // }
+    // if (zoomLevel < 8) {
+    //     return 1000;
+    // }
+    // if (zoomLevel < 10) {
+    //     return 500;
+    // }
+    // return 100;
+}
 
 export function AirTrafficLayerPure({entries}: AirTrafficLayerPureProps) {
     return (
@@ -45,10 +57,7 @@ export function AirTrafficLayerPure({entries}: AirTrafficLayerPureProps) {
     );
 }
 
-export function AirTrafficLayer({
-    services:{trafficService},
-    bounds
-}: AirTrafficLayerProps) {
+export const AirTrafficLayer = ({services:{trafficService}}: AirTrafficLayerProps) => {
     //console.log('>>> AirTrafficLayer.RENDER() bounds =', bounds);
 
     const [state, setState] = React.useState<AirTrafficLayerState | undefined>(undefined);
@@ -57,10 +66,10 @@ export function AirTrafficLayer({
         console.log('>>> AirTrafficLayer > subscribing to TrafficService');
 
         const unsubscribe = trafficService.subscribe((query, newEntries) => {
-            //console.log('>>> AirTrafficLayer > updating traffic entries');
+            //console.log('>>> AirTrafficLayer > UPDATING TRAFFIC ENTRIES');
             setState({ 
                 query, 
-                entries: [...newEntries.values()]
+                entries: [...newEntries.values()],
             });
         });
 

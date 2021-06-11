@@ -40,12 +40,6 @@ namespace Atc.World
 
         public record RuntimeState(
             int Version,
-            int Id,
-            string TypeIcao,
-            string TailNo,
-            string LiveryId,
-            AircraftCategories Category,
-            OperationTypes Operations,
             GeoPoint Location,
             Altitude Altitude, 
             Angle Pitch, 

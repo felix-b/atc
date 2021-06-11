@@ -1,4 +1,5 @@
 ﻿
+using Atc.Data.Navigation;
 using Zero.Serialization.Buffers;
 
 namespace Atc.Data.Traffic
@@ -8,8 +9,6 @@ namespace Atc.Data.Traffic
         public ZStringRef Icao { get; set; }
         public ZStringRef Name { get; set; }
         public ZStringRef Callsign { get; set; }
-        public ZStringRef RegionIcao { get; set; }
-        public ZVectorRef<ZRef<AirlineRouteData>> Routes { get; set; }
-        public ZVectorRef<ZRef<AircraftData>> Fleet { get; set; }
+        public ZRef<IcaoRegionData>? Region { get; set; }
     }
 }

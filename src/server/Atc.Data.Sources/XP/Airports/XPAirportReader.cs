@@ -278,7 +278,7 @@ namespace Atc.Data.Sources.XP.Airports
         
         private void readAptDatInContext(StreamReader input, ContextualParser parser)
         {
-            while (input.BaseStream.Position < input.BaseStream.Length)
+            while (!input.FastEndOfStream())
             {
                 int saveLineCode = m_unparsedLineCode;
                 long saveInputPosition = input.BaseStream.Position;
@@ -685,17 +685,24 @@ namespace Atc.Data.Sources.XP.Airports
 
             if (fieldName == "datum_lat")
             {
-                input.Extract(out double lat);
-                m_datumLatitude = lat;
+                if (input.TryExtract(out double lat))
+                {
+                    m_datumLatitude = lat;
+                }
             }
             else if (fieldName == "datum_lon")
             {
-                input.Extract(out double lon);
-                m_datumLongitude = lon;
+                if (input.TryExtract(out double lon))
+                {
+                    m_datumLongitude = lon;
+                }
             }
             else if (fieldName == "icao_code")
             {
-                input.Extract(out m_icao);
+                if (input.TryExtract(out string icao) && !string.IsNullOrWhiteSpace(icao))
+                {
+                    m_icao = icao;
+                }
             }
             else
             {

@@ -16,18 +16,9 @@ namespace Atc.Data.Sources
             var builder = BufferContextBuilder.Begin()
                 .WithString()
                 .WithType<WorldData>();
-
-            // AircraftTypeData
-            builder
-                .WithType<AircraftTypeData>(alsoAsMapItemValue: true)
-                .WithType<FlightModelData>();
-
-            // AirlineData
-            builder
-                .WithType<AirlineData>(alsoAsVectorItem: true, alsoAsMapItemValue: true)
-                .WithTypes<AirlineRouteData, AircraftData>(alsoAsVectorItem: true);
             
-            // AirportData
+            // Airports
+            
             builder
                 .WithType<AirportData>(alsoAsMapItemValue: true)
                 .WithTypes<RunwayData, TaxiwayData, TaxiNodeData, TaxiEdgeData>(
@@ -35,13 +26,28 @@ namespace Atc.Data.Sources
                     alsoAsMapItemValue: true)
                 .WithType<ParkingStandData>(alsoAsMapItemValue: true);
                 
-            // ControlledAirspaceData & ControlFacilityData
+            // Traffic
+            
+            builder
+                .WithType<AircraftTypeData>(alsoAsMapItemValue: true)
+                .WithType<FlightModelData>();
+            builder
+                .WithType<AirlineData>(alsoAsVectorItem: true, alsoAsMapItemValue: true)
+                .WithTypes<FlightRouteData, AircraftData>(alsoAsVectorItem: true);
+            
+            // Control
+            
             builder
                 .WithType<ControlledAirspaceData>(alsoAsMapItemValue: true)
                 .WithType<ControlFacilityData>(alsoAsMapItemValue: true)
                 .WithType<ControllerPositionData>(alsoAsVectorItem: true)
                 .WithType<GeoPolygon.Edge>(alsoAsVectorItem: true);
 
+            // Navigation
+   
+            builder
+                .WithType<IcaoRegionData>(alsoAsMapItemValue: true);
+            
             var scope = builder.End(out context);
             AllocateWorldDataRecord(context);
             return scope;
@@ -59,6 +65,7 @@ namespace Atc.Data.Sources
                 AirlineByIcao = context.AllocateStringMap<ZRef<AirlineData>>(),
                 TypeByIcao = context.AllocateStringMap<ZRef<AircraftTypeData>>(),
                 AirportByIcao = context.AllocateStringMap<ZRef<AirportData>>(),
+                RegionByIcao =  context.AllocateStringMap<ZRef<IcaoRegionData>>(),
             });
         }
     }

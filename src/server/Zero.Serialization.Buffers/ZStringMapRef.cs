@@ -58,7 +58,7 @@ namespace Zero.Serialization.Buffers
         public IEnumerable<ZStringRef> Keys => 
             _inner.Get().Keys.Select(byteIndex => new ZStringRef(new ZRef<StringRecord>(byteIndex)));
 
-        public IEnumerable<ZRef<TValue>> Values => throw new NotSupportedException();// _inner.Get().Values;
+        public IEnumerable<ZCursor<TValue>> Values => _inner.Get().Values;
 
         public ref TValue this[ZStringRef key] => ref _inner.Get()[key.ByteIndex];
 

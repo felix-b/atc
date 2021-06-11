@@ -10,7 +10,7 @@ namespace Atc.Data.Traffic
     {
         public ZRef<AirportData> Origin { get; init; }
         public ZRef<AirportData> Destination { get; init; }
-        public ZRef<AircraftData> Aircraft { get; init; }
+        public ZRefAny Aircraft { get; init; }
         public DateTime DepartureUtc { get; init; }
         public Altitude CruizeAltitude { get; init; }
         public ZRef<SidData>? Sid { get; init; }

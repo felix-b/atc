@@ -24,11 +24,11 @@ message ClientToServer {
     AircraftMessage aircraft = 1;
   }
   message UpdateAircraftSituation {
-    int32 aircraft_id = 1;
+    uint32 aircraft_id = 1;
     AircraftMessage.Situation situation = 2;
   }
   message RemoveAircraft {
-    int32 aircraft_id = 1;
+    uint32 aircraft_id = 1;
   }
   
   message QueryTraffic {
@@ -70,7 +70,7 @@ message ServerToClient {
     string server_banner = 2;
   }
   message ReplyCreateAircraft {
-    int32 created_aircraft_id = 1;
+    uint32 created_aircraft_id = 1;
   }
   message ReplyQueryAirport {
     AirportMessage airport = 1;
@@ -92,11 +92,11 @@ message ServerToClient {
     AircraftMessage aircraft = 1;
   }
   message NotifyAircraftSituationUpdated {
-    int32 airctaft_id = 1;
+    uint32 aircraft_id = 1;
     AircraftMessage.Situation situation = 2;
   }
   message NotifyAircraftRemoved {
-    int32 airctaft_id = 1;
+    uint32 aircraft_id = 1;
   }
   
   uint64 id = 2;
@@ -291,7 +291,7 @@ message AircraftMessage {
     bool mode_c = 16;
     bool mode_s = 17;
   }
-  int32 id = 1;
+  uint32 id = 1;
   string model_icao = 2;
   string airline_icao = 3;
   string tail_no = 4;
