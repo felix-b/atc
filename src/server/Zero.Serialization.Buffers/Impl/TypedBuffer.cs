@@ -148,6 +148,13 @@ namespace Zero.Serialization.Buffers.Impl
                 return p;
             }
         }
+        
+        public IEnumerable<(string Label, string Value)> GetSpecializedInfo()
+        {
+            return 
+                _typeHandler.BufferInfoProvider?.GetInfo(this) 
+                ?? Array.Empty<(string Label, string Value)>();
+        }
 
         private void TranslateBufferByteIndex(int bufferByteIndex, out int pageIndex, out int byteIndex)
         {
@@ -306,6 +313,23 @@ namespace Zero.Serialization.Buffers.Impl
         public static TypedBuffer<T> CreateFromStreamOf<T>(Stream input) where T : struct
         {
             return (TypedBuffer<T>) CreateFromStream(typeof(T), input);
+        }
+
+        public static BufferInfo ReadInfoFrom(BinaryReader input, Type recordType)
+        {
+            var typeHandler = new StructTypeHandler(recordType);
+            var bufferSize = input.ReadInt32();
+            var recordSize = input.ReadInt32();
+            var recordCount = input.ReadInt32();
+            var bytesToSkipToEndOfBuffer = sizeof(Int32) * recordCount + bufferSize;
+            
+            return new BufferInfo(
+                recordType, 
+                recordCount, 
+                bufferSize, 
+                recordSize, 
+                typeHandler.IsVariableSize,
+                bytesToSkipToEndOfBuffer);
         }
 
         private static ITypedBuffer Create(Type recordType, object constructorArg)

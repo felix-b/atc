@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,6 +13,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Zero.Doubt.Logging;
 using Zero.Latency.Servers;
+using Zero.Serialization.Buffers;
+using Zero.Serialization.Buffers.Impl;
 
 [assembly:GenerateLogger(typeof(IAtcdLogger))]
 [assembly:GenerateLogger(typeof(IEndpointLogger))]
@@ -31,10 +34,29 @@ namespace Atc.Server.Daemon
             // var host = hostBuilder.CreateHost();
             // host.Run();
 
+            BufferContextScope.UseStaticScope();
+            ConsoleLog.Level = LogLevel.Debug;
+
             var container = CompositionRoot();
-            RunEndpoint(container).Wait();
+            var logger = container.Resolve<IAtcdLogger>();
+
+            using (LoadCache(args[0], logger))
+            {
+                RunEndpoint(container).Wait();
+            }
             
             Console.WriteLine("Goodbye World!");
+        }
+
+        private static IDisposable LoadCache(string filePath, IAtcdLogger logger)
+        {
+            logger.LoadingCache(filePath);
+            
+            using var file = File.OpenRead(filePath);
+            var context = BufferContext.ReadFrom(file);
+
+            logger.CacheLoaded();
+            return new BufferContextScope(context);
         }
 
         private static IContainer CompositionRoot()
@@ -59,8 +81,6 @@ namespace Atc.Server.Daemon
 
         private static async Task RunEndpoint(IContainer container)
         {
-            ConsoleLog.Level = LogLevel.Debug;
-            
             // var store = new RuntimeStateStore();
             // var world = new RuntimeWorld(store, DateTime.Now);
             // var service = new WorldService(world, new WorldService.Logger(ConsoleLog.Writer));

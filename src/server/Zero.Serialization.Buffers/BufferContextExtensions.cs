@@ -31,6 +31,13 @@ namespace Zero.Serialization.Buffers
             return new ZVectorRef<T>(innerPtr);
         }
 
+        public static ZVectorRef<T> AllocateVector<T>(this IBufferContext context, int initialCapacity)
+            where T : unmanaged
+        {
+            var innerPtr = context.AllocateVectorRecord<T>(Array.Empty<T>(), initialCapacity);
+            return new ZVectorRef<T>(innerPtr);
+        }
+
         public static ZIntMapRef<TValue> AllocateIntMap<TValue>(this IBufferContext context, int bucketCount = 1024)
             where TValue : unmanaged
         {

@@ -2,10 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using Geo;
-using Geo.Geodesy;
 using Zero.Serialization.Buffers;
 using Atc.Data.Airports;
 using Atc.Data.Control;
@@ -13,15 +9,14 @@ using Atc.Data.Navigation;
 using Atc.Data.Primitives;
 using Atc.Data.Traffic;
 using Atc.Math;
-using Zero.Serialization.Buffers.Impl;
 using AtcDistance = Atc.Data.Primitives.Distance;
 
 namespace Atc.Data.Sources.XP.Airports
 {
-    public class AptDatReader
+    public class XPAirportReader
     {
         public delegate bool ContextualParser(int lineCode);
-        public delegate bool FilterAirportCallback(in AirportData.HeaderData header) ;
+        public delegate bool FilterAirportCallback(in AirportData.HeaderData header);
         public delegate ZRef<ControlledAirspaceData> QueryAirspaceCallback (in AirportData.HeaderData header);
 
         private readonly IBufferContext _output;
@@ -35,6 +30,7 @@ namespace Atc.Data.Sources.XP.Airports
         
         bool m_headerWasRead;
         bool m_filterWasQueried;
+        bool m_isLandAirport;
         bool m_skippingAirport;
         int m_unparsedLineCode;
         int m_nextEdgeId;
@@ -45,23 +41,31 @@ namespace Atc.Data.Sources.XP.Airports
         double? m_datumLatitude = null;
         double? m_datumLongitude = null;
 
-        public AptDatReader(
+        public XPAirportReader(
             IBufferContext output, 
+            XPAptDatReader.ILogger logger,
             QueryAirspaceCallback? onQueryAirspace = null, 
-            FilterAirportCallback? onFilterAirport = null)
+            FilterAirportCallback? onFilterAirport = null,
+            int unparsedLineCode = -1)
         {
+            _logger = logger;
             _output = output;
+            
             m_onQueryAirspace = onQueryAirspace;
             m_onFilterAirport = onFilterAirport;
+            m_unparsedLineCode = unparsedLineCode;
+            m_isLandAirport = false;
         }
 
-        public void ReadAirport(Stream apdDatStream)
+        public void ReadAirport(Stream aptDatStream)
         {
-            var reader = new StreamReader(apdDatStream, bufferSize: 4096, leaveOpen: true);
-            m_unparsedLineCode = -1;
+            ReadAirport(XPAptDatReader.CreateAptDatStreamReader(aptDatStream));
+        }
 
-            readAptDatInContext(reader, (int lineCode) => {
-                return rootContextParser(lineCode, reader);
+        public void ReadAirport(StreamReader aptDatStreamReader)
+        {
+            readAptDatInContext(aptDatStreamReader, (int lineCode) => {
+                return rootContextParser(lineCode, aptDatStreamReader);
             });
         }
 
@@ -73,15 +77,20 @@ namespace Atc.Data.Sources.XP.Airports
                 {
                     return assembleAirportOrThrow();
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    //TODO
-                    //Console.WriteLine($"APTDAT|FAILED to assemble airport [{m_icao}]: {e.Message}");
+                    _logger.FailedToAssembleAirport(icao: m_icao, message: e.Message);
                 }
             }
 
             return null;
         }
+
+        public int UnparsedLineCode => m_unparsedLineCode;
+
+        public string Icao => m_icao;
+
+        public bool IsLandAirport => m_isLandAirport;
 
         private void FindTaxiways()
         {
@@ -283,22 +292,21 @@ namespace Atc.Data.Sources.XP.Airports
                 }
                 catch (Exception e)
                 {
-                    string errorMessage = formatErrorMessage(input, saveInputPosition, saveLineCode, e);
-                    //throw runtime_error(errorMessage);
-                    //Console.WriteLine(errorMessage);//TODO: ?
+                    string diagnostic = formatDiagnosticMessage(input, saveInputPosition, saveLineCode, e);
+                    _logger.FailedToLoadAirportSkipping(icao: m_icao, diagnostic);
                     m_skippingAirport = true;
                 }
             }
         }
 
-        string formatErrorMessage(StreamReader input, long position, int extractedLineCode, Exception error)
+        string formatDiagnosticMessage(StreamReader input, long position, int extractedLineCode, Exception error)
         {
             input.BaseStream.Position = position;
             input.DiscardBufferedData();
 
             var message =
-                $"FAILED to read apt.dat: airport[{m_icao}] error [{error.Message}] line [" +
-                (extractedLineCode >= 0 ? $"code[${extractedLineCode}] > " : string.Empty) +
+                $"[{error.Message}] line [" +
+                (extractedLineCode >= 0 ? $"code[{extractedLineCode}] > " : string.Empty) +
                 input.ReadLine() ?? string.Empty;
 
             return message;
@@ -342,7 +350,7 @@ namespace Atc.Data.Sources.XP.Airports
         
         private bool rootContextParser(int lineCode, StreamReader input)
         {
-            bool isAirportHeaderLine = isAirportHeaderLineCode(lineCode);
+            bool isAirportHeaderLine = IsAirportHeaderLineCode(lineCode);
 
             if (m_skippingAirport)
             {
@@ -366,7 +374,7 @@ namespace Atc.Data.Sources.XP.Airports
                     m_filterWasQueried = true;
                     if (m_skippingAirport)
                     {
-                        Console.WriteLine($"APTDAT|will skip airport [{m_icao}] according to filter");
+                        _logger.SkippingAirportByFilter(icao: m_icao);
                     }
                 }
             }
@@ -376,10 +384,11 @@ namespace Atc.Data.Sources.XP.Airports
                 case 1:
                     parseHeader1(input);
                     m_headerWasRead = true;
-                    //m_isLandAirport = true;
+                    m_isLandAirport = true;
                     break;
                 case 16:
                 case 17:
+                    m_isLandAirport = false;
                     m_skippingAirport = true;
                     input.SkipToNextLine();
                     break;
@@ -414,11 +423,6 @@ namespace Atc.Data.Sources.XP.Airports
             }
 
             return true;
-        }
-        
-        private bool isAirportHeaderLineCode(int lineCode)
-        {
-            return (lineCode == 1 || lineCode == 16 || lineCode == 17);
         }
         
         private bool invokeFilterCallback()
@@ -504,8 +508,8 @@ namespace Atc.Data.Sources.XP.Airports
                 Id = id,
                 Location = new GeoPoint(latitude, longitude),
                 Name = _output.AllocateString(name),
-                EdgesIn = _output.AllocateVector<ZRef<TaxiEdgeData>>(),
-                EdgesOut = _output.AllocateVector<ZRef<TaxiEdgeData>>(),
+                EdgesIn = _output.AllocateVector<ZRef<TaxiEdgeData>>(initialCapacity: 3),
+                EdgesOut = _output.AllocateVector<ZRef<TaxiEdgeData>>(initialCapacity: 3),
             });
             
             _parts.TaxiNodeById.Add(id, nodeRef);
@@ -668,8 +672,7 @@ namespace Atc.Data.Sources.XP.Airports
                 }
                 else
                 {
-                    //TODO
-                    //Console.WriteLine($"WARNING gate airline not found: [{item}]");
+                    //_logger.WarnGateAirlineNotFound(icao: item);
                 }
             });
             
@@ -784,6 +787,12 @@ namespace Atc.Data.Sources.XP.Airports
         private static readonly char[] _commaListSeparators = new char[] {',', '\x20'};
 
         private static readonly string _arbitraryListSeparators = ",\x20;:|\t";
+        private readonly XPAptDatReader.ILogger _logger;
+
+        public static bool IsAirportHeaderLineCode(int lineCode)
+        {
+            return (lineCode == 1 || lineCode == 16 || lineCode == 17);
+        }
 
         private static void ParseSeparatedList(
             string listText, 
@@ -846,10 +855,10 @@ namespace Atc.Data.Sources.XP.Airports
                 _airportRef = _output.AllocateRecord(new AirportData() {
                     Header = _parts.Header,
                     Runways = _output.AllocateVector<ZRef<RunwayData>>(),
-                    RunwayByName = _output.AllocateStringMap<ZRef<RunwayData>>(),
-                    TaxiwayByName = _output.AllocateStringMap<ZRef<TaxiwayData>>(),
-                    TaxiNodeById = _output.AllocateIntMap<ZRef<TaxiNodeData>>(),
-                    ParkingStandByName = _output.AllocateStringMap<ZRef<ParkingStandData>>(),
+                    RunwayByName = _output.AllocateStringMap<ZRef<RunwayData>>(GetBucketCount(_parts.RunwayByName.Count, 64)),
+                    TaxiwayByName = _output.AllocateStringMap<ZRef<TaxiwayData>>(GetBucketCount(_parts.TaxiwayByName.Count, 64)),
+                    TaxiNodeById = _output.AllocateIntMap<ZRef<TaxiNodeData>>(GetBucketCount(_parts.TaxiNodeById.Count, 1024)),
+                    ParkingStandByName = _output.AllocateStringMap<ZRef<ParkingStandData>>(GetBucketCount(_parts.ParkingStandByName.Count, 512)),
                     Tower = null
                 });
 
@@ -867,6 +876,11 @@ namespace Atc.Data.Sources.XP.Airports
                 }
 
                 return _airportRef;
+            }
+
+            int GetBucketCount(int keyCount, int maxBuckets)
+            {
+                return System.Math.Min(System.Math.Max(2, keyCount), maxBuckets);
             }
 
             ZRef<ControlFacilityData> AssembleTowerFacility()

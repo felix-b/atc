@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using FluentAssertions;
 using NUnit.Framework;
@@ -392,6 +393,13 @@ namespace Zero.Serialization.Buffers.Tests
             handler.Fields.Count.Should().Be(6);
         }
 
+        [Test]
+        public void CanInstantiateInfoProvider()
+        {
+            var handler = new StructTypeHandler(typeof(AStructWithInfoProvider));
+            handler.BufferInfoProvider.Should().BeOfType<AStructWithInfoProvider.InfoProvider>();
+        }
+
         public struct ATrivialStruct
         {
             public int X;
@@ -442,6 +450,21 @@ namespace Zero.Serialization.Buffers.Tests
             public int SizeOf()
             {
                 return sizeof(AStructWithVariableBuffer) + (Len - 1) * sizeof(int);
+            }
+        }
+
+        [BufferInfoProvider(typeof(AStructWithInfoProvider.InfoProvider))]
+        public struct AStructWithInfoProvider
+        {
+            public int Num;
+            public bool Bool;
+
+            public class InfoProvider : IBufferInfoProvider
+            {
+                public IEnumerable<(string Label, string Value)> GetInfo(ITypedBuffer buffer)
+                {
+                    throw new NotImplementedException();
+                }
             }
         }
     }

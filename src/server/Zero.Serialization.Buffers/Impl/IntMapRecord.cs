@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Zero.Serialization.Buffers.Impl
 {
+    [BufferInfoProvider(typeof(IntMapRecordBufferInfoProvider))]
     public unsafe struct IntMapRecord<TValue> : IVariableSizeRecord, IEnumerable<ZCursor<MapRecordEntry<TValue>>>
         where TValue : unmanaged
     {
@@ -109,7 +111,7 @@ namespace Zero.Serialization.Buffers.Impl
         }
 
         public int Count => _itemCount;
-
+        
         public IEnumerable<int> Keys
         {
             get
@@ -138,6 +140,25 @@ namespace Zero.Serialization.Buffers.Impl
             for (int i = 0; i < bucketCount; i++)
             {
                 _bucketPtrs[i] = -1;
+            }
+        }
+
+        internal void CountBuckets(out int total, out int used, out int unused)
+        {
+            total = _bucketCount;
+            used = 0;
+            unused = 0;
+            
+            for (int i = 0; i < _bucketCount; i++)
+            {
+                if (_bucketPtrs[i] >= 0)
+                {
+                    used++;
+                }
+                else
+                {
+                    unused++;
+                }
             }
         }
 
@@ -316,5 +337,105 @@ namespace Zero.Serialization.Buffers.Impl
     {
         public int Key;
         public T Value;
+    }
+
+    public class IntMapRecordBufferInfoProvider : IBufferInfoProvider
+    {
+        public IEnumerable<(string Label, string Value)> GetInfo(ITypedBuffer buffer)
+        {
+            if (buffer.RecordType.GetGenericTypeDefinition() != typeof(IntMapRecord<>))
+            {
+                throw new ArgumentException("Invalid record type", nameof(buffer));
+            }
+
+            var constructedProviderType = typeof(Provider<>)
+                .MakeGenericType(buffer.RecordType.GenericTypeArguments[0]);
+
+            var providerInstance = (IBufferInfoProvider) (Activator.CreateInstance(constructedProviderType)!);
+            return providerInstance.GetInfo(buffer);
+        }
+
+        private class Provider<TValue> : IBufferInfoProvider
+            where TValue : unmanaged
+        {
+            public IEnumerable<(string Label, string Value)> GetInfo(ITypedBuffer buffer)
+            {
+                int totalKeys = 0;
+                int totalBuckets = 0;
+                int totalUsedBuckets = 0;
+                int totalUnusedBuckets = 0;
+                Dictionary<int, int> keyCountGroups = new();
+                Dictionary<int, int> usedBucketCountGroups = new();
+
+                var typedBuffer = (TypedBuffer<IntMapRecord<TValue>>) buffer;
+                var recordCount = typedBuffer.RecordOffsets.Count;
+                for (int i = 0; i < recordCount; i++)
+                {
+                    var offset = typedBuffer.RecordOffsets[i];
+                    ref var record = ref typedBuffer[offset];
+                    AnalyzeRecord(ref record);
+                }
+
+                return new[] {
+                    (Label: "total-keys..........", Value: totalKeys.ToString()),
+                    (Label: "total-buckets.......", Value: totalBuckets.ToString()),
+                    (Label: "total-buckets-used..", Value: totalUsedBuckets.ToString()),
+                    (Label: "total-buckets-unused", Value: totalUnusedBuckets.ToString()),
+                    (Label: "avg-keys............", Value: Average(totalKeys, recordCount)),
+                    (Label: "avg-buckets.........", Value: Average(totalBuckets, recordCount)),
+                    (Label: "avg-buckets-used....", Value: Average(totalUsedBuckets, recordCount)),
+                    (Label: "avg-buckets-unused..", Value: Average(totalUnusedBuckets, recordCount)),
+                    (Label: "key-count-groups....", Value: GetCountGroupText(keyCountGroups)),
+                    (Label: "used-bucket-groups..", Value: GetCountGroupText(usedBucketCountGroups)),
+                };
+
+                void AnalyzeRecord(ref IntMapRecord<TValue> @record)
+                {
+                    totalKeys += @record.Count;
+                    @record.CountBuckets(out var total, out var used, out var unused);
+                    totalBuckets += total;
+                    totalUsedBuckets += used;
+                    totalUnusedBuckets += unused;
+
+                    AddToCountGroup(keyCountGroups, @record.Count, 1);
+                    AddToCountGroup(usedBucketCountGroups, used, 1);
+                }
+
+                void AddToCountGroup(Dictionary<int, int> destination, int groupKey, int countDelta)
+                {
+                    if (destination.TryGetValue(groupKey, out var currentCount))
+                    {
+                        destination[groupKey] = currentCount + countDelta;
+                    }
+                    else
+                    {
+                        destination[groupKey] = countDelta;
+                    }
+                }
+
+                string Average(int count, int @base)
+                {
+                    return ((float) count / @base).ToString(CultureInfo.InvariantCulture);
+                }
+
+                string GetCountGroupText(Dictionary<int, int> countGroups)
+                {
+                    var result = new StringBuilder();
+
+                    var sortedPairs = countGroups.OrderBy(pair => pair.Key);
+                    foreach (var pair in sortedPairs)
+                    {
+                        result.Append(' ');
+                        result.Append('[');
+                        result.Append(pair.Key);
+                        result.Append('|');
+                        result.Append(pair.Value);
+                        result.Append(']');
+                    }
+
+                    return result.ToString();
+                }
+            }
+        }
     }
 }

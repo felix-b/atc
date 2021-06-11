@@ -137,6 +137,28 @@ namespace Zero.Serialization.Buffers.Impl
             return new BufferContext(input);
         }
 
+        public static BufferContextInfo ReadInfoFrom(Stream input)
+        {
+            using var reader = new BinaryReader(input, Encoding.UTF8, leaveOpen: true);
+
+            var bufferCount = reader.ReadInt32();
+            var bufferInfos = new BufferInfo[bufferCount];
+
+            for (int i = 0; i < bufferCount; i++)
+            {
+                var recordTypeName = reader.ReadString();
+                var recordType = Type.GetType(recordTypeName) 
+                    ?? throw new InvalidDataException($"Record type not found: '{recordTypeName}'");
+
+                var info = TypedBuffer.ReadInfoFrom(reader, recordType);
+                bufferInfos[i] = info;
+                
+                reader.ReadBytes(info.BytesToSkipToEndOfBuffer);
+            }
+
+            return new BufferContextInfo(bufferInfos);
+        }
+
         public static readonly int DefaultBufferCapacity = 1024;
         
         public static IBufferContext Current => BufferContextScope.CurrentContext;

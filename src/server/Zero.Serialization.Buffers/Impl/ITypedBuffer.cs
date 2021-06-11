@@ -6,6 +6,7 @@ namespace Zero.Serialization.Buffers.Impl
 {
     public unsafe interface ITypedBuffer
     {
+        IEnumerable<(string Label, string Value)> GetSpecializedInfo();
         void WriteTo(Stream output);
         ref byte[] GetRawBytesRef(int firstByteIndex);
         byte* GetRawRecordPointer(int firstByteIndex);

@@ -8,7 +8,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zero.Serialization.Buffers"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Zero.Serialization.Buffers.Tests", "Zero.Serialization.Buffers.Tests\Zero.Serialization.Buffers.Tests.csproj", "{06FD3D43-0830-47F4-B600-6F651FC16FF0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Data.Cli", "Atc.Data.Cli\Atc.Data.Cli.csproj", "{D880B907-9FC2-441E-BABF-171157C9AABB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Data.Compiler", "Atc.Data.Compiler\Atc.Data.Compiler.csproj", "{D880B907-9FC2-441E-BABF-171157C9AABB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Data.Sources", "Atc.Data.Sources\Atc.Data.Sources.csproj", "{61C1FA77-C9B4-41E8-8D28-A983CEB925B3}"
 EndProject

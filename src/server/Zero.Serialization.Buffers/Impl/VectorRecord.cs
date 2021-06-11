@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Zero.Serialization.Buffers.Impl
 {
+    [BufferInfoProvider(typeof(VectorRecordBufferInfoProvider))]
     public unsafe struct VectorRecord<T> : IVariableSizeRecord, IEnumerable<ZCursor<T>>
         where T : unmanaged
     {
@@ -273,6 +275,66 @@ namespace Zero.Serialization.Buffers.Impl
             {
                 byte* pRecord = _buffer.GetRawRecordPointer(_recordByteIndex);
                 return ref Unsafe.AsRef<VectorRecord<T>>(pRecord);
+            }
+        }
+    }
+    
+    public class VectorRecordBufferInfoProvider : IBufferInfoProvider
+    {
+        public IEnumerable<(string Label, string Value)> GetInfo(ITypedBuffer buffer)
+        {
+            if (buffer.RecordType.GetGenericTypeDefinition() != typeof(VectorRecord<>))
+            {
+                throw new ArgumentException("Invalid record type", nameof(buffer));
+            }
+            
+            var constructedProviderType = typeof(Provider<>)
+                .MakeGenericType(buffer.RecordType.GenericTypeArguments[0]);
+
+            var providerInstance = (IBufferInfoProvider)(Activator.CreateInstance(constructedProviderType)!);
+            return providerInstance.GetInfo(buffer);
+        }
+
+        private class Provider<TItem> : IBufferInfoProvider
+            where TItem : unmanaged
+        {
+            public IEnumerable<(string Label, string Value)> GetInfo(ITypedBuffer buffer)
+            {
+                int totalEntries = 0;
+                int totalAllocatedEntries = 0;
+                int totalUnallocatedEntries = 0;
+                int totalBlockContinuations = 0;
+                
+                var typedBuffer = (TypedBuffer<VectorRecord<TItem>>) buffer;
+                var recordCount = typedBuffer.RecordOffsets.Count;
+                for (int i = 0; i < recordCount; i++)
+                {
+                    var offset = typedBuffer.RecordOffsets[i];
+                    ref var record = ref typedBuffer[offset];
+                    AnalyzeRecord(ref record);
+                }
+
+                return new[] {
+                    (Label: "total-entries", Value: totalEntries.ToString()),
+                    (Label: "alloc-entries", Value: totalAllocatedEntries.ToString()),
+                    (Label: "unused-entries", Value: totalUnallocatedEntries.ToString()),
+                    (Label: "next-blocks", Value: totalBlockContinuations.ToString()),
+                    (Label: "avg-used-entries", Value: ((float)totalAllocatedEntries / (float)recordCount).ToString(CultureInfo.InvariantCulture)),
+                    (Label: "avg-unused-entries", Value: ((float)totalUnallocatedEntries / (float)recordCount).ToString(CultureInfo.InvariantCulture)),
+                };
+                
+                void AnalyzeRecord(ref VectorRecord<TItem> @record)
+                {
+                    totalEntries += @record.BlockEntryCount;
+                    totalAllocatedEntries += @record.BlockAllocatedEntryCount;
+                    totalUnallocatedEntries += @record.BlockEntryCount - @record.BlockAllocatedEntryCount;
+
+                    if (@record.NextBlock.HasValue)
+                    {
+                        totalBlockContinuations++;
+                        AnalyzeRecord(ref @record.NextBlock.Value.Get());
+                    }
+                }
             }
         }
     }

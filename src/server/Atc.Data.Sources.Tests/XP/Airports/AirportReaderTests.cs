@@ -15,8 +15,14 @@ using Zero.Serialization.Buffers.Impl;
 namespace Atc.Data.Sources.Tests.XP.Airports
 {
     [TestFixture]
-    public class AptDataReaderTests
+    public class AirportReaderTests
     {
+        [OneTimeSetUp]
+        public void Init()
+        {
+            BufferContextScope.UseAsyncLocalScope();
+        }
+
         [Test]
         public void ReadRealAirport_HUEN()
         {
@@ -82,7 +88,7 @@ namespace Atc.Data.Sources.Tests.XP.Airports
                 TestContext.CurrentContext.GetTestInputPath(aptDatFileName),
                 FileMode.Open);
 
-            var aptDatReader = new AptDatReader(context, OnQueryAirspace);
+            var aptDatReader = new XPAirportReader(context, new MockLogger(), OnQueryAirspace);
             
             var clock = Stopwatch.StartNew();
 
@@ -314,6 +320,37 @@ namespace Atc.Data.Sources.Tests.XP.Airports
                 lowerLimit: null,
                 upperLimit: Altitude.FromFeetMsl(18000)
             );
+        }
+
+        private class MockLogger : XPAptDatReader.ILogger
+        {
+            public void LoadedAirport(string icao)
+            {
+            }
+
+            public void SkippedAirport(string icao)
+            {
+            }
+
+            public void DoneLoadingAirports(int loaded, int skipped)
+            {
+            }
+
+            public void FailedToAssembleAirport(string icao, string message)
+            {
+            }
+
+            public void FailedToLoadAirportSkipping(string icao, string diagnostic)
+            {
+            }
+
+            public void SkippingAirportByFilter(string icao)
+            {
+            }
+
+            public void WarnGateAirlineNotFound(string icao)
+            {
+            }
         }
     }
 }

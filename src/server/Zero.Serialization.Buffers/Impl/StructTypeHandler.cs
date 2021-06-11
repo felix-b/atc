@@ -18,6 +18,7 @@ namespace Zero.Serialization.Buffers.Impl
         private readonly StructFieldInfo? _variableBufferField;
         private readonly VariableSizeGetterFunc _getVariableSize;
         private readonly VariableBufferGetterFunc _getVariableBuffer;
+        private readonly IBufferInfoProvider? _bufferInfoProvider;
 
         public StructTypeHandler(Type type)
             : this(type, new HashSet<Type>())
@@ -53,6 +54,8 @@ namespace Zero.Serialization.Buffers.Impl
                 : (_, _) => throw new NotSupportedException("This type handler does not support variable size");
 
             _selfByteIndexField = _fields.FirstOrDefault(field => field.IsInjectSelfByteIndex);
+
+            _bufferInfoProvider = GetBufferInfoProvider(_type);
         }
         
         public FieldValuePair[] GetFieldValues(void *pStruct)
@@ -149,6 +152,8 @@ namespace Zero.Serialization.Buffers.Impl
         public StructFieldInfo? VariableBufferField => _variableBufferField;
 
         public StructFieldInfo? SelfByteIndexField => _selfByteIndexField;
+
+        public IBufferInfoProvider? BufferInfoProvider => _bufferInfoProvider;
 
         private StructFieldInfo GetStructFieldInfo(FieldInfo field, HashSet<Type> pendingTypeHandlers)
         {
@@ -296,6 +301,17 @@ namespace Zero.Serialization.Buffers.Impl
             return GetOrAddHandler(type, pendingHandlerTypes: new HashSet<Type>());
         }
 
+        private static IBufferInfoProvider? GetBufferInfoProvider(Type recordType)
+        {
+            var attribute = recordType.GetCustomAttribute<BufferInfoProviderAttribute>();
+            if (attribute != null)
+            {
+                var instance = Activator.CreateInstance(attribute.ProviderType);
+                return (IBufferInfoProvider?)instance;
+            }
+            return null;
+        }
+        
         private static StructTypeHandler GetOrAddHandler(Type type, HashSet<Type> pendingHandlerTypes)
         {
             if (_handlerByType.TryGetValue(type, out var existingHandler))

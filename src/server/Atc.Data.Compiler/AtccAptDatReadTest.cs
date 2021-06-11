@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if false
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -10,7 +11,7 @@ using Atc.Data.Sources.XP.Airports;
 using FluentAssertions;
 using Zero.Serialization.Buffers;
 
-namespace Atc.Data.Cli
+namespace Atc.Data.Compiler
 {
     public class AtccAptDatReadTest
     {
@@ -48,7 +49,7 @@ namespace Atc.Data.Cli
         {
             using var aptDat = File.Open(aptDatFilePath, FileMode.Open);
 
-            var aptDatReader = new AptDatReader(context, OnQueryAirspace);
+            var aptDatReader = new AirportReader(context, OnQueryAirspace);
             
             var clock = Stopwatch.StartNew();
 
@@ -283,3 +284,4 @@ namespace Atc.Data.Cli
         }
     }
 }
+#endif
