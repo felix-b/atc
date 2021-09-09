@@ -39,14 +39,19 @@ namespace Zero.Latency.Servers
             _host.Run();
         }
 
+        public Task StartAsync()
+        {
+            return _host.StartAsync(_disposed.Token);
+        }
+
         public Task RunAsync()
         {
             return _host.RunAsync(_disposed.Token);
         }
 
-        public Task StartAsync()
+        public Task WaitForShutdownAsync()
         {
-            return _host.StartAsync(_disposed.Token);
+            return _host.WaitForShutdownAsync(_disposed.Token);
         }
 
         public Task StopAsync(TimeSpan timeout)

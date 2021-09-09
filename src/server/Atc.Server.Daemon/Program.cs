@@ -30,7 +30,7 @@ namespace Atc.Server.Daemon
         
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            Console.WriteLine("atc daemon starting");
             // var hostBuilder = new ServiceHostBuilder(new EchoAcceptorMiddleware());
             // var host = hostBuilder.CreateHost();
             // host.Run();
@@ -46,7 +46,7 @@ namespace Atc.Server.Daemon
                 RunEndpoint(container).Wait();
             }
             
-            Console.WriteLine("Goodbye World!");
+            Console.WriteLine("atc daemon down.");
         }
 
         private static IDisposable LoadCache(string filePath, IAtcdLogger logger)
@@ -102,8 +102,12 @@ namespace Atc.Server.Daemon
 
             var clock = container.Resolve<RuntimeClock>();
             clock.Start();
+
+            await endpoint.StartAsync();
+
+            Console.WriteLine("atc daemon up.");                    
             
-            await endpoint.RunAsync();
+            await endpoint.WaitForShutdownAsync();
 
             void AddDemoPlanes()
             {
