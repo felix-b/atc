@@ -7,7 +7,7 @@ using NUnit.Framework;
 
 namespace Just.Cli.Tests
 {
-    public class Tests
+    public class CommandLineParserTests
     {
         [Test]
         public void CanParseRequiredKeywords()
@@ -88,7 +88,7 @@ namespace Just.Cli.Tests
             builder.NamedFlag("--fourth", "-4", value => fourthValue = value);
             
             var parser = builder.Build();
-            bool result = parser.Parse(new[] {"-f", "-4-", "-s+", "3-"});
+            bool result = parser.Parse(new[] {"-f", "-4-", "-s+", "-3-"});
 
             result.Should().BeTrue();
             firstValue.Should().Be(true);
@@ -155,7 +155,7 @@ namespace Just.Cli.Tests
             decimalValue.Should().Be(123.45m);
             enumValue.Should().Be(DayOfWeek.Tuesday);
             dateTimeValue.Should().Be(new DateTime(2010, 8, 20, 15, 0, 0, DateTimeKind.Utc));
-            timeSpanValue.Should().Be(new TimeSpan(6, 12, 14, 15, 250));
+            timeSpanValue.Should().Be(new TimeSpan(6, 12, 14, 45, 250));
         }
 
         [Test]
@@ -181,7 +181,7 @@ namespace Just.Cli.Tests
             });
 
             result.Should().BeTrue();
-            enumValues.Should().AllBeEquivalentTo(new[] {
+            enumValues.Should().BeEquivalentTo(new[] {
                 DayOfWeek.Sunday, DayOfWeek.Monday, DayOfWeek.Friday, DayOfWeek.Saturday
             });
             stringValue.Should().Be("abc");
@@ -396,21 +396,6 @@ namespace Just.Cli.Tests
         }
 
         [Test]
-        public void CanDetectMissingCommand()
-        {
-            var builder = CommandLineParser.NewBuilder();
-            
-            builder.Command("lock", () => {});
-            builder.Command("unlock", () => {});
-
-            var parser = builder.Build();
-            
-            bool result = parser.Parse(new string[0]);
-
-            result.Should().BeFalse();
-        }
-
-        [Test]
         public void CanDetectMissingValue()
         {
             var builder = CommandLineParser.NewBuilder();
@@ -472,7 +457,9 @@ namespace Just.Cli.Tests
         [Test]
         public void CanDefineAndPrintHelpWithRecursion()
         {
-            var builder = CommandLineParser.NewBuilder();
+            var builder = CommandLineParser
+                .NewBuilder()
+                .WithHelp("This is a help text testing utility that let's us demo how the help text is built.");
             
             builder
                 .NamedFlag("--alpha", "-a", value => {})
@@ -497,10 +484,12 @@ namespace Just.Cli.Tests
 
             var parser = builder.Build();
             string syntaxText = parser.GetSyntaxHelpText(recursive: false);
-            string helpText = parser.GetFullHelpText(widthChars: 50, recursive: true);
+            string helpText = parser.GetFullHelpText(recursive: true, widthChars: 50, indentChars: 3, newLine: "\n");
 
             syntaxText.Should().Be("[--alpha] aaa value_a <number> (bbb <value_b>)|(ccc <value>)");
             helpText.Should().Be(
+                "This is a help text testing utility that let's us\n" + 
+                "demo how the help text is built.\n" +
                 "Options:\n" + 
                 "\n" +
                 "--alpha - This is the alpha flag, by default it's\n" +
