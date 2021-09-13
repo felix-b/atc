@@ -9,11 +9,11 @@ using Zero.Serialization.Buffers.Impl;
 
 namespace Atc.Data.Sources.Embedded
 {
-    public class IcaoRegionCodesDatReader
+    public class RegionDatReader
     {
         private readonly IEmbeddedDataSourcesLogger _logger;
 
-        public IcaoRegionCodesDatReader(IEmbeddedDataSourcesLogger logger)
+        public RegionDatReader(IEmbeddedDataSourcesLogger logger)
         {
             _logger = logger;
         }

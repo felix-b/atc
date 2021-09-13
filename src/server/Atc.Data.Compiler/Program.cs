@@ -68,8 +68,8 @@ namespace Atc.Data.Compiler
             builder.RegisterType<CompileCacheTask>().InstancePerDependency();
             builder.RegisterType<ExamineCacheTask>().InstancePerDependency();
 
-            builder.RegisterType<IcaoRegionCodesDatReader>().InstancePerDependency();
-            builder.RegisterType<IcaoAirlinesDatReader>().InstancePerDependency();
+            builder.RegisterType<RegionDatReader>().InstancePerDependency();
+            builder.RegisterType<AirlineDatReader>().InstancePerDependency();
 
             return builder.Build();
         }

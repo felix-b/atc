@@ -8,16 +8,16 @@ using Zero.Serialization.Buffers.Impl;
 
 namespace Atc.Data.Sources.Embedded
 {
-    public class IcaoAirlinesDatReader
+    public class AirlineDatReader
     {
         private readonly IEmbeddedDataSourcesLogger _logger;
 
-        public IcaoAirlinesDatReader(IEmbeddedDataSourcesLogger logger)
+        public AirlineDatReader(IEmbeddedDataSourcesLogger logger)
         {
             _logger = logger;
         }
 
-        public IEnumerable<ZRef<AirlineData>> ReadAirlinesDat(Stream airlinesDatFile)
+        public IEnumerable<ZRef<AirlineData>> ReadAirlineDat(Stream airlinesDatFile)
         {
             var context = BufferContext.Current;
             List<ZRef<AirlineData>> results = new(capacity: 7000);

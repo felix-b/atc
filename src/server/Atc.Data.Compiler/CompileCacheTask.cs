@@ -18,19 +18,25 @@ namespace Atc.Data.Compiler
     public class CompileCacheTask : ICompilerTask
     {
         private readonly ICompilerLogger _logger;
-        private readonly Func<IcaoRegionCodesDatReader> _icaoRegionsDatReaderFactory;
-        private readonly Func<IcaoAirlinesDatReader> _icaoAirlinesDatReaderFactory;
+        private readonly Func<RegionDatReader> _regionDatReaderFactory;
+        private readonly Func<AirlineDatReader> _airlineDatReaderFactory;
+        private readonly Func<TypeJsonReader> _typeJsonReaderFactory;
+        private readonly Func<RouteDatReader> _routeDatReaderFactory;
         private readonly Func<XPAptDatReader> _aptDatReaderFactory;
 
         public CompileCacheTask(
             ICompilerLogger logger,
-            Func<IcaoRegionCodesDatReader> icaoRegionsDatReaderFactory,
-            Func<IcaoAirlinesDatReader> icaoAirlinesDatReaderFactory,
+            Func<RegionDatReader> regionDatReaderFactory,
+            Func<AirlineDatReader> airlineDatReaderFactory,
+            Func<TypeJsonReader> typeJsonReaderFactory,
+            Func<RouteDatReader> routeDatReaderFactory,
             Func<XPAptDatReader> aptDatReaderFactory)
         {
             _logger = logger;
-            _icaoRegionsDatReaderFactory = icaoRegionsDatReaderFactory;
-            _icaoAirlinesDatReaderFactory = icaoAirlinesDatReaderFactory;
+            _regionDatReaderFactory = regionDatReaderFactory;
+            _airlineDatReaderFactory = airlineDatReaderFactory;
+            _typeJsonReaderFactory = typeJsonReaderFactory;
+            _routeDatReaderFactory = routeDatReaderFactory;
             _aptDatReaderFactory = aptDatReaderFactory;
         }
 
@@ -52,6 +58,7 @@ namespace Atc.Data.Compiler
             LoadRegions(args);
             LoadAirlines(args);
             LoadAirports(args);
+            LoadRoutes(args);
 
             ((BufferContext)context).WriteTo(output);
             output.Flush();
@@ -62,32 +69,32 @@ namespace Atc.Data.Compiler
 
         private void LoadTypes(InputArguments args)
         {
-            var context = BufferContext.Current;
-            ref var worldData = ref context.GetWorldData();
+            var jsonFilePath = Path.Combine(args.AtcFolderPath, "type.json");
+            _logger.LoadingTypes(jsonFile: jsonFilePath);
 
-            var dummyFlightModelRef = context.AllocateRecord(new FlightModelData());
+            ref var worldData = ref BufferContext.Current.GetWorldData();
+
+            var reader = _typeJsonReaderFactory();
+            using var file = File.OpenRead(jsonFilePath);
+            var allTypeRefs = reader.ReadTypeJson(file);
             
-            worldData.TypeByIcao.Add(
-                context.AllocateString("B738"),
-                context.AllocateRecord(new AircraftTypeData() {
-                    Icao = context.AllocateString("B738"),
-                    Name = context.AllocateString("Boeing 738-800"),
-                    Callsign = context.AllocateString("B738"),
-                    Category = AircraftCategories.Jet,
-                    Operations = OperationTypes.Airline | OperationTypes.Cargo,
-                    FlightModel = dummyFlightModelRef,
-                })
-            );
+            foreach (var typeRef in allTypeRefs)
+            {
+                if (!worldData.TypeByIcao.TryAdd(typeRef.Get().Icao, typeRef))
+                {
+                    _logger.DuplicateTypeIcao(icao: typeRef.Get().Icao.GetValueNonCached());
+                }
+            }
         }
 
         private void LoadRegions(InputArguments args)
         {
-            var datFilePath = Path.Combine(args.AtcFolderPath, "icao-region-codes.dat");
+            var datFilePath = Path.Combine(args.AtcFolderPath, "region-code.dat");
             _logger.LoadingRegions(datFile: datFilePath);
             
             ref var worldData = ref BufferContext.Current.GetWorldData();
 
-            var reader = _icaoRegionsDatReaderFactory();
+            var reader = _regionDatReaderFactory();
             using var file = File.OpenRead(datFilePath);
             var allRegionRefs = reader.ReadRegions(file);
             
@@ -99,14 +106,14 @@ namespace Atc.Data.Compiler
 
         private void LoadAirlines(InputArguments args)
         {
-            var datFilePath = Path.Combine(args.AtcFolderPath, "icao-airlines.dat");
+            var datFilePath = Path.Combine(args.AtcFolderPath, "airline.dat");
             _logger.LoadingAirlines(datFile: datFilePath);
 
             ref var worldData = ref BufferContext.Current.GetWorldData();
 
-            var reader = _icaoAirlinesDatReaderFactory();
+            var reader = _airlineDatReaderFactory();
             using var file = File.OpenRead(datFilePath);
-            var allAirlineRefs = reader.ReadAirlinesDat(file);
+            var allAirlineRefs = reader.ReadAirlineDat(file);
             
             foreach (var airlineRef in allAirlineRefs)
             {
@@ -143,6 +150,16 @@ namespace Atc.Data.Compiler
                     _logger.DuplicateAirportIcao(icao: airport.Header.Icao.GetValueNonCached());
                 }
             }
+        }
+
+        private void LoadRoutes(InputArguments args)
+        {
+            var datFilePath = Path.Combine(args.AtcFolderPath, "route.dat");
+            _logger.LoadingRoutes(datFile: datFilePath);
+
+            var reader = _routeDatReaderFactory();
+            using var file = File.OpenRead(datFilePath);
+            reader.ReadRouteDat(file);
         }
 
         private ZRef<ControlledAirspaceData> OnQueryAirspace(in AirportData.HeaderData header)
