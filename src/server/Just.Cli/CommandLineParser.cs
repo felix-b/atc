@@ -22,9 +22,11 @@ namespace Just.Cli
             return _rootParser.Parse(args);
         }
 
-        public string GetSyntaxHelpText(bool recursive)
+        public string GetSyntaxHelpText(bool recursive, int widthChars = 80, int indentChars = 3, string? newLine = null)
         {
-            throw new NotImplementedException();
+            var builder = new HelpTextBuilder();
+            _rootParser.ContributeHelp(builder, recursive);
+            return builder.GetSyntaxHelpText(newLine ?? Environment.NewLine, widthChars, indentChars);
         }
 
         public string GetFullHelpText(bool recursive, int widthChars = 80, int indentChars = 3, string? newLine = null)
@@ -561,13 +563,13 @@ namespace Just.Cli
 
             public override void ContributeHelp(HelpTextBuilder builder, bool recursive)
             {
-                base.ContributeHelp(builder, recursive);
-
-                if (recursive)
-                {
-                    var subParser = _subParserFactory();
-                    subParser.ContributeHelp(builder, recursive);
-                }
+                builder.AddCommand(this.Help, buildNestedHelp: nestedBuilder => {
+                    if (recursive)
+                    {
+                        var subParser = _subParserFactory();
+                        subParser.ContributeHelp(nestedBuilder, recursive);
+                    }
+                });
             }
         }
 
@@ -575,7 +577,7 @@ namespace Just.Cli
         {
             private readonly Action<T>? _onMatch;
 
-            public ValueTokenState(Combinator owner, bool isRequired, Action<T>? onMatch) 
+            public ValueTokenState(Combinator owner, bool isRequired, Action<T>? onMatch)
                 : base(owner, minOccurrences: isRequired ? 1 : 0, maxOccurrences: 1, isPositional: true)
             {
                 _onMatch = onMatch;
@@ -584,7 +586,7 @@ namespace Just.Cli
             public override bool Match(string arg, ICommandParserContext context)
             {
                 var matched = TryParse(arg, out var value);
-                
+
                 if (matched)
                 {
                     Occurrences++;
@@ -593,7 +595,7 @@ namespace Just.Cli
 
                 return matched;
             }
-            
+
             public override string ToString()
             {
                 return $"value<{typeof(T).Name}>";
@@ -603,28 +605,30 @@ namespace Just.Cli
             {
                 if (typeof(T) == typeof(string))
                 {
-                    value = (T)(object)s;
+                    value = (T) (object) s;
                     return true;
                 }
 
                 if (typeof(T).IsEnum)
                 {
                     var result = Enum.TryParse(typeof(T), s, ignoreCase: true, out var enumValue);
-                    value = result ? (T)enumValue : default;
+                    value = result ? (T) enumValue : default;
                     return result;
                 }
 
-                if (_tryParseByType.TryGetValue(typeof(T), out var tryParseUntyped))
+                if (ValueTokenState.TryGetParser<T>(out var tryParse) && tryParse != null)
                 {
-                    TryParseDelegate<T> tryParse = (TryParseDelegate<T>)tryParseUntyped;
                     return tryParse(s, out value);
                 }
 
                 value = default;
                 return false;
             }
-
-            private delegate bool TryParseDelegate<T>(string s, out T value);
+        }
+        
+        private static class ValueTokenState
+        {
+            public delegate bool TryParseDelegate<T>(string s, out T value);
 
             private static readonly Dictionary<Type, Delegate> _tryParseByType = new() {
                 { 
@@ -649,7 +653,14 @@ namespace Just.Cli
                 },
             };
 
-            private static bool TryParseUtcDateTime(string s, out DateTime value)
+            public static bool TryGetParser<T>(out TryParseDelegate<T>? parser)
+            {
+                var result = _tryParseByType.TryGetValue(typeof(T), out var tryParseUntyped);
+                parser = result ? (TryParseDelegate<T>)tryParseUntyped : default;
+                return result;
+            }
+
+            public static bool TryParseUtcDateTime(string s, out DateTime value)
             {
                 return DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out value);
             }

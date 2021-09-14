@@ -469,7 +469,7 @@ namespace Just.Cli.Tests
                 .Command("aaa", () => {})
                 .WithHelp("This is the first command named A");
             commandA
-                .NamedValue<int>("value_a", value => {})
+                .NamedValue<int>("--value_a", value => {})
                 .WithHelp("This is a required integer value for the command A");
 
             var commandB = commandA

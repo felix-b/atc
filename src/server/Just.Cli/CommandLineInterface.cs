@@ -17,6 +17,6 @@
             throw new System.NotImplementedException();
         }
         
-        public CliCommand ActiveCommand { get; private set; }
+        public CliCommand? ActiveCommand { get; private set; }
     }
 }

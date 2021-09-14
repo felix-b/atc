@@ -21,6 +21,8 @@ namespace Atc.Data.Sources.Embedded
             using var reader = new StreamReader(input, leaveOpen: true);
             var json = reader.ReadToEnd();
             var deserialized = JsonSerializer.Deserialize<IList<TypeObject>>(json);
+
+            throw new NotImplementedException();
         }
 
         public class TypeObject
