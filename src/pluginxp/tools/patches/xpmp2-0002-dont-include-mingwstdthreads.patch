@@ -1,0 +1,46 @@
+diff --git a/XPMP2-Remote/XPMP2-Remote.h b/XPMP2-Remote/XPMP2-Remote.h
+index 9a41fc1..8121226 100644
+--- a/XPMP2-Remote/XPMP2-Remote.h
++++ b/XPMP2-Remote/XPMP2-Remote.h
+@@ -75,13 +75,13 @@
+ #include <memory>
+ #include <atomic>
+ #include <algorithm>
+-#ifdef __MINGW32__                  // When cross-compiling with MingW we need to use other thread-related headers
+-#include "../src/mingw-std-threads/mingw.thread.h"
+-#include "../src/mingw-std-threads/mingw.mutex.h"
+-#else
++//#ifdef __MINGW32__                  // When cross-compiling with MingW we need to use other thread-related headers
++//#include "../src/mingw-std-threads/mingw.thread.h"
++//#include "../src/mingw-std-threads/mingw.mutex.h"
++//#else
+ #include <thread>
+ #include <mutex>
+-#endif
++//#endif
+ 
+ // X-Plane SDK
+ #include "XPLMDataAccess.h"
+diff --git a/XPMP2-Sample/lib/win/libXPMP2.a b/XPMP2-Sample/lib/win/libXPMP2.a
+index 317897e..914666b 100644
+Binary files a/XPMP2-Sample/lib/win/libXPMP2.a and b/XPMP2-Sample/lib/win/libXPMP2.a differ
+diff --git a/src/XPMP2.h b/src/XPMP2.h
+index 1296c74..afa3fa9 100644
+--- a/src/XPMP2.h
++++ b/src/XPMP2.h
+@@ -55,11 +55,11 @@
+ #include <fstream>
+ #include <regex>
+ #include <bitset>
+-#ifdef __MINGW32__                  // When cross-compiling with MingW we need to use other thread-related headers
+-#include "mingw-std-threads/mingw.future.h"
+-#else
++//#ifdef __MINGW32__                  // When cross-compiling with MingW we need to use other thread-related headers
++//#include "mingw-std-threads/mingw.future.h"
++//#else
+ #include <future>
+-#endif
++//#endif
+ 
+ // X-Plane SDK
+ #include "XPLMUtilities.h"

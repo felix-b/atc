@@ -1,0 +1,25 @@
+[submodule "src/pluginxp/libs/XPSDK"]
+	path = src/pluginxp/libs/XPSDK
+	url = https://github.com/PhilippMuenzel/SDK.git
+[submodule "src/pluginxp/libs/googletest"]
+	path = src/pluginxp/libs/googletest
+	url = https://github.com/google/googletest.git
+	ignore = dirty
+[submodule "src/pluginxp/libs/XPMP2"]
+	path = src/pluginxp/libs/XPMP2
+	url = https://github.com/TwinFan/XPMP2.git
+	ignore = dirty
+[submodule "src/pluginxp/libs/PPL"]
+	path = src/pluginxp/libs/PPL
+	url = https://github.com/PhilippMuenzel/PPL
+	ignore = dirty
+[submodule "src/pluginxp/libs/concurrentqueue"]
+	path = src/pluginxp/libs/concurrentqueue
+	url = https://github.com/cameron314/concurrentqueue.git
+	ignore = dirty
+[submodule "src/pluginxp/libs/asio"]
+	path = src/pluginxp/libs/asio
+	url = https://github.com/chriskohlhoff/asio.git
+[submodule "src/pluginxp/libs/websocketpp"]
+	path = src/pluginxp/libs/websocketpp
+	url = https://github.com/zaphoyd/websocketpp.git
