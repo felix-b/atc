@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
+using System.Speech.AudioFormat;
 using System.Speech.Synthesis;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,6 +17,8 @@ namespace Atc.Speech.WinLocalPlugin
         private readonly SpeechSynthesizer _synthesizer = new();
         private readonly IReadOnlyList<VoiceInfo> _voices;
         private readonly IReadOnlyDictionary<string, VoiceInfo> _voiceByName;
+        private MemoryStream? _activeOutput;
+        private TaskCompletionSource<SynthesizeUtteranceWaveResult>? _activeCompletion;
 
         public WindowsSpeechSynthesisPlugin()
         {
@@ -30,6 +33,8 @@ namespace Atc.Speech.WinLocalPlugin
 
             _voices = voiceListBuilder;
             _voiceByName = voiceMapBuilder;
+
+            _synthesizer.SpeakCompleted += SynthesizerOnSpeakCompleted;
         }
 
         public void Dispose()
@@ -44,23 +49,40 @@ namespace Atc.Speech.WinLocalPlugin
             var effectiveVoice = voice.AssignedPlatformVoiceId != null 
                 ? _voiceByName[voice.AssignedPlatformVoiceId]
                 : LookupVoice(voice);
+            _synthesizer.SelectVoice(effectiveVoice.Name);
 
             var ssml = BuildSsml(utterance, voice);
+
+            _activeOutput = new MemoryStream();
+            
+            var format = new SpeechAudioFormatInfo(samplesPerSecond: 11025, AudioBitsPerSample.Sixteen, AudioChannel.Mono);
+            _synthesizer.SetOutputToAudioStream(_activeOutput, format);
+
+            _activeCompletion = new TaskCompletionSource<SynthesizeUtteranceWaveResult>();
+            
             Console.WriteLine("SYNTHESIZING SPEECH SSML: " + ssml);
 
-            using var output = new MemoryStream();
+            _synthesizer.SpeakSsmlAsync(ssml);
 
-            _synthesizer.SelectVoice(effectiveVoice.Name);
-            //_synthesizer.SetOutputToWaveStream(output);
-            _synthesizer.SpeakSsmlAsync(ssml);  
-            //_synthesizer.SetOutputToNull();
+            return _activeCompletion.Task;
+        }
 
-            Console.WriteLine("TEMP MOCK RADIO - TRANSMISSION FINISHED.");
-            
-            return Task.FromResult(new SynthesizeUtteranceWaveResult(
-                new byte[0],
-                effectiveVoice.Name
-            ));
+        private void SynthesizerOnSpeakCompleted(object? sender, SpeakCompletedEventArgs e)
+        {
+            if (_activeOutput != null && _activeCompletion != null)
+            {
+                _synthesizer.SetOutputToNull();
+                _activeCompletion.SetResult(new(_activeOutput.ToArray(), null));
+                Console.WriteLine($"SYNTHESIZER COMPLETED! wave buffer size = {_activeOutput.Length}");
+                _activeOutput.Dispose();
+            }
+            else
+            {
+                Console.WriteLine($"SYNTHESIZER WARNING! completed but no active output/completion!");
+            }
+
+            _activeCompletion = null;
+            _activeOutput = null;
         }
 
         private VoiceInfo LookupVoice(VoiceDescription description)
@@ -73,7 +95,7 @@ namespace Atc.Speech.WinLocalPlugin
         {
             var ssml = new StringBuilder();
             ssml.Append($"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"{utterance.Culture.Name}\">");
-            ssml.Append($"<prosody volume='{voice.Volume}' rate='1.2' pitch='x-high'>");
+            ssml.Append($"<prosody rate='1.1' pitch='medium'>");
 
             foreach (var part in utterance.Parts)
             {

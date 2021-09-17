@@ -2,13 +2,16 @@
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using Atc.Sound;
 using Atc.Speech.Abstractions;
 
 namespace Atc.Server
 {
     public class TempMockLlhzRadio
     {
-        private readonly ISpeechSynthesisPlugin _speech;
+        private readonly ISpeechSynthesisPlugin _synthesizer;
+        private readonly RadioSpeechPlayer _player;
+        private readonly SoundFormat _soundFormat;
         private readonly Random _random = new Random(DateTime.Now.TimeOfDay.Milliseconds);
         private readonly CultureInfo _culture = CultureInfo.GetCultureInfo("he-IL");
         private Task? _currentWorkflow;
@@ -16,9 +19,12 @@ namespace Atc.Server
         private TaskCompletionSource? _pilotTransmissionReceived;
         private TaskCompletionSource? _workflowCancellationRequested;
 
-        public TempMockLlhzRadio(ISpeechSynthesisPlugin speech)
+        public TempMockLlhzRadio(ISpeechSynthesisPlugin synthesizer, RadioSpeechPlayer player)
         {
-            _speech = speech;
+            _synthesizer = synthesizer;
+            _player = player;
+            _soundFormat = new SoundFormat(bitsPerSample: 16, samplesPerSecond: 11025, channelCount: 1);
+            
             ResetFlight();
         }
 
@@ -39,6 +45,7 @@ namespace Atc.Server
         public void PttPushed(int frequencyKhz)
         {
             Console.WriteLine($"TEMP MOCK RADIO - PTT PUSHED, {frequencyKhz}");
+            _player.StartPttStaticNoise();
         }
 
         public void PttReleased(int frequencyKhz)
@@ -51,6 +58,7 @@ namespace Atc.Server
                 return;
             }
             
+            _player.StopPttStaticNoise();
             _pilotTransmissionReceived?.SetResult();
  
             Console.WriteLine($"TEMP MOCK RADIO - RECEIVE COMPLETED");
@@ -134,15 +142,15 @@ namespace Atc.Server
 
         private Task TransmitLo(UtteranceDescription utterance, CancellationToken cancel)
         {
-            return Transmit(utterance, 50, cancel);
+            return Transmit(utterance, 1.0f, cancel);
         }
 
         private Task TransmitHi(UtteranceDescription utterance, CancellationToken cancel)
         {
-            return Transmit(utterance, 90, cancel);
+            return Transmit(utterance, 1.7f, cancel);
         }
 
-        private async Task Transmit(UtteranceDescription utterance, int volume, CancellationToken cancel)
+        private async Task Transmit(UtteranceDescription utterance, float volume, CancellationToken cancel)
         {
             cancel.ThrowIfCancellationRequested();
             await Task.Delay(1000, cancel);
@@ -158,9 +166,15 @@ namespace Atc.Server
                 volume,
                 null);
 
-            await _speech.SynthesizeUtteranceWave(utterance, voice);
-        }
+            var speech = await _synthesizer.SynthesizeUtteranceWave(utterance, voice);
+
+            Console.WriteLine("TEMP MOCK RADIO - TRANSMISSION SYNTHESIZED! PLAYING NOW...");
             
+            await _player.Play(speech.Wave, _soundFormat, volume);
+
+            Console.WriteLine("TEMP MOCK RADIO - TRANSMISSION PLAYED TO END");
+        }
+
         private UtteranceDescription CreateClearanceGoAheadUtterance()
         {
             return new UtteranceDescription(
@@ -197,8 +211,8 @@ namespace Atc.Server
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
                     new (UtteranceDescription.PartType.Text, "לאחר התנעה עבור למגדל"),
-                    new (UtteranceDescription.PartType.Data, "אחד-שתיים-שתיים שתיים"),
-                    new (UtteranceDescription.PartType.Farewell, "להישמע"),
+                    new (UtteranceDescription.PartType.Data, "אחד-שתיים-שתיים שתיים,"),
+                    new (UtteranceDescription.PartType.Farewell, "להישמע."),
                 }
             );
         }
@@ -222,7 +236,7 @@ namespace Atc.Server
                 _culture,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
-                    new (UtteranceDescription.PartType.Negation, "המתן"),
+                    new (UtteranceDescription.PartType.Negation, ", המתן."),
                 }
             );
         }

@@ -8,6 +8,7 @@ using Atc.Data;
 using Atc.Data.Primitives;
 using Atc.Server;
 using Atc.Server.Daemon;
+using Atc.Sound;
 using Atc.Speech.Abstractions;
 using Atc.Speech.WinLocalPlugin;
 using Atc.World;
@@ -49,6 +50,7 @@ namespace Atc.Server.Daemon
                 var container = CompositionRoot();
                 var logger = container.Resolve<IAtcdLogger>();
 
+                using var audioContext = new AudioContextScope();
                 using (LoadCache(cacheFilePath, logger))
                 {
                     RunEndpoint(container, listenPort).Wait();
@@ -129,6 +131,7 @@ namespace Atc.Server.Daemon
             
             LoadSpeechPlugins(builder);
 
+            builder.RegisterType<RadioSpeechPlayer>().SingleInstance();
             builder.RegisterType<TempMockLlhzRadio>().SingleInstance();
 
             return builder.Build();

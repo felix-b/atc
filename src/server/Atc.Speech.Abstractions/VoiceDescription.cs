@@ -8,7 +8,7 @@ namespace Atc.Speech.Abstractions
         VoiceType Type,
         VoiceRate Rate,
         VoiceLinkQuality Quality,
-        int Volume,
+        float Volume,
         string? AssignedPlatformVoiceId);
 
     public enum VoiceGender
