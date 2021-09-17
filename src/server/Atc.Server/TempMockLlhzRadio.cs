@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Atc.Sound;
@@ -9,12 +11,16 @@ namespace Atc.Server
 {
     public class TempMockLlhzRadio
     {
+        private record Atis(string Info, string ActiveRunway, int Qnh, int WindBearing, int WindSpeedKt);
+
         private readonly ISpeechSynthesisPlugin _synthesizer;
         private readonly RadioSpeechPlayer _player;
         private readonly SoundFormat _soundFormat;
         private readonly Random _random = new Random(DateTime.Now.TimeOfDay.Milliseconds);
         private readonly CultureInfo _culture = CultureInfo.GetCultureInfo("he-IL");
         private Task? _currentWorkflow;
+        private Atis _currentAtis;
+        private string _currentCallsign;
         private CancellationTokenSource? _workflowCancellation;
         private TaskCompletionSource? _pilotTransmissionReceived;
         private TaskCompletionSource? _workflowCancellationRequested;
@@ -24,11 +30,13 @@ namespace Atc.Server
             _synthesizer = synthesizer;
             _player = player;
             _soundFormat = new SoundFormat(bitsPerSample: 16, samplesPerSecond: 11025, channelCount: 1);
+            _currentAtis = CreateRandomAtis();
+            _currentCallsign = "CGK";
             
-            ResetFlight();
+            ResetFlight(_currentCallsign);
         }
 
-        public void ResetFlight()
+        public void ResetFlight(string callsign)
         {
             Console.WriteLine("TEMP MOCK RADIO - RESETTING FLIGHT");
 
@@ -40,6 +48,11 @@ namespace Atc.Server
             _workflowCancellation = new CancellationTokenSource();
 
             _currentWorkflow = SafeRunCommunicationWorkflow(_workflowCancellation.Token);
+            _currentAtis = CreateRandomAtis();
+            _currentCallsign = callsign;
+            
+            Console.WriteLine(
+                $"TEMP MOCK RADIO - ATIS: qnh[{_currentAtis.Qnh}] rwy[{_currentAtis.ActiveRunway}] wnd[{_currentAtis.WindBearing}@{_currentAtis.WindSpeedKt}kt]");
         }
 
         public void PttPushed(int frequencyKhz)
@@ -54,7 +67,7 @@ namespace Atc.Server
 
             if (frequencyKhz <= 0)
             {
-                ResetFlight();
+                ResetFlight("CGK");
                 return;
             }
             
@@ -175,13 +188,33 @@ namespace Atc.Server
             Console.WriteLine("TEMP MOCK RADIO - TRANSMISSION PLAYED TO END");
         }
 
+        private Atis CreateRandomAtis()
+        {
+            char info = (char)_random.Next('A', 'Z' + 1);
+            int windSpeedKt = _random.Next(11);
+            int windBearing = _random.Next(360) + 1;
+            int qnh = _random.Next(2800, 3005);
+            
+            var activeRunway = windSpeedKt > 3
+                ? (windBearing >= 200 || windBearing <= 20 ? "29" : "11")
+                : ((_random.Next(33) % 2) == 0 ? "29" : "11");
+
+            return new Atis(
+                Info: $"{info}",
+                activeRunway,
+                qnh,
+                windBearing,
+                windSpeedKt);
+        }
+        
         private UtteranceDescription CreateClearanceGoAheadUtterance()
         {
             return new UtteranceDescription(
                 _culture,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
-                    new (UtteranceDescription.PartType.Affirmation, "שלום, המשך"),
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Affirmation, "שלום, "),
+                    new (UtteranceDescription.PartType.Affirmation, "<phoneme alphabet='sapi' ph='h aa m ch eh k k'>המשך</phoneme>."),
                 }
             );
         }
@@ -193,13 +226,13 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _culture,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Affirmation, "ההתנעה מאושרת"),
                     new (UtteranceDescription.PartType.Text, "מסלול בשימוש"),
-                    new (UtteranceDescription.PartType.Data, "שתיים תשע"),
+                    new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
                     new (UtteranceDescription.PartType.Text, "הלחץ"),
-                    new (UtteranceDescription.PartType.Data, $"{qnh[0]}-{qnh[1]}-{qnh[2]}-{qnh[3]}"),
-                    new (UtteranceDescription.PartType.Data, "בצרה 800"),
+                    new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(_currentAtis.Qnh.ToString())}</prosody>"),
+                    new (UtteranceDescription.PartType.Farewell, "בצרה 800"),
                 }
             );
         }
@@ -209,8 +242,10 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _culture,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
-                    new (UtteranceDescription.PartType.Text, "לאחר התנעה עבור למגדל"),
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Text, "לאחר התנעה "),
+                    new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='h aa v o r'>עבור</phoneme>"),
+                    new (UtteranceDescription.PartType.Text, " למגדל"),
                     new (UtteranceDescription.PartType.Data, "אחד-שתיים-שתיים שתיים,"),
                     new (UtteranceDescription.PartType.Farewell, "להישמע."),
                 }
@@ -219,15 +254,21 @@ namespace Atc.Server
 
         private UtteranceDescription CreateTaxiClearanceUtterance()
         {
-            return new UtteranceDescription(
-                _culture,
-                new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
+            UtteranceDescription.Part[] parts = TossADice()
+                ? new UtteranceDescription.Part[] {
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Affirmation, "רשאי להסיע"),
                     new (UtteranceDescription.PartType.Text, "מסלול בשימוש"),
-                    new (UtteranceDescription.PartType.Data, "שתיים תשע"),
+                    new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
                 }
-            );
+                : new UtteranceDescription.Part[] {
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Affirmation, "רשאי להסיע, "),
+                    new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
+                    new (UtteranceDescription.PartType.Text, "בשימוש."),
+                };
+            
+            return new UtteranceDescription(_culture, parts);
         }
 
         private UtteranceDescription CreateHoldShortUtterance()
@@ -235,8 +276,10 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _culture,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
-                    new (UtteranceDescription.PartType.Negation, ", המתן."),
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Punctuation, ","),
+                    new (UtteranceDescription.PartType.Negation, "<phoneme alphabet='sapi' ph='h aa m t e n'>המתן</phoneme>"),
+                    new (UtteranceDescription.PartType.Punctuation, "."),
                 }
             );
         }
@@ -246,9 +289,10 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _culture,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
-                    new (UtteranceDescription.PartType.Text, "מסלול שתיים תשע"),
-                    new (UtteranceDescription.PartType.Data, "תתיישר בלבד"),
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Text, "מסלול"),
+                    new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
+                    new (UtteranceDescription.PartType.Affirmation, "תתיישר בלבד"),
                 }
             );
         }
@@ -258,10 +302,12 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _culture,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
-                    new (UtteranceDescription.PartType.Data, "רוח קלה"),
-                    new (UtteranceDescription.PartType.Data, "מסלול שתיים תשע"),
-                    new (UtteranceDescription.PartType.Affirmation, "רשאי להמריא"),
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Data, "רוח"),
+                    new (UtteranceDescription.PartType.Data, SpellWind()),
+                    new (UtteranceDescription.PartType.Text, "מסלול"),
+                    new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
+                    new (UtteranceDescription.PartType.Affirmation, "<prosody rate='0.7'>" + "רשאי להמריא" + "</prosody>"),
                 }
             );
         }
@@ -271,9 +317,9 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _culture,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "מספר"),
-                    new (UtteranceDescription.PartType.Data, "שתיים"),
+                    new (UtteranceDescription.PartType.Data, SpellPhoneticString(TossADice() ? "1" : "2")),
                 }
             );
         }
@@ -283,13 +329,159 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _culture,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, "Charlie Delta Charlie"),
-                    new (UtteranceDescription.PartType.Affirmation, "הרוח קלה"),
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Data, "רוח"),
+                    new (UtteranceDescription.PartType.Data, SpellWind()),
                     new (UtteranceDescription.PartType.Text, "מסלול"),
-                    new (UtteranceDescription.PartType.Data, "שתיים תשע"),
-                    new (UtteranceDescription.PartType.Data, "רשאי לנחות"),
+                    new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
+                    new (UtteranceDescription.PartType.Affirmation, "<prosody rate='0.8'>" + "רשאי לנחות" + "</prosody>"),
                 }
             );
         }
+
+        private string SpellPhoneticString(string phonetic)
+        {
+            var ssml = new StringBuilder();
+
+            for (int i = 0; i < phonetic.Length; i++)
+            {
+                var c = char.ToUpper(phonetic[i]);
+
+                if (i > 0)
+                {
+                    ssml.Append('-');//char.IsDigit(c) ? ' ' : '-');
+                }
+
+                if (char.IsDigit(c))
+                {
+                    ssml.Append(_phoneticDigitSsml[c - '0']);
+                }
+                else if (c >= 'A' && c <= 'Z')
+                {
+                    ssml.Append(_phoneticLetterSsml[c]);
+                }
+                else
+                {
+                    ssml.Append(c);
+                }
+            }
+            
+            return ssml.ToString();
+        }
+
+        private string SpellWind()
+        {
+            var speedKt = _currentAtis.WindSpeedKt;
+            var bearing = _currentAtis.WindBearing;
+            var direction = SpellDirection(out var spelledNamedDirection);
+            var calm = (speedKt <= 3);
+            
+            return calm && !spelledNamedDirection
+                ? SpellSpeed()
+                : $"{direction} {SpellSpeed()}";
+
+            string SpellSpeed()
+            {
+                if (calm)
+                {
+                    return "קלה";
+                }
+
+                if (speedKt < 10)
+                {
+                    return _windKnotsSingleDigitWord[speedKt] + " " + "קשרים";
+                }
+                
+                return SpellPhoneticString(speedKt.ToString()) + " " + "קשר";
+            }
+            
+            string SpellDirection(out bool named)
+            {
+                var useNamedDirection = (_random.Next(33) % 2) == 0;
+                if ((bearing >= 355 || bearing < 5) && useNamedDirection)
+                {
+                    named = true;
+                    return "צפונית";
+                }
+                if ((bearing >= 85 && bearing <= 95) && useNamedDirection)
+                {
+                    named = true;
+                    return "מזרחית";
+                }
+                if ((bearing >= 175 && bearing <= 185) && useNamedDirection)
+                {
+                    named = true;
+                    return "דרומית";
+                }
+                if ((bearing >= 265 && bearing <= 275) && useNamedDirection)
+                {
+                    named = true;
+                    return "מערבית";
+                }
+
+                named = false;
+                return SpellPhoneticString(bearing.ToString().PadLeft(3, '0'));
+            }
+        }
+
+        private bool TossADice()
+        {
+            return (_random.Next(33) % 2) == 0;
+        }
+
+        private readonly static IReadOnlyList<string> _phoneticDigitSsml = new[] {
+            "אפס",
+            "אחד",
+            "שתיים",
+            "שלוש",
+            "ארבע",
+            "חמש",
+            "שש",
+            "שבע", 
+            "שמונה", 
+            "תשע"
+        };
+
+        private readonly static IReadOnlyList<string> _windKnotsSingleDigitWord = new[] {
+            "",
+            "",
+            "",
+            "שלושה",
+            "ארבעה",
+            "חמישה",
+            "שישה",
+            "שבעה", 
+            "שמונה", 
+            "תשעה"
+        };
+
+        private readonly static IReadOnlyDictionary<char, string> _phoneticLetterSsml = new Dictionary<char, string>() {
+            { 'A', "<phoneme alphabet='sapi' ph='aa aa l f a'>Alpha</phoneme>" },
+            { 'B', "<phoneme alphabet='sapi' ph='b r aa aa v o'>Bravo</phoneme>" },
+            { 'C', "<phoneme alphabet='sapi' ph='ch aa aa r l ih'>Charlie</phoneme>" },
+            { 'D', "<phoneme alphabet='sapi' ph='d eh eh l t a'>Delta</phoneme>" },
+            { 'E', "<phoneme alphabet='sapi' ph='eh eh k o'>Echo</phoneme>" },
+            { 'F', "<phoneme alphabet='sapi' ph='f ao ao k s t r o t'>Foxtrot</phoneme>" },
+            { 'G', "Golf" },
+            { 'H', "Hotel" },
+            { 'I', "<phoneme alphabet='sapi' ph='ih ih n d i a'>India</phoneme>" },
+            { 'J', "Juliet" },
+            { 'K', "<phoneme alphabet='sapi' ph='k ih ih l o'>Kilo</phoneme>" },
+            { 'L', "<phoneme alphabet='sapi' ph='l ih ih m a'>Lima</phoneme>" },
+            { 'M', "Mike" },
+            { 'N', "November" },
+            { 'O', "<phoneme alphabet='sapi' ph='ao ao s k a r'>Oscar</phoneme>" },
+            { 'P', "<phoneme alphabet='sapi' ph='p aa p a'>Papa</phoneme>" },
+            { 'Q', "<phoneme alphabet='sapi' ph='k eh b eh eh k'>Quebec</phoneme>" },
+            { 'R', "<phoneme alphabet='sapi' ph='r o o m eh o'>Romeo</phoneme>" },
+            { 'S', "<phoneme alphabet='sapi' ph='s i eh eh r a'>Sierra</phoneme>" },
+            { 'T', "<phoneme alphabet='sapi' ph='t aa aa n g o'>Tango</phoneme>" },
+            { 'U', "Uniform" },
+            { 'V', "Victor" },
+            { 'W', "Whiskey" },
+            { 'X', "Xray" },
+            { 'Y', "Yankee" },
+            { 'Z', "Zulu" },
+        };
     }
 }

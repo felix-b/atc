@@ -17,6 +17,9 @@ namespace Atc.Sound
             var renderer = AL.Get(ALGetString.Renderer);
             Console.WriteLine($"OpenAL: version[{version}] vendor[{vendor}] renderer[{renderer}] pid[{Process.GetCurrentProcess().Id}");
 
+            var devices = ALC.GetStringList(GetEnumerationStringList.DeviceSpecifier);
+            Console.WriteLine($"ALC Devices: {string.Join(", ", devices)}");
+
             _device = ALC.OpenDevice(null);
             _context = ALC.CreateContext(_device, (int*)null);
 

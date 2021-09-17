@@ -95,7 +95,7 @@ namespace Atc.Speech.WinLocalPlugin
         {
             var ssml = new StringBuilder();
             ssml.Append($"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"{utterance.Culture.Name}\">");
-            ssml.Append($"<prosody rate='1.1' pitch='medium'>");
+            ssml.Append($"<prosody volume='100' rate='1.0' pitch='low'>");
 
             foreach (var part in utterance.Parts)
             {
