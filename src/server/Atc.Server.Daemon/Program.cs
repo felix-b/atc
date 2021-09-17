@@ -1,15 +1,19 @@
 ﻿using System;
 using System.IO;
 using System.Net.WebSockets;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Atc.Data;
 using Atc.Data.Primitives;
 using Atc.Server;
 using Atc.Server.Daemon;
+using Atc.Speech.Abstractions;
+using Atc.Speech.WinLocalPlugin;
 using Atc.World;
 using Atc.World.Redux;
 using Autofac;
+using Just.Cli;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Zero.Doubt.Logging;
@@ -28,25 +32,71 @@ namespace Atc.Server.Daemon
     {
         private static IServiceTaskSynchronizer? _taskSynchronizer = null;
         
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
             Console.WriteLine("atc daemon starting");
-            // var hostBuilder = new ServiceHostBuilder(new EchoAcceptorMiddleware());
-            // var host = hostBuilder.CreateHost();
-            // host.Run();
-
-            BufferContextScope.UseStaticScope();
-            ConsoleLog.Level = LogLevel.Debug;
-
-            var container = CompositionRoot();
-            var logger = container.Resolve<IAtcdLogger>();
-
-            using (LoadCache(args[0], logger))
+            if (!ParseCommandLine(args, out var cacheFilePath, out var listenPort))
             {
-                RunEndpoint(container).Wait();
+                Console.WriteLine("call: atcd --cache <file_path> --listen <port_number>");
+                return 1;
             }
-            
+
+            try
+            {
+                BufferContextScope.UseStaticScope();
+                ConsoleLog.Level = LogLevel.Debug;
+
+                var container = CompositionRoot();
+                var logger = container.Resolve<IAtcdLogger>();
+
+                using (LoadCache(cacheFilePath, logger))
+                {
+                    RunEndpoint(container, listenPort).Wait();
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return 100;
+            }
+
             Console.WriteLine("atc daemon down.");
+            return 0;
+        }
+
+        private static bool ParseCommandLine(string[] args, out string cacheFilePath, out int listenPort)
+        {
+            // TODO: make it short
+            
+            string? cacheFilePathValue = Environment.GetEnvironmentVariable("ATC_CACHE");
+            int? listenPortValue = ParseIntOrDefault(Environment.GetEnvironmentVariable("ATC_PORT"));
+
+            var parserBuilder = CommandLineParser.NewBuilder();
+            parserBuilder.NamedValue<string>("--cache", value => cacheFilePathValue = value);
+            parserBuilder.NamedValue<int>("--listen", value => listenPortValue = value);
+            
+            var parser = parserBuilder.Build();
+            var success = parser.Parse(args);
+
+            if (success && cacheFilePathValue != null && listenPortValue != null)
+            {
+                cacheFilePath = cacheFilePathValue;
+                listenPort = listenPortValue.Value;
+                return true;
+            }
+
+            cacheFilePath = string.Empty;
+            listenPort = -1;
+            return false;
+            
+            int? ParseIntOrDefault(string? s)
+            {
+                if (s != null && Int32.TryParse(s, out var value))
+                {
+                    return value;
+                }
+                return null;
+            }
         }
 
         private static IDisposable LoadCache(string filePath, IAtcdLogger logger)
@@ -77,10 +127,20 @@ namespace Atc.Server.Daemon
             builder.Register(c => _taskSynchronizer!).SingleInstance().As<IServiceTaskSynchronizer>();
             builder.RegisterType<RuntimeClock>().SingleInstance().WithParameter("interval", TimeSpan.FromSeconds(10));
             
+            LoadSpeechPlugins(builder);
+
+            builder.RegisterType<TempMockLlhzRadio>().SingleInstance();
+
             return builder.Build();
         }
 
-        private static async Task RunEndpoint(IContainer container)
+        private static void LoadSpeechPlugins(ContainerBuilder builder)
+        {
+            //TODO: load dynamically according to operating system
+            builder.RegisterType<WindowsSpeechSynthesisPlugin>().As<ISpeechSynthesisPlugin>().SingleInstance();
+        }
+
+        private static async Task RunEndpoint(IContainer container, int listenPortNumber)
         {
             // var store = new RuntimeStateStore();
             // var world = new RuntimeWorld(store, DateTime.Now);
@@ -94,7 +154,7 @@ namespace Atc.Server.Daemon
                     .ReceiveMessagesOfType<AtcProto.ClientToServer>()
                     .WithDiscriminator(m => m.PayloadCase)
                     .SendMessagesOfType<AtcProto.ServerToClient>()
-                    .ListenOn(portNumber: 9002, urlPath: "/ws")
+                    .ListenOn(listenPortNumber, urlPath: "/ws")
                     .BindToServiceInstance(service)
                 .Create(out _taskSynchronizer);
 
@@ -105,9 +165,12 @@ namespace Atc.Server.Daemon
 
             await endpoint.StartAsync();
 
+            Console.WriteLine($"listening for connections on http://localhost:{listenPortNumber}/ws");                    
             Console.WriteLine("atc daemon up.");                    
             
             await endpoint.WaitForShutdownAsync();
+            
+            Console.WriteLine("atc daemon - listening stopped.");                    
 
             void AddDemoPlanes()
             {

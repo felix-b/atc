@@ -272,6 +272,13 @@ export interface ClientToServer {
   queryTaxiPath: ClientToServer_QueryTaxiPath | undefined;
   queryTraffic: ClientToServer_QueryTraffic | undefined;
   cancelTrafficQuery: ClientToServer_CancelTrafficQuery | undefined;
+  userAcquireAircraft: ClientToServer_UserAcquireAircraft | undefined;
+  userUpdateAircraftSituation:
+    | ClientToServer_UserUpdateAircraftSituation
+    | undefined;
+  userReleaseAircraft: ClientToServer_UserReleaseAircraft | undefined;
+  userPttPressed: ClientToServer_UserPttPressed | undefined;
+  userPttReleased: ClientToServer_UserPttReleased | undefined;
 }
 
 export interface ClientToServer_Connect {
@@ -302,6 +309,27 @@ export interface ClientToServer_RemoveAircraft {
   aircraftId: number;
 }
 
+export interface ClientToServer_UserAcquireAircraft {
+  aircraftId: number;
+}
+
+export interface ClientToServer_UserUpdateAircraftSituation {
+  aircraftId: number;
+  situation: AircraftMessage_Situation | undefined;
+}
+
+export interface ClientToServer_UserReleaseAircraft {
+  aircraftId: number;
+}
+
+export interface ClientToServer_UserPttPressed {
+  frequencyKhz: number;
+}
+
+export interface ClientToServer_UserPttReleased {
+  frequencyKhz: number;
+}
+
 export interface ClientToServer_QueryTraffic {
   minLat: number;
   minLon: number;
@@ -330,6 +358,7 @@ export interface ServerToClient {
     | ServerToClient_NotifyAircraftSituationUpdated
     | undefined;
   notifyAircraftRemoved: ServerToClient_NotifyAircraftRemoved | undefined;
+  replyUserAcquireAircraft: ServerToClient_ReplyUserAcquireAircraft | undefined;
   faultDeclined: ServerToClient_FaultDeclined | undefined;
   faultNotFound: ServerToClient_FaultNotFound | undefined;
 }
@@ -379,6 +408,11 @@ export interface ServerToClient_NotifyAircraftSituationUpdated {
 
 export interface ServerToClient_NotifyAircraftRemoved {
   aircraftId: number;
+}
+
+export interface ServerToClient_ReplyUserAcquireAircraft {
+  aircraftId: number;
+  success: boolean;
 }
 
 export interface GeoPoint {
@@ -498,7 +532,8 @@ export interface AircraftMessage_Situation {
   landingLights: boolean;
   taxiLights: boolean;
   strobeLights: boolean;
-  frequencyKhz: number;
+  monitoringFrequencyKhz: number[];
+  transmittingFrequencyKhz: number;
   squawk: string;
   modeC: boolean;
   modeS: boolean;
@@ -574,6 +609,36 @@ export const ClientToServer = {
         writer.uint32(866).fork()
       ).ldelim();
     }
+    if (message.userAcquireAircraft !== undefined) {
+      ClientToServer_UserAcquireAircraft.encode(
+        message.userAcquireAircraft,
+        writer.uint32(874).fork()
+      ).ldelim();
+    }
+    if (message.userUpdateAircraftSituation !== undefined) {
+      ClientToServer_UserUpdateAircraftSituation.encode(
+        message.userUpdateAircraftSituation,
+        writer.uint32(882).fork()
+      ).ldelim();
+    }
+    if (message.userReleaseAircraft !== undefined) {
+      ClientToServer_UserReleaseAircraft.encode(
+        message.userReleaseAircraft,
+        writer.uint32(890).fork()
+      ).ldelim();
+    }
+    if (message.userPttPressed !== undefined) {
+      ClientToServer_UserPttPressed.encode(
+        message.userPttPressed,
+        writer.uint32(898).fork()
+      ).ldelim();
+    }
+    if (message.userPttReleased !== undefined) {
+      ClientToServer_UserPttReleased.encode(
+        message.userPttReleased,
+        writer.uint32(906).fork()
+      ).ldelim();
+    }
     return writer;
   },
 
@@ -637,6 +702,33 @@ export const ClientToServer = {
           break;
         case 108:
           message.cancelTrafficQuery = ClientToServer_CancelTrafficQuery.decode(
+            reader,
+            reader.uint32()
+          );
+          break;
+        case 109:
+          message.userAcquireAircraft =
+            ClientToServer_UserAcquireAircraft.decode(reader, reader.uint32());
+          break;
+        case 110:
+          message.userUpdateAircraftSituation =
+            ClientToServer_UserUpdateAircraftSituation.decode(
+              reader,
+              reader.uint32()
+            );
+          break;
+        case 111:
+          message.userReleaseAircraft =
+            ClientToServer_UserReleaseAircraft.decode(reader, reader.uint32());
+          break;
+        case 112:
+          message.userPttPressed = ClientToServer_UserPttPressed.decode(
+            reader,
+            reader.uint32()
+          );
+          break;
+        case 113:
+          message.userPttReleased = ClientToServer_UserPttReleased.decode(
             reader,
             reader.uint32()
           );
@@ -722,6 +814,54 @@ export const ClientToServer = {
     } else {
       message.cancelTrafficQuery = undefined;
     }
+    if (
+      object.userAcquireAircraft !== undefined &&
+      object.userAcquireAircraft !== null
+    ) {
+      message.userAcquireAircraft = ClientToServer_UserAcquireAircraft.fromJSON(
+        object.userAcquireAircraft
+      );
+    } else {
+      message.userAcquireAircraft = undefined;
+    }
+    if (
+      object.userUpdateAircraftSituation !== undefined &&
+      object.userUpdateAircraftSituation !== null
+    ) {
+      message.userUpdateAircraftSituation =
+        ClientToServer_UserUpdateAircraftSituation.fromJSON(
+          object.userUpdateAircraftSituation
+        );
+    } else {
+      message.userUpdateAircraftSituation = undefined;
+    }
+    if (
+      object.userReleaseAircraft !== undefined &&
+      object.userReleaseAircraft !== null
+    ) {
+      message.userReleaseAircraft = ClientToServer_UserReleaseAircraft.fromJSON(
+        object.userReleaseAircraft
+      );
+    } else {
+      message.userReleaseAircraft = undefined;
+    }
+    if (object.userPttPressed !== undefined && object.userPttPressed !== null) {
+      message.userPttPressed = ClientToServer_UserPttPressed.fromJSON(
+        object.userPttPressed
+      );
+    } else {
+      message.userPttPressed = undefined;
+    }
+    if (
+      object.userPttReleased !== undefined &&
+      object.userPttReleased !== null
+    ) {
+      message.userPttReleased = ClientToServer_UserPttReleased.fromJSON(
+        object.userPttReleased
+      );
+    } else {
+      message.userPttReleased = undefined;
+    }
     return message;
   },
 
@@ -762,6 +902,28 @@ export const ClientToServer = {
     message.cancelTrafficQuery !== undefined &&
       (obj.cancelTrafficQuery = message.cancelTrafficQuery
         ? ClientToServer_CancelTrafficQuery.toJSON(message.cancelTrafficQuery)
+        : undefined);
+    message.userAcquireAircraft !== undefined &&
+      (obj.userAcquireAircraft = message.userAcquireAircraft
+        ? ClientToServer_UserAcquireAircraft.toJSON(message.userAcquireAircraft)
+        : undefined);
+    message.userUpdateAircraftSituation !== undefined &&
+      (obj.userUpdateAircraftSituation = message.userUpdateAircraftSituation
+        ? ClientToServer_UserUpdateAircraftSituation.toJSON(
+            message.userUpdateAircraftSituation
+          )
+        : undefined);
+    message.userReleaseAircraft !== undefined &&
+      (obj.userReleaseAircraft = message.userReleaseAircraft
+        ? ClientToServer_UserReleaseAircraft.toJSON(message.userReleaseAircraft)
+        : undefined);
+    message.userPttPressed !== undefined &&
+      (obj.userPttPressed = message.userPttPressed
+        ? ClientToServer_UserPttPressed.toJSON(message.userPttPressed)
+        : undefined);
+    message.userPttReleased !== undefined &&
+      (obj.userPttReleased = message.userPttReleased
+        ? ClientToServer_UserPttReleased.toJSON(message.userPttReleased)
         : undefined);
     return obj;
   },
@@ -839,6 +1001,56 @@ export const ClientToServer = {
         );
     } else {
       message.cancelTrafficQuery = undefined;
+    }
+    if (
+      object.userAcquireAircraft !== undefined &&
+      object.userAcquireAircraft !== null
+    ) {
+      message.userAcquireAircraft =
+        ClientToServer_UserAcquireAircraft.fromPartial(
+          object.userAcquireAircraft
+        );
+    } else {
+      message.userAcquireAircraft = undefined;
+    }
+    if (
+      object.userUpdateAircraftSituation !== undefined &&
+      object.userUpdateAircraftSituation !== null
+    ) {
+      message.userUpdateAircraftSituation =
+        ClientToServer_UserUpdateAircraftSituation.fromPartial(
+          object.userUpdateAircraftSituation
+        );
+    } else {
+      message.userUpdateAircraftSituation = undefined;
+    }
+    if (
+      object.userReleaseAircraft !== undefined &&
+      object.userReleaseAircraft !== null
+    ) {
+      message.userReleaseAircraft =
+        ClientToServer_UserReleaseAircraft.fromPartial(
+          object.userReleaseAircraft
+        );
+    } else {
+      message.userReleaseAircraft = undefined;
+    }
+    if (object.userPttPressed !== undefined && object.userPttPressed !== null) {
+      message.userPttPressed = ClientToServer_UserPttPressed.fromPartial(
+        object.userPttPressed
+      );
+    } else {
+      message.userPttPressed = undefined;
+    }
+    if (
+      object.userPttReleased !== undefined &&
+      object.userPttReleased !== null
+    ) {
+      message.userPttReleased = ClientToServer_UserPttReleased.fromPartial(
+        object.userPttReleased
+      );
+    } else {
+      message.userPttReleased = undefined;
     }
     return message;
   },
@@ -1354,6 +1566,383 @@ export const ClientToServer_RemoveAircraft = {
   },
 };
 
+const baseClientToServer_UserAcquireAircraft: object = { aircraftId: 0 };
+
+export const ClientToServer_UserAcquireAircraft = {
+  encode(
+    message: ClientToServer_UserAcquireAircraft,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.aircraftId !== 0) {
+      writer.uint32(8).uint32(message.aircraftId);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ClientToServer_UserAcquireAircraft {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseClientToServer_UserAcquireAircraft,
+    } as ClientToServer_UserAcquireAircraft;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.aircraftId = reader.uint32();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ClientToServer_UserAcquireAircraft {
+    const message = {
+      ...baseClientToServer_UserAcquireAircraft,
+    } as ClientToServer_UserAcquireAircraft;
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = Number(object.aircraftId);
+    } else {
+      message.aircraftId = 0;
+    }
+    return message;
+  },
+
+  toJSON(message: ClientToServer_UserAcquireAircraft): unknown {
+    const obj: any = {};
+    message.aircraftId !== undefined && (obj.aircraftId = message.aircraftId);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<ClientToServer_UserAcquireAircraft>
+  ): ClientToServer_UserAcquireAircraft {
+    const message = {
+      ...baseClientToServer_UserAcquireAircraft,
+    } as ClientToServer_UserAcquireAircraft;
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = object.aircraftId;
+    } else {
+      message.aircraftId = 0;
+    }
+    return message;
+  },
+};
+
+const baseClientToServer_UserUpdateAircraftSituation: object = {
+  aircraftId: 0,
+};
+
+export const ClientToServer_UserUpdateAircraftSituation = {
+  encode(
+    message: ClientToServer_UserUpdateAircraftSituation,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.aircraftId !== 0) {
+      writer.uint32(8).uint32(message.aircraftId);
+    }
+    if (message.situation !== undefined) {
+      AircraftMessage_Situation.encode(
+        message.situation,
+        writer.uint32(18).fork()
+      ).ldelim();
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ClientToServer_UserUpdateAircraftSituation {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseClientToServer_UserUpdateAircraftSituation,
+    } as ClientToServer_UserUpdateAircraftSituation;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.aircraftId = reader.uint32();
+          break;
+        case 2:
+          message.situation = AircraftMessage_Situation.decode(
+            reader,
+            reader.uint32()
+          );
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ClientToServer_UserUpdateAircraftSituation {
+    const message = {
+      ...baseClientToServer_UserUpdateAircraftSituation,
+    } as ClientToServer_UserUpdateAircraftSituation;
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = Number(object.aircraftId);
+    } else {
+      message.aircraftId = 0;
+    }
+    if (object.situation !== undefined && object.situation !== null) {
+      message.situation = AircraftMessage_Situation.fromJSON(object.situation);
+    } else {
+      message.situation = undefined;
+    }
+    return message;
+  },
+
+  toJSON(message: ClientToServer_UserUpdateAircraftSituation): unknown {
+    const obj: any = {};
+    message.aircraftId !== undefined && (obj.aircraftId = message.aircraftId);
+    message.situation !== undefined &&
+      (obj.situation = message.situation
+        ? AircraftMessage_Situation.toJSON(message.situation)
+        : undefined);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<ClientToServer_UserUpdateAircraftSituation>
+  ): ClientToServer_UserUpdateAircraftSituation {
+    const message = {
+      ...baseClientToServer_UserUpdateAircraftSituation,
+    } as ClientToServer_UserUpdateAircraftSituation;
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = object.aircraftId;
+    } else {
+      message.aircraftId = 0;
+    }
+    if (object.situation !== undefined && object.situation !== null) {
+      message.situation = AircraftMessage_Situation.fromPartial(
+        object.situation
+      );
+    } else {
+      message.situation = undefined;
+    }
+    return message;
+  },
+};
+
+const baseClientToServer_UserReleaseAircraft: object = { aircraftId: 0 };
+
+export const ClientToServer_UserReleaseAircraft = {
+  encode(
+    message: ClientToServer_UserReleaseAircraft,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.aircraftId !== 0) {
+      writer.uint32(8).uint32(message.aircraftId);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ClientToServer_UserReleaseAircraft {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseClientToServer_UserReleaseAircraft,
+    } as ClientToServer_UserReleaseAircraft;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.aircraftId = reader.uint32();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ClientToServer_UserReleaseAircraft {
+    const message = {
+      ...baseClientToServer_UserReleaseAircraft,
+    } as ClientToServer_UserReleaseAircraft;
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = Number(object.aircraftId);
+    } else {
+      message.aircraftId = 0;
+    }
+    return message;
+  },
+
+  toJSON(message: ClientToServer_UserReleaseAircraft): unknown {
+    const obj: any = {};
+    message.aircraftId !== undefined && (obj.aircraftId = message.aircraftId);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<ClientToServer_UserReleaseAircraft>
+  ): ClientToServer_UserReleaseAircraft {
+    const message = {
+      ...baseClientToServer_UserReleaseAircraft,
+    } as ClientToServer_UserReleaseAircraft;
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = object.aircraftId;
+    } else {
+      message.aircraftId = 0;
+    }
+    return message;
+  },
+};
+
+const baseClientToServer_UserPttPressed: object = { frequencyKhz: 0 };
+
+export const ClientToServer_UserPttPressed = {
+  encode(
+    message: ClientToServer_UserPttPressed,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.frequencyKhz !== 0) {
+      writer.uint32(8).uint32(message.frequencyKhz);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ClientToServer_UserPttPressed {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseClientToServer_UserPttPressed,
+    } as ClientToServer_UserPttPressed;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.frequencyKhz = reader.uint32();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ClientToServer_UserPttPressed {
+    const message = {
+      ...baseClientToServer_UserPttPressed,
+    } as ClientToServer_UserPttPressed;
+    if (object.frequencyKhz !== undefined && object.frequencyKhz !== null) {
+      message.frequencyKhz = Number(object.frequencyKhz);
+    } else {
+      message.frequencyKhz = 0;
+    }
+    return message;
+  },
+
+  toJSON(message: ClientToServer_UserPttPressed): unknown {
+    const obj: any = {};
+    message.frequencyKhz !== undefined &&
+      (obj.frequencyKhz = message.frequencyKhz);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<ClientToServer_UserPttPressed>
+  ): ClientToServer_UserPttPressed {
+    const message = {
+      ...baseClientToServer_UserPttPressed,
+    } as ClientToServer_UserPttPressed;
+    if (object.frequencyKhz !== undefined && object.frequencyKhz !== null) {
+      message.frequencyKhz = object.frequencyKhz;
+    } else {
+      message.frequencyKhz = 0;
+    }
+    return message;
+  },
+};
+
+const baseClientToServer_UserPttReleased: object = { frequencyKhz: 0 };
+
+export const ClientToServer_UserPttReleased = {
+  encode(
+    message: ClientToServer_UserPttReleased,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.frequencyKhz !== 0) {
+      writer.uint32(8).uint32(message.frequencyKhz);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ClientToServer_UserPttReleased {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseClientToServer_UserPttReleased,
+    } as ClientToServer_UserPttReleased;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.frequencyKhz = reader.uint32();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ClientToServer_UserPttReleased {
+    const message = {
+      ...baseClientToServer_UserPttReleased,
+    } as ClientToServer_UserPttReleased;
+    if (object.frequencyKhz !== undefined && object.frequencyKhz !== null) {
+      message.frequencyKhz = Number(object.frequencyKhz);
+    } else {
+      message.frequencyKhz = 0;
+    }
+    return message;
+  },
+
+  toJSON(message: ClientToServer_UserPttReleased): unknown {
+    const obj: any = {};
+    message.frequencyKhz !== undefined &&
+      (obj.frequencyKhz = message.frequencyKhz);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<ClientToServer_UserPttReleased>
+  ): ClientToServer_UserPttReleased {
+    const message = {
+      ...baseClientToServer_UserPttReleased,
+    } as ClientToServer_UserPttReleased;
+    if (object.frequencyKhz !== undefined && object.frequencyKhz !== null) {
+      message.frequencyKhz = object.frequencyKhz;
+    } else {
+      message.frequencyKhz = 0;
+    }
+    return message;
+  },
+};
+
 const baseClientToServer_QueryTraffic: object = {
   minLat: 0,
   minLon: 0,
@@ -1659,6 +2248,12 @@ export const ServerToClient = {
         writer.uint32(1626).fork()
       ).ldelim();
     }
+    if (message.replyUserAcquireAircraft !== undefined) {
+      ServerToClient_ReplyUserAcquireAircraft.encode(
+        message.replyUserAcquireAircraft,
+        writer.uint32(1634).fork()
+      ).ldelim();
+    }
     if (message.faultDeclined !== undefined) {
       ServerToClient_FaultDeclined.encode(
         message.faultDeclined,
@@ -1747,6 +2342,13 @@ export const ServerToClient = {
         case 203:
           message.notifyAircraftRemoved =
             ServerToClient_NotifyAircraftRemoved.decode(
+              reader,
+              reader.uint32()
+            );
+          break;
+        case 204:
+          message.replyUserAcquireAircraft =
+            ServerToClient_ReplyUserAcquireAircraft.decode(
               reader,
               reader.uint32()
             );
@@ -1884,6 +2486,17 @@ export const ServerToClient = {
     } else {
       message.notifyAircraftRemoved = undefined;
     }
+    if (
+      object.replyUserAcquireAircraft !== undefined &&
+      object.replyUserAcquireAircraft !== null
+    ) {
+      message.replyUserAcquireAircraft =
+        ServerToClient_ReplyUserAcquireAircraft.fromJSON(
+          object.replyUserAcquireAircraft
+        );
+    } else {
+      message.replyUserAcquireAircraft = undefined;
+    }
     if (object.faultDeclined !== undefined && object.faultDeclined !== null) {
       message.faultDeclined = ServerToClient_FaultDeclined.fromJSON(
         object.faultDeclined
@@ -1948,6 +2561,12 @@ export const ServerToClient = {
       (obj.notifyAircraftRemoved = message.notifyAircraftRemoved
         ? ServerToClient_NotifyAircraftRemoved.toJSON(
             message.notifyAircraftRemoved
+          )
+        : undefined);
+    message.replyUserAcquireAircraft !== undefined &&
+      (obj.replyUserAcquireAircraft = message.replyUserAcquireAircraft
+        ? ServerToClient_ReplyUserAcquireAircraft.toJSON(
+            message.replyUserAcquireAircraft
           )
         : undefined);
     message.faultDeclined !== undefined &&
@@ -2075,6 +2694,17 @@ export const ServerToClient = {
         );
     } else {
       message.notifyAircraftRemoved = undefined;
+    }
+    if (
+      object.replyUserAcquireAircraft !== undefined &&
+      object.replyUserAcquireAircraft !== null
+    ) {
+      message.replyUserAcquireAircraft =
+        ServerToClient_ReplyUserAcquireAircraft.fromPartial(
+          object.replyUserAcquireAircraft
+        );
+    } else {
+      message.replyUserAcquireAircraft = undefined;
     }
     if (object.faultDeclined !== undefined && object.faultDeclined !== null) {
       message.faultDeclined = ServerToClient_FaultDeclined.fromPartial(
@@ -2952,6 +3582,95 @@ export const ServerToClient_NotifyAircraftRemoved = {
       message.aircraftId = object.aircraftId;
     } else {
       message.aircraftId = 0;
+    }
+    return message;
+  },
+};
+
+const baseServerToClient_ReplyUserAcquireAircraft: object = {
+  aircraftId: 0,
+  success: false,
+};
+
+export const ServerToClient_ReplyUserAcquireAircraft = {
+  encode(
+    message: ServerToClient_ReplyUserAcquireAircraft,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.aircraftId !== 0) {
+      writer.uint32(8).uint32(message.aircraftId);
+    }
+    if (message.success === true) {
+      writer.uint32(16).bool(message.success);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): ServerToClient_ReplyUserAcquireAircraft {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseServerToClient_ReplyUserAcquireAircraft,
+    } as ServerToClient_ReplyUserAcquireAircraft;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.aircraftId = reader.uint32();
+          break;
+        case 2:
+          message.success = reader.bool();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ServerToClient_ReplyUserAcquireAircraft {
+    const message = {
+      ...baseServerToClient_ReplyUserAcquireAircraft,
+    } as ServerToClient_ReplyUserAcquireAircraft;
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = Number(object.aircraftId);
+    } else {
+      message.aircraftId = 0;
+    }
+    if (object.success !== undefined && object.success !== null) {
+      message.success = Boolean(object.success);
+    } else {
+      message.success = false;
+    }
+    return message;
+  },
+
+  toJSON(message: ServerToClient_ReplyUserAcquireAircraft): unknown {
+    const obj: any = {};
+    message.aircraftId !== undefined && (obj.aircraftId = message.aircraftId);
+    message.success !== undefined && (obj.success = message.success);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<ServerToClient_ReplyUserAcquireAircraft>
+  ): ServerToClient_ReplyUserAcquireAircraft {
+    const message = {
+      ...baseServerToClient_ReplyUserAcquireAircraft,
+    } as ServerToClient_ReplyUserAcquireAircraft;
+    if (object.aircraftId !== undefined && object.aircraftId !== null) {
+      message.aircraftId = object.aircraftId;
+    } else {
+      message.aircraftId = 0;
+    }
+    if (object.success !== undefined && object.success !== null) {
+      message.success = object.success;
+    } else {
+      message.success = false;
     }
     return message;
   },
@@ -4828,7 +5547,8 @@ const baseAircraftMessage_Situation: object = {
   landingLights: false,
   taxiLights: false,
   strobeLights: false,
-  frequencyKhz: 0,
+  monitoringFrequencyKhz: 0,
+  transmittingFrequencyKhz: 0,
   squawk: "",
   modeC: false,
   modeS: false,
@@ -4878,17 +5598,22 @@ export const AircraftMessage_Situation = {
     if (message.strobeLights === true) {
       writer.uint32(104).bool(message.strobeLights);
     }
-    if (message.frequencyKhz !== 0) {
-      writer.uint32(112).int32(message.frequencyKhz);
+    writer.uint32(114).fork();
+    for (const v of message.monitoringFrequencyKhz) {
+      writer.int32(v);
+    }
+    writer.ldelim();
+    if (message.transmittingFrequencyKhz !== 0) {
+      writer.uint32(120).int32(message.transmittingFrequencyKhz);
     }
     if (message.squawk !== "") {
-      writer.uint32(122).string(message.squawk);
+      writer.uint32(130).string(message.squawk);
     }
     if (message.modeC === true) {
-      writer.uint32(128).bool(message.modeC);
+      writer.uint32(136).bool(message.modeC);
     }
     if (message.modeS === true) {
-      writer.uint32(136).bool(message.modeS);
+      writer.uint32(144).bool(message.modeS);
     }
     return writer;
   },
@@ -4902,6 +5627,7 @@ export const AircraftMessage_Situation = {
     const message = {
       ...baseAircraftMessage_Situation,
     } as AircraftMessage_Situation;
+    message.monitoringFrequencyKhz = [];
     while (reader.pos < end) {
       const tag = reader.uint32();
       switch (tag >>> 3) {
@@ -4945,15 +5671,25 @@ export const AircraftMessage_Situation = {
           message.strobeLights = reader.bool();
           break;
         case 14:
-          message.frequencyKhz = reader.int32();
+          if ((tag & 7) === 2) {
+            const end2 = reader.uint32() + reader.pos;
+            while (reader.pos < end2) {
+              message.monitoringFrequencyKhz.push(reader.int32());
+            }
+          } else {
+            message.monitoringFrequencyKhz.push(reader.int32());
+          }
           break;
         case 15:
-          message.squawk = reader.string();
+          message.transmittingFrequencyKhz = reader.int32();
           break;
         case 16:
-          message.modeC = reader.bool();
+          message.squawk = reader.string();
           break;
         case 17:
+          message.modeC = reader.bool();
+          break;
+        case 18:
           message.modeS = reader.bool();
           break;
         default:
@@ -4968,6 +5704,7 @@ export const AircraftMessage_Situation = {
     const message = {
       ...baseAircraftMessage_Situation,
     } as AircraftMessage_Situation;
+    message.monitoringFrequencyKhz = [];
     if (object.location !== undefined && object.location !== null) {
       message.location = GeoPoint.fromJSON(object.location);
     } else {
@@ -5036,10 +5773,23 @@ export const AircraftMessage_Situation = {
     } else {
       message.strobeLights = false;
     }
-    if (object.frequencyKhz !== undefined && object.frequencyKhz !== null) {
-      message.frequencyKhz = Number(object.frequencyKhz);
+    if (
+      object.monitoringFrequencyKhz !== undefined &&
+      object.monitoringFrequencyKhz !== null
+    ) {
+      for (const e of object.monitoringFrequencyKhz) {
+        message.monitoringFrequencyKhz.push(Number(e));
+      }
+    }
+    if (
+      object.transmittingFrequencyKhz !== undefined &&
+      object.transmittingFrequencyKhz !== null
+    ) {
+      message.transmittingFrequencyKhz = Number(
+        object.transmittingFrequencyKhz
+      );
     } else {
-      message.frequencyKhz = 0;
+      message.transmittingFrequencyKhz = 0;
     }
     if (object.squawk !== undefined && object.squawk !== null) {
       message.squawk = String(object.squawk);
@@ -5082,8 +5832,13 @@ export const AircraftMessage_Situation = {
     message.taxiLights !== undefined && (obj.taxiLights = message.taxiLights);
     message.strobeLights !== undefined &&
       (obj.strobeLights = message.strobeLights);
-    message.frequencyKhz !== undefined &&
-      (obj.frequencyKhz = message.frequencyKhz);
+    if (message.monitoringFrequencyKhz) {
+      obj.monitoringFrequencyKhz = message.monitoringFrequencyKhz.map((e) => e);
+    } else {
+      obj.monitoringFrequencyKhz = [];
+    }
+    message.transmittingFrequencyKhz !== undefined &&
+      (obj.transmittingFrequencyKhz = message.transmittingFrequencyKhz);
     message.squawk !== undefined && (obj.squawk = message.squawk);
     message.modeC !== undefined && (obj.modeC = message.modeC);
     message.modeS !== undefined && (obj.modeS = message.modeS);
@@ -5096,6 +5851,7 @@ export const AircraftMessage_Situation = {
     const message = {
       ...baseAircraftMessage_Situation,
     } as AircraftMessage_Situation;
+    message.monitoringFrequencyKhz = [];
     if (object.location !== undefined && object.location !== null) {
       message.location = GeoPoint.fromPartial(object.location);
     } else {
@@ -5164,10 +5920,21 @@ export const AircraftMessage_Situation = {
     } else {
       message.strobeLights = false;
     }
-    if (object.frequencyKhz !== undefined && object.frequencyKhz !== null) {
-      message.frequencyKhz = object.frequencyKhz;
+    if (
+      object.monitoringFrequencyKhz !== undefined &&
+      object.monitoringFrequencyKhz !== null
+    ) {
+      for (const e of object.monitoringFrequencyKhz) {
+        message.monitoringFrequencyKhz.push(e);
+      }
+    }
+    if (
+      object.transmittingFrequencyKhz !== undefined &&
+      object.transmittingFrequencyKhz !== null
+    ) {
+      message.transmittingFrequencyKhz = object.transmittingFrequencyKhz;
     } else {
-      message.frequencyKhz = 0;
+      message.transmittingFrequencyKhz = 0;
     }
     if (object.squawk !== undefined && object.squawk !== null) {
       message.squawk = object.squawk;

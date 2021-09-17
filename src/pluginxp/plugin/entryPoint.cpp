@@ -16,9 +16,9 @@
 #endif
 
 // XPMP2
-#include "XPCAircraft.h"
-#include "XPMPAircraft.h"
-#include "XPMPMultiplayer.h"
+//#include "XPCAircraft.h"
+//#include "XPMPAircraft.h"
+//#include "XPMPMultiplayer.h"
 
 // PPL 
 #include "log.h"
@@ -30,11 +30,12 @@
 
 // tnc
 #include "utils.h"
+#include "pluginInstance.hpp"
 
 using namespace std;
 using namespace PPL;
 
-//static PluginInstance* pInstance = nullptr;
+static PluginInstance* pInstance = nullptr;
 
 PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc)
 {
@@ -69,7 +70,7 @@ PLUGIN_API int XPluginEnable(void)
         "ENTRYP|XPLMGetPluginInfo(pluginId=%d) -> name=[%s] filePath=[%s] signature=[%s] description=[%s]",
         myPluginId, name, filePath, signature, description);
 
-    //pInstance = new PluginInstance();
+    pInstance = new PluginInstance();
     return 1;
 }
 
@@ -84,7 +85,7 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID fromId, long inMsg, void*)
     printDebugString("ENTRYP|XPluginReceiveMessage(fromId=[%d|%s], inMsg=[%ld])\n", fromId, name, inMsg);
     if (inMsg == XPLM_MSG_AIRPORT_LOADED)
     {
-        //pInstance->notifyAirportLoaded();
+        pInstance->notifyAirportLoaded();
     }
 
 //    DataRef<double> userAircraftLatitude("sim/flightmodel/position/latitude", PPL::ReadOnly);
@@ -103,11 +104,11 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID fromId, long inMsg, void*)
 PLUGIN_API void XPluginDisable(void)
 {
     XPLMDebugString("ENTRYP|XPluginDisable\n");
-    // if (pInstance)
-    // {
-    //     delete pInstance;
-    //     pInstance = nullptr;
-    // }
+     if (pInstance)
+     {
+         delete pInstance;
+         pInstance = nullptr;
+     }
 }
 
 PLUGIN_API void	XPluginStop(void)

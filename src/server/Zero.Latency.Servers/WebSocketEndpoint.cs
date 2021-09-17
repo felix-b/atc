@@ -31,6 +31,7 @@ namespace Zero.Latency.Servers
             await _socketAcceptor.DisposeAsync();
             Console.WriteLine("WebSocketEndpoint.DisposeAsync:1");
             await _host.StopAsync(TimeSpan.FromSeconds(10));
+            _host.Dispose();
             Console.WriteLine("WebSocketEndpoint.DisposeAsync:2");
         }
 

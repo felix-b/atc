@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security;
-using System.Threading.Tasks;
 using Atc.Data.Primitives;
+using Atc.Speech.Abstractions;
 using Atc.World;
 using AtcProto;
 using ProtoBuf.WellKnownTypes;
@@ -15,11 +15,13 @@ namespace Atc.Server
     {
         private readonly RuntimeWorld _world;
         private readonly ILogger _logger;
+        private readonly TempMockLlhzRadio _tempMockRadio;//TODO: temporary; remove
 
-        public WorldService(RuntimeWorld world, ILogger logger)
+        public WorldService(RuntimeWorld world, ILogger logger, TempMockLlhzRadio tempMockRadio)
         {
             _world = world;
             _logger = logger;
+            _tempMockRadio = tempMockRadio;
         }
 
         [PayloadCase(ClientToServer.PayloadOneofCase.connect)]
@@ -109,6 +111,50 @@ namespace Atc.Server
         public void CancelTrafficQuery(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
         {
             connection.DisposeObserver(message.cancel_traffic_query.CancellationKey);
+        }
+
+        [PayloadCase(ClientToServer.PayloadOneofCase.user_acquire_aircraft)]
+        public void UserAcquireAircraft(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
+        {
+            var request = message.user_acquire_aircraft;
+            
+            //TODO - implement the logic
+            connection.FireMessage(new ServerToClient {
+                reply_user_acquire_aircraft = new ServerToClient.ReplyUserAcquireAircraft {
+                    AircraftId = request.AircraftId,
+                    Success = true
+                }
+            });
+        }
+
+        [PayloadCase(ClientToServer.PayloadOneofCase.user_update_aircraft_situation)]
+        public void UserUpdateAircraftSituation(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
+        {
+            //TODO - implement the logic
+        }
+
+        [PayloadCase(ClientToServer.PayloadOneofCase.user_release_aircraft)]
+        public void UserReleaseAircraft(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
+        {
+            //TODO - implement the logic
+        }
+
+        //TODO: temporary; remove
+        [PayloadCase(ClientToServer.PayloadOneofCase.user_ptt_pressed)]
+        public void UserPttPressed(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
+        {
+            Console.WriteLine("WorldService::UserPttPressed");
+            var request = message.user_ptt_pressed;
+            _tempMockRadio.PttPushed((int)request.FrequencyKhz);
+        }
+
+        //TODO: temporary; remove
+        [PayloadCase(ClientToServer.PayloadOneofCase.user_ptt_released)]
+        public void UserPttReleased(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
+        {
+            Console.WriteLine("WorldService::UserPttReleased");
+            var request = message.user_ptt_released;
+            _tempMockRadio.PttReleased((int)request.FrequencyKhz);
         }
 
         private void ValidateAuthentication(IDeferredConnectionContext<ServerToClient> connection)

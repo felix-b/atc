@@ -18,6 +18,7 @@ const appServices: AppServices = {
     trafficService,
 };
 
+(window as any).appServices = appServices; //TODO: add correct typing
 
 worldService.onOpen(() => {
     setTimeout(() => {

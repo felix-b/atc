@@ -13,23 +13,23 @@ ENDIF()
 SET(XPLANE_INCLUDES_PATH "${ATC_LIBS_PATH}/XPSDK/CHeaders/" CACHE STRING PATH)
 
 IF(APPLE)
-	FIND_LIBRARY(XPLM_LIBRARY XPLM "${XPLANE_LIBRARY_PATH}")
-	FIND_LIBRARY(XPWIDGETS_LIBRARY XPWidgets "${XPLANE_LIBRARY_PATH}")
-	add_library(xplm STATIC IMPORTED GLOBAL)
-	add_library(xpwidgets STATIC IMPORTED GLOBAL)
-	SET_PROPERTY(TARGET xplm PROPERTY IMPORTED_LOCATION "${XPLM_LIBRARY}")
-	SET_PROPERTY(TARGET xpwidgets PROPERTY IMPORTED_LOCATION "${XPWIDGETS_LIBRARY}")
+    FIND_LIBRARY(XPLM_LIBRARY XPLM "${XPLANE_LIBRARY_PATH}")
+    FIND_LIBRARY(XPWIDGETS_LIBRARY XPWidgets "${XPLANE_LIBRARY_PATH}")
+    add_library(xplm STATIC IMPORTED GLOBAL)
+    add_library(xpwidgets STATIC IMPORTED GLOBAL)
+    SET_PROPERTY(TARGET xplm PROPERTY IMPORTED_LOCATION "${XPLM_LIBRARY}")
+    SET_PROPERTY(TARGET xpwidgets PROPERTY IMPORTED_LOCATION "${XPWIDGETS_LIBRARY}")
 ELSEIF(WIN32)
-	FIND_LIBRARY(XPLM_LIBRARY XPLM_64 "${XPLANE_LIBRARY_PATH}")
-	FIND_LIBRARY(XPWIDGETS_LIBRARY XPWidgets_64 "${XPLANE_LIBRARY_PATH}")
-	add_library(xplm SHARED IMPORTED GLOBAL)
-	add_library(xpwidgets SHARED IMPORTED GLOBAL)
-	SET_PROPERTY(TARGET xplm PROPERTY IMPORTED_IMPLIB "${XPLM_LIBRARY}")
-	SET_PROPERTY(TARGET xpwidgets PROPERTY IMPORTED_IMPLIB "${XPWIDGETS_LIBRARY}")
+    FIND_LIBRARY(XPLM_LIBRARY XPLM_64 "${XPLANE_LIBRARY_PATH}")
+    FIND_LIBRARY(XPWIDGETS_LIBRARY XPWidgets_64 "${XPLANE_LIBRARY_PATH}")
+    add_library(xplm SHARED IMPORTED GLOBAL)
+    add_library(xpwidgets SHARED IMPORTED GLOBAL)
+    SET_PROPERTY(TARGET xplm PROPERTY IMPORTED_IMPLIB "${XPLM_LIBRARY}")
+    SET_PROPERTY(TARGET xpwidgets PROPERTY IMPORTED_IMPLIB "${XPWIDGETS_LIBRARY}")
 ELSEIF(UNIX)
-	message(STATUS linux target made)
-	add_library(xplm INTERFACE)
-	add_library(xpwidgets INTERFACE)
+    message(STATUS linux target made)
+    add_library(xplm INTERFACE)
+    add_library(xpwidgets INTERFACE)
 ENDIF()
 
 message("XPLM_LIBRARY" = ${XPLM_LIBRARY})
@@ -43,7 +43,7 @@ message("XPWIDGETS_LIBRARY" = ${XPWIDGETS_LIBRARY})
 #SET_PROPERTY(TARGET xplm APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ATC_LIBS_PATH}/XPSDK/CHeaders/XPLM" "${ATC_LIBS_PATH}/XPSDK/CHeaders/Wrappers")
 #SET_PROPERTY(TARGET xpwidgets APPEND PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ATC_LIBS_PATH}/XPSDK/CHeaders/XPLM" "${ATC_LIBS_PATH}/XPSDK/CHeaders/Widgets" "${ATC_LIBS_PATH}/XPSDK/CHeaders/Wrappers")
 
-FUNCTION(add_xplane_sdk_definitions library_name library_version) 
+FUNCTION(add_xplane_sdk_definitions library_name library_version)
     IF(APPLE)
         TARGET_COMPILE_DEFINITIONS(${library_name} PUBLIC -DAPL=1 -DIBM=0 -DLIN=0)
     ELSEIF(UNIX)
@@ -103,46 +103,67 @@ FUNCTION(add_xplane_plugin library_name library_version ...)
         SET_PROPERTY(TARGET ${library_name} APPEND_STRING PROPERTY LINK_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -rdynamic -nodefaultlibs -undefined_warning -fPIC -fvisibility=hidden")
     ENDIF()
 
-	TARGET_LINK_LIBRARIES(${library_name} PUBLIC ${XPLM_LIBRARY} ${XPWIDGETS_LIBRARY})
+    TARGET_LINK_LIBRARIES(${library_name} PUBLIC ${XPLM_LIBRARY} ${XPWIDGETS_LIBRARY})
     TARGET_INCLUDE_DIRECTORIES(${library_name} PUBLIC "${XPLANE_INCLUDES_PATH}/XPLM" "${XPLANE_INCLUDES_PATH}/Widgets" "${XPLANE_INCLUDES_PATH}/Wrappers")
 ENDFUNCTION(add_xplane_plugin)
 
 add_xplane_plugin(pluginxp 301
-    utils.h
-    utils.cpp
-    entryPoint.cpp
-)
+        proto/atc.pb.h
+        proto/atc.pb.cc
+        utils.h
+        utils.cpp
+        serviceClient.hpp
+        pluginInstance.hpp
+        entryPoint.cpp
+        )
 
 set_property(TARGET pluginxp PROPERTY CXX_STANDARD 14)
 
-target_include_directories(pluginxp PUBLIC 
-    ${ATC_LIBS_PATH}/PPL/src
-    ${ATC_LIBS_PATH}/XPMP2/inc
-    ${ATC_LIBS_PATH}/concurrentqueue
-    ../include
-)
+target_link_libraries (pluginxp LINK_PUBLIC ${PROTOBUF_LIBRARY})
+
+if (WIN32)
+    #find_file(WS2_DLL NAMES ws2_32.dll PATHS "C:\\Windows\\System32")
+    find_file(MSWSOCK_DLL NAMES mswsock.dll PATHS "C:\\Windows\\System32")
+    target_link_libraries (pluginxp LINK_PUBLIC ${MSWSOCK_DLL})
+endif()
+
+if (WIN32)
+    target_compile_definitions (pluginxp PUBLIC _WEBSOCKETPP_CPP11_THREAD_ ASIO_STANDALONE)
+endif()
+
+target_include_directories(pluginxp PUBLIC
+        ${ATC_LIBS_PATH}/PPL/src
+        ${ATC_LIBS_PATH}/XPMP2/inc
+        ${ATC_LIBS_PATH}/concurrentqueue
+        ${ATC_LIBS_PATH}/websocketpp
+        ${ATC_LIBS_PATH}/asio/asio/include
+        ${ATC_LIBS_PATH}/protobuf/include
+        proto
+        ../include
+        )
 
 target_link_libraries(libXPMP2 PUBLIC INTERFACE ${XPLM_LIBRARY} ${XPWIDGETS_LIBRARY})
 
 if (APPLE)
-#    find_library(IOKIT_LIBRARY IOKit)
-#    find_library(CORE_FOUNDATION_LIBRARY CoreFoundation)
-#    find_library(COCOA_LIBRARY Cocoa)
+    #    find_library(IOKIT_LIBRARY IOKit)
+    #    find_library(CORE_FOUNDATION_LIBRARY CoreFoundation)
+    #    find_library(COCOA_LIBRARY Cocoa)
 
     target_link_libraries(pluginxp PUBLIC
-        ${PPL_LIBRARY}
-        ${XPMP2_LIBRARY}
-#        ${IOKIT_LIBRARY}
-#        ${CORE_FOUNDATION_LIBRARY} 
-#        ${COCOA_LIBRARY} 
-#        ${OpenGL_LIBRARY} 
-    )
+            ${PPL_LIBRARY}
+            ${XPMP2_LIBRARY}
+            #        ${IOKIT_LIBRARY}
+            #        ${CORE_FOUNDATION_LIBRARY}
+            #        ${COCOA_LIBRARY}
+            #        ${OpenGL_LIBRARY}
+            )
 else()
-    target_link_libraries(pluginxp PUBLIC 
-        ${PPL_LIBRARY}
-        libXPMP2 #${XPMP2_LIBRARY}
-    )
+    target_link_libraries(pluginxp PUBLIC
+            ${PPL_LIBRARY}
+            libXPMP2 #${XPMP2_LIBRARY}
+            )
 endif ()
+
 
 if (WIN32)
     target_link_libraries(pluginxp PUBLIC ws2_32 wsock32 iphlpapi)

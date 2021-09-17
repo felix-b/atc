@@ -30,7 +30,28 @@ message ClientToServer {
   message RemoveAircraft {
     uint32 aircraft_id = 1;
   }
-  
+
+  message UserAcquireAircraft {
+    uint32 aircraft_id = 1;
+  }
+
+  message UserUpdateAircraftSituation {
+    uint32 aircraft_id = 1;
+    AircraftMessage.Situation situation = 2;
+  }
+
+  message UserReleaseAircraft {
+    uint32 aircraft_id = 1;
+  }
+
+  message UserPttPressed {
+    uint32 frequency_khz = 1;
+  }
+
+  message UserPttReleased {
+    uint32 frequency_khz = 1;
+  }
+
   message QueryTraffic {
     double min_lat = 1;
     double min_lon = 2;
@@ -54,6 +75,11 @@ message ClientToServer {
     QueryTaxiPath query_taxi_path = 106;
     QueryTraffic query_traffic = 107;
     CancelTrafficQuery cancel_traffic_query = 108;
+    UserAcquireAircraft user_acquire_aircraft = 109;
+    UserUpdateAircraftSituation user_update_aircraft_situation = 110;
+    UserReleaseAircraft user_release_aircraft = 111;
+    UserPttPressed user_ptt_pressed = 112;
+    UserPttReleased user_ptt_released = 113;
   }
 }
 
@@ -99,6 +125,11 @@ message ServerToClient {
     uint32 aircraft_id = 1;
   }
   
+  message ReplyUserAcquireAircraft {
+    uint32 aircraft_id = 1;
+    bool success = 2;
+  }
+  
   uint64 id = 2;
   uint64 reply_to_request_id = 3;
   google.protobuf.Timestamp sent_at = 4;
@@ -114,6 +145,7 @@ message ServerToClient {
     NotifyAircraftCreated notify_aircraft_created = 201;
     NotifyAircraftSituationUpdated notify_aircraft_situation_updated = 202;
     NotifyAircraftRemoved notify_aircraft_removed = 203;
+    ReplyUserAcquireAircraft reply_user_acquire_aircraft = 204;
     FaultDeclined fault_declined = 3001;
     FaultNotFound fault_not_found = 3002;
   }
@@ -286,10 +318,11 @@ message AircraftMessage {
     bool landing_lights = 11;
     bool taxi_lights = 12;
     bool strobe_lights = 13;
-    int32 frequency_khz = 14;
-    string squawk = 15;
-    bool mode_c = 16;
-    bool mode_s = 17;
+    repeated int32 monitoring_frequency_khz = 14;
+    int32 transmitting_frequency_khz = 15;
+    string squawk = 16;
+    bool mode_c = 17;
+    bool mode_s = 18;
   }
   uint32 id = 1;
   string model_icao = 2;

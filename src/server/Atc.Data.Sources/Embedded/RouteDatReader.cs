@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Atc.Data.Traffic;
@@ -9,7 +10,7 @@ namespace Atc.Data.Sources.Embedded
     {
         public IEnumerable<ZRef<FlightRouteData>> ReadRouteDat(Stream input)
         {
-            throw new System.NotImplementedException();
+            return Array.Empty<ZRef<FlightRouteData>>();
         }
     }
 }

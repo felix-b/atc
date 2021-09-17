@@ -70,6 +70,8 @@ namespace Atc.Data.Compiler
 
             builder.RegisterType<RegionDatReader>().InstancePerDependency();
             builder.RegisterType<AirlineDatReader>().InstancePerDependency();
+            builder.RegisterType<TypeJsonReader>().InstancePerDependency();
+            builder.RegisterType<RouteDatReader>().InstancePerDependency();
 
             return builder.Build();
         }

@@ -35,6 +35,8 @@ namespace Zero.Latency.Servers
             _socket = socket;
             _cancelByHost = cancelByHost;
             _cancelForAnyReason = CancellationTokenSource.CreateLinkedTokenSource(cancelByHost);
+
+            Console.WriteLine($">>>--->>-- SOCKET OPEN: client connection id[{_id}] --<<---<<<");
         }
 
         public async ValueTask DisposeAsync()
@@ -54,6 +56,7 @@ namespace Zero.Latency.Servers
             }
             
             _socket.Dispose();
+            Console.WriteLine($">>>--->>-- SOCKET CLOSE: client connection id[{_id}] --<<---<<<");
         }
 
         public Task RunReceiveLoop()

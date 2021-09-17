@@ -54,11 +54,12 @@ namespace Atc.Data.Compiler
             using var scope = AtcBufferContext.CreateEmpty(out var context);
             using var output = File.Create(args.DataCacheFilePath);
 
+            
             LoadTypes(args);
             LoadRegions(args);
             LoadAirlines(args);
             LoadAirports(args);
-            LoadRoutes(args);
+            //LoadRoutes(args);
 
             ((BufferContext)context).WriteTo(output);
             output.Flush();
@@ -69,22 +70,39 @@ namespace Atc.Data.Compiler
 
         private void LoadTypes(InputArguments args)
         {
-            var jsonFilePath = Path.Combine(args.AtcFolderPath, "type.json");
-            _logger.LoadingTypes(jsonFile: jsonFilePath);
+            var context = BufferContext.Current;
+            ref var worldData = ref context.GetWorldData();
 
-            ref var worldData = ref BufferContext.Current.GetWorldData();
+            var dummyFlightModelRef = context.AllocateRecord(new FlightModelData());
 
-            var reader = _typeJsonReaderFactory();
-            using var file = File.OpenRead(jsonFilePath);
-            var allTypeRefs = reader.ReadTypeJson(file);
+            worldData.TypeByIcao.Add(
+                context.AllocateString("B738"),
+                context.AllocateRecord(new AircraftTypeData() {
+                    Icao = context.AllocateString("B738"),
+                    Name = context.AllocateString("Boeing 738-800"),
+                    Callsign = context.AllocateString("B738"),
+                    Category = AircraftCategories.Jet,
+                    Operations = OperationTypes.Airline | OperationTypes.Cargo,
+                    FlightModel = dummyFlightModelRef,
+                })
+            );
             
-            foreach (var typeRef in allTypeRefs)
-            {
-                if (!worldData.TypeByIcao.TryAdd(typeRef.Get().Icao, typeRef))
-                {
-                    _logger.DuplicateTypeIcao(icao: typeRef.Get().Icao.GetValueNonCached());
-                }
-            }
+            // var jsonFilePath = Path.Combine(args.AtcFolderPath, "type.json");
+            // _logger.LoadingTypes(jsonFile: jsonFilePath);
+            //
+            // ref var worldData = ref BufferContext.Current.GetWorldData();
+            //
+            // var reader = _typeJsonReaderFactory();
+            // using var file = File.OpenRead(jsonFilePath);
+            // var allTypeRefs = reader.ReadTypeJson(file);
+            //
+            // foreach (var typeRef in allTypeRefs)
+            // {
+            //     if (!worldData.TypeByIcao.TryAdd(typeRef.Get().Icao, typeRef))
+            //     {
+            //         _logger.DuplicateTypeIcao(icao: typeRef.Get().Icao.GetValueNonCached());
+            //     }
+            // }
         }
 
         private void LoadRegions(InputArguments args)

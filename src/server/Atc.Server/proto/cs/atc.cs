@@ -96,6 +96,51 @@ namespace AtcProto
         public bool ShouldSerializecancel_traffic_query() => __pbn__payload.Is(108);
         public void Resetcancel_traffic_query() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 108);
 
+        [global::ProtoBuf.ProtoMember(109)]
+        public UserAcquireAircraft user_acquire_aircraft
+        {
+            get => __pbn__payload.Is(109) ? ((UserAcquireAircraft)__pbn__payload.Object) : default;
+            set => __pbn__payload = new global::ProtoBuf.DiscriminatedUnionObject(109, value);
+        }
+        public bool ShouldSerializeuser_acquire_aircraft() => __pbn__payload.Is(109);
+        public void Resetuser_acquire_aircraft() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 109);
+
+        [global::ProtoBuf.ProtoMember(110)]
+        public UserUpdateAircraftSituation user_update_aircraft_situation
+        {
+            get => __pbn__payload.Is(110) ? ((UserUpdateAircraftSituation)__pbn__payload.Object) : default;
+            set => __pbn__payload = new global::ProtoBuf.DiscriminatedUnionObject(110, value);
+        }
+        public bool ShouldSerializeuser_update_aircraft_situation() => __pbn__payload.Is(110);
+        public void Resetuser_update_aircraft_situation() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 110);
+
+        [global::ProtoBuf.ProtoMember(111)]
+        public UserReleaseAircraft user_release_aircraft
+        {
+            get => __pbn__payload.Is(111) ? ((UserReleaseAircraft)__pbn__payload.Object) : default;
+            set => __pbn__payload = new global::ProtoBuf.DiscriminatedUnionObject(111, value);
+        }
+        public bool ShouldSerializeuser_release_aircraft() => __pbn__payload.Is(111);
+        public void Resetuser_release_aircraft() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 111);
+
+        [global::ProtoBuf.ProtoMember(112)]
+        public UserPttPressed user_ptt_pressed
+        {
+            get => __pbn__payload.Is(112) ? ((UserPttPressed)__pbn__payload.Object) : default;
+            set => __pbn__payload = new global::ProtoBuf.DiscriminatedUnionObject(112, value);
+        }
+        public bool ShouldSerializeuser_ptt_pressed() => __pbn__payload.Is(112);
+        public void Resetuser_ptt_pressed() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 112);
+
+        [global::ProtoBuf.ProtoMember(113)]
+        public UserPttReleased user_ptt_released
+        {
+            get => __pbn__payload.Is(113) ? ((UserPttReleased)__pbn__payload.Object) : default;
+            set => __pbn__payload = new global::ProtoBuf.DiscriminatedUnionObject(113, value);
+        }
+        public bool ShouldSerializeuser_ptt_released() => __pbn__payload.Is(113);
+        public void Resetuser_ptt_released() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 113);
+
         public PayloadOneofCase PayloadCase => (PayloadOneofCase)__pbn__payload.Discriminator;
 
         public enum PayloadOneofCase
@@ -109,6 +154,11 @@ namespace AtcProto
             query_taxi_path = 106,
             query_traffic = 107,
             cancel_traffic_query = 108,
+            user_acquire_aircraft = 109,
+            user_update_aircraft_situation = 110,
+            user_release_aircraft = 111,
+            user_ptt_pressed = 112,
+            user_ptt_released = 113,
         }
 
         [global::ProtoBuf.ProtoContract()]
@@ -196,6 +246,69 @@ namespace AtcProto
 
             [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
             public uint AircraftId { get; set; }
+
+        }
+
+        [global::ProtoBuf.ProtoContract()]
+        public partial class UserAcquireAircraft : global::ProtoBuf.IExtensible
+        {
+            private global::ProtoBuf.IExtension __pbn__extensionData;
+            global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+                => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+            [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
+            public uint AircraftId { get; set; }
+
+        }
+
+        [global::ProtoBuf.ProtoContract()]
+        public partial class UserUpdateAircraftSituation : global::ProtoBuf.IExtensible
+        {
+            private global::ProtoBuf.IExtension __pbn__extensionData;
+            global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+                => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+            [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
+            public uint AircraftId { get; set; }
+
+            [global::ProtoBuf.ProtoMember(2, Name = @"situation")]
+            public AircraftMessage.Situation Situation { get; set; }
+
+        }
+
+        [global::ProtoBuf.ProtoContract()]
+        public partial class UserReleaseAircraft : global::ProtoBuf.IExtensible
+        {
+            private global::ProtoBuf.IExtension __pbn__extensionData;
+            global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+                => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+            [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
+            public uint AircraftId { get; set; }
+
+        }
+
+        [global::ProtoBuf.ProtoContract()]
+        public partial class UserPttPressed : global::ProtoBuf.IExtensible
+        {
+            private global::ProtoBuf.IExtension __pbn__extensionData;
+            global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+                => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+            [global::ProtoBuf.ProtoMember(1, Name = @"frequency_khz")]
+            public uint FrequencyKhz { get; set; }
+
+        }
+
+        [global::ProtoBuf.ProtoContract()]
+        public partial class UserPttReleased : global::ProtoBuf.IExtensible
+        {
+            private global::ProtoBuf.IExtension __pbn__extensionData;
+            global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+                => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+            [global::ProtoBuf.ProtoMember(1, Name = @"frequency_khz")]
+            public uint FrequencyKhz { get; set; }
 
         }
 
@@ -335,6 +448,15 @@ namespace AtcProto
         public bool ShouldSerializenotify_aircraft_removed() => __pbn__payload.Is(203);
         public void Resetnotify_aircraft_removed() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 203);
 
+        [global::ProtoBuf.ProtoMember(204)]
+        public ReplyUserAcquireAircraft reply_user_acquire_aircraft
+        {
+            get => __pbn__payload.Is(204) ? ((ReplyUserAcquireAircraft)__pbn__payload.Object) : default;
+            set => __pbn__payload = new global::ProtoBuf.DiscriminatedUnionObject(204, value);
+        }
+        public bool ShouldSerializereply_user_acquire_aircraft() => __pbn__payload.Is(204);
+        public void Resetreply_user_acquire_aircraft() => global::ProtoBuf.DiscriminatedUnionObject.Reset(ref __pbn__payload, 204);
+
         [global::ProtoBuf.ProtoMember(3001)]
         public FaultDeclined fault_declined
         {
@@ -366,6 +488,7 @@ namespace AtcProto
             notify_aircraft_created = 201,
             notify_aircraft_situation_updated = 202,
             notify_aircraft_removed = 203,
+            reply_user_acquire_aircraft = 204,
             fault_declined = 3001,
             fault_not_found = 3002,
         }
@@ -511,6 +634,21 @@ namespace AtcProto
 
             [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
             public uint AircraftId { get; set; }
+
+        }
+
+        [global::ProtoBuf.ProtoContract()]
+        public partial class ReplyUserAcquireAircraft : global::ProtoBuf.IExtensible
+        {
+            private global::ProtoBuf.IExtension __pbn__extensionData;
+            global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+                => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+            [global::ProtoBuf.ProtoMember(1, Name = @"aircraft_id")]
+            public uint AircraftId { get; set; }
+
+            [global::ProtoBuf.ProtoMember(2, Name = @"success")]
+            public bool Success { get; set; }
 
         }
 
@@ -878,17 +1016,20 @@ namespace AtcProto
             [global::ProtoBuf.ProtoMember(13, Name = @"strobe_lights")]
             public bool StrobeLights { get; set; }
 
-            [global::ProtoBuf.ProtoMember(14, Name = @"frequency_khz")]
-            public int FrequencyKhz { get; set; }
+            [global::ProtoBuf.ProtoMember(14, Name = @"monitoring_frequency_khz", IsPacked = true)]
+            public int[] MonitoringFrequencyKhzs { get; set; }
 
-            [global::ProtoBuf.ProtoMember(15, Name = @"squawk")]
+            [global::ProtoBuf.ProtoMember(15, Name = @"transmitting_frequency_khz")]
+            public int TransmittingFrequencyKhz { get; set; }
+
+            [global::ProtoBuf.ProtoMember(16, Name = @"squawk")]
             [global::System.ComponentModel.DefaultValue("")]
             public string Squawk { get; set; } = "";
 
-            [global::ProtoBuf.ProtoMember(16, Name = @"mode_c")]
+            [global::ProtoBuf.ProtoMember(17, Name = @"mode_c")]
             public bool ModeC { get; set; }
 
-            [global::ProtoBuf.ProtoMember(17, Name = @"mode_s")]
+            [global::ProtoBuf.ProtoMember(18, Name = @"mode_s")]
             public bool ModeS { get; set; }
 
         }

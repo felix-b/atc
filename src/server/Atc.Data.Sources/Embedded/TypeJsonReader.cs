@@ -18,11 +18,13 @@ namespace Atc.Data.Sources.Embedded
 
         public IEnumerable<ZRef<AircraftTypeData>> ReadTypeJson(Stream input)
         {
-            using var reader = new StreamReader(input, leaveOpen: true);
-            var json = reader.ReadToEnd();
-            var deserialized = JsonSerializer.Deserialize<IList<TypeObject>>(json);
-
-            throw new NotImplementedException();
+            return Array.Empty<ZRef<AircraftTypeData>>();
+            
+            // using var reader = new StreamReader(input, leaveOpen: true);
+            // var json = reader.ReadToEnd();
+            // var deserialized = JsonSerializer.Deserialize<IList<TypeObject>>(json);
+            //
+            // throw new NotImplementedException();
         }
 
         public class TypeObject
