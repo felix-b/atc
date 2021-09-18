@@ -38,16 +38,20 @@ class ServiceClient
 {
 private:
     typedef websocketpp::client<websocketpp::config::asio_client> Endpoint;
+public:
+    typedef function<void(const atc_proto::ServerToClient &envelope)> MessageHandler;
 private:
     Endpoint m_endpoint;
     Endpoint::connection_ptr m_connection;
     //shared_ptr<thread> m_thread;
     string m_url;
     atomic<bool> m_stopping;
+    MessageHandler m_handler;
 public:
-    ServiceClient(const string& url) :
+    ServiceClient(const string& url, MessageHandler handler) :
         m_url(url),
-        m_stopping(false)
+        m_stopping(false),
+        m_handler(handler)
     {
         m_endpoint.set_access_channels(websocketpp::log::alevel::all);
         m_endpoint.clear_access_channels(websocketpp::log::alevel::frame_payload);
@@ -127,6 +131,10 @@ public:
 
         m_connection->set_close_handshake_timeout(500);
 
+        m_connection->set_message_handler([this](websocketpp::connection_hdl hdl, Endpoint::message_ptr msg) {
+            handleIncomingMessage(hdl, msg);
+        });
+
         printDebugString("SVCLNT|CONNECT: connecting to server");
 
         m_endpoint.connect(m_connection);
@@ -151,7 +159,32 @@ public:
             m_connection.reset();
         }
 
-        printDebugString("SRVHST|STOPPING: beginGracefulShutdown completed");
+        printDebugString("SVCLNT|STOPPING: beginGracefulShutdown completed");
+    }
+
+private:
+
+    void handleIncomingMessage(websocketpp::connection_hdl hdl, Endpoint::message_ptr msg)
+    {
+        if (msg->get_opcode() != websocketpp::frame::opcode::binary)
+        {
+            printDebugString("SVCLNT|RECV WARNING: not binary format, ignored");
+            return;
+        }
+
+        const string &dataOnWire = msg->get_payload();
+        printDebugString("SVCLNT|RECV size[%llu]", dataOnWire.size());
+
+        atc_proto::ServerToClient envelope;
+        if (!envelope.ParseFromString(dataOnWire))
+        {
+            printDebugString("SVCLNT|RECV ERROR: failed to parse");
+            return;
+        }
+
+        printDebugString("SVCLNT|RECV SUCCESS payload case[%d]", envelope.payload_case());
+
+        m_handler(envelope);
     }
 };
 
@@ -189,7 +222,7 @@ public:
         return (m_state != ControllerState::Stopped);
     }
 
-    void start(int listenPort)
+    void start(int serverPort, ServiceClient::MessageHandler handler)
     {
         printDebugString("SVCLNT|CTRL: controller starting");
 
@@ -201,8 +234,8 @@ public:
         }
 
         stringstream url;
-        url << "http://localhost:" << listenPort << "/ws";
-        m_client.reset(new ServiceClient(url.str()));
+        url << "http://localhost:" << serverPort << "/ws";
+        m_client.reset(new ServiceClient(url.str(), handler));
 
         m_serverRunCompletion = std::async(std::launch::async, [this] {
             m_client->runOnCurrentThread();

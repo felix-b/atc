@@ -49,7 +49,7 @@ struct TableStruct_atc_2eproto {
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
   static const ::PROTOBUF_NAMESPACE_ID::internal::AuxiliaryParseTableField aux[]
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
-  static const ::PROTOBUF_NAMESPACE_ID::internal::ParseTable schema[42]
+  static const ::PROTOBUF_NAMESPACE_ID::internal::ParseTable schema[45]
     PROTOBUF_SECTION_VARIABLE(protodesc_cold);
   static const ::PROTOBUF_NAMESPACE_ID::internal::FieldMetadata field_metadata[];
   static const ::PROTOBUF_NAMESPACE_ID::internal::SerializationTable serialization_table[];
@@ -69,6 +69,9 @@ extern AirportMessageDefaultTypeInternal _AirportMessage_default_instance_;
 class AirspaceGeometryMessage;
 class AirspaceGeometryMessageDefaultTypeInternal;
 extern AirspaceGeometryMessageDefaultTypeInternal _AirspaceGeometryMessage_default_instance_;
+class AtisMessage;
+class AtisMessageDefaultTypeInternal;
+extern AtisMessageDefaultTypeInternal _AtisMessage_default_instance_;
 class AttitudeMessage;
 class AttitudeMessageDefaultTypeInternal;
 extern AttitudeMessageDefaultTypeInternal _AttitudeMessage_default_instance_;
@@ -183,12 +186,19 @@ extern TaxiPathMessageDefaultTypeInternal _TaxiPathMessage_default_instance_;
 class Vector3dMessage;
 class Vector3dMessageDefaultTypeInternal;
 extern Vector3dMessageDefaultTypeInternal _Vector3dMessage_default_instance_;
+class WeatherMessage;
+class WeatherMessageDefaultTypeInternal;
+extern WeatherMessageDefaultTypeInternal _WeatherMessage_default_instance_;
+class WeatherMessage_CloudLayer;
+class WeatherMessage_CloudLayerDefaultTypeInternal;
+extern WeatherMessage_CloudLayerDefaultTypeInternal _WeatherMessage_CloudLayer_default_instance_;
 }  // namespace atc_proto
 PROTOBUF_NAMESPACE_OPEN
 template<> ::atc_proto::AircraftMessage* Arena::CreateMaybeMessage<::atc_proto::AircraftMessage>(Arena*);
 template<> ::atc_proto::AircraftMessage_Situation* Arena::CreateMaybeMessage<::atc_proto::AircraftMessage_Situation>(Arena*);
 template<> ::atc_proto::AirportMessage* Arena::CreateMaybeMessage<::atc_proto::AirportMessage>(Arena*);
 template<> ::atc_proto::AirspaceGeometryMessage* Arena::CreateMaybeMessage<::atc_proto::AirspaceGeometryMessage>(Arena*);
+template<> ::atc_proto::AtisMessage* Arena::CreateMaybeMessage<::atc_proto::AtisMessage>(Arena*);
 template<> ::atc_proto::AttitudeMessage* Arena::CreateMaybeMessage<::atc_proto::AttitudeMessage>(Arena*);
 template<> ::atc_proto::ClientToServer* Arena::CreateMaybeMessage<::atc_proto::ClientToServer>(Arena*);
 template<> ::atc_proto::ClientToServer_CancelTrafficQuery* Arena::CreateMaybeMessage<::atc_proto::ClientToServer_CancelTrafficQuery>(Arena*);
@@ -227,6 +237,8 @@ template<> ::atc_proto::TaxiEdgeMessage_ActiveZoneMatrix* Arena::CreateMaybeMess
 template<> ::atc_proto::TaxiNodeMessage* Arena::CreateMaybeMessage<::atc_proto::TaxiNodeMessage>(Arena*);
 template<> ::atc_proto::TaxiPathMessage* Arena::CreateMaybeMessage<::atc_proto::TaxiPathMessage>(Arena*);
 template<> ::atc_proto::Vector3dMessage* Arena::CreateMaybeMessage<::atc_proto::Vector3dMessage>(Arena*);
+template<> ::atc_proto::WeatherMessage* Arena::CreateMaybeMessage<::atc_proto::WeatherMessage>(Arena*);
+template<> ::atc_proto::WeatherMessage_CloudLayer* Arena::CreateMaybeMessage<::atc_proto::WeatherMessage_CloudLayer>(Arena*);
 PROTOBUF_NAMESPACE_CLOSE
 namespace atc_proto {
 
@@ -370,6 +382,60 @@ inline bool TaxiEdgeType_Parse(
     ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, TaxiEdgeType* value) {
   return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<TaxiEdgeType>(
     TaxiEdgeType_descriptor(), name, value);
+}
+enum CloudCoverType : int {
+  CLOUD_COVER_SKC = 0,
+  CLOUD_COVER_FEW = 1,
+  CLOUD_COVER_SCT = 3,
+  CLOUD_COVER_BKN = 6,
+  CLOUD_COVER_OVC = 8,
+  CloudCoverType_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<::PROTOBUF_NAMESPACE_ID::int32>::min(),
+  CloudCoverType_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<::PROTOBUF_NAMESPACE_ID::int32>::max()
+};
+bool CloudCoverType_IsValid(int value);
+constexpr CloudCoverType CloudCoverType_MIN = CLOUD_COVER_SKC;
+constexpr CloudCoverType CloudCoverType_MAX = CLOUD_COVER_OVC;
+constexpr int CloudCoverType_ARRAYSIZE = CloudCoverType_MAX + 1;
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CloudCoverType_descriptor();
+template<typename T>
+inline const std::string& CloudCoverType_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, CloudCoverType>::value ||
+    ::std::is_integral<T>::value,
+    "Incorrect type passed to function CloudCoverType_Name.");
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    CloudCoverType_descriptor(), enum_t_value);
+}
+inline bool CloudCoverType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, CloudCoverType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<CloudCoverType>(
+    CloudCoverType_descriptor(), name, value);
+}
+enum CloudType : int {
+  CLOUD_TYPE_NOSIG = 0,
+  CLOUD_TYPE_TCU = 2,
+  CLOUD_TYPE_CB = 1,
+  CloudType_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<::PROTOBUF_NAMESPACE_ID::int32>::min(),
+  CloudType_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<::PROTOBUF_NAMESPACE_ID::int32>::max()
+};
+bool CloudType_IsValid(int value);
+constexpr CloudType CloudType_MIN = CLOUD_TYPE_NOSIG;
+constexpr CloudType CloudType_MAX = CLOUD_TYPE_TCU;
+constexpr int CloudType_ARRAYSIZE = CloudType_MAX + 1;
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CloudType_descriptor();
+template<typename T>
+inline const std::string& CloudType_Name(T enum_t_value) {
+  static_assert(::std::is_same<T, CloudType>::value ||
+    ::std::is_integral<T>::value,
+    "Incorrect type passed to function CloudType_Name.");
+  return ::PROTOBUF_NAMESPACE_ID::internal::NameOfEnum(
+    CloudType_descriptor(), enum_t_value);
+}
+inline bool CloudType_Parse(
+    ::PROTOBUF_NAMESPACE_ID::ConstStringParam name, CloudType* value) {
+  return ::PROTOBUF_NAMESPACE_ID::internal::ParseNamedEnum<CloudType>(
+    CloudType_descriptor(), name, value);
 }
 // ===================================================================
 
@@ -4437,9 +4503,45 @@ class ServerToClient_ReplyUserAcquireAircraft PROTOBUF_FINAL :
   // accessors -------------------------------------------------------
 
   enum : int {
+    kCallsignFieldNumber = 3,
+    kWeatherFieldNumber = 4,
     kAircraftIdFieldNumber = 1,
     kSuccessFieldNumber = 2,
   };
+  // string callsign = 3;
+  void clear_callsign();
+  const std::string& callsign() const;
+  void set_callsign(const std::string& value);
+  void set_callsign(std::string&& value);
+  void set_callsign(const char* value);
+  void set_callsign(const char* value, size_t size);
+  std::string* mutable_callsign();
+  std::string* release_callsign();
+  void set_allocated_callsign(std::string* callsign);
+  private:
+  const std::string& _internal_callsign() const;
+  void _internal_set_callsign(const std::string& value);
+  std::string* _internal_mutable_callsign();
+  public:
+
+  // .atc_proto.WeatherMessage weather = 4;
+  bool has_weather() const;
+  private:
+  bool _internal_has_weather() const;
+  public:
+  void clear_weather();
+  const ::atc_proto::WeatherMessage& weather() const;
+  ::atc_proto::WeatherMessage* release_weather();
+  ::atc_proto::WeatherMessage* mutable_weather();
+  void set_allocated_weather(::atc_proto::WeatherMessage* weather);
+  private:
+  const ::atc_proto::WeatherMessage& _internal_weather() const;
+  ::atc_proto::WeatherMessage* _internal_mutable_weather();
+  public:
+  void unsafe_arena_set_allocated_weather(
+      ::atc_proto::WeatherMessage* weather);
+  ::atc_proto::WeatherMessage* unsafe_arena_release_weather();
+
   // uint32 aircraft_id = 1;
   void clear_aircraft_id();
   ::PROTOBUF_NAMESPACE_ID::uint32 aircraft_id() const;
@@ -4465,6 +4567,8 @@ class ServerToClient_ReplyUserAcquireAircraft PROTOBUF_FINAL :
   template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
   typedef void InternalArenaConstructable_;
   typedef void DestructorSkippable_;
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr callsign_;
+  ::atc_proto::WeatherMessage* weather_;
   ::PROTOBUF_NAMESPACE_ID::uint32 aircraft_id_;
   bool success_;
   mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
@@ -7223,6 +7327,629 @@ class ParkingStandMessage PROTOBUF_FINAL :
 };
 // -------------------------------------------------------------------
 
+class AtisMessage PROTOBUF_FINAL :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:atc_proto.AtisMessage) */ {
+ public:
+  inline AtisMessage() : AtisMessage(nullptr) {}
+  virtual ~AtisMessage();
+
+  AtisMessage(const AtisMessage& from);
+  AtisMessage(AtisMessage&& from) noexcept
+    : AtisMessage() {
+    *this = ::std::move(from);
+  }
+
+  inline AtisMessage& operator=(const AtisMessage& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline AtisMessage& operator=(AtisMessage&& from) noexcept {
+    if (GetArena() == from.GetArena()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return GetMetadataStatic().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return GetMetadataStatic().reflection;
+  }
+  static const AtisMessage& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const AtisMessage* internal_default_instance() {
+    return reinterpret_cast<const AtisMessage*>(
+               &_AtisMessage_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    38;
+
+  friend void swap(AtisMessage& a, AtisMessage& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(AtisMessage* other) {
+    if (other == this) return;
+    if (GetArena() == other->GetArena()) {
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(AtisMessage* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline AtisMessage* New() const final {
+    return CreateMaybeMessage<AtisMessage>(nullptr);
+  }
+
+  AtisMessage* New(::PROTOBUF_NAMESPACE_ID::Arena* arena) const final {
+    return CreateMaybeMessage<AtisMessage>(arena);
+  }
+  void CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void CopyFrom(const AtisMessage& from);
+  void MergeFrom(const AtisMessage& from);
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::PROTOBUF_NAMESPACE_ID::uint8* _InternalSerialize(
+      ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _cached_size_.Get(); }
+
+  private:
+  inline void SharedCtor();
+  inline void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(AtisMessage* other);
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "atc_proto.AtisMessage";
+  }
+  protected:
+  explicit AtisMessage(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  private:
+  static void ArenaDtor(void* object);
+  inline void RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+  private:
+  static ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadataStatic() {
+    ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&::descriptor_table_atc_2eproto);
+    return ::descriptor_table_atc_2eproto.file_level_metadata[kIndexInFileMessages];
+  }
+
+  public:
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kActiveRunwaysDepartureFieldNumber = 4,
+    kActiveRunwaysArrivalFieldNumber = 5,
+    kAirportIcaoFieldNumber = 1,
+    kInformationFieldNumber = 2,
+    kWeatherFieldNumber = 3,
+    kClearanceFrequencyKhzFieldNumber = 6,
+  };
+  // repeated string active_runways_departure = 4;
+  int active_runways_departure_size() const;
+  private:
+  int _internal_active_runways_departure_size() const;
+  public:
+  void clear_active_runways_departure();
+  const std::string& active_runways_departure(int index) const;
+  std::string* mutable_active_runways_departure(int index);
+  void set_active_runways_departure(int index, const std::string& value);
+  void set_active_runways_departure(int index, std::string&& value);
+  void set_active_runways_departure(int index, const char* value);
+  void set_active_runways_departure(int index, const char* value, size_t size);
+  std::string* add_active_runways_departure();
+  void add_active_runways_departure(const std::string& value);
+  void add_active_runways_departure(std::string&& value);
+  void add_active_runways_departure(const char* value);
+  void add_active_runways_departure(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& active_runways_departure() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_active_runways_departure();
+  private:
+  const std::string& _internal_active_runways_departure(int index) const;
+  std::string* _internal_add_active_runways_departure();
+  public:
+
+  // repeated string active_runways_arrival = 5;
+  int active_runways_arrival_size() const;
+  private:
+  int _internal_active_runways_arrival_size() const;
+  public:
+  void clear_active_runways_arrival();
+  const std::string& active_runways_arrival(int index) const;
+  std::string* mutable_active_runways_arrival(int index);
+  void set_active_runways_arrival(int index, const std::string& value);
+  void set_active_runways_arrival(int index, std::string&& value);
+  void set_active_runways_arrival(int index, const char* value);
+  void set_active_runways_arrival(int index, const char* value, size_t size);
+  std::string* add_active_runways_arrival();
+  void add_active_runways_arrival(const std::string& value);
+  void add_active_runways_arrival(std::string&& value);
+  void add_active_runways_arrival(const char* value);
+  void add_active_runways_arrival(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& active_runways_arrival() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_active_runways_arrival();
+  private:
+  const std::string& _internal_active_runways_arrival(int index) const;
+  std::string* _internal_add_active_runways_arrival();
+  public:
+
+  // string airport_icao = 1;
+  void clear_airport_icao();
+  const std::string& airport_icao() const;
+  void set_airport_icao(const std::string& value);
+  void set_airport_icao(std::string&& value);
+  void set_airport_icao(const char* value);
+  void set_airport_icao(const char* value, size_t size);
+  std::string* mutable_airport_icao();
+  std::string* release_airport_icao();
+  void set_allocated_airport_icao(std::string* airport_icao);
+  private:
+  const std::string& _internal_airport_icao() const;
+  void _internal_set_airport_icao(const std::string& value);
+  std::string* _internal_mutable_airport_icao();
+  public:
+
+  // string information = 2;
+  void clear_information();
+  const std::string& information() const;
+  void set_information(const std::string& value);
+  void set_information(std::string&& value);
+  void set_information(const char* value);
+  void set_information(const char* value, size_t size);
+  std::string* mutable_information();
+  std::string* release_information();
+  void set_allocated_information(std::string* information);
+  private:
+  const std::string& _internal_information() const;
+  void _internal_set_information(const std::string& value);
+  std::string* _internal_mutable_information();
+  public:
+
+  // .atc_proto.WeatherMessage weather = 3;
+  bool has_weather() const;
+  private:
+  bool _internal_has_weather() const;
+  public:
+  void clear_weather();
+  const ::atc_proto::WeatherMessage& weather() const;
+  ::atc_proto::WeatherMessage* release_weather();
+  ::atc_proto::WeatherMessage* mutable_weather();
+  void set_allocated_weather(::atc_proto::WeatherMessage* weather);
+  private:
+  const ::atc_proto::WeatherMessage& _internal_weather() const;
+  ::atc_proto::WeatherMessage* _internal_mutable_weather();
+  public:
+  void unsafe_arena_set_allocated_weather(
+      ::atc_proto::WeatherMessage* weather);
+  ::atc_proto::WeatherMessage* unsafe_arena_release_weather();
+
+  // int32 clearance_frequency_khz = 6;
+  void clear_clearance_frequency_khz();
+  ::PROTOBUF_NAMESPACE_ID::int32 clearance_frequency_khz() const;
+  void set_clearance_frequency_khz(::PROTOBUF_NAMESPACE_ID::int32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_clearance_frequency_khz() const;
+  void _internal_set_clearance_frequency_khz(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:atc_proto.AtisMessage)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> active_runways_departure_;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> active_runways_arrival_;
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr airport_icao_;
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr information_;
+  ::atc_proto::WeatherMessage* weather_;
+  ::PROTOBUF_NAMESPACE_ID::int32 clearance_frequency_khz_;
+  mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  friend struct ::TableStruct_atc_2eproto;
+};
+// -------------------------------------------------------------------
+
+class WeatherMessage_CloudLayer PROTOBUF_FINAL :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:atc_proto.WeatherMessage.CloudLayer) */ {
+ public:
+  inline WeatherMessage_CloudLayer() : WeatherMessage_CloudLayer(nullptr) {}
+  virtual ~WeatherMessage_CloudLayer();
+
+  WeatherMessage_CloudLayer(const WeatherMessage_CloudLayer& from);
+  WeatherMessage_CloudLayer(WeatherMessage_CloudLayer&& from) noexcept
+    : WeatherMessage_CloudLayer() {
+    *this = ::std::move(from);
+  }
+
+  inline WeatherMessage_CloudLayer& operator=(const WeatherMessage_CloudLayer& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline WeatherMessage_CloudLayer& operator=(WeatherMessage_CloudLayer&& from) noexcept {
+    if (GetArena() == from.GetArena()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return GetMetadataStatic().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return GetMetadataStatic().reflection;
+  }
+  static const WeatherMessage_CloudLayer& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const WeatherMessage_CloudLayer* internal_default_instance() {
+    return reinterpret_cast<const WeatherMessage_CloudLayer*>(
+               &_WeatherMessage_CloudLayer_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    39;
+
+  friend void swap(WeatherMessage_CloudLayer& a, WeatherMessage_CloudLayer& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(WeatherMessage_CloudLayer* other) {
+    if (other == this) return;
+    if (GetArena() == other->GetArena()) {
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(WeatherMessage_CloudLayer* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline WeatherMessage_CloudLayer* New() const final {
+    return CreateMaybeMessage<WeatherMessage_CloudLayer>(nullptr);
+  }
+
+  WeatherMessage_CloudLayer* New(::PROTOBUF_NAMESPACE_ID::Arena* arena) const final {
+    return CreateMaybeMessage<WeatherMessage_CloudLayer>(arena);
+  }
+  void CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void CopyFrom(const WeatherMessage_CloudLayer& from);
+  void MergeFrom(const WeatherMessage_CloudLayer& from);
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::PROTOBUF_NAMESPACE_ID::uint8* _InternalSerialize(
+      ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _cached_size_.Get(); }
+
+  private:
+  inline void SharedCtor();
+  inline void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(WeatherMessage_CloudLayer* other);
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "atc_proto.WeatherMessage.CloudLayer";
+  }
+  protected:
+  explicit WeatherMessage_CloudLayer(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  private:
+  static void ArenaDtor(void* object);
+  inline void RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+  private:
+  static ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadataStatic() {
+    ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&::descriptor_table_atc_2eproto);
+    return ::descriptor_table_atc_2eproto.file_level_metadata[kIndexInFileMessages];
+  }
+
+  public:
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kTypeFieldNumber = 1,
+    kCoverFieldNumber = 2,
+    kBaseFeetAglFieldNumber = 3,
+  };
+  // .atc_proto.CloudType type = 1;
+  void clear_type();
+  ::atc_proto::CloudType type() const;
+  void set_type(::atc_proto::CloudType value);
+  private:
+  ::atc_proto::CloudType _internal_type() const;
+  void _internal_set_type(::atc_proto::CloudType value);
+  public:
+
+  // .atc_proto.CloudCoverType cover = 2;
+  void clear_cover();
+  ::atc_proto::CloudCoverType cover() const;
+  void set_cover(::atc_proto::CloudCoverType value);
+  private:
+  ::atc_proto::CloudCoverType _internal_cover() const;
+  void _internal_set_cover(::atc_proto::CloudCoverType value);
+  public:
+
+  // int32 base_feet_agl = 3;
+  void clear_base_feet_agl();
+  ::PROTOBUF_NAMESPACE_ID::int32 base_feet_agl() const;
+  void set_base_feet_agl(::PROTOBUF_NAMESPACE_ID::int32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_base_feet_agl() const;
+  void _internal_set_base_feet_agl(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:atc_proto.WeatherMessage.CloudLayer)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  int type_;
+  int cover_;
+  ::PROTOBUF_NAMESPACE_ID::int32 base_feet_agl_;
+  mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  friend struct ::TableStruct_atc_2eproto;
+};
+// -------------------------------------------------------------------
+
+class WeatherMessage PROTOBUF_FINAL :
+    public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:atc_proto.WeatherMessage) */ {
+ public:
+  inline WeatherMessage() : WeatherMessage(nullptr) {}
+  virtual ~WeatherMessage();
+
+  WeatherMessage(const WeatherMessage& from);
+  WeatherMessage(WeatherMessage&& from) noexcept
+    : WeatherMessage() {
+    *this = ::std::move(from);
+  }
+
+  inline WeatherMessage& operator=(const WeatherMessage& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  inline WeatherMessage& operator=(WeatherMessage&& from) noexcept {
+    if (GetArena() == from.GetArena()) {
+      if (this != &from) InternalSwap(&from);
+    } else {
+      CopyFrom(from);
+    }
+    return *this;
+  }
+
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* descriptor() {
+    return GetDescriptor();
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Descriptor* GetDescriptor() {
+    return GetMetadataStatic().descriptor;
+  }
+  static const ::PROTOBUF_NAMESPACE_ID::Reflection* GetReflection() {
+    return GetMetadataStatic().reflection;
+  }
+  static const WeatherMessage& default_instance();
+
+  static void InitAsDefaultInstance();  // FOR INTERNAL USE ONLY
+  static inline const WeatherMessage* internal_default_instance() {
+    return reinterpret_cast<const WeatherMessage*>(
+               &_WeatherMessage_default_instance_);
+  }
+  static constexpr int kIndexInFileMessages =
+    40;
+
+  friend void swap(WeatherMessage& a, WeatherMessage& b) {
+    a.Swap(&b);
+  }
+  inline void Swap(WeatherMessage* other) {
+    if (other == this) return;
+    if (GetArena() == other->GetArena()) {
+      InternalSwap(other);
+    } else {
+      ::PROTOBUF_NAMESPACE_ID::internal::GenericSwap(this, other);
+    }
+  }
+  void UnsafeArenaSwap(WeatherMessage* other) {
+    if (other == this) return;
+    GOOGLE_DCHECK(GetArena() == other->GetArena());
+    InternalSwap(other);
+  }
+
+  // implements Message ----------------------------------------------
+
+  inline WeatherMessage* New() const final {
+    return CreateMaybeMessage<WeatherMessage>(nullptr);
+  }
+
+  WeatherMessage* New(::PROTOBUF_NAMESPACE_ID::Arena* arena) const final {
+    return CreateMaybeMessage<WeatherMessage>(arena);
+  }
+  void CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) final;
+  void CopyFrom(const WeatherMessage& from);
+  void MergeFrom(const WeatherMessage& from);
+  PROTOBUF_ATTRIBUTE_REINITIALIZES void Clear() final;
+  bool IsInitialized() const final;
+
+  size_t ByteSizeLong() const final;
+  const char* _InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) final;
+  ::PROTOBUF_NAMESPACE_ID::uint8* _InternalSerialize(
+      ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const final;
+  int GetCachedSize() const final { return _cached_size_.Get(); }
+
+  private:
+  inline void SharedCtor();
+  inline void SharedDtor();
+  void SetCachedSize(int size) const final;
+  void InternalSwap(WeatherMessage* other);
+  friend class ::PROTOBUF_NAMESPACE_ID::internal::AnyMetadata;
+  static ::PROTOBUF_NAMESPACE_ID::StringPiece FullMessageName() {
+    return "atc_proto.WeatherMessage";
+  }
+  protected:
+  explicit WeatherMessage(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  private:
+  static void ArenaDtor(void* object);
+  inline void RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena* arena);
+  public:
+
+  ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadata() const final;
+  private:
+  static ::PROTOBUF_NAMESPACE_ID::Metadata GetMetadataStatic() {
+    ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&::descriptor_table_atc_2eproto);
+    return ::descriptor_table_atc_2eproto.file_level_metadata[kIndexInFileMessages];
+  }
+
+  public:
+
+  // nested types ----------------------------------------------------
+
+  typedef WeatherMessage_CloudLayer CloudLayer;
+
+  // accessors -------------------------------------------------------
+
+  enum : int {
+    kCloudsFieldNumber = 6,
+    kWeatherStationIdFieldNumber = 1,
+    kValidAtFieldNumber = 2,
+    kQnhHpaFieldNumber = 3,
+    kWindSpeedKtFieldNumber = 4,
+    kWindTrueBearingDegreesFieldNumber = 5,
+  };
+  // repeated .atc_proto.WeatherMessage.CloudLayer clouds = 6;
+  int clouds_size() const;
+  private:
+  int _internal_clouds_size() const;
+  public:
+  void clear_clouds();
+  ::atc_proto::WeatherMessage_CloudLayer* mutable_clouds(int index);
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::atc_proto::WeatherMessage_CloudLayer >*
+      mutable_clouds();
+  private:
+  const ::atc_proto::WeatherMessage_CloudLayer& _internal_clouds(int index) const;
+  ::atc_proto::WeatherMessage_CloudLayer* _internal_add_clouds();
+  public:
+  const ::atc_proto::WeatherMessage_CloudLayer& clouds(int index) const;
+  ::atc_proto::WeatherMessage_CloudLayer* add_clouds();
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::atc_proto::WeatherMessage_CloudLayer >&
+      clouds() const;
+
+  // string weather_station_id = 1;
+  void clear_weather_station_id();
+  const std::string& weather_station_id() const;
+  void set_weather_station_id(const std::string& value);
+  void set_weather_station_id(std::string&& value);
+  void set_weather_station_id(const char* value);
+  void set_weather_station_id(const char* value, size_t size);
+  std::string* mutable_weather_station_id();
+  std::string* release_weather_station_id();
+  void set_allocated_weather_station_id(std::string* weather_station_id);
+  private:
+  const std::string& _internal_weather_station_id() const;
+  void _internal_set_weather_station_id(const std::string& value);
+  std::string* _internal_mutable_weather_station_id();
+  public:
+
+  // .google.protobuf.Timestamp valid_at = 2;
+  bool has_valid_at() const;
+  private:
+  bool _internal_has_valid_at() const;
+  public:
+  void clear_valid_at();
+  const PROTOBUF_NAMESPACE_ID::Timestamp& valid_at() const;
+  PROTOBUF_NAMESPACE_ID::Timestamp* release_valid_at();
+  PROTOBUF_NAMESPACE_ID::Timestamp* mutable_valid_at();
+  void set_allocated_valid_at(PROTOBUF_NAMESPACE_ID::Timestamp* valid_at);
+  private:
+  const PROTOBUF_NAMESPACE_ID::Timestamp& _internal_valid_at() const;
+  PROTOBUF_NAMESPACE_ID::Timestamp* _internal_mutable_valid_at();
+  public:
+  void unsafe_arena_set_allocated_valid_at(
+      PROTOBUF_NAMESPACE_ID::Timestamp* valid_at);
+  PROTOBUF_NAMESPACE_ID::Timestamp* unsafe_arena_release_valid_at();
+
+  // int32 qnh_hpa = 3;
+  void clear_qnh_hpa();
+  ::PROTOBUF_NAMESPACE_ID::int32 qnh_hpa() const;
+  void set_qnh_hpa(::PROTOBUF_NAMESPACE_ID::int32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_qnh_hpa() const;
+  void _internal_set_qnh_hpa(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
+  // int32 wind_speed_kt = 4;
+  void clear_wind_speed_kt();
+  ::PROTOBUF_NAMESPACE_ID::int32 wind_speed_kt() const;
+  void set_wind_speed_kt(::PROTOBUF_NAMESPACE_ID::int32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_wind_speed_kt() const;
+  void _internal_set_wind_speed_kt(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
+  // int32 wind_true_bearing_degrees = 5;
+  void clear_wind_true_bearing_degrees();
+  ::PROTOBUF_NAMESPACE_ID::int32 wind_true_bearing_degrees() const;
+  void set_wind_true_bearing_degrees(::PROTOBUF_NAMESPACE_ID::int32 value);
+  private:
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_wind_true_bearing_degrees() const;
+  void _internal_set_wind_true_bearing_degrees(::PROTOBUF_NAMESPACE_ID::int32 value);
+  public:
+
+  // @@protoc_insertion_point(class_scope:atc_proto.WeatherMessage)
+ private:
+  class _Internal;
+
+  template <typename T> friend class ::PROTOBUF_NAMESPACE_ID::Arena::InternalHelper;
+  typedef void InternalArenaConstructable_;
+  typedef void DestructorSkippable_;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::atc_proto::WeatherMessage_CloudLayer > clouds_;
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr weather_station_id_;
+  PROTOBUF_NAMESPACE_ID::Timestamp* valid_at_;
+  ::PROTOBUF_NAMESPACE_ID::int32 qnh_hpa_;
+  ::PROTOBUF_NAMESPACE_ID::int32 wind_speed_kt_;
+  ::PROTOBUF_NAMESPACE_ID::int32 wind_true_bearing_degrees_;
+  mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+  friend struct ::TableStruct_atc_2eproto;
+};
+// -------------------------------------------------------------------
+
 class AirspaceGeometryMessage PROTOBUF_FINAL :
     public ::PROTOBUF_NAMESPACE_ID::Message /* @@protoc_insertion_point(class_definition:atc_proto.AirspaceGeometryMessage) */ {
  public:
@@ -7265,7 +7992,7 @@ class AirspaceGeometryMessage PROTOBUF_FINAL :
                &_AirspaceGeometryMessage_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    38;
+    41;
 
   friend void swap(AirspaceGeometryMessage& a, AirspaceGeometryMessage& b) {
     a.Swap(&b);
@@ -7433,7 +8160,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
                &_AircraftMessage_Situation_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    39;
+    42;
 
   friend void swap(AircraftMessage_Situation& a, AircraftMessage_Situation& b) {
     a.Swap(&b);
@@ -7787,7 +8514,7 @@ class AircraftMessage PROTOBUF_FINAL :
                &_AircraftMessage_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    40;
+    43;
 
   friend void swap(AircraftMessage& a, AircraftMessage& b) {
     a.Swap(&b);
@@ -8018,7 +8745,7 @@ class TaxiPathMessage PROTOBUF_FINAL :
                &_TaxiPathMessage_default_instance_);
   }
   static constexpr int kIndexInFileMessages =
-    41;
+    44;
 
   friend void swap(TaxiPathMessage& a, TaxiPathMessage& b) {
     a.Swap(&b);
@@ -11091,6 +11818,151 @@ inline void ServerToClient_ReplyUserAcquireAircraft::_internal_set_success(bool 
 inline void ServerToClient_ReplyUserAcquireAircraft::set_success(bool value) {
   _internal_set_success(value);
   // @@protoc_insertion_point(field_set:atc_proto.ServerToClient.ReplyUserAcquireAircraft.success)
+}
+
+// string callsign = 3;
+inline void ServerToClient_ReplyUserAcquireAircraft::clear_callsign() {
+  callsign_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline const std::string& ServerToClient_ReplyUserAcquireAircraft::callsign() const {
+  // @@protoc_insertion_point(field_get:atc_proto.ServerToClient.ReplyUserAcquireAircraft.callsign)
+  return _internal_callsign();
+}
+inline void ServerToClient_ReplyUserAcquireAircraft::set_callsign(const std::string& value) {
+  _internal_set_callsign(value);
+  // @@protoc_insertion_point(field_set:atc_proto.ServerToClient.ReplyUserAcquireAircraft.callsign)
+}
+inline std::string* ServerToClient_ReplyUserAcquireAircraft::mutable_callsign() {
+  // @@protoc_insertion_point(field_mutable:atc_proto.ServerToClient.ReplyUserAcquireAircraft.callsign)
+  return _internal_mutable_callsign();
+}
+inline const std::string& ServerToClient_ReplyUserAcquireAircraft::_internal_callsign() const {
+  return callsign_.Get();
+}
+inline void ServerToClient_ReplyUserAcquireAircraft::_internal_set_callsign(const std::string& value) {
+  
+  callsign_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), value, GetArena());
+}
+inline void ServerToClient_ReplyUserAcquireAircraft::set_callsign(std::string&& value) {
+  
+  callsign_.Set(
+    &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::move(value), GetArena());
+  // @@protoc_insertion_point(field_set_rvalue:atc_proto.ServerToClient.ReplyUserAcquireAircraft.callsign)
+}
+inline void ServerToClient_ReplyUserAcquireAircraft::set_callsign(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  
+  callsign_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::string(value),
+              GetArena());
+  // @@protoc_insertion_point(field_set_char:atc_proto.ServerToClient.ReplyUserAcquireAircraft.callsign)
+}
+inline void ServerToClient_ReplyUserAcquireAircraft::set_callsign(const char* value,
+    size_t size) {
+  
+  callsign_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::string(
+      reinterpret_cast<const char*>(value), size), GetArena());
+  // @@protoc_insertion_point(field_set_pointer:atc_proto.ServerToClient.ReplyUserAcquireAircraft.callsign)
+}
+inline std::string* ServerToClient_ReplyUserAcquireAircraft::_internal_mutable_callsign() {
+  
+  return callsign_.Mutable(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline std::string* ServerToClient_ReplyUserAcquireAircraft::release_callsign() {
+  // @@protoc_insertion_point(field_release:atc_proto.ServerToClient.ReplyUserAcquireAircraft.callsign)
+  return callsign_.Release(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline void ServerToClient_ReplyUserAcquireAircraft::set_allocated_callsign(std::string* callsign) {
+  if (callsign != nullptr) {
+    
+  } else {
+    
+  }
+  callsign_.SetAllocated(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), callsign,
+      GetArena());
+  // @@protoc_insertion_point(field_set_allocated:atc_proto.ServerToClient.ReplyUserAcquireAircraft.callsign)
+}
+
+// .atc_proto.WeatherMessage weather = 4;
+inline bool ServerToClient_ReplyUserAcquireAircraft::_internal_has_weather() const {
+  return this != internal_default_instance() && weather_ != nullptr;
+}
+inline bool ServerToClient_ReplyUserAcquireAircraft::has_weather() const {
+  return _internal_has_weather();
+}
+inline void ServerToClient_ReplyUserAcquireAircraft::clear_weather() {
+  if (GetArena() == nullptr && weather_ != nullptr) {
+    delete weather_;
+  }
+  weather_ = nullptr;
+}
+inline const ::atc_proto::WeatherMessage& ServerToClient_ReplyUserAcquireAircraft::_internal_weather() const {
+  const ::atc_proto::WeatherMessage* p = weather_;
+  return p != nullptr ? *p : *reinterpret_cast<const ::atc_proto::WeatherMessage*>(
+      &::atc_proto::_WeatherMessage_default_instance_);
+}
+inline const ::atc_proto::WeatherMessage& ServerToClient_ReplyUserAcquireAircraft::weather() const {
+  // @@protoc_insertion_point(field_get:atc_proto.ServerToClient.ReplyUserAcquireAircraft.weather)
+  return _internal_weather();
+}
+inline void ServerToClient_ReplyUserAcquireAircraft::unsafe_arena_set_allocated_weather(
+    ::atc_proto::WeatherMessage* weather) {
+  if (GetArena() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(weather_);
+  }
+  weather_ = weather;
+  if (weather) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:atc_proto.ServerToClient.ReplyUserAcquireAircraft.weather)
+}
+inline ::atc_proto::WeatherMessage* ServerToClient_ReplyUserAcquireAircraft::release_weather() {
+  
+  ::atc_proto::WeatherMessage* temp = weather_;
+  weather_ = nullptr;
+  if (GetArena() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+  return temp;
+}
+inline ::atc_proto::WeatherMessage* ServerToClient_ReplyUserAcquireAircraft::unsafe_arena_release_weather() {
+  // @@protoc_insertion_point(field_release:atc_proto.ServerToClient.ReplyUserAcquireAircraft.weather)
+  
+  ::atc_proto::WeatherMessage* temp = weather_;
+  weather_ = nullptr;
+  return temp;
+}
+inline ::atc_proto::WeatherMessage* ServerToClient_ReplyUserAcquireAircraft::_internal_mutable_weather() {
+  
+  if (weather_ == nullptr) {
+    auto* p = CreateMaybeMessage<::atc_proto::WeatherMessage>(GetArena());
+    weather_ = p;
+  }
+  return weather_;
+}
+inline ::atc_proto::WeatherMessage* ServerToClient_ReplyUserAcquireAircraft::mutable_weather() {
+  // @@protoc_insertion_point(field_mutable:atc_proto.ServerToClient.ReplyUserAcquireAircraft.weather)
+  return _internal_mutable_weather();
+}
+inline void ServerToClient_ReplyUserAcquireAircraft::set_allocated_weather(::atc_proto::WeatherMessage* weather) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArena();
+  if (message_arena == nullptr) {
+    delete weather_;
+  }
+  if (weather) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+      ::PROTOBUF_NAMESPACE_ID::Arena::GetArena(weather);
+    if (message_arena != submessage_arena) {
+      weather = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, weather, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  weather_ = weather;
+  // @@protoc_insertion_point(field_set_allocated:atc_proto.ServerToClient.ReplyUserAcquireAircraft.weather)
 }
 
 // -------------------------------------------------------------------
@@ -14179,6 +15051,691 @@ ParkingStandMessage::mutable_airline_icaos() {
 
 // -------------------------------------------------------------------
 
+// AtisMessage
+
+// string airport_icao = 1;
+inline void AtisMessage::clear_airport_icao() {
+  airport_icao_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline const std::string& AtisMessage::airport_icao() const {
+  // @@protoc_insertion_point(field_get:atc_proto.AtisMessage.airport_icao)
+  return _internal_airport_icao();
+}
+inline void AtisMessage::set_airport_icao(const std::string& value) {
+  _internal_set_airport_icao(value);
+  // @@protoc_insertion_point(field_set:atc_proto.AtisMessage.airport_icao)
+}
+inline std::string* AtisMessage::mutable_airport_icao() {
+  // @@protoc_insertion_point(field_mutable:atc_proto.AtisMessage.airport_icao)
+  return _internal_mutable_airport_icao();
+}
+inline const std::string& AtisMessage::_internal_airport_icao() const {
+  return airport_icao_.Get();
+}
+inline void AtisMessage::_internal_set_airport_icao(const std::string& value) {
+  
+  airport_icao_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), value, GetArena());
+}
+inline void AtisMessage::set_airport_icao(std::string&& value) {
+  
+  airport_icao_.Set(
+    &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::move(value), GetArena());
+  // @@protoc_insertion_point(field_set_rvalue:atc_proto.AtisMessage.airport_icao)
+}
+inline void AtisMessage::set_airport_icao(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  
+  airport_icao_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::string(value),
+              GetArena());
+  // @@protoc_insertion_point(field_set_char:atc_proto.AtisMessage.airport_icao)
+}
+inline void AtisMessage::set_airport_icao(const char* value,
+    size_t size) {
+  
+  airport_icao_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::string(
+      reinterpret_cast<const char*>(value), size), GetArena());
+  // @@protoc_insertion_point(field_set_pointer:atc_proto.AtisMessage.airport_icao)
+}
+inline std::string* AtisMessage::_internal_mutable_airport_icao() {
+  
+  return airport_icao_.Mutable(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline std::string* AtisMessage::release_airport_icao() {
+  // @@protoc_insertion_point(field_release:atc_proto.AtisMessage.airport_icao)
+  return airport_icao_.Release(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline void AtisMessage::set_allocated_airport_icao(std::string* airport_icao) {
+  if (airport_icao != nullptr) {
+    
+  } else {
+    
+  }
+  airport_icao_.SetAllocated(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), airport_icao,
+      GetArena());
+  // @@protoc_insertion_point(field_set_allocated:atc_proto.AtisMessage.airport_icao)
+}
+
+// string information = 2;
+inline void AtisMessage::clear_information() {
+  information_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline const std::string& AtisMessage::information() const {
+  // @@protoc_insertion_point(field_get:atc_proto.AtisMessage.information)
+  return _internal_information();
+}
+inline void AtisMessage::set_information(const std::string& value) {
+  _internal_set_information(value);
+  // @@protoc_insertion_point(field_set:atc_proto.AtisMessage.information)
+}
+inline std::string* AtisMessage::mutable_information() {
+  // @@protoc_insertion_point(field_mutable:atc_proto.AtisMessage.information)
+  return _internal_mutable_information();
+}
+inline const std::string& AtisMessage::_internal_information() const {
+  return information_.Get();
+}
+inline void AtisMessage::_internal_set_information(const std::string& value) {
+  
+  information_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), value, GetArena());
+}
+inline void AtisMessage::set_information(std::string&& value) {
+  
+  information_.Set(
+    &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::move(value), GetArena());
+  // @@protoc_insertion_point(field_set_rvalue:atc_proto.AtisMessage.information)
+}
+inline void AtisMessage::set_information(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  
+  information_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::string(value),
+              GetArena());
+  // @@protoc_insertion_point(field_set_char:atc_proto.AtisMessage.information)
+}
+inline void AtisMessage::set_information(const char* value,
+    size_t size) {
+  
+  information_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::string(
+      reinterpret_cast<const char*>(value), size), GetArena());
+  // @@protoc_insertion_point(field_set_pointer:atc_proto.AtisMessage.information)
+}
+inline std::string* AtisMessage::_internal_mutable_information() {
+  
+  return information_.Mutable(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline std::string* AtisMessage::release_information() {
+  // @@protoc_insertion_point(field_release:atc_proto.AtisMessage.information)
+  return information_.Release(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline void AtisMessage::set_allocated_information(std::string* information) {
+  if (information != nullptr) {
+    
+  } else {
+    
+  }
+  information_.SetAllocated(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), information,
+      GetArena());
+  // @@protoc_insertion_point(field_set_allocated:atc_proto.AtisMessage.information)
+}
+
+// .atc_proto.WeatherMessage weather = 3;
+inline bool AtisMessage::_internal_has_weather() const {
+  return this != internal_default_instance() && weather_ != nullptr;
+}
+inline bool AtisMessage::has_weather() const {
+  return _internal_has_weather();
+}
+inline void AtisMessage::clear_weather() {
+  if (GetArena() == nullptr && weather_ != nullptr) {
+    delete weather_;
+  }
+  weather_ = nullptr;
+}
+inline const ::atc_proto::WeatherMessage& AtisMessage::_internal_weather() const {
+  const ::atc_proto::WeatherMessage* p = weather_;
+  return p != nullptr ? *p : *reinterpret_cast<const ::atc_proto::WeatherMessage*>(
+      &::atc_proto::_WeatherMessage_default_instance_);
+}
+inline const ::atc_proto::WeatherMessage& AtisMessage::weather() const {
+  // @@protoc_insertion_point(field_get:atc_proto.AtisMessage.weather)
+  return _internal_weather();
+}
+inline void AtisMessage::unsafe_arena_set_allocated_weather(
+    ::atc_proto::WeatherMessage* weather) {
+  if (GetArena() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(weather_);
+  }
+  weather_ = weather;
+  if (weather) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:atc_proto.AtisMessage.weather)
+}
+inline ::atc_proto::WeatherMessage* AtisMessage::release_weather() {
+  
+  ::atc_proto::WeatherMessage* temp = weather_;
+  weather_ = nullptr;
+  if (GetArena() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+  return temp;
+}
+inline ::atc_proto::WeatherMessage* AtisMessage::unsafe_arena_release_weather() {
+  // @@protoc_insertion_point(field_release:atc_proto.AtisMessage.weather)
+  
+  ::atc_proto::WeatherMessage* temp = weather_;
+  weather_ = nullptr;
+  return temp;
+}
+inline ::atc_proto::WeatherMessage* AtisMessage::_internal_mutable_weather() {
+  
+  if (weather_ == nullptr) {
+    auto* p = CreateMaybeMessage<::atc_proto::WeatherMessage>(GetArena());
+    weather_ = p;
+  }
+  return weather_;
+}
+inline ::atc_proto::WeatherMessage* AtisMessage::mutable_weather() {
+  // @@protoc_insertion_point(field_mutable:atc_proto.AtisMessage.weather)
+  return _internal_mutable_weather();
+}
+inline void AtisMessage::set_allocated_weather(::atc_proto::WeatherMessage* weather) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArena();
+  if (message_arena == nullptr) {
+    delete weather_;
+  }
+  if (weather) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+      ::PROTOBUF_NAMESPACE_ID::Arena::GetArena(weather);
+    if (message_arena != submessage_arena) {
+      weather = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, weather, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  weather_ = weather;
+  // @@protoc_insertion_point(field_set_allocated:atc_proto.AtisMessage.weather)
+}
+
+// repeated string active_runways_departure = 4;
+inline int AtisMessage::_internal_active_runways_departure_size() const {
+  return active_runways_departure_.size();
+}
+inline int AtisMessage::active_runways_departure_size() const {
+  return _internal_active_runways_departure_size();
+}
+inline void AtisMessage::clear_active_runways_departure() {
+  active_runways_departure_.Clear();
+}
+inline std::string* AtisMessage::add_active_runways_departure() {
+  // @@protoc_insertion_point(field_add_mutable:atc_proto.AtisMessage.active_runways_departure)
+  return _internal_add_active_runways_departure();
+}
+inline const std::string& AtisMessage::_internal_active_runways_departure(int index) const {
+  return active_runways_departure_.Get(index);
+}
+inline const std::string& AtisMessage::active_runways_departure(int index) const {
+  // @@protoc_insertion_point(field_get:atc_proto.AtisMessage.active_runways_departure)
+  return _internal_active_runways_departure(index);
+}
+inline std::string* AtisMessage::mutable_active_runways_departure(int index) {
+  // @@protoc_insertion_point(field_mutable:atc_proto.AtisMessage.active_runways_departure)
+  return active_runways_departure_.Mutable(index);
+}
+inline void AtisMessage::set_active_runways_departure(int index, const std::string& value) {
+  // @@protoc_insertion_point(field_set:atc_proto.AtisMessage.active_runways_departure)
+  active_runways_departure_.Mutable(index)->assign(value);
+}
+inline void AtisMessage::set_active_runways_departure(int index, std::string&& value) {
+  // @@protoc_insertion_point(field_set:atc_proto.AtisMessage.active_runways_departure)
+  active_runways_departure_.Mutable(index)->assign(std::move(value));
+}
+inline void AtisMessage::set_active_runways_departure(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  active_runways_departure_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:atc_proto.AtisMessage.active_runways_departure)
+}
+inline void AtisMessage::set_active_runways_departure(int index, const char* value, size_t size) {
+  active_runways_departure_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:atc_proto.AtisMessage.active_runways_departure)
+}
+inline std::string* AtisMessage::_internal_add_active_runways_departure() {
+  return active_runways_departure_.Add();
+}
+inline void AtisMessage::add_active_runways_departure(const std::string& value) {
+  active_runways_departure_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:atc_proto.AtisMessage.active_runways_departure)
+}
+inline void AtisMessage::add_active_runways_departure(std::string&& value) {
+  active_runways_departure_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:atc_proto.AtisMessage.active_runways_departure)
+}
+inline void AtisMessage::add_active_runways_departure(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  active_runways_departure_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:atc_proto.AtisMessage.active_runways_departure)
+}
+inline void AtisMessage::add_active_runways_departure(const char* value, size_t size) {
+  active_runways_departure_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:atc_proto.AtisMessage.active_runways_departure)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+AtisMessage::active_runways_departure() const {
+  // @@protoc_insertion_point(field_list:atc_proto.AtisMessage.active_runways_departure)
+  return active_runways_departure_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+AtisMessage::mutable_active_runways_departure() {
+  // @@protoc_insertion_point(field_mutable_list:atc_proto.AtisMessage.active_runways_departure)
+  return &active_runways_departure_;
+}
+
+// repeated string active_runways_arrival = 5;
+inline int AtisMessage::_internal_active_runways_arrival_size() const {
+  return active_runways_arrival_.size();
+}
+inline int AtisMessage::active_runways_arrival_size() const {
+  return _internal_active_runways_arrival_size();
+}
+inline void AtisMessage::clear_active_runways_arrival() {
+  active_runways_arrival_.Clear();
+}
+inline std::string* AtisMessage::add_active_runways_arrival() {
+  // @@protoc_insertion_point(field_add_mutable:atc_proto.AtisMessage.active_runways_arrival)
+  return _internal_add_active_runways_arrival();
+}
+inline const std::string& AtisMessage::_internal_active_runways_arrival(int index) const {
+  return active_runways_arrival_.Get(index);
+}
+inline const std::string& AtisMessage::active_runways_arrival(int index) const {
+  // @@protoc_insertion_point(field_get:atc_proto.AtisMessage.active_runways_arrival)
+  return _internal_active_runways_arrival(index);
+}
+inline std::string* AtisMessage::mutable_active_runways_arrival(int index) {
+  // @@protoc_insertion_point(field_mutable:atc_proto.AtisMessage.active_runways_arrival)
+  return active_runways_arrival_.Mutable(index);
+}
+inline void AtisMessage::set_active_runways_arrival(int index, const std::string& value) {
+  // @@protoc_insertion_point(field_set:atc_proto.AtisMessage.active_runways_arrival)
+  active_runways_arrival_.Mutable(index)->assign(value);
+}
+inline void AtisMessage::set_active_runways_arrival(int index, std::string&& value) {
+  // @@protoc_insertion_point(field_set:atc_proto.AtisMessage.active_runways_arrival)
+  active_runways_arrival_.Mutable(index)->assign(std::move(value));
+}
+inline void AtisMessage::set_active_runways_arrival(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  active_runways_arrival_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:atc_proto.AtisMessage.active_runways_arrival)
+}
+inline void AtisMessage::set_active_runways_arrival(int index, const char* value, size_t size) {
+  active_runways_arrival_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:atc_proto.AtisMessage.active_runways_arrival)
+}
+inline std::string* AtisMessage::_internal_add_active_runways_arrival() {
+  return active_runways_arrival_.Add();
+}
+inline void AtisMessage::add_active_runways_arrival(const std::string& value) {
+  active_runways_arrival_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:atc_proto.AtisMessage.active_runways_arrival)
+}
+inline void AtisMessage::add_active_runways_arrival(std::string&& value) {
+  active_runways_arrival_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:atc_proto.AtisMessage.active_runways_arrival)
+}
+inline void AtisMessage::add_active_runways_arrival(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  active_runways_arrival_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:atc_proto.AtisMessage.active_runways_arrival)
+}
+inline void AtisMessage::add_active_runways_arrival(const char* value, size_t size) {
+  active_runways_arrival_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:atc_proto.AtisMessage.active_runways_arrival)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+AtisMessage::active_runways_arrival() const {
+  // @@protoc_insertion_point(field_list:atc_proto.AtisMessage.active_runways_arrival)
+  return active_runways_arrival_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+AtisMessage::mutable_active_runways_arrival() {
+  // @@protoc_insertion_point(field_mutable_list:atc_proto.AtisMessage.active_runways_arrival)
+  return &active_runways_arrival_;
+}
+
+// int32 clearance_frequency_khz = 6;
+inline void AtisMessage::clear_clearance_frequency_khz() {
+  clearance_frequency_khz_ = 0;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 AtisMessage::_internal_clearance_frequency_khz() const {
+  return clearance_frequency_khz_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 AtisMessage::clearance_frequency_khz() const {
+  // @@protoc_insertion_point(field_get:atc_proto.AtisMessage.clearance_frequency_khz)
+  return _internal_clearance_frequency_khz();
+}
+inline void AtisMessage::_internal_set_clearance_frequency_khz(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  
+  clearance_frequency_khz_ = value;
+}
+inline void AtisMessage::set_clearance_frequency_khz(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_clearance_frequency_khz(value);
+  // @@protoc_insertion_point(field_set:atc_proto.AtisMessage.clearance_frequency_khz)
+}
+
+// -------------------------------------------------------------------
+
+// WeatherMessage_CloudLayer
+
+// .atc_proto.CloudType type = 1;
+inline void WeatherMessage_CloudLayer::clear_type() {
+  type_ = 0;
+}
+inline ::atc_proto::CloudType WeatherMessage_CloudLayer::_internal_type() const {
+  return static_cast< ::atc_proto::CloudType >(type_);
+}
+inline ::atc_proto::CloudType WeatherMessage_CloudLayer::type() const {
+  // @@protoc_insertion_point(field_get:atc_proto.WeatherMessage.CloudLayer.type)
+  return _internal_type();
+}
+inline void WeatherMessage_CloudLayer::_internal_set_type(::atc_proto::CloudType value) {
+  
+  type_ = value;
+}
+inline void WeatherMessage_CloudLayer::set_type(::atc_proto::CloudType value) {
+  _internal_set_type(value);
+  // @@protoc_insertion_point(field_set:atc_proto.WeatherMessage.CloudLayer.type)
+}
+
+// .atc_proto.CloudCoverType cover = 2;
+inline void WeatherMessage_CloudLayer::clear_cover() {
+  cover_ = 0;
+}
+inline ::atc_proto::CloudCoverType WeatherMessage_CloudLayer::_internal_cover() const {
+  return static_cast< ::atc_proto::CloudCoverType >(cover_);
+}
+inline ::atc_proto::CloudCoverType WeatherMessage_CloudLayer::cover() const {
+  // @@protoc_insertion_point(field_get:atc_proto.WeatherMessage.CloudLayer.cover)
+  return _internal_cover();
+}
+inline void WeatherMessage_CloudLayer::_internal_set_cover(::atc_proto::CloudCoverType value) {
+  
+  cover_ = value;
+}
+inline void WeatherMessage_CloudLayer::set_cover(::atc_proto::CloudCoverType value) {
+  _internal_set_cover(value);
+  // @@protoc_insertion_point(field_set:atc_proto.WeatherMessage.CloudLayer.cover)
+}
+
+// int32 base_feet_agl = 3;
+inline void WeatherMessage_CloudLayer::clear_base_feet_agl() {
+  base_feet_agl_ = 0;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 WeatherMessage_CloudLayer::_internal_base_feet_agl() const {
+  return base_feet_agl_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 WeatherMessage_CloudLayer::base_feet_agl() const {
+  // @@protoc_insertion_point(field_get:atc_proto.WeatherMessage.CloudLayer.base_feet_agl)
+  return _internal_base_feet_agl();
+}
+inline void WeatherMessage_CloudLayer::_internal_set_base_feet_agl(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  
+  base_feet_agl_ = value;
+}
+inline void WeatherMessage_CloudLayer::set_base_feet_agl(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_base_feet_agl(value);
+  // @@protoc_insertion_point(field_set:atc_proto.WeatherMessage.CloudLayer.base_feet_agl)
+}
+
+// -------------------------------------------------------------------
+
+// WeatherMessage
+
+// string weather_station_id = 1;
+inline void WeatherMessage::clear_weather_station_id() {
+  weather_station_id_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline const std::string& WeatherMessage::weather_station_id() const {
+  // @@protoc_insertion_point(field_get:atc_proto.WeatherMessage.weather_station_id)
+  return _internal_weather_station_id();
+}
+inline void WeatherMessage::set_weather_station_id(const std::string& value) {
+  _internal_set_weather_station_id(value);
+  // @@protoc_insertion_point(field_set:atc_proto.WeatherMessage.weather_station_id)
+}
+inline std::string* WeatherMessage::mutable_weather_station_id() {
+  // @@protoc_insertion_point(field_mutable:atc_proto.WeatherMessage.weather_station_id)
+  return _internal_mutable_weather_station_id();
+}
+inline const std::string& WeatherMessage::_internal_weather_station_id() const {
+  return weather_station_id_.Get();
+}
+inline void WeatherMessage::_internal_set_weather_station_id(const std::string& value) {
+  
+  weather_station_id_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), value, GetArena());
+}
+inline void WeatherMessage::set_weather_station_id(std::string&& value) {
+  
+  weather_station_id_.Set(
+    &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::move(value), GetArena());
+  // @@protoc_insertion_point(field_set_rvalue:atc_proto.WeatherMessage.weather_station_id)
+}
+inline void WeatherMessage::set_weather_station_id(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  
+  weather_station_id_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::string(value),
+              GetArena());
+  // @@protoc_insertion_point(field_set_char:atc_proto.WeatherMessage.weather_station_id)
+}
+inline void WeatherMessage::set_weather_station_id(const char* value,
+    size_t size) {
+  
+  weather_station_id_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), ::std::string(
+      reinterpret_cast<const char*>(value), size), GetArena());
+  // @@protoc_insertion_point(field_set_pointer:atc_proto.WeatherMessage.weather_station_id)
+}
+inline std::string* WeatherMessage::_internal_mutable_weather_station_id() {
+  
+  return weather_station_id_.Mutable(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline std::string* WeatherMessage::release_weather_station_id() {
+  // @@protoc_insertion_point(field_release:atc_proto.WeatherMessage.weather_station_id)
+  return weather_station_id_.Release(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+}
+inline void WeatherMessage::set_allocated_weather_station_id(std::string* weather_station_id) {
+  if (weather_station_id != nullptr) {
+    
+  } else {
+    
+  }
+  weather_station_id_.SetAllocated(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), weather_station_id,
+      GetArena());
+  // @@protoc_insertion_point(field_set_allocated:atc_proto.WeatherMessage.weather_station_id)
+}
+
+// .google.protobuf.Timestamp valid_at = 2;
+inline bool WeatherMessage::_internal_has_valid_at() const {
+  return this != internal_default_instance() && valid_at_ != nullptr;
+}
+inline bool WeatherMessage::has_valid_at() const {
+  return _internal_has_valid_at();
+}
+inline const PROTOBUF_NAMESPACE_ID::Timestamp& WeatherMessage::_internal_valid_at() const {
+  const PROTOBUF_NAMESPACE_ID::Timestamp* p = valid_at_;
+  return p != nullptr ? *p : *reinterpret_cast<const PROTOBUF_NAMESPACE_ID::Timestamp*>(
+      &PROTOBUF_NAMESPACE_ID::_Timestamp_default_instance_);
+}
+inline const PROTOBUF_NAMESPACE_ID::Timestamp& WeatherMessage::valid_at() const {
+  // @@protoc_insertion_point(field_get:atc_proto.WeatherMessage.valid_at)
+  return _internal_valid_at();
+}
+inline void WeatherMessage::unsafe_arena_set_allocated_valid_at(
+    PROTOBUF_NAMESPACE_ID::Timestamp* valid_at) {
+  if (GetArena() == nullptr) {
+    delete reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(valid_at_);
+  }
+  valid_at_ = valid_at;
+  if (valid_at) {
+    
+  } else {
+    
+  }
+  // @@protoc_insertion_point(field_unsafe_arena_set_allocated:atc_proto.WeatherMessage.valid_at)
+}
+inline PROTOBUF_NAMESPACE_ID::Timestamp* WeatherMessage::release_valid_at() {
+  
+  PROTOBUF_NAMESPACE_ID::Timestamp* temp = valid_at_;
+  valid_at_ = nullptr;
+  if (GetArena() != nullptr) {
+    temp = ::PROTOBUF_NAMESPACE_ID::internal::DuplicateIfNonNull(temp);
+  }
+  return temp;
+}
+inline PROTOBUF_NAMESPACE_ID::Timestamp* WeatherMessage::unsafe_arena_release_valid_at() {
+  // @@protoc_insertion_point(field_release:atc_proto.WeatherMessage.valid_at)
+  
+  PROTOBUF_NAMESPACE_ID::Timestamp* temp = valid_at_;
+  valid_at_ = nullptr;
+  return temp;
+}
+inline PROTOBUF_NAMESPACE_ID::Timestamp* WeatherMessage::_internal_mutable_valid_at() {
+  
+  if (valid_at_ == nullptr) {
+    auto* p = CreateMaybeMessage<PROTOBUF_NAMESPACE_ID::Timestamp>(GetArena());
+    valid_at_ = p;
+  }
+  return valid_at_;
+}
+inline PROTOBUF_NAMESPACE_ID::Timestamp* WeatherMessage::mutable_valid_at() {
+  // @@protoc_insertion_point(field_mutable:atc_proto.WeatherMessage.valid_at)
+  return _internal_mutable_valid_at();
+}
+inline void WeatherMessage::set_allocated_valid_at(PROTOBUF_NAMESPACE_ID::Timestamp* valid_at) {
+  ::PROTOBUF_NAMESPACE_ID::Arena* message_arena = GetArena();
+  if (message_arena == nullptr) {
+    delete reinterpret_cast< ::PROTOBUF_NAMESPACE_ID::MessageLite*>(valid_at_);
+  }
+  if (valid_at) {
+    ::PROTOBUF_NAMESPACE_ID::Arena* submessage_arena =
+      reinterpret_cast<::PROTOBUF_NAMESPACE_ID::MessageLite*>(valid_at)->GetArena();
+    if (message_arena != submessage_arena) {
+      valid_at = ::PROTOBUF_NAMESPACE_ID::internal::GetOwnedMessage(
+          message_arena, valid_at, submessage_arena);
+    }
+    
+  } else {
+    
+  }
+  valid_at_ = valid_at;
+  // @@protoc_insertion_point(field_set_allocated:atc_proto.WeatherMessage.valid_at)
+}
+
+// int32 qnh_hpa = 3;
+inline void WeatherMessage::clear_qnh_hpa() {
+  qnh_hpa_ = 0;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 WeatherMessage::_internal_qnh_hpa() const {
+  return qnh_hpa_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 WeatherMessage::qnh_hpa() const {
+  // @@protoc_insertion_point(field_get:atc_proto.WeatherMessage.qnh_hpa)
+  return _internal_qnh_hpa();
+}
+inline void WeatherMessage::_internal_set_qnh_hpa(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  
+  qnh_hpa_ = value;
+}
+inline void WeatherMessage::set_qnh_hpa(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_qnh_hpa(value);
+  // @@protoc_insertion_point(field_set:atc_proto.WeatherMessage.qnh_hpa)
+}
+
+// int32 wind_speed_kt = 4;
+inline void WeatherMessage::clear_wind_speed_kt() {
+  wind_speed_kt_ = 0;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 WeatherMessage::_internal_wind_speed_kt() const {
+  return wind_speed_kt_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 WeatherMessage::wind_speed_kt() const {
+  // @@protoc_insertion_point(field_get:atc_proto.WeatherMessage.wind_speed_kt)
+  return _internal_wind_speed_kt();
+}
+inline void WeatherMessage::_internal_set_wind_speed_kt(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  
+  wind_speed_kt_ = value;
+}
+inline void WeatherMessage::set_wind_speed_kt(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_wind_speed_kt(value);
+  // @@protoc_insertion_point(field_set:atc_proto.WeatherMessage.wind_speed_kt)
+}
+
+// int32 wind_true_bearing_degrees = 5;
+inline void WeatherMessage::clear_wind_true_bearing_degrees() {
+  wind_true_bearing_degrees_ = 0;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 WeatherMessage::_internal_wind_true_bearing_degrees() const {
+  return wind_true_bearing_degrees_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::int32 WeatherMessage::wind_true_bearing_degrees() const {
+  // @@protoc_insertion_point(field_get:atc_proto.WeatherMessage.wind_true_bearing_degrees)
+  return _internal_wind_true_bearing_degrees();
+}
+inline void WeatherMessage::_internal_set_wind_true_bearing_degrees(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  
+  wind_true_bearing_degrees_ = value;
+}
+inline void WeatherMessage::set_wind_true_bearing_degrees(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_wind_true_bearing_degrees(value);
+  // @@protoc_insertion_point(field_set:atc_proto.WeatherMessage.wind_true_bearing_degrees)
+}
+
+// repeated .atc_proto.WeatherMessage.CloudLayer clouds = 6;
+inline int WeatherMessage::_internal_clouds_size() const {
+  return clouds_.size();
+}
+inline int WeatherMessage::clouds_size() const {
+  return _internal_clouds_size();
+}
+inline void WeatherMessage::clear_clouds() {
+  clouds_.Clear();
+}
+inline ::atc_proto::WeatherMessage_CloudLayer* WeatherMessage::mutable_clouds(int index) {
+  // @@protoc_insertion_point(field_mutable:atc_proto.WeatherMessage.clouds)
+  return clouds_.Mutable(index);
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::atc_proto::WeatherMessage_CloudLayer >*
+WeatherMessage::mutable_clouds() {
+  // @@protoc_insertion_point(field_mutable_list:atc_proto.WeatherMessage.clouds)
+  return &clouds_;
+}
+inline const ::atc_proto::WeatherMessage_CloudLayer& WeatherMessage::_internal_clouds(int index) const {
+  return clouds_.Get(index);
+}
+inline const ::atc_proto::WeatherMessage_CloudLayer& WeatherMessage::clouds(int index) const {
+  // @@protoc_insertion_point(field_get:atc_proto.WeatherMessage.clouds)
+  return _internal_clouds(index);
+}
+inline ::atc_proto::WeatherMessage_CloudLayer* WeatherMessage::_internal_add_clouds() {
+  return clouds_.Add();
+}
+inline ::atc_proto::WeatherMessage_CloudLayer* WeatherMessage::add_clouds() {
+  // @@protoc_insertion_point(field_add:atc_proto.WeatherMessage.clouds)
+  return _internal_add_clouds();
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField< ::atc_proto::WeatherMessage_CloudLayer >&
+WeatherMessage::clouds() const {
+  // @@protoc_insertion_point(field_list:atc_proto.WeatherMessage.clouds)
+  return clouds_;
+}
+
+// -------------------------------------------------------------------
+
 // AirspaceGeometryMessage
 
 // .atc_proto.GeoPolygon lateral_bounds = 1;
@@ -15331,6 +16888,12 @@ TaxiPathMessage::mutable_edge_ids() {
 
 // -------------------------------------------------------------------
 
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
+// -------------------------------------------------------------------
+
 
 // @@protoc_insertion_point(namespace_scope)
 
@@ -15362,6 +16925,16 @@ template <> struct is_proto_enum< ::atc_proto::TaxiEdgeType> : ::std::true_type 
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::atc_proto::TaxiEdgeType>() {
   return ::atc_proto::TaxiEdgeType_descriptor();
+}
+template <> struct is_proto_enum< ::atc_proto::CloudCoverType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::atc_proto::CloudCoverType>() {
+  return ::atc_proto::CloudCoverType_descriptor();
+}
+template <> struct is_proto_enum< ::atc_proto::CloudType> : ::std::true_type {};
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::atc_proto::CloudType>() {
+  return ::atc_proto::CloudType_descriptor();
 }
 
 PROTOBUF_NAMESPACE_CLOSE

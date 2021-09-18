@@ -261,6 +261,94 @@ export function taxiEdgeTypeToJSON(object: TaxiEdgeType): string {
   }
 }
 
+export enum CloudCoverType {
+  CLOUD_COVER_SKC = 0,
+  CLOUD_COVER_FEW = 1,
+  CLOUD_COVER_SCT = 3,
+  CLOUD_COVER_BKN = 6,
+  CLOUD_COVER_OVC = 8,
+  UNRECOGNIZED = -1,
+}
+
+export function cloudCoverTypeFromJSON(object: any): CloudCoverType {
+  switch (object) {
+    case 0:
+    case "CLOUD_COVER_SKC":
+      return CloudCoverType.CLOUD_COVER_SKC;
+    case 1:
+    case "CLOUD_COVER_FEW":
+      return CloudCoverType.CLOUD_COVER_FEW;
+    case 3:
+    case "CLOUD_COVER_SCT":
+      return CloudCoverType.CLOUD_COVER_SCT;
+    case 6:
+    case "CLOUD_COVER_BKN":
+      return CloudCoverType.CLOUD_COVER_BKN;
+    case 8:
+    case "CLOUD_COVER_OVC":
+      return CloudCoverType.CLOUD_COVER_OVC;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return CloudCoverType.UNRECOGNIZED;
+  }
+}
+
+export function cloudCoverTypeToJSON(object: CloudCoverType): string {
+  switch (object) {
+    case CloudCoverType.CLOUD_COVER_SKC:
+      return "CLOUD_COVER_SKC";
+    case CloudCoverType.CLOUD_COVER_FEW:
+      return "CLOUD_COVER_FEW";
+    case CloudCoverType.CLOUD_COVER_SCT:
+      return "CLOUD_COVER_SCT";
+    case CloudCoverType.CLOUD_COVER_BKN:
+      return "CLOUD_COVER_BKN";
+    case CloudCoverType.CLOUD_COVER_OVC:
+      return "CLOUD_COVER_OVC";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+export enum CloudType {
+  CLOUD_TYPE_NOSIG = 0,
+  CLOUD_TYPE_TCU = 2,
+  CLOUD_TYPE_CB = 1,
+  UNRECOGNIZED = -1,
+}
+
+export function cloudTypeFromJSON(object: any): CloudType {
+  switch (object) {
+    case 0:
+    case "CLOUD_TYPE_NOSIG":
+      return CloudType.CLOUD_TYPE_NOSIG;
+    case 2:
+    case "CLOUD_TYPE_TCU":
+      return CloudType.CLOUD_TYPE_TCU;
+    case 1:
+    case "CLOUD_TYPE_CB":
+      return CloudType.CLOUD_TYPE_CB;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return CloudType.UNRECOGNIZED;
+  }
+}
+
+export function cloudTypeToJSON(object: CloudType): string {
+  switch (object) {
+    case CloudType.CLOUD_TYPE_NOSIG:
+      return "CLOUD_TYPE_NOSIG";
+    case CloudType.CLOUD_TYPE_TCU:
+      return "CLOUD_TYPE_TCU";
+    case CloudType.CLOUD_TYPE_CB:
+      return "CLOUD_TYPE_CB";
+    default:
+      return "UNKNOWN";
+  }
+}
+
 export interface ClientToServer {
   id: number;
   sentAt: Date | undefined;
@@ -413,6 +501,8 @@ export interface ServerToClient_NotifyAircraftRemoved {
 export interface ServerToClient_ReplyUserAcquireAircraft {
   aircraftId: number;
   success: boolean;
+  callsign: string;
+  weather: WeatherMessage | undefined;
 }
 
 export interface GeoPoint {
@@ -501,6 +591,31 @@ export interface ParkingStandMessage {
   categories: AircraftCategory[];
   operationTypes: OperationType[];
   airlineIcaos: string[];
+}
+
+export interface AtisMessage {
+  airportIcao: string;
+  information: string;
+  weather: WeatherMessage | undefined;
+  activeRunwaysDeparture: string[];
+  activeRunwaysArrival: string[];
+  clearanceFrequencyKhz: number;
+}
+
+export interface WeatherMessage {
+  weatherStationId: string;
+  validAt: Date | undefined;
+  qnhHpa: number;
+  windSpeedKt: number;
+  windTrueBearingDegrees: number;
+  /** TODO: add more parameters */
+  clouds: WeatherMessage_CloudLayer[];
+}
+
+export interface WeatherMessage_CloudLayer {
+  type: CloudType;
+  cover: CloudCoverType;
+  baseFeetAgl: number;
 }
 
 export interface AirspaceGeometryMessage {
@@ -3590,6 +3705,7 @@ export const ServerToClient_NotifyAircraftRemoved = {
 const baseServerToClient_ReplyUserAcquireAircraft: object = {
   aircraftId: 0,
   success: false,
+  callsign: "",
 };
 
 export const ServerToClient_ReplyUserAcquireAircraft = {
@@ -3602,6 +3718,12 @@ export const ServerToClient_ReplyUserAcquireAircraft = {
     }
     if (message.success === true) {
       writer.uint32(16).bool(message.success);
+    }
+    if (message.callsign !== "") {
+      writer.uint32(26).string(message.callsign);
+    }
+    if (message.weather !== undefined) {
+      WeatherMessage.encode(message.weather, writer.uint32(34).fork()).ldelim();
     }
     return writer;
   },
@@ -3623,6 +3745,12 @@ export const ServerToClient_ReplyUserAcquireAircraft = {
           break;
         case 2:
           message.success = reader.bool();
+          break;
+        case 3:
+          message.callsign = reader.string();
+          break;
+        case 4:
+          message.weather = WeatherMessage.decode(reader, reader.uint32());
           break;
         default:
           reader.skipType(tag & 7);
@@ -3646,6 +3774,16 @@ export const ServerToClient_ReplyUserAcquireAircraft = {
     } else {
       message.success = false;
     }
+    if (object.callsign !== undefined && object.callsign !== null) {
+      message.callsign = String(object.callsign);
+    } else {
+      message.callsign = "";
+    }
+    if (object.weather !== undefined && object.weather !== null) {
+      message.weather = WeatherMessage.fromJSON(object.weather);
+    } else {
+      message.weather = undefined;
+    }
     return message;
   },
 
@@ -3653,6 +3791,11 @@ export const ServerToClient_ReplyUserAcquireAircraft = {
     const obj: any = {};
     message.aircraftId !== undefined && (obj.aircraftId = message.aircraftId);
     message.success !== undefined && (obj.success = message.success);
+    message.callsign !== undefined && (obj.callsign = message.callsign);
+    message.weather !== undefined &&
+      (obj.weather = message.weather
+        ? WeatherMessage.toJSON(message.weather)
+        : undefined);
     return obj;
   },
 
@@ -3671,6 +3814,16 @@ export const ServerToClient_ReplyUserAcquireAircraft = {
       message.success = object.success;
     } else {
       message.success = false;
+    }
+    if (object.callsign !== undefined && object.callsign !== null) {
+      message.callsign = object.callsign;
+    } else {
+      message.callsign = "";
+    }
+    if (object.weather !== undefined && object.weather !== null) {
+      message.weather = WeatherMessage.fromPartial(object.weather);
+    } else {
+      message.weather = undefined;
     }
     return message;
   },
@@ -5254,6 +5407,482 @@ export const ParkingStandMessage = {
       for (const e of object.airlineIcaos) {
         message.airlineIcaos.push(e);
       }
+    }
+    return message;
+  },
+};
+
+const baseAtisMessage: object = {
+  airportIcao: "",
+  information: "",
+  activeRunwaysDeparture: "",
+  activeRunwaysArrival: "",
+  clearanceFrequencyKhz: 0,
+};
+
+export const AtisMessage = {
+  encode(
+    message: AtisMessage,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.airportIcao !== "") {
+      writer.uint32(10).string(message.airportIcao);
+    }
+    if (message.information !== "") {
+      writer.uint32(18).string(message.information);
+    }
+    if (message.weather !== undefined) {
+      WeatherMessage.encode(message.weather, writer.uint32(26).fork()).ldelim();
+    }
+    for (const v of message.activeRunwaysDeparture) {
+      writer.uint32(34).string(v!);
+    }
+    for (const v of message.activeRunwaysArrival) {
+      writer.uint32(42).string(v!);
+    }
+    if (message.clearanceFrequencyKhz !== 0) {
+      writer.uint32(48).int32(message.clearanceFrequencyKhz);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): AtisMessage {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseAtisMessage } as AtisMessage;
+    message.activeRunwaysDeparture = [];
+    message.activeRunwaysArrival = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.airportIcao = reader.string();
+          break;
+        case 2:
+          message.information = reader.string();
+          break;
+        case 3:
+          message.weather = WeatherMessage.decode(reader, reader.uint32());
+          break;
+        case 4:
+          message.activeRunwaysDeparture.push(reader.string());
+          break;
+        case 5:
+          message.activeRunwaysArrival.push(reader.string());
+          break;
+        case 6:
+          message.clearanceFrequencyKhz = reader.int32();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AtisMessage {
+    const message = { ...baseAtisMessage } as AtisMessage;
+    message.activeRunwaysDeparture = [];
+    message.activeRunwaysArrival = [];
+    if (object.airportIcao !== undefined && object.airportIcao !== null) {
+      message.airportIcao = String(object.airportIcao);
+    } else {
+      message.airportIcao = "";
+    }
+    if (object.information !== undefined && object.information !== null) {
+      message.information = String(object.information);
+    } else {
+      message.information = "";
+    }
+    if (object.weather !== undefined && object.weather !== null) {
+      message.weather = WeatherMessage.fromJSON(object.weather);
+    } else {
+      message.weather = undefined;
+    }
+    if (
+      object.activeRunwaysDeparture !== undefined &&
+      object.activeRunwaysDeparture !== null
+    ) {
+      for (const e of object.activeRunwaysDeparture) {
+        message.activeRunwaysDeparture.push(String(e));
+      }
+    }
+    if (
+      object.activeRunwaysArrival !== undefined &&
+      object.activeRunwaysArrival !== null
+    ) {
+      for (const e of object.activeRunwaysArrival) {
+        message.activeRunwaysArrival.push(String(e));
+      }
+    }
+    if (
+      object.clearanceFrequencyKhz !== undefined &&
+      object.clearanceFrequencyKhz !== null
+    ) {
+      message.clearanceFrequencyKhz = Number(object.clearanceFrequencyKhz);
+    } else {
+      message.clearanceFrequencyKhz = 0;
+    }
+    return message;
+  },
+
+  toJSON(message: AtisMessage): unknown {
+    const obj: any = {};
+    message.airportIcao !== undefined &&
+      (obj.airportIcao = message.airportIcao);
+    message.information !== undefined &&
+      (obj.information = message.information);
+    message.weather !== undefined &&
+      (obj.weather = message.weather
+        ? WeatherMessage.toJSON(message.weather)
+        : undefined);
+    if (message.activeRunwaysDeparture) {
+      obj.activeRunwaysDeparture = message.activeRunwaysDeparture.map((e) => e);
+    } else {
+      obj.activeRunwaysDeparture = [];
+    }
+    if (message.activeRunwaysArrival) {
+      obj.activeRunwaysArrival = message.activeRunwaysArrival.map((e) => e);
+    } else {
+      obj.activeRunwaysArrival = [];
+    }
+    message.clearanceFrequencyKhz !== undefined &&
+      (obj.clearanceFrequencyKhz = message.clearanceFrequencyKhz);
+    return obj;
+  },
+
+  fromPartial(object: DeepPartial<AtisMessage>): AtisMessage {
+    const message = { ...baseAtisMessage } as AtisMessage;
+    message.activeRunwaysDeparture = [];
+    message.activeRunwaysArrival = [];
+    if (object.airportIcao !== undefined && object.airportIcao !== null) {
+      message.airportIcao = object.airportIcao;
+    } else {
+      message.airportIcao = "";
+    }
+    if (object.information !== undefined && object.information !== null) {
+      message.information = object.information;
+    } else {
+      message.information = "";
+    }
+    if (object.weather !== undefined && object.weather !== null) {
+      message.weather = WeatherMessage.fromPartial(object.weather);
+    } else {
+      message.weather = undefined;
+    }
+    if (
+      object.activeRunwaysDeparture !== undefined &&
+      object.activeRunwaysDeparture !== null
+    ) {
+      for (const e of object.activeRunwaysDeparture) {
+        message.activeRunwaysDeparture.push(e);
+      }
+    }
+    if (
+      object.activeRunwaysArrival !== undefined &&
+      object.activeRunwaysArrival !== null
+    ) {
+      for (const e of object.activeRunwaysArrival) {
+        message.activeRunwaysArrival.push(e);
+      }
+    }
+    if (
+      object.clearanceFrequencyKhz !== undefined &&
+      object.clearanceFrequencyKhz !== null
+    ) {
+      message.clearanceFrequencyKhz = object.clearanceFrequencyKhz;
+    } else {
+      message.clearanceFrequencyKhz = 0;
+    }
+    return message;
+  },
+};
+
+const baseWeatherMessage: object = {
+  weatherStationId: "",
+  qnhHpa: 0,
+  windSpeedKt: 0,
+  windTrueBearingDegrees: 0,
+};
+
+export const WeatherMessage = {
+  encode(
+    message: WeatherMessage,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.weatherStationId !== "") {
+      writer.uint32(10).string(message.weatherStationId);
+    }
+    if (message.validAt !== undefined) {
+      Timestamp.encode(
+        toTimestamp(message.validAt),
+        writer.uint32(18).fork()
+      ).ldelim();
+    }
+    if (message.qnhHpa !== 0) {
+      writer.uint32(24).int32(message.qnhHpa);
+    }
+    if (message.windSpeedKt !== 0) {
+      writer.uint32(32).int32(message.windSpeedKt);
+    }
+    if (message.windTrueBearingDegrees !== 0) {
+      writer.uint32(40).int32(message.windTrueBearingDegrees);
+    }
+    for (const v of message.clouds) {
+      WeatherMessage_CloudLayer.encode(v!, writer.uint32(50).fork()).ldelim();
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): WeatherMessage {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = { ...baseWeatherMessage } as WeatherMessage;
+    message.clouds = [];
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.weatherStationId = reader.string();
+          break;
+        case 2:
+          message.validAt = fromTimestamp(
+            Timestamp.decode(reader, reader.uint32())
+          );
+          break;
+        case 3:
+          message.qnhHpa = reader.int32();
+          break;
+        case 4:
+          message.windSpeedKt = reader.int32();
+          break;
+        case 5:
+          message.windTrueBearingDegrees = reader.int32();
+          break;
+        case 6:
+          message.clouds.push(
+            WeatherMessage_CloudLayer.decode(reader, reader.uint32())
+          );
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): WeatherMessage {
+    const message = { ...baseWeatherMessage } as WeatherMessage;
+    message.clouds = [];
+    if (
+      object.weatherStationId !== undefined &&
+      object.weatherStationId !== null
+    ) {
+      message.weatherStationId = String(object.weatherStationId);
+    } else {
+      message.weatherStationId = "";
+    }
+    if (object.validAt !== undefined && object.validAt !== null) {
+      message.validAt = fromJsonTimestamp(object.validAt);
+    } else {
+      message.validAt = undefined;
+    }
+    if (object.qnhHpa !== undefined && object.qnhHpa !== null) {
+      message.qnhHpa = Number(object.qnhHpa);
+    } else {
+      message.qnhHpa = 0;
+    }
+    if (object.windSpeedKt !== undefined && object.windSpeedKt !== null) {
+      message.windSpeedKt = Number(object.windSpeedKt);
+    } else {
+      message.windSpeedKt = 0;
+    }
+    if (
+      object.windTrueBearingDegrees !== undefined &&
+      object.windTrueBearingDegrees !== null
+    ) {
+      message.windTrueBearingDegrees = Number(object.windTrueBearingDegrees);
+    } else {
+      message.windTrueBearingDegrees = 0;
+    }
+    if (object.clouds !== undefined && object.clouds !== null) {
+      for (const e of object.clouds) {
+        message.clouds.push(WeatherMessage_CloudLayer.fromJSON(e));
+      }
+    }
+    return message;
+  },
+
+  toJSON(message: WeatherMessage): unknown {
+    const obj: any = {};
+    message.weatherStationId !== undefined &&
+      (obj.weatherStationId = message.weatherStationId);
+    message.validAt !== undefined &&
+      (obj.validAt = message.validAt.toISOString());
+    message.qnhHpa !== undefined && (obj.qnhHpa = message.qnhHpa);
+    message.windSpeedKt !== undefined &&
+      (obj.windSpeedKt = message.windSpeedKt);
+    message.windTrueBearingDegrees !== undefined &&
+      (obj.windTrueBearingDegrees = message.windTrueBearingDegrees);
+    if (message.clouds) {
+      obj.clouds = message.clouds.map((e) =>
+        e ? WeatherMessage_CloudLayer.toJSON(e) : undefined
+      );
+    } else {
+      obj.clouds = [];
+    }
+    return obj;
+  },
+
+  fromPartial(object: DeepPartial<WeatherMessage>): WeatherMessage {
+    const message = { ...baseWeatherMessage } as WeatherMessage;
+    message.clouds = [];
+    if (
+      object.weatherStationId !== undefined &&
+      object.weatherStationId !== null
+    ) {
+      message.weatherStationId = object.weatherStationId;
+    } else {
+      message.weatherStationId = "";
+    }
+    if (object.validAt !== undefined && object.validAt !== null) {
+      message.validAt = object.validAt;
+    } else {
+      message.validAt = undefined;
+    }
+    if (object.qnhHpa !== undefined && object.qnhHpa !== null) {
+      message.qnhHpa = object.qnhHpa;
+    } else {
+      message.qnhHpa = 0;
+    }
+    if (object.windSpeedKt !== undefined && object.windSpeedKt !== null) {
+      message.windSpeedKt = object.windSpeedKt;
+    } else {
+      message.windSpeedKt = 0;
+    }
+    if (
+      object.windTrueBearingDegrees !== undefined &&
+      object.windTrueBearingDegrees !== null
+    ) {
+      message.windTrueBearingDegrees = object.windTrueBearingDegrees;
+    } else {
+      message.windTrueBearingDegrees = 0;
+    }
+    if (object.clouds !== undefined && object.clouds !== null) {
+      for (const e of object.clouds) {
+        message.clouds.push(WeatherMessage_CloudLayer.fromPartial(e));
+      }
+    }
+    return message;
+  },
+};
+
+const baseWeatherMessage_CloudLayer: object = {
+  type: 0,
+  cover: 0,
+  baseFeetAgl: 0,
+};
+
+export const WeatherMessage_CloudLayer = {
+  encode(
+    message: WeatherMessage_CloudLayer,
+    writer: _m0.Writer = _m0.Writer.create()
+  ): _m0.Writer {
+    if (message.type !== 0) {
+      writer.uint32(8).int32(message.type);
+    }
+    if (message.cover !== 0) {
+      writer.uint32(16).int32(message.cover);
+    }
+    if (message.baseFeetAgl !== 0) {
+      writer.uint32(24).int32(message.baseFeetAgl);
+    }
+    return writer;
+  },
+
+  decode(
+    input: _m0.Reader | Uint8Array,
+    length?: number
+  ): WeatherMessage_CloudLayer {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = {
+      ...baseWeatherMessage_CloudLayer,
+    } as WeatherMessage_CloudLayer;
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.type = reader.int32() as any;
+          break;
+        case 2:
+          message.cover = reader.int32() as any;
+          break;
+        case 3:
+          message.baseFeetAgl = reader.int32();
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): WeatherMessage_CloudLayer {
+    const message = {
+      ...baseWeatherMessage_CloudLayer,
+    } as WeatherMessage_CloudLayer;
+    if (object.type !== undefined && object.type !== null) {
+      message.type = cloudTypeFromJSON(object.type);
+    } else {
+      message.type = 0;
+    }
+    if (object.cover !== undefined && object.cover !== null) {
+      message.cover = cloudCoverTypeFromJSON(object.cover);
+    } else {
+      message.cover = 0;
+    }
+    if (object.baseFeetAgl !== undefined && object.baseFeetAgl !== null) {
+      message.baseFeetAgl = Number(object.baseFeetAgl);
+    } else {
+      message.baseFeetAgl = 0;
+    }
+    return message;
+  },
+
+  toJSON(message: WeatherMessage_CloudLayer): unknown {
+    const obj: any = {};
+    message.type !== undefined && (obj.type = cloudTypeToJSON(message.type));
+    message.cover !== undefined &&
+      (obj.cover = cloudCoverTypeToJSON(message.cover));
+    message.baseFeetAgl !== undefined &&
+      (obj.baseFeetAgl = message.baseFeetAgl);
+    return obj;
+  },
+
+  fromPartial(
+    object: DeepPartial<WeatherMessage_CloudLayer>
+  ): WeatherMessage_CloudLayer {
+    const message = {
+      ...baseWeatherMessage_CloudLayer,
+    } as WeatherMessage_CloudLayer;
+    if (object.type !== undefined && object.type !== null) {
+      message.type = object.type;
+    } else {
+      message.type = 0;
+    }
+    if (object.cover !== undefined && object.cover !== null) {
+      message.cover = object.cover;
+    } else {
+      message.cover = 0;
+    }
+    if (object.baseFeetAgl !== undefined && object.baseFeetAgl !== null) {
+      message.baseFeetAgl = object.baseFeetAgl;
+    } else {
+      message.baseFeetAgl = 0;
     }
     return message;
   },

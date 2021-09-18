@@ -128,8 +128,11 @@ message ServerToClient {
   message ReplyUserAcquireAircraft {
     uint32 aircraft_id = 1;
     bool success = 2;
+    string callsign = 3;
+    WeatherMessage weather = 4;    
   }
   
+
   uint64 id = 2;
   uint64 reply_to_request_id = 3;
   google.protobuf.Timestamp sent_at = 4;
@@ -194,6 +197,20 @@ enum TaxiEdgeType {
   TAXI_EDGE_GROUNDWAY = 0;
   TAXI_EDGE_TAXIWAY = 1;
   TAXI_EDGE_RUNWAY = 2;
+}
+
+enum CloudCoverType {
+  CLOUD_COVER_SKC = 0;
+  CLOUD_COVER_FEW = 1;
+  CLOUD_COVER_SCT = 3;
+  CLOUD_COVER_BKN = 6;
+  CLOUD_COVER_OVC = 8;
+}
+
+enum CloudType {
+  CLOUD_TYPE_NOSIG = 0;
+  CLOUD_TYPE_TCU = 2;
+  CLOUD_TYPE_CB = 1;
 }
 
 //-----------------------------------------------------------
@@ -290,6 +307,34 @@ message ParkingStandMessage {
 }
 
 //-----------------------------------------------------------
+// WEATHER
+//-----------------------------------------------------------
+
+message AtisMessage {
+  string airport_icao = 1;
+  string information = 2;
+  WeatherMessage weather = 3;
+  repeated string active_runways_departure = 4;
+  repeated string active_runways_arrival = 5;
+  int32 clearance_frequency_khz = 6;
+}
+
+message WeatherMessage {
+  message CloudLayer {
+    CloudType type = 1;
+    CloudCoverType cover = 2;
+    int32 base_feet_agl = 3;
+  }
+  string weather_station_id = 1;
+  google.protobuf.Timestamp valid_at = 2;
+  int32 qnh_hpa = 3;
+  int32 wind_speed_kt = 4;
+  int32 wind_true_bearing_degrees = 5;
+  repeated CloudLayer clouds = 6;
+  //TODO: add more parameters
+}
+
+//-----------------------------------------------------------
 // NAVIGATION
 //-----------------------------------------------------------
 
@@ -341,3 +386,4 @@ message TaxiPathMessage {
   int32 to_node_id = 2;
   repeated int32 edge_ids = 3;
 }
+

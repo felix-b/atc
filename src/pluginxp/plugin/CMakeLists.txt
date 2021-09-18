@@ -112,6 +112,7 @@ add_xplane_plugin(pluginxp 301
         proto/atc.pb.cc
         utils.h
         utils.cpp
+        dispatcher.hpp
         serviceClient.hpp
         pluginInstance.hpp
         entryPoint.cpp

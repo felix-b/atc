@@ -650,6 +650,13 @@ namespace AtcProto
             [global::ProtoBuf.ProtoMember(2, Name = @"success")]
             public bool Success { get; set; }
 
+            [global::ProtoBuf.ProtoMember(3, Name = @"callsign")]
+            [global::System.ComponentModel.DefaultValue("")]
+            public string Callsign { get; set; } = "";
+
+            [global::ProtoBuf.ProtoMember(4, Name = @"weather")]
+            public WeatherMessage Weather { get; set; }
+
         }
 
     }
@@ -924,6 +931,81 @@ namespace AtcProto
     }
 
     [global::ProtoBuf.ProtoContract()]
+    public partial class AtisMessage : global::ProtoBuf.IExtensible
+    {
+        private global::ProtoBuf.IExtension __pbn__extensionData;
+        global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+            => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+        [global::ProtoBuf.ProtoMember(1, Name = @"airport_icao")]
+        [global::System.ComponentModel.DefaultValue("")]
+        public string AirportIcao { get; set; } = "";
+
+        [global::ProtoBuf.ProtoMember(2, Name = @"information")]
+        [global::System.ComponentModel.DefaultValue("")]
+        public string Information { get; set; } = "";
+
+        [global::ProtoBuf.ProtoMember(3, Name = @"weather")]
+        public WeatherMessage Weather { get; set; }
+
+        [global::ProtoBuf.ProtoMember(4, Name = @"active_runways_departure")]
+        public global::System.Collections.Generic.List<string> ActiveRunwaysDepartures { get; } = new global::System.Collections.Generic.List<string>();
+
+        [global::ProtoBuf.ProtoMember(5, Name = @"active_runways_arrival")]
+        public global::System.Collections.Generic.List<string> ActiveRunwaysArrivals { get; } = new global::System.Collections.Generic.List<string>();
+
+        [global::ProtoBuf.ProtoMember(6, Name = @"clearance_frequency_khz")]
+        public int ClearanceFrequencyKhz { get; set; }
+
+    }
+
+    [global::ProtoBuf.ProtoContract()]
+    public partial class WeatherMessage : global::ProtoBuf.IExtensible
+    {
+        private global::ProtoBuf.IExtension __pbn__extensionData;
+        global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+            => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+        [global::ProtoBuf.ProtoMember(1, Name = @"weather_station_id")]
+        [global::System.ComponentModel.DefaultValue("")]
+        public string WeatherStationId { get; set; } = "";
+
+        [global::ProtoBuf.ProtoMember(2, Name = @"valid_at", DataFormat = global::ProtoBuf.DataFormat.WellKnown)]
+        public global::System.DateTime? ValidAt { get; set; }
+
+        [global::ProtoBuf.ProtoMember(3, Name = @"qnh_hpa")]
+        public int QnhHpa { get; set; }
+
+        [global::ProtoBuf.ProtoMember(4, Name = @"wind_speed_kt")]
+        public int WindSpeedKt { get; set; }
+
+        [global::ProtoBuf.ProtoMember(5, Name = @"wind_true_bearing_degrees")]
+        public int WindTrueBearingDegrees { get; set; }
+
+        [global::ProtoBuf.ProtoMember(6, Name = @"clouds")]
+        public global::System.Collections.Generic.List<CloudLayer> Clouds { get; } = new global::System.Collections.Generic.List<CloudLayer>();
+
+        [global::ProtoBuf.ProtoContract()]
+        public partial class CloudLayer : global::ProtoBuf.IExtensible
+        {
+            private global::ProtoBuf.IExtension __pbn__extensionData;
+            global::ProtoBuf.IExtension global::ProtoBuf.IExtensible.GetExtensionObject(bool createIfMissing)
+                => global::ProtoBuf.Extensible.GetExtensionObject(ref __pbn__extensionData, createIfMissing);
+
+            [global::ProtoBuf.ProtoMember(1, Name = @"type")]
+            public CloudType Type { get; set; }
+
+            [global::ProtoBuf.ProtoMember(2, Name = @"cover")]
+            public CloudCoverType Cover { get; set; }
+
+            [global::ProtoBuf.ProtoMember(3, Name = @"base_feet_agl")]
+            public int BaseFeetAgl { get; set; }
+
+        }
+
+    }
+
+    [global::ProtoBuf.ProtoContract()]
     public partial class AirspaceGeometryMessage : global::ProtoBuf.IExtensible
     {
         private global::ProtoBuf.IExtension __pbn__extensionData;
@@ -1129,6 +1211,32 @@ namespace AtcProto
         TaxiEdgeTaxiway = 1,
         [global::ProtoBuf.ProtoEnum(Name = @"TAXI_EDGE_RUNWAY")]
         TaxiEdgeRunway = 2,
+    }
+
+    [global::ProtoBuf.ProtoContract()]
+    public enum CloudCoverType
+    {
+        [global::ProtoBuf.ProtoEnum(Name = @"CLOUD_COVER_SKC")]
+        CloudCoverSkc = 0,
+        [global::ProtoBuf.ProtoEnum(Name = @"CLOUD_COVER_FEW")]
+        CloudCoverFew = 1,
+        [global::ProtoBuf.ProtoEnum(Name = @"CLOUD_COVER_SCT")]
+        CloudCoverSct = 3,
+        [global::ProtoBuf.ProtoEnum(Name = @"CLOUD_COVER_BKN")]
+        CloudCoverBkn = 6,
+        [global::ProtoBuf.ProtoEnum(Name = @"CLOUD_COVER_OVC")]
+        CloudCoverOvc = 8,
+    }
+
+    [global::ProtoBuf.ProtoContract()]
+    public enum CloudType
+    {
+        [global::ProtoBuf.ProtoEnum(Name = @"CLOUD_TYPE_NOSIG")]
+        CloudTypeNosig = 0,
+        [global::ProtoBuf.ProtoEnum(Name = @"CLOUD_TYPE_TCU")]
+        CloudTypeTcu = 2,
+        [global::ProtoBuf.ProtoEnum(Name = @"CLOUD_TYPE_CB")]
+        CloudTypeCb = 1,
     }
 
 }

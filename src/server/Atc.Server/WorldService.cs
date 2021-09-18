@@ -117,12 +117,19 @@ namespace Atc.Server
         public void UserAcquireAircraft(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
         {
             var request = message.user_acquire_aircraft;
+            _tempMockRadio.ResetFlight();
             
             //TODO - implement the logic
             connection.FireMessage(new ServerToClient {
                 reply_user_acquire_aircraft = new ServerToClient.ReplyUserAcquireAircraft {
                     AircraftId = request.AircraftId,
-                    Success = true
+                    Success = true,
+                    Callsign = _tempMockRadio.CurrentCallsign,
+                    Weather = new WeatherMessage {
+                        QnhHpa = _tempMockRadio.CurrentAtis.Qnh,
+                        WindSpeedKt = _tempMockRadio.CurrentAtis.WindSpeedKt,
+                        WindTrueBearingDegrees = _tempMockRadio.CurrentAtis.WindBearing
+                    }  
                 }
             });
         }

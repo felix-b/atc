@@ -46,11 +46,13 @@ extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::S
 extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_ServerToClient_ReplyQueryAirport_atc_2eproto;
 extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_ServerToClient_ReplyQueryTaxiPath_atc_2eproto;
 extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_ServerToClient_ReplyQueryTraffic_atc_2eproto;
-extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_ServerToClient_ReplyUserAcquireAircraft_atc_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_ServerToClient_ReplyUserAcquireAircraft_atc_2eproto;
 extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_TaxiEdgeMessage_atc_2eproto;
 extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_TaxiEdgeMessage_ActiveZoneMatrix_atc_2eproto;
 extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_TaxiNodeMessage_atc_2eproto;
 extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_TaxiPathMessage_atc_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<2> scc_info_WeatherMessage_atc_2eproto;
+extern PROTOBUF_INTERNAL_EXPORT_atc_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_WeatherMessage_CloudLayer_atc_2eproto;
 extern PROTOBUF_INTERNAL_EXPORT_google_2fprotobuf_2ftimestamp_2eproto ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_Timestamp_google_2fprotobuf_2ftimestamp_2eproto;
 namespace atc_proto {
 class ClientToServer_ConnectDefaultTypeInternal {
@@ -229,6 +231,18 @@ class ParkingStandMessageDefaultTypeInternal {
  public:
   ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<ParkingStandMessage> _instance;
 } _ParkingStandMessage_default_instance_;
+class AtisMessageDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<AtisMessage> _instance;
+} _AtisMessage_default_instance_;
+class WeatherMessage_CloudLayerDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<WeatherMessage_CloudLayer> _instance;
+} _WeatherMessage_CloudLayer_default_instance_;
+class WeatherMessageDefaultTypeInternal {
+ public:
+  ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<WeatherMessage> _instance;
+} _WeatherMessage_default_instance_;
 class AirspaceGeometryMessageDefaultTypeInternal {
  public:
   ::PROTOBUF_NAMESPACE_ID::internal::ExplicitlyConstructed<AirspaceGeometryMessage> _instance;
@@ -309,6 +323,21 @@ static void InitDefaultsscc_info_AirspaceGeometryMessage_atc_2eproto() {
 ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_AirspaceGeometryMessage_atc_2eproto =
     {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_AirspaceGeometryMessage_atc_2eproto}, {
       &scc_info_GeoPolygon_atc_2eproto.base,}};
+
+static void InitDefaultsscc_info_AtisMessage_atc_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::atc_proto::_AtisMessage_default_instance_;
+    new (ptr) ::atc_proto::AtisMessage();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::atc_proto::AtisMessage::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_AtisMessage_atc_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_AtisMessage_atc_2eproto}, {
+      &scc_info_WeatherMessage_atc_2eproto.base,}};
 
 static void InitDefaultsscc_info_AttitudeMessage_atc_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -809,8 +838,9 @@ static void InitDefaultsscc_info_ServerToClient_ReplyUserAcquireAircraft_atc_2ep
   ::atc_proto::ServerToClient_ReplyUserAcquireAircraft::InitAsDefaultInstance();
 }
 
-::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_ServerToClient_ReplyUserAcquireAircraft_atc_2eproto =
-    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_ServerToClient_ReplyUserAcquireAircraft_atc_2eproto}, {}};
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<1> scc_info_ServerToClient_ReplyUserAcquireAircraft_atc_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 1, 0, InitDefaultsscc_info_ServerToClient_ReplyUserAcquireAircraft_atc_2eproto}, {
+      &scc_info_WeatherMessage_atc_2eproto.base,}};
 
 static void InitDefaultsscc_info_TaxiEdgeMessage_atc_2eproto() {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
@@ -884,8 +914,38 @@ static void InitDefaultsscc_info_Vector3dMessage_atc_2eproto() {
 ::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_Vector3dMessage_atc_2eproto =
     {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_Vector3dMessage_atc_2eproto}, {}};
 
-static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_atc_2eproto[42];
-static const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* file_level_enum_descriptors_atc_2eproto[5];
+static void InitDefaultsscc_info_WeatherMessage_atc_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::atc_proto::_WeatherMessage_default_instance_;
+    new (ptr) ::atc_proto::WeatherMessage();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::atc_proto::WeatherMessage::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<2> scc_info_WeatherMessage_atc_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 2, 0, InitDefaultsscc_info_WeatherMessage_atc_2eproto}, {
+      &scc_info_Timestamp_google_2fprotobuf_2ftimestamp_2eproto.base,
+      &scc_info_WeatherMessage_CloudLayer_atc_2eproto.base,}};
+
+static void InitDefaultsscc_info_WeatherMessage_CloudLayer_atc_2eproto() {
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  {
+    void* ptr = &::atc_proto::_WeatherMessage_CloudLayer_default_instance_;
+    new (ptr) ::atc_proto::WeatherMessage_CloudLayer();
+    ::PROTOBUF_NAMESPACE_ID::internal::OnShutdownDestroyMessage(ptr);
+  }
+  ::atc_proto::WeatherMessage_CloudLayer::InitAsDefaultInstance();
+}
+
+::PROTOBUF_NAMESPACE_ID::internal::SCCInfo<0> scc_info_WeatherMessage_CloudLayer_atc_2eproto =
+    {{ATOMIC_VAR_INIT(::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase::kUninitialized), 0, 0, InitDefaultsscc_info_WeatherMessage_CloudLayer_atc_2eproto}, {}};
+
+static ::PROTOBUF_NAMESPACE_ID::Metadata file_level_metadata_atc_2eproto[45];
+static const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* file_level_enum_descriptors_atc_2eproto[7];
 static constexpr ::PROTOBUF_NAMESPACE_ID::ServiceDescriptor const** file_level_service_descriptors_atc_2eproto = nullptr;
 
 const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_atc_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(protodesc_cold) = {
@@ -1071,6 +1131,8 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_atc_2eproto::offsets[] PROTOBU
   ~0u,  // no _weak_field_map_
   PROTOBUF_FIELD_OFFSET(::atc_proto::ServerToClient_ReplyUserAcquireAircraft, aircraft_id_),
   PROTOBUF_FIELD_OFFSET(::atc_proto::ServerToClient_ReplyUserAcquireAircraft, success_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::ServerToClient_ReplyUserAcquireAircraft, callsign_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::ServerToClient_ReplyUserAcquireAircraft, weather_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::atc_proto::ServerToClient, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -1206,6 +1268,36 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_atc_2eproto::offsets[] PROTOBU
   PROTOBUF_FIELD_OFFSET(::atc_proto::ParkingStandMessage, operation_types_),
   PROTOBUF_FIELD_OFFSET(::atc_proto::ParkingStandMessage, airline_icaos_),
   ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::atc_proto::AtisMessage, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::atc_proto::AtisMessage, airport_icao_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::AtisMessage, information_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::AtisMessage, weather_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::AtisMessage, active_runways_departure_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::AtisMessage, active_runways_arrival_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::AtisMessage, clearance_frequency_khz_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage_CloudLayer, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage_CloudLayer, type_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage_CloudLayer, cover_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage_CloudLayer, base_feet_agl_),
+  ~0u,  // no _has_bits_
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage, weather_station_id_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage, valid_at_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage, qnh_hpa_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage, wind_speed_kt_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage, wind_true_bearing_degrees_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::WeatherMessage, clouds_),
+  ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::atc_proto::AirspaceGeometryMessage, _internal_metadata_),
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
@@ -1282,23 +1374,26 @@ static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOB
   { 162, -1, sizeof(::atc_proto::ServerToClient_NotifyAircraftSituationUpdated)},
   { 169, -1, sizeof(::atc_proto::ServerToClient_NotifyAircraftRemoved)},
   { 175, -1, sizeof(::atc_proto::ServerToClient_ReplyUserAcquireAircraft)},
-  { 182, -1, sizeof(::atc_proto::ServerToClient)},
-  { 204, -1, sizeof(::atc_proto::GeoPoint)},
-  { 211, -1, sizeof(::atc_proto::GeoPolygon_GeoEdge)},
-  { 218, -1, sizeof(::atc_proto::GeoPolygon)},
-  { 224, -1, sizeof(::atc_proto::Vector3dMessage)},
-  { 232, -1, sizeof(::atc_proto::AttitudeMessage)},
-  { 240, -1, sizeof(::atc_proto::AirportMessage)},
-  { 251, -1, sizeof(::atc_proto::RunwayMessage_End)},
-  { 261, -1, sizeof(::atc_proto::RunwayMessage)},
-  { 271, -1, sizeof(::atc_proto::TaxiNodeMessage)},
-  { 279, -1, sizeof(::atc_proto::TaxiEdgeMessage_ActiveZoneMatrix)},
-  { 287, -1, sizeof(::atc_proto::TaxiEdgeMessage)},
-  { 302, -1, sizeof(::atc_proto::ParkingStandMessage)},
-  { 316, -1, sizeof(::atc_proto::AirspaceGeometryMessage)},
-  { 324, -1, sizeof(::atc_proto::AircraftMessage_Situation)},
-  { 347, -1, sizeof(::atc_proto::AircraftMessage)},
-  { 358, -1, sizeof(::atc_proto::TaxiPathMessage)},
+  { 184, -1, sizeof(::atc_proto::ServerToClient)},
+  { 206, -1, sizeof(::atc_proto::GeoPoint)},
+  { 213, -1, sizeof(::atc_proto::GeoPolygon_GeoEdge)},
+  { 220, -1, sizeof(::atc_proto::GeoPolygon)},
+  { 226, -1, sizeof(::atc_proto::Vector3dMessage)},
+  { 234, -1, sizeof(::atc_proto::AttitudeMessage)},
+  { 242, -1, sizeof(::atc_proto::AirportMessage)},
+  { 253, -1, sizeof(::atc_proto::RunwayMessage_End)},
+  { 263, -1, sizeof(::atc_proto::RunwayMessage)},
+  { 273, -1, sizeof(::atc_proto::TaxiNodeMessage)},
+  { 281, -1, sizeof(::atc_proto::TaxiEdgeMessage_ActiveZoneMatrix)},
+  { 289, -1, sizeof(::atc_proto::TaxiEdgeMessage)},
+  { 304, -1, sizeof(::atc_proto::ParkingStandMessage)},
+  { 318, -1, sizeof(::atc_proto::AtisMessage)},
+  { 329, -1, sizeof(::atc_proto::WeatherMessage_CloudLayer)},
+  { 337, -1, sizeof(::atc_proto::WeatherMessage)},
+  { 348, -1, sizeof(::atc_proto::AirspaceGeometryMessage)},
+  { 356, -1, sizeof(::atc_proto::AircraftMessage_Situation)},
+  { 379, -1, sizeof(::atc_proto::AircraftMessage)},
+  { 390, -1, sizeof(::atc_proto::TaxiPathMessage)},
 };
 
 static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
@@ -1340,6 +1435,9 @@ static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] =
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::atc_proto::_TaxiEdgeMessage_ActiveZoneMatrix_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::atc_proto::_TaxiEdgeMessage_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::atc_proto::_ParkingStandMessage_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::atc_proto::_AtisMessage_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::atc_proto::_WeatherMessage_CloudLayer_default_instance_),
+  reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::atc_proto::_WeatherMessage_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::atc_proto::_AirspaceGeometryMessage_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::atc_proto::_AircraftMessage_Situation_default_instance_),
   reinterpret_cast<const ::PROTOBUF_NAMESPACE_ID::Message*>(&::atc_proto::_AircraftMessage_default_instance_),
@@ -1395,7 +1493,7 @@ const char descriptor_table_protodef_atc_2eproto[] PROTOBUF_SECTION_VARIABLE(pro
   "\022\017\n\007min_lat\030\001 \001(\001\022\017\n\007min_lon\030\002 \001(\001\022\017\n\007ma"
   "x_lat\030\003 \001(\001\022\017\n\007max_lon\030\004 \001(\001\022\030\n\020cancella"
   "tion_key\030\005 \001(\t\032.\n\022CancelTrafficQuery\022\030\n\020"
-  "cancellation_key\030\001 \001(\tB\t\n\007payload\"\324\016\n\016Se"
+  "cancellation_key\030\001 \001(\tB\t\n\007payload\"\222\017\n\016Se"
   "rverToClient\022\n\n\002id\030\002 \001(\004\022\033\n\023reply_to_req"
   "uest_id\030\003 \001(\004\022+\n\007sent_at\030\004 \001(\0132\032.google."
   "protobuf.Timestamp\0223\n\017request_sent_at\030\005 "
@@ -1440,99 +1538,120 @@ const char descriptor_table_protodef_atc_2eproto[] PROTOBUF_SECTION_VARIABLE(pro
   "\036NotifyAircraftSituationUpdated\022\023\n\013aircr"
   "aft_id\030\001 \001(\r\0227\n\tsituation\030\002 \001(\0132$.atc_pr"
   "oto.AircraftMessage.Situation\032,\n\025NotifyA"
-  "ircraftRemoved\022\023\n\013aircraft_id\030\001 \001(\r\032@\n\030R"
+  "ircraftRemoved\022\023\n\013aircraft_id\030\001 \001(\r\032~\n\030R"
   "eplyUserAcquireAircraft\022\023\n\013aircraft_id\030\001"
-  " \001(\r\022\017\n\007success\030\002 \001(\010B\t\n\007payload\"$\n\010GeoP"
-  "oint\022\013\n\003lat\030\001 \001(\001\022\013\n\003lon\030\002 \001(\001\"\224\001\n\nGeoPo"
-  "lygon\022,\n\005edges\030\001 \003(\0132\035.atc_proto.GeoPoly"
-  "gon.GeoEdge\032X\n\007GeoEdge\022$\n\004type\030\001 \001(\0162\026.a"
-  "tc_proto.GeoEdgeType\022\'\n\nfrom_point\030\002 \001(\013"
-  "2\023.atc_proto.GeoPoint\"8\n\017Vector3dMessage"
-  "\022\013\n\003lat\030\001 \001(\001\022\013\n\003lon\030\002 \001(\001\022\013\n\003alt\030\003 \001(\001\""
-  "\?\n\017AttitudeMessage\022\017\n\007heading\030\001 \001(\002\022\r\n\005p"
-  "itch\030\002 \001(\002\022\014\n\004roll\030\003 \001(\002\"\210\002\n\016AirportMess"
-  "age\022\014\n\004icao\030\001 \001(\t\022%\n\010location\030\002 \001(\0132\023.at"
-  "c_proto.GeoPoint\022)\n\007runways\030\003 \003(\0132\030.atc_"
-  "proto.RunwayMessage\0226\n\016parking_stands\030\004 "
-  "\003(\0132\036.atc_proto.ParkingStandMessage\022.\n\nt"
-  "axi_nodes\030\005 \003(\0132\032.atc_proto.TaxiNodeMess"
-  "age\022.\n\ntaxi_edges\030\006 \003(\0132\032.atc_proto.Taxi"
-  "EdgeMessage\"\277\002\n\rRunwayMessage\022\024\n\014width_m"
-  "eters\030\001 \001(\002\022\025\n\rlength_meters\030\002 \001(\002\022\020\n\010ma"
-  "sk_bit\030\003 \001(\r\022+\n\005end_1\030\004 \001(\0132\034.atc_proto."
-  "RunwayMessage.End\022+\n\005end_2\030\005 \001(\0132\034.atc_p"
-  "roto.RunwayMessage.End\032\224\001\n\003End\022\014\n\004name\030\001"
-  " \001(\t\022\017\n\007heading\030\002 \001(\002\022-\n\020centerline_poin"
-  "t\030\003 \001(\0132\023.atc_proto.GeoPoint\022\"\n\032displace"
-  "d_threshold_meters\030\004 \001(\002\022\033\n\023overrun_area"
-  "_meters\030\005 \001(\002\"Y\n\017TaxiNodeMessage\022\n\n\002id\030\001"
-  " \001(\005\022%\n\010location\030\002 \001(\0132\023.atc_proto.GeoPo"
-  "int\022\023\n\013is_junction\030\003 \001(\010\"\330\002\n\017TaxiEdgeMes"
-  "sage\022\n\n\002id\030\001 \001(\005\022\014\n\004name\030\002 \001(\t\022\021\n\tnode_i"
-  "d_1\030\003 \001(\005\022\021\n\tnode_id_2\030\004 \001(\005\022%\n\004type\030\005 \001"
-  "(\0162\027.atc_proto.TaxiEdgeType\022\022\n\nis_one_wa"
-  "y\030\006 \001(\010\022\032\n\022is_high_speed_exit\030\007 \001(\010\022\025\n\rl"
-  "ength_meters\030\010 \001(\002\022\017\n\007heading\030\t \001(\002\022A\n\014a"
-  "ctive_zones\030\n \001(\0132+.atc_proto.TaxiEdgeMe"
-  "ssage.ActiveZoneMatrix\032C\n\020ActiveZoneMatr"
-  "ix\022\021\n\tdeparture\030\001 \001(\004\022\017\n\007arrival\030\002 \001(\004\022\013"
-  "\n\003ils\030\003 \001(\004\"\241\002\n\023ParkingStandMessage\022\n\n\002i"
-  "d\030\001 \001(\005\022\014\n\004name\030\002 \001(\t\022)\n\004type\030\003 \001(\0162\033.at"
-  "c_proto.ParkingStandType\022%\n\010location\030\004 \001"
-  "(\0132\023.atc_proto.GeoPoint\022\017\n\007heading\030\005 \001(\002"
-  "\022\022\n\nwidth_code\030\006 \001(\t\022/\n\ncategories\030\007 \003(\016"
-  "2\033.atc_proto.AircraftCategory\0221\n\017operati"
-  "on_types\030\010 \003(\0162\030.atc_proto.OperationType"
-  "\022\025\n\rairline_icaos\030\t \003(\t\"|\n\027AirspaceGeome"
-  "tryMessage\022-\n\016lateral_bounds\030\001 \001(\0132\025.atc"
-  "_proto.GeoPolygon\022\030\n\020lower_bound_feet\030\002 "
-  "\001(\002\022\030\n\020upper_bound_feet\030\003 \001(\002\"\313\004\n\017Aircra"
-  "ftMessage\022\n\n\002id\030\001 \001(\r\022\022\n\nmodel_icao\030\002 \001("
-  "\t\022\024\n\014airline_icao\030\003 \001(\t\022\017\n\007tail_no\030\004 \001(\t"
-  "\022\021\n\tcall_sign\030\005 \001(\t\0227\n\tsituation\030\006 \001(\0132$"
-  ".atc_proto.AircraftMessage.Situation\032\244\003\n"
-  "\tSituation\022%\n\010location\030\001 \001(\0132\023.atc_proto"
-  ".GeoPoint\022\031\n\021altitude_feet_msl\030\002 \001(\002\022\024\n\014"
-  "is_on_ground\030\003 \001(\010\022\017\n\007heading\030\004 \001(\002\022\r\n\005p"
-  "itch\030\005 \001(\002\022\014\n\004roll\030\006 \001(\002\022\022\n\nflap_ratio\030\007"
-  " \001(\002\022\025\n\rspoiler_ratio\030\010 \001(\002\022\022\n\ngear_rati"
-  "o\030\t \001(\002\022\030\n\020nose_wheel_angle\030\n \001(\002\022\026\n\016lan"
-  "ding_lights\030\013 \001(\010\022\023\n\013taxi_lights\030\014 \001(\010\022\025"
-  "\n\rstrobe_lights\030\r \001(\010\022 \n\030monitoring_freq"
-  "uency_khz\030\016 \003(\005\022\"\n\032transmitting_frequenc"
-  "y_khz\030\017 \001(\005\022\016\n\006squawk\030\020 \001(\t\022\016\n\006mode_c\030\021 "
-  "\001(\010\022\016\n\006mode_s\030\022 \001(\010\"M\n\017TaxiPathMessage\022\024"
-  "\n\014from_node_id\030\001 \001(\005\022\022\n\nto_node_id\030\002 \001(\005"
-  "\022\020\n\010edge_ids\030\003 \003(\005*\306\001\n\013GeoEdgeType\022\024\n\020GE"
-  "O_EDGE_UNKNOWN\020\000\022\030\n\024GEO_EDGE_ARC_BY_EDGE"
-  "\020\001\022\023\n\017GEO_EDGE_CIRCLE\020\002\022\031\n\025GEO_EDGE_GREA"
-  "T_CIRCLE\020\003\022\027\n\023GEO_EDGE_RHUMB_LINE\020\004\022\032\n\026G"
-  "EO_EDGE_CLOCKWISE_ARC\020\005\022\"\n\036GEO_EDGE_COUN"
-  "TER_CLOCKWISE_ARC\020\006*\347\001\n\020AircraftCategory"
-  "\022\032\n\026AIRCRAFT_CATEGORY_NONE\020\000\022\033\n\027AIRCRAFT"
-  "_CATEGORY_HEAVY\020\001\022\031\n\025AIRCRAFT_CATEGORY_J"
-  "ET\020\002\022\037\n\033AIRCRAFT_CATEGORY_TURBOPROP\020\004\022\032\n"
-  "\026AIRCRAFT_CATEGORY_PROP\020\010\022 \n\034AIRCRAFT_CA"
-  "TEGORY_LIGHT_PROP\020\020\022 \n\034AIRCRAFT_CATEGORY"
-  "_HELICPOTER\020 *\246\001\n\rOperationType\022\033\n\027AIRCR"
-  "AFT_OPERATION_NONE\020\000\022\031\n\025AIRCRAFT_OPERATI"
-  "ON_GA\020\001\022\036\n\032AIRCRAFT_OPERATION_AIRLINE\020\002\022"
-  "\034\n\030AIRCRAFT_OPERATION_CARGO\020\004\022\037\n\033AIRCRAF"
-  "T_OPERATION_MILITARY\020\010*a\n\020ParkingStandTy"
-  "pe\022\023\n\017PARKING_UNKNOWN\020\000\022\020\n\014PARKING_GATE\020"
-  "\001\022\022\n\016PARKING_REMOTE\020\002\022\022\n\016PARKING_HANGAR\020"
-  "\003*T\n\014TaxiEdgeType\022\027\n\023TAXI_EDGE_GROUNDWAY"
-  "\020\000\022\025\n\021TAXI_EDGE_TAXIWAY\020\001\022\024\n\020TAXI_EDGE_R"
-  "UNWAY\020\002b\006proto3"
+  " \001(\r\022\017\n\007success\030\002 \001(\010\022\020\n\010callsign\030\003 \001(\t\022"
+  "*\n\007weather\030\004 \001(\0132\031.atc_proto.WeatherMess"
+  "ageB\t\n\007payload\"$\n\010GeoPoint\022\013\n\003lat\030\001 \001(\001\022"
+  "\013\n\003lon\030\002 \001(\001\"\224\001\n\nGeoPolygon\022,\n\005edges\030\001 \003"
+  "(\0132\035.atc_proto.GeoPolygon.GeoEdge\032X\n\007Geo"
+  "Edge\022$\n\004type\030\001 \001(\0162\026.atc_proto.GeoEdgeTy"
+  "pe\022\'\n\nfrom_point\030\002 \001(\0132\023.atc_proto.GeoPo"
+  "int\"8\n\017Vector3dMessage\022\013\n\003lat\030\001 \001(\001\022\013\n\003l"
+  "on\030\002 \001(\001\022\013\n\003alt\030\003 \001(\001\"\?\n\017AttitudeMessage"
+  "\022\017\n\007heading\030\001 \001(\002\022\r\n\005pitch\030\002 \001(\002\022\014\n\004roll"
+  "\030\003 \001(\002\"\210\002\n\016AirportMessage\022\014\n\004icao\030\001 \001(\t\022"
+  "%\n\010location\030\002 \001(\0132\023.atc_proto.GeoPoint\022)"
+  "\n\007runways\030\003 \003(\0132\030.atc_proto.RunwayMessag"
+  "e\0226\n\016parking_stands\030\004 \003(\0132\036.atc_proto.Pa"
+  "rkingStandMessage\022.\n\ntaxi_nodes\030\005 \003(\0132\032."
+  "atc_proto.TaxiNodeMessage\022.\n\ntaxi_edges\030"
+  "\006 \003(\0132\032.atc_proto.TaxiEdgeMessage\"\277\002\n\rRu"
+  "nwayMessage\022\024\n\014width_meters\030\001 \001(\002\022\025\n\rlen"
+  "gth_meters\030\002 \001(\002\022\020\n\010mask_bit\030\003 \001(\r\022+\n\005en"
+  "d_1\030\004 \001(\0132\034.atc_proto.RunwayMessage.End\022"
+  "+\n\005end_2\030\005 \001(\0132\034.atc_proto.RunwayMessage"
+  ".End\032\224\001\n\003End\022\014\n\004name\030\001 \001(\t\022\017\n\007heading\030\002 "
+  "\001(\002\022-\n\020centerline_point\030\003 \001(\0132\023.atc_prot"
+  "o.GeoPoint\022\"\n\032displaced_threshold_meters"
+  "\030\004 \001(\002\022\033\n\023overrun_area_meters\030\005 \001(\002\"Y\n\017T"
+  "axiNodeMessage\022\n\n\002id\030\001 \001(\005\022%\n\010location\030\002"
+  " \001(\0132\023.atc_proto.GeoPoint\022\023\n\013is_junction"
+  "\030\003 \001(\010\"\330\002\n\017TaxiEdgeMessage\022\n\n\002id\030\001 \001(\005\022\014"
+  "\n\004name\030\002 \001(\t\022\021\n\tnode_id_1\030\003 \001(\005\022\021\n\tnode_"
+  "id_2\030\004 \001(\005\022%\n\004type\030\005 \001(\0162\027.atc_proto.Tax"
+  "iEdgeType\022\022\n\nis_one_way\030\006 \001(\010\022\032\n\022is_high"
+  "_speed_exit\030\007 \001(\010\022\025\n\rlength_meters\030\010 \001(\002"
+  "\022\017\n\007heading\030\t \001(\002\022A\n\014active_zones\030\n \001(\0132"
+  "+.atc_proto.TaxiEdgeMessage.ActiveZoneMa"
+  "trix\032C\n\020ActiveZoneMatrix\022\021\n\tdeparture\030\001 "
+  "\001(\004\022\017\n\007arrival\030\002 \001(\004\022\013\n\003ils\030\003 \001(\004\"\241\002\n\023Pa"
+  "rkingStandMessage\022\n\n\002id\030\001 \001(\005\022\014\n\004name\030\002 "
+  "\001(\t\022)\n\004type\030\003 \001(\0162\033.atc_proto.ParkingSta"
+  "ndType\022%\n\010location\030\004 \001(\0132\023.atc_proto.Geo"
+  "Point\022\017\n\007heading\030\005 \001(\002\022\022\n\nwidth_code\030\006 \001"
+  "(\t\022/\n\ncategories\030\007 \003(\0162\033.atc_proto.Aircr"
+  "aftCategory\0221\n\017operation_types\030\010 \003(\0162\030.a"
+  "tc_proto.OperationType\022\025\n\rairline_icaos\030"
+  "\t \003(\t\"\307\001\n\013AtisMessage\022\024\n\014airport_icao\030\001 "
+  "\001(\t\022\023\n\013information\030\002 \001(\t\022*\n\007weather\030\003 \001("
+  "\0132\031.atc_proto.WeatherMessage\022 \n\030active_r"
+  "unways_departure\030\004 \003(\t\022\036\n\026active_runways"
+  "_arrival\030\005 \003(\t\022\037\n\027clearance_frequency_kh"
+  "z\030\006 \001(\005\"\316\002\n\016WeatherMessage\022\032\n\022weather_st"
+  "ation_id\030\001 \001(\t\022,\n\010valid_at\030\002 \001(\0132\032.googl"
+  "e.protobuf.Timestamp\022\017\n\007qnh_hpa\030\003 \001(\005\022\025\n"
+  "\rwind_speed_kt\030\004 \001(\005\022!\n\031wind_true_bearin"
+  "g_degrees\030\005 \001(\005\0224\n\006clouds\030\006 \003(\0132$.atc_pr"
+  "oto.WeatherMessage.CloudLayer\032q\n\nCloudLa"
+  "yer\022\"\n\004type\030\001 \001(\0162\024.atc_proto.CloudType\022"
+  "(\n\005cover\030\002 \001(\0162\031.atc_proto.CloudCoverTyp"
+  "e\022\025\n\rbase_feet_agl\030\003 \001(\005\"|\n\027AirspaceGeom"
+  "etryMessage\022-\n\016lateral_bounds\030\001 \001(\0132\025.at"
+  "c_proto.GeoPolygon\022\030\n\020lower_bound_feet\030\002"
+  " \001(\002\022\030\n\020upper_bound_feet\030\003 \001(\002\"\313\004\n\017Aircr"
+  "aftMessage\022\n\n\002id\030\001 \001(\r\022\022\n\nmodel_icao\030\002 \001"
+  "(\t\022\024\n\014airline_icao\030\003 \001(\t\022\017\n\007tail_no\030\004 \001("
+  "\t\022\021\n\tcall_sign\030\005 \001(\t\0227\n\tsituation\030\006 \001(\0132"
+  "$.atc_proto.AircraftMessage.Situation\032\244\003"
+  "\n\tSituation\022%\n\010location\030\001 \001(\0132\023.atc_prot"
+  "o.GeoPoint\022\031\n\021altitude_feet_msl\030\002 \001(\002\022\024\n"
+  "\014is_on_ground\030\003 \001(\010\022\017\n\007heading\030\004 \001(\002\022\r\n\005"
+  "pitch\030\005 \001(\002\022\014\n\004roll\030\006 \001(\002\022\022\n\nflap_ratio\030"
+  "\007 \001(\002\022\025\n\rspoiler_ratio\030\010 \001(\002\022\022\n\ngear_rat"
+  "io\030\t \001(\002\022\030\n\020nose_wheel_angle\030\n \001(\002\022\026\n\016la"
+  "nding_lights\030\013 \001(\010\022\023\n\013taxi_lights\030\014 \001(\010\022"
+  "\025\n\rstrobe_lights\030\r \001(\010\022 \n\030monitoring_fre"
+  "quency_khz\030\016 \003(\005\022\"\n\032transmitting_frequen"
+  "cy_khz\030\017 \001(\005\022\016\n\006squawk\030\020 \001(\t\022\016\n\006mode_c\030\021"
+  " \001(\010\022\016\n\006mode_s\030\022 \001(\010\"M\n\017TaxiPathMessage\022"
+  "\024\n\014from_node_id\030\001 \001(\005\022\022\n\nto_node_id\030\002 \001("
+  "\005\022\020\n\010edge_ids\030\003 \003(\005*\306\001\n\013GeoEdgeType\022\024\n\020G"
+  "EO_EDGE_UNKNOWN\020\000\022\030\n\024GEO_EDGE_ARC_BY_EDG"
+  "E\020\001\022\023\n\017GEO_EDGE_CIRCLE\020\002\022\031\n\025GEO_EDGE_GRE"
+  "AT_CIRCLE\020\003\022\027\n\023GEO_EDGE_RHUMB_LINE\020\004\022\032\n\026"
+  "GEO_EDGE_CLOCKWISE_ARC\020\005\022\"\n\036GEO_EDGE_COU"
+  "NTER_CLOCKWISE_ARC\020\006*\347\001\n\020AircraftCategor"
+  "y\022\032\n\026AIRCRAFT_CATEGORY_NONE\020\000\022\033\n\027AIRCRAF"
+  "T_CATEGORY_HEAVY\020\001\022\031\n\025AIRCRAFT_CATEGORY_"
+  "JET\020\002\022\037\n\033AIRCRAFT_CATEGORY_TURBOPROP\020\004\022\032"
+  "\n\026AIRCRAFT_CATEGORY_PROP\020\010\022 \n\034AIRCRAFT_C"
+  "ATEGORY_LIGHT_PROP\020\020\022 \n\034AIRCRAFT_CATEGOR"
+  "Y_HELICPOTER\020 *\246\001\n\rOperationType\022\033\n\027AIRC"
+  "RAFT_OPERATION_NONE\020\000\022\031\n\025AIRCRAFT_OPERAT"
+  "ION_GA\020\001\022\036\n\032AIRCRAFT_OPERATION_AIRLINE\020\002"
+  "\022\034\n\030AIRCRAFT_OPERATION_CARGO\020\004\022\037\n\033AIRCRA"
+  "FT_OPERATION_MILITARY\020\010*a\n\020ParkingStandT"
+  "ype\022\023\n\017PARKING_UNKNOWN\020\000\022\020\n\014PARKING_GATE"
+  "\020\001\022\022\n\016PARKING_REMOTE\020\002\022\022\n\016PARKING_HANGAR"
+  "\020\003*T\n\014TaxiEdgeType\022\027\n\023TAXI_EDGE_GROUNDWA"
+  "Y\020\000\022\025\n\021TAXI_EDGE_TAXIWAY\020\001\022\024\n\020TAXI_EDGE_"
+  "RUNWAY\020\002*y\n\016CloudCoverType\022\023\n\017CLOUD_COVE"
+  "R_SKC\020\000\022\023\n\017CLOUD_COVER_FEW\020\001\022\023\n\017CLOUD_CO"
+  "VER_SCT\020\003\022\023\n\017CLOUD_COVER_BKN\020\006\022\023\n\017CLOUD_"
+  "COVER_OVC\020\010*H\n\tCloudType\022\024\n\020CLOUD_TYPE_N"
+  "OSIG\020\000\022\022\n\016CLOUD_TYPE_TCU\020\002\022\021\n\rCLOUD_TYPE"
+  "_CB\020\001b\006proto3"
   ;
 static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_atc_2eproto_deps[1] = {
   &::descriptor_table_google_2fprotobuf_2ftimestamp_2eproto,
 };
-static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_atc_2eproto_sccs[42] = {
+static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_atc_2eproto_sccs[45] = {
   &scc_info_AircraftMessage_atc_2eproto.base,
   &scc_info_AircraftMessage_Situation_atc_2eproto.base,
   &scc_info_AirportMessage_atc_2eproto.base,
   &scc_info_AirspaceGeometryMessage_atc_2eproto.base,
+  &scc_info_AtisMessage_atc_2eproto.base,
   &scc_info_AttitudeMessage_atc_2eproto.base,
   &scc_info_ClientToServer_atc_2eproto.base,
   &scc_info_ClientToServer_CancelTrafficQuery_atc_2eproto.base,
@@ -1571,13 +1690,15 @@ static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_atc
   &scc_info_TaxiNodeMessage_atc_2eproto.base,
   &scc_info_TaxiPathMessage_atc_2eproto.base,
   &scc_info_Vector3dMessage_atc_2eproto.base,
+  &scc_info_WeatherMessage_atc_2eproto.base,
+  &scc_info_WeatherMessage_CloudLayer_atc_2eproto.base,
 };
 static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_atc_2eproto_once;
 const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_atc_2eproto = {
-  false, false, descriptor_table_protodef_atc_2eproto, "atc.proto", 7055,
-  &descriptor_table_atc_2eproto_once, descriptor_table_atc_2eproto_sccs, descriptor_table_atc_2eproto_deps, 42, 1,
+  false, false, descriptor_table_protodef_atc_2eproto, "atc.proto", 7853,
+  &descriptor_table_atc_2eproto_once, descriptor_table_atc_2eproto_sccs, descriptor_table_atc_2eproto_deps, 45, 1,
   schemas, file_default_instances, TableStruct_atc_2eproto::offsets,
-  file_level_metadata_atc_2eproto, 42, file_level_enum_descriptors_atc_2eproto, file_level_service_descriptors_atc_2eproto,
+  file_level_metadata_atc_2eproto, 45, file_level_enum_descriptors_atc_2eproto, file_level_service_descriptors_atc_2eproto,
 };
 
 // Force running AddDescriptors() at dynamic initialization time.
@@ -1659,6 +1780,38 @@ const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* TaxiEdgeType_descriptor() {
   return file_level_enum_descriptors_atc_2eproto[4];
 }
 bool TaxiEdgeType_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+    case 2:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CloudCoverType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_atc_2eproto);
+  return file_level_enum_descriptors_atc_2eproto[5];
+}
+bool CloudCoverType_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+    case 3:
+    case 6:
+    case 8:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::PROTOBUF_NAMESPACE_ID::EnumDescriptor* CloudType_descriptor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::AssignDescriptors(&descriptor_table_atc_2eproto);
+  return file_level_enum_descriptors_atc_2eproto[6];
+}
+bool CloudType_IsValid(int value) {
   switch (value) {
     case 0:
     case 1:
@@ -7949,11 +8102,18 @@ void ServerToClient_NotifyAircraftRemoved::InternalSwap(ServerToClient_NotifyAir
 // ===================================================================
 
 void ServerToClient_ReplyUserAcquireAircraft::InitAsDefaultInstance() {
+  ::atc_proto::_ServerToClient_ReplyUserAcquireAircraft_default_instance_._instance.get_mutable()->weather_ = const_cast< ::atc_proto::WeatherMessage*>(
+      ::atc_proto::WeatherMessage::internal_default_instance());
 }
 class ServerToClient_ReplyUserAcquireAircraft::_Internal {
  public:
+  static const ::atc_proto::WeatherMessage& weather(const ServerToClient_ReplyUserAcquireAircraft* msg);
 };
 
+const ::atc_proto::WeatherMessage&
+ServerToClient_ReplyUserAcquireAircraft::_Internal::weather(const ServerToClient_ReplyUserAcquireAircraft* msg) {
+  return *msg->weather_;
+}
 ServerToClient_ReplyUserAcquireAircraft::ServerToClient_ReplyUserAcquireAircraft(::PROTOBUF_NAMESPACE_ID::Arena* arena)
   : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
   SharedCtor();
@@ -7963,6 +8123,16 @@ ServerToClient_ReplyUserAcquireAircraft::ServerToClient_ReplyUserAcquireAircraft
 ServerToClient_ReplyUserAcquireAircraft::ServerToClient_ReplyUserAcquireAircraft(const ServerToClient_ReplyUserAcquireAircraft& from)
   : ::PROTOBUF_NAMESPACE_ID::Message() {
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  callsign_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (!from._internal_callsign().empty()) {
+    callsign_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_callsign(),
+      GetArena());
+  }
+  if (from._internal_has_weather()) {
+    weather_ = new ::atc_proto::WeatherMessage(*from.weather_);
+  } else {
+    weather_ = nullptr;
+  }
   ::memcpy(&aircraft_id_, &from.aircraft_id_,
     static_cast<size_t>(reinterpret_cast<char*>(&success_) -
     reinterpret_cast<char*>(&aircraft_id_)) + sizeof(success_));
@@ -7970,9 +8140,11 @@ ServerToClient_ReplyUserAcquireAircraft::ServerToClient_ReplyUserAcquireAircraft
 }
 
 void ServerToClient_ReplyUserAcquireAircraft::SharedCtor() {
-  ::memset(&aircraft_id_, 0, static_cast<size_t>(
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_ServerToClient_ReplyUserAcquireAircraft_atc_2eproto.base);
+  callsign_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  ::memset(&weather_, 0, static_cast<size_t>(
       reinterpret_cast<char*>(&success_) -
-      reinterpret_cast<char*>(&aircraft_id_)) + sizeof(success_));
+      reinterpret_cast<char*>(&weather_)) + sizeof(success_));
 }
 
 ServerToClient_ReplyUserAcquireAircraft::~ServerToClient_ReplyUserAcquireAircraft() {
@@ -7983,6 +8155,8 @@ ServerToClient_ReplyUserAcquireAircraft::~ServerToClient_ReplyUserAcquireAircraf
 
 void ServerToClient_ReplyUserAcquireAircraft::SharedDtor() {
   GOOGLE_DCHECK(GetArena() == nullptr);
+  callsign_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (this != internal_default_instance()) delete weather_;
 }
 
 void ServerToClient_ReplyUserAcquireAircraft::ArenaDtor(void* object) {
@@ -8006,6 +8180,11 @@ void ServerToClient_ReplyUserAcquireAircraft::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
+  callsign_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  if (GetArena() == nullptr && weather_ != nullptr) {
+    delete weather_;
+  }
+  weather_ = nullptr;
   ::memset(&aircraft_id_, 0, static_cast<size_t>(
       reinterpret_cast<char*>(&success_) -
       reinterpret_cast<char*>(&aircraft_id_)) + sizeof(success_));
@@ -8031,6 +8210,22 @@ const char* ServerToClient_ReplyUserAcquireAircraft::_InternalParse(const char* 
       case 2:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 16)) {
           success_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // string callsign = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 26)) {
+          auto str = _internal_mutable_callsign();
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "atc_proto.ServerToClient.ReplyUserAcquireAircraft.callsign"));
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // .atc_proto.WeatherMessage weather = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 34)) {
+          ptr = ctx->ParseMessage(_internal_mutable_weather(), ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
@@ -8074,6 +8269,24 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(2, this->_internal_success(), target);
   }
 
+  // string callsign = 3;
+  if (this->callsign().size() > 0) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_callsign().data(), static_cast<int>(this->_internal_callsign().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "atc_proto.ServerToClient.ReplyUserAcquireAircraft.callsign");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_callsign(), target);
+  }
+
+  // .atc_proto.WeatherMessage weather = 4;
+  if (this->has_weather()) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(
+        4, _Internal::weather(this), target, stream);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -8089,6 +8302,20 @@ size_t ServerToClient_ReplyUserAcquireAircraft::ByteSizeLong() const {
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
+
+  // string callsign = 3;
+  if (this->callsign().size() > 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_callsign());
+  }
+
+  // .atc_proto.WeatherMessage weather = 4;
+  if (this->has_weather()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *weather_);
+  }
 
   // uint32 aircraft_id = 1;
   if (this->aircraft_id() != 0) {
@@ -8133,6 +8360,12 @@ void ServerToClient_ReplyUserAcquireAircraft::MergeFrom(const ServerToClient_Rep
   ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
+  if (from.callsign().size() > 0) {
+    _internal_set_callsign(from._internal_callsign());
+  }
+  if (from.has_weather()) {
+    _internal_mutable_weather()->::atc_proto::WeatherMessage::MergeFrom(from._internal_weather());
+  }
   if (from.aircraft_id() != 0) {
     _internal_set_aircraft_id(from._internal_aircraft_id());
   }
@@ -8162,12 +8395,13 @@ bool ServerToClient_ReplyUserAcquireAircraft::IsInitialized() const {
 void ServerToClient_ReplyUserAcquireAircraft::InternalSwap(ServerToClient_ReplyUserAcquireAircraft* other) {
   using std::swap;
   _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  callsign_.Swap(&other->callsign_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
       PROTOBUF_FIELD_OFFSET(ServerToClient_ReplyUserAcquireAircraft, success_)
       + sizeof(ServerToClient_ReplyUserAcquireAircraft::success_)
-      - PROTOBUF_FIELD_OFFSET(ServerToClient_ReplyUserAcquireAircraft, aircraft_id_)>(
-          reinterpret_cast<char*>(&aircraft_id_),
-          reinterpret_cast<char*>(&other->aircraft_id_));
+      - PROTOBUF_FIELD_OFFSET(ServerToClient_ReplyUserAcquireAircraft, weather_)>(
+          reinterpret_cast<char*>(&weather_),
+          reinterpret_cast<char*>(&other->weather_));
 }
 
 ::PROTOBUF_NAMESPACE_ID::Metadata ServerToClient_ReplyUserAcquireAircraft::GetMetadata() const {
@@ -12908,6 +13142,1032 @@ void ParkingStandMessage::InternalSwap(ParkingStandMessage* other) {
 
 // ===================================================================
 
+void AtisMessage::InitAsDefaultInstance() {
+  ::atc_proto::_AtisMessage_default_instance_._instance.get_mutable()->weather_ = const_cast< ::atc_proto::WeatherMessage*>(
+      ::atc_proto::WeatherMessage::internal_default_instance());
+}
+class AtisMessage::_Internal {
+ public:
+  static const ::atc_proto::WeatherMessage& weather(const AtisMessage* msg);
+};
+
+const ::atc_proto::WeatherMessage&
+AtisMessage::_Internal::weather(const AtisMessage* msg) {
+  return *msg->weather_;
+}
+AtisMessage::AtisMessage(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
+  active_runways_departure_(arena),
+  active_runways_arrival_(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
+  // @@protoc_insertion_point(arena_constructor:atc_proto.AtisMessage)
+}
+AtisMessage::AtisMessage(const AtisMessage& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      active_runways_departure_(from.active_runways_departure_),
+      active_runways_arrival_(from.active_runways_arrival_) {
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  airport_icao_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (!from._internal_airport_icao().empty()) {
+    airport_icao_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_airport_icao(),
+      GetArena());
+  }
+  information_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (!from._internal_information().empty()) {
+    information_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_information(),
+      GetArena());
+  }
+  if (from._internal_has_weather()) {
+    weather_ = new ::atc_proto::WeatherMessage(*from.weather_);
+  } else {
+    weather_ = nullptr;
+  }
+  clearance_frequency_khz_ = from.clearance_frequency_khz_;
+  // @@protoc_insertion_point(copy_constructor:atc_proto.AtisMessage)
+}
+
+void AtisMessage::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_AtisMessage_atc_2eproto.base);
+  airport_icao_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  information_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  ::memset(&weather_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&clearance_frequency_khz_) -
+      reinterpret_cast<char*>(&weather_)) + sizeof(clearance_frequency_khz_));
+}
+
+AtisMessage::~AtisMessage() {
+  // @@protoc_insertion_point(destructor:atc_proto.AtisMessage)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void AtisMessage::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  airport_icao_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  information_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (this != internal_default_instance()) delete weather_;
+}
+
+void AtisMessage::ArenaDtor(void* object) {
+  AtisMessage* _this = reinterpret_cast< AtisMessage* >(object);
+  (void)_this;
+}
+void AtisMessage::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void AtisMessage::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const AtisMessage& AtisMessage::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_AtisMessage_atc_2eproto.base);
+  return *internal_default_instance();
+}
+
+
+void AtisMessage::Clear() {
+// @@protoc_insertion_point(message_clear_start:atc_proto.AtisMessage)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  active_runways_departure_.Clear();
+  active_runways_arrival_.Clear();
+  airport_icao_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  information_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  if (GetArena() == nullptr && weather_ != nullptr) {
+    delete weather_;
+  }
+  weather_ = nullptr;
+  clearance_frequency_khz_ = 0;
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* AtisMessage::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+    switch (tag >> 3) {
+      // string airport_icao = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
+          auto str = _internal_mutable_airport_icao();
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "atc_proto.AtisMessage.airport_icao"));
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // string information = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
+          auto str = _internal_mutable_information();
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "atc_proto.AtisMessage.information"));
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // .atc_proto.WeatherMessage weather = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 26)) {
+          ptr = ctx->ParseMessage(_internal_mutable_weather(), ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // repeated string active_runways_departure = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 34)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            auto str = _internal_add_active_runways_departure();
+            ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
+            CHK_(::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "atc_proto.AtisMessage.active_runways_departure"));
+            CHK_(ptr);
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<34>(ptr));
+        } else goto handle_unusual;
+        continue;
+      // repeated string active_runways_arrival = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 42)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            auto str = _internal_add_active_runways_arrival();
+            ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
+            CHK_(::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "atc_proto.AtisMessage.active_runways_arrival"));
+            CHK_(ptr);
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<42>(ptr));
+        } else goto handle_unusual;
+        continue;
+      // int32 clearance_frequency_khz = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 48)) {
+          clearance_frequency_khz_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
+    }  // switch
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
+
+::PROTOBUF_NAMESPACE_ID::uint8* AtisMessage::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:atc_proto.AtisMessage)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string airport_icao = 1;
+  if (this->airport_icao().size() > 0) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_airport_icao().data(), static_cast<int>(this->_internal_airport_icao().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "atc_proto.AtisMessage.airport_icao");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_airport_icao(), target);
+  }
+
+  // string information = 2;
+  if (this->information().size() > 0) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_information().data(), static_cast<int>(this->_internal_information().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "atc_proto.AtisMessage.information");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_information(), target);
+  }
+
+  // .atc_proto.WeatherMessage weather = 3;
+  if (this->has_weather()) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(
+        3, _Internal::weather(this), target, stream);
+  }
+
+  // repeated string active_runways_departure = 4;
+  for (int i = 0, n = this->_internal_active_runways_departure_size(); i < n; i++) {
+    const auto& s = this->_internal_active_runways_departure(i);
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      s.data(), static_cast<int>(s.length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "atc_proto.AtisMessage.active_runways_departure");
+    target = stream->WriteString(4, s, target);
+  }
+
+  // repeated string active_runways_arrival = 5;
+  for (int i = 0, n = this->_internal_active_runways_arrival_size(); i < n; i++) {
+    const auto& s = this->_internal_active_runways_arrival(i);
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      s.data(), static_cast<int>(s.length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "atc_proto.AtisMessage.active_runways_arrival");
+    target = stream->WriteString(5, s, target);
+  }
+
+  // int32 clearance_frequency_khz = 6;
+  if (this->clearance_frequency_khz() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(6, this->_internal_clearance_frequency_khz(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:atc_proto.AtisMessage)
+  return target;
+}
+
+size_t AtisMessage::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:atc_proto.AtisMessage)
+  size_t total_size = 0;
+
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated string active_runways_departure = 4;
+  total_size += 1 *
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(active_runways_departure_.size());
+  for (int i = 0, n = active_runways_departure_.size(); i < n; i++) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+      active_runways_departure_.Get(i));
+  }
+
+  // repeated string active_runways_arrival = 5;
+  total_size += 1 *
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(active_runways_arrival_.size());
+  for (int i = 0, n = active_runways_arrival_.size(); i < n; i++) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+      active_runways_arrival_.Get(i));
+  }
+
+  // string airport_icao = 1;
+  if (this->airport_icao().size() > 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_airport_icao());
+  }
+
+  // string information = 2;
+  if (this->information().size() > 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_information());
+  }
+
+  // .atc_proto.WeatherMessage weather = 3;
+  if (this->has_weather()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *weather_);
+  }
+
+  // int32 clearance_frequency_khz = 6;
+  if (this->clearance_frequency_khz() != 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
+        this->_internal_clearance_frequency_khz());
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
+
+void AtisMessage::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:atc_proto.AtisMessage)
+  GOOGLE_DCHECK_NE(&from, this);
+  const AtisMessage* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<AtisMessage>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:atc_proto.AtisMessage)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:atc_proto.AtisMessage)
+    MergeFrom(*source);
+  }
+}
+
+void AtisMessage::MergeFrom(const AtisMessage& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:atc_proto.AtisMessage)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  active_runways_departure_.MergeFrom(from.active_runways_departure_);
+  active_runways_arrival_.MergeFrom(from.active_runways_arrival_);
+  if (from.airport_icao().size() > 0) {
+    _internal_set_airport_icao(from._internal_airport_icao());
+  }
+  if (from.information().size() > 0) {
+    _internal_set_information(from._internal_information());
+  }
+  if (from.has_weather()) {
+    _internal_mutable_weather()->::atc_proto::WeatherMessage::MergeFrom(from._internal_weather());
+  }
+  if (from.clearance_frequency_khz() != 0) {
+    _internal_set_clearance_frequency_khz(from._internal_clearance_frequency_khz());
+  }
+}
+
+void AtisMessage::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:atc_proto.AtisMessage)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void AtisMessage::CopyFrom(const AtisMessage& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:atc_proto.AtisMessage)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool AtisMessage::IsInitialized() const {
+  return true;
+}
+
+void AtisMessage::InternalSwap(AtisMessage* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  active_runways_departure_.InternalSwap(&other->active_runways_departure_);
+  active_runways_arrival_.InternalSwap(&other->active_runways_arrival_);
+  airport_icao_.Swap(&other->airport_icao_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  information_.Swap(&other->information_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(AtisMessage, clearance_frequency_khz_)
+      + sizeof(AtisMessage::clearance_frequency_khz_)
+      - PROTOBUF_FIELD_OFFSET(AtisMessage, weather_)>(
+          reinterpret_cast<char*>(&weather_),
+          reinterpret_cast<char*>(&other->weather_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata AtisMessage::GetMetadata() const {
+  return GetMetadataStatic();
+}
+
+
+// ===================================================================
+
+void WeatherMessage_CloudLayer::InitAsDefaultInstance() {
+}
+class WeatherMessage_CloudLayer::_Internal {
+ public:
+};
+
+WeatherMessage_CloudLayer::WeatherMessage_CloudLayer(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
+  // @@protoc_insertion_point(arena_constructor:atc_proto.WeatherMessage.CloudLayer)
+}
+WeatherMessage_CloudLayer::WeatherMessage_CloudLayer(const WeatherMessage_CloudLayer& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::memcpy(&type_, &from.type_,
+    static_cast<size_t>(reinterpret_cast<char*>(&base_feet_agl_) -
+    reinterpret_cast<char*>(&type_)) + sizeof(base_feet_agl_));
+  // @@protoc_insertion_point(copy_constructor:atc_proto.WeatherMessage.CloudLayer)
+}
+
+void WeatherMessage_CloudLayer::SharedCtor() {
+  ::memset(&type_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&base_feet_agl_) -
+      reinterpret_cast<char*>(&type_)) + sizeof(base_feet_agl_));
+}
+
+WeatherMessage_CloudLayer::~WeatherMessage_CloudLayer() {
+  // @@protoc_insertion_point(destructor:atc_proto.WeatherMessage.CloudLayer)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void WeatherMessage_CloudLayer::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+}
+
+void WeatherMessage_CloudLayer::ArenaDtor(void* object) {
+  WeatherMessage_CloudLayer* _this = reinterpret_cast< WeatherMessage_CloudLayer* >(object);
+  (void)_this;
+}
+void WeatherMessage_CloudLayer::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void WeatherMessage_CloudLayer::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const WeatherMessage_CloudLayer& WeatherMessage_CloudLayer::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_WeatherMessage_CloudLayer_atc_2eproto.base);
+  return *internal_default_instance();
+}
+
+
+void WeatherMessage_CloudLayer::Clear() {
+// @@protoc_insertion_point(message_clear_start:atc_proto.WeatherMessage.CloudLayer)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  ::memset(&type_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&base_feet_agl_) -
+      reinterpret_cast<char*>(&type_)) + sizeof(base_feet_agl_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* WeatherMessage_CloudLayer::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+    switch (tag >> 3) {
+      // .atc_proto.CloudType type = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 8)) {
+          ::PROTOBUF_NAMESPACE_ID::uint64 val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_type(static_cast<::atc_proto::CloudType>(val));
+        } else goto handle_unusual;
+        continue;
+      // .atc_proto.CloudCoverType cover = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 16)) {
+          ::PROTOBUF_NAMESPACE_ID::uint64 val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_cover(static_cast<::atc_proto::CloudCoverType>(val));
+        } else goto handle_unusual;
+        continue;
+      // int32 base_feet_agl = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 24)) {
+          base_feet_agl_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
+    }  // switch
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
+
+::PROTOBUF_NAMESPACE_ID::uint8* WeatherMessage_CloudLayer::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:atc_proto.WeatherMessage.CloudLayer)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .atc_proto.CloudType type = 1;
+  if (this->type() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_type(), target);
+  }
+
+  // .atc_proto.CloudCoverType cover = 2;
+  if (this->cover() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteEnumToArray(
+      2, this->_internal_cover(), target);
+  }
+
+  // int32 base_feet_agl = 3;
+  if (this->base_feet_agl() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(3, this->_internal_base_feet_agl(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:atc_proto.WeatherMessage.CloudLayer)
+  return target;
+}
+
+size_t WeatherMessage_CloudLayer::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:atc_proto.WeatherMessage.CloudLayer)
+  size_t total_size = 0;
+
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // .atc_proto.CloudType type = 1;
+  if (this->type() != 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::EnumSize(this->_internal_type());
+  }
+
+  // .atc_proto.CloudCoverType cover = 2;
+  if (this->cover() != 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::EnumSize(this->_internal_cover());
+  }
+
+  // int32 base_feet_agl = 3;
+  if (this->base_feet_agl() != 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
+        this->_internal_base_feet_agl());
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
+
+void WeatherMessage_CloudLayer::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:atc_proto.WeatherMessage.CloudLayer)
+  GOOGLE_DCHECK_NE(&from, this);
+  const WeatherMessage_CloudLayer* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<WeatherMessage_CloudLayer>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:atc_proto.WeatherMessage.CloudLayer)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:atc_proto.WeatherMessage.CloudLayer)
+    MergeFrom(*source);
+  }
+}
+
+void WeatherMessage_CloudLayer::MergeFrom(const WeatherMessage_CloudLayer& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:atc_proto.WeatherMessage.CloudLayer)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (from.type() != 0) {
+    _internal_set_type(from._internal_type());
+  }
+  if (from.cover() != 0) {
+    _internal_set_cover(from._internal_cover());
+  }
+  if (from.base_feet_agl() != 0) {
+    _internal_set_base_feet_agl(from._internal_base_feet_agl());
+  }
+}
+
+void WeatherMessage_CloudLayer::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:atc_proto.WeatherMessage.CloudLayer)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void WeatherMessage_CloudLayer::CopyFrom(const WeatherMessage_CloudLayer& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:atc_proto.WeatherMessage.CloudLayer)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool WeatherMessage_CloudLayer::IsInitialized() const {
+  return true;
+}
+
+void WeatherMessage_CloudLayer::InternalSwap(WeatherMessage_CloudLayer* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(WeatherMessage_CloudLayer, base_feet_agl_)
+      + sizeof(WeatherMessage_CloudLayer::base_feet_agl_)
+      - PROTOBUF_FIELD_OFFSET(WeatherMessage_CloudLayer, type_)>(
+          reinterpret_cast<char*>(&type_),
+          reinterpret_cast<char*>(&other->type_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata WeatherMessage_CloudLayer::GetMetadata() const {
+  return GetMetadataStatic();
+}
+
+
+// ===================================================================
+
+void WeatherMessage::InitAsDefaultInstance() {
+  ::atc_proto::_WeatherMessage_default_instance_._instance.get_mutable()->valid_at_ = const_cast< PROTOBUF_NAMESPACE_ID::Timestamp*>(
+      PROTOBUF_NAMESPACE_ID::Timestamp::internal_default_instance());
+}
+class WeatherMessage::_Internal {
+ public:
+  static const PROTOBUF_NAMESPACE_ID::Timestamp& valid_at(const WeatherMessage* msg);
+};
+
+const PROTOBUF_NAMESPACE_ID::Timestamp&
+WeatherMessage::_Internal::valid_at(const WeatherMessage* msg) {
+  return *msg->valid_at_;
+}
+void WeatherMessage::clear_valid_at() {
+  if (GetArena() == nullptr && valid_at_ != nullptr) {
+    delete valid_at_;
+  }
+  valid_at_ = nullptr;
+}
+WeatherMessage::WeatherMessage(::PROTOBUF_NAMESPACE_ID::Arena* arena)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena),
+  clouds_(arena) {
+  SharedCtor();
+  RegisterArenaDtor(arena);
+  // @@protoc_insertion_point(arena_constructor:atc_proto.WeatherMessage)
+}
+WeatherMessage::WeatherMessage(const WeatherMessage& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message(),
+      clouds_(from.clouds_) {
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  weather_station_id_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (!from._internal_weather_station_id().empty()) {
+    weather_station_id_.Set(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), from._internal_weather_station_id(),
+      GetArena());
+  }
+  if (from._internal_has_valid_at()) {
+    valid_at_ = new PROTOBUF_NAMESPACE_ID::Timestamp(*from.valid_at_);
+  } else {
+    valid_at_ = nullptr;
+  }
+  ::memcpy(&qnh_hpa_, &from.qnh_hpa_,
+    static_cast<size_t>(reinterpret_cast<char*>(&wind_true_bearing_degrees_) -
+    reinterpret_cast<char*>(&qnh_hpa_)) + sizeof(wind_true_bearing_degrees_));
+  // @@protoc_insertion_point(copy_constructor:atc_proto.WeatherMessage)
+}
+
+void WeatherMessage::SharedCtor() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_WeatherMessage_atc_2eproto.base);
+  weather_station_id_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  ::memset(&valid_at_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&wind_true_bearing_degrees_) -
+      reinterpret_cast<char*>(&valid_at_)) + sizeof(wind_true_bearing_degrees_));
+}
+
+WeatherMessage::~WeatherMessage() {
+  // @@protoc_insertion_point(destructor:atc_proto.WeatherMessage)
+  SharedDtor();
+  _internal_metadata_.Delete<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+void WeatherMessage::SharedDtor() {
+  GOOGLE_DCHECK(GetArena() == nullptr);
+  weather_station_id_.DestroyNoArena(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
+  if (this != internal_default_instance()) delete valid_at_;
+}
+
+void WeatherMessage::ArenaDtor(void* object) {
+  WeatherMessage* _this = reinterpret_cast< WeatherMessage* >(object);
+  (void)_this;
+}
+void WeatherMessage::RegisterArenaDtor(::PROTOBUF_NAMESPACE_ID::Arena*) {
+}
+void WeatherMessage::SetCachedSize(int size) const {
+  _cached_size_.Set(size);
+}
+const WeatherMessage& WeatherMessage::default_instance() {
+  ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&::scc_info_WeatherMessage_atc_2eproto.base);
+  return *internal_default_instance();
+}
+
+
+void WeatherMessage::Clear() {
+// @@protoc_insertion_point(message_clear_start:atc_proto.WeatherMessage)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  clouds_.Clear();
+  weather_station_id_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  if (GetArena() == nullptr && valid_at_ != nullptr) {
+    delete valid_at_;
+  }
+  valid_at_ = nullptr;
+  ::memset(&qnh_hpa_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&wind_true_bearing_degrees_) -
+      reinterpret_cast<char*>(&qnh_hpa_)) + sizeof(wind_true_bearing_degrees_));
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* WeatherMessage::_InternalParse(const char* ptr, ::PROTOBUF_NAMESPACE_ID::internal::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  ::PROTOBUF_NAMESPACE_ID::Arena* arena = GetArena(); (void)arena;
+  while (!ctx->Done(&ptr)) {
+    ::PROTOBUF_NAMESPACE_ID::uint32 tag;
+    ptr = ::PROTOBUF_NAMESPACE_ID::internal::ReadTag(ptr, &tag);
+    CHK_(ptr);
+    switch (tag >> 3) {
+      // string weather_station_id = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 10)) {
+          auto str = _internal_mutable_weather_station_id();
+          ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "atc_proto.WeatherMessage.weather_station_id"));
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // .google.protobuf.Timestamp valid_at = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 18)) {
+          ptr = ctx->ParseMessage(_internal_mutable_valid_at(), ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // int32 qnh_hpa = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 24)) {
+          qnh_hpa_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // int32 wind_speed_kt = 4;
+      case 4:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 32)) {
+          wind_speed_kt_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // int32 wind_true_bearing_degrees = 5;
+      case 5:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 40)) {
+          wind_true_bearing_degrees_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+        } else goto handle_unusual;
+        continue;
+      // repeated .atc_proto.WeatherMessage.CloudLayer clouds = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 50)) {
+          ptr -= 1;
+          do {
+            ptr += 1;
+            ptr = ctx->ParseMessage(_internal_add_clouds(), ptr);
+            CHK_(ptr);
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<50>(ptr));
+        } else goto handle_unusual;
+        continue;
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->SetLastTag(tag);
+          goto success;
+        }
+        ptr = UnknownFieldParse(tag,
+            _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+            ptr, ctx);
+        CHK_(ptr != nullptr);
+        continue;
+      }
+    }  // switch
+  }  // while
+success:
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto success;
+#undef CHK_
+}
+
+::PROTOBUF_NAMESPACE_ID::uint8* WeatherMessage::_InternalSerialize(
+    ::PROTOBUF_NAMESPACE_ID::uint8* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:atc_proto.WeatherMessage)
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // string weather_station_id = 1;
+  if (this->weather_station_id().size() > 0) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_weather_station_id().data(), static_cast<int>(this->_internal_weather_station_id().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "atc_proto.WeatherMessage.weather_station_id");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_weather_station_id(), target);
+  }
+
+  // .google.protobuf.Timestamp valid_at = 2;
+  if (this->has_valid_at()) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(
+        2, _Internal::valid_at(this), target, stream);
+  }
+
+  // int32 qnh_hpa = 3;
+  if (this->qnh_hpa() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(3, this->_internal_qnh_hpa(), target);
+  }
+
+  // int32 wind_speed_kt = 4;
+  if (this->wind_speed_kt() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(4, this->_internal_wind_speed_kt(), target);
+  }
+
+  // int32 wind_true_bearing_degrees = 5;
+  if (this->wind_true_bearing_degrees() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(5, this->_internal_wind_true_bearing_degrees(), target);
+  }
+
+  // repeated .atc_proto.WeatherMessage.CloudLayer clouds = 6;
+  for (unsigned int i = 0,
+      n = static_cast<unsigned int>(this->_internal_clouds_size()); i < n; i++) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
+      InternalWriteMessage(6, this->_internal_clouds(i), target, stream);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:atc_proto.WeatherMessage)
+  return target;
+}
+
+size_t WeatherMessage::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:atc_proto.WeatherMessage)
+  size_t total_size = 0;
+
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // repeated .atc_proto.WeatherMessage.CloudLayer clouds = 6;
+  total_size += 1UL * this->_internal_clouds_size();
+  for (const auto& msg : this->clouds_) {
+    total_size +=
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(msg);
+  }
+
+  // string weather_station_id = 1;
+  if (this->weather_station_id().size() > 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_weather_station_id());
+  }
+
+  // .google.protobuf.Timestamp valid_at = 2;
+  if (this->has_valid_at()) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::MessageSize(
+        *valid_at_);
+  }
+
+  // int32 qnh_hpa = 3;
+  if (this->qnh_hpa() != 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
+        this->_internal_qnh_hpa());
+  }
+
+  // int32 wind_speed_kt = 4;
+  if (this->wind_speed_kt() != 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
+        this->_internal_wind_speed_kt());
+  }
+
+  // int32 wind_true_bearing_degrees = 5;
+  if (this->wind_true_bearing_degrees() != 0) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
+        this->_internal_wind_true_bearing_degrees());
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    return ::PROTOBUF_NAMESPACE_ID::internal::ComputeUnknownFieldsSize(
+        _internal_metadata_, total_size, &_cached_size_);
+  }
+  int cached_size = ::PROTOBUF_NAMESPACE_ID::internal::ToCachedSize(total_size);
+  SetCachedSize(cached_size);
+  return total_size;
+}
+
+void WeatherMessage::MergeFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_merge_from_start:atc_proto.WeatherMessage)
+  GOOGLE_DCHECK_NE(&from, this);
+  const WeatherMessage* source =
+      ::PROTOBUF_NAMESPACE_ID::DynamicCastToGenerated<WeatherMessage>(
+          &from);
+  if (source == nullptr) {
+  // @@protoc_insertion_point(generalized_merge_from_cast_fail:atc_proto.WeatherMessage)
+    ::PROTOBUF_NAMESPACE_ID::internal::ReflectionOps::Merge(from, this);
+  } else {
+  // @@protoc_insertion_point(generalized_merge_from_cast_success:atc_proto.WeatherMessage)
+    MergeFrom(*source);
+  }
+}
+
+void WeatherMessage::MergeFrom(const WeatherMessage& from) {
+// @@protoc_insertion_point(class_specific_merge_from_start:atc_proto.WeatherMessage)
+  GOOGLE_DCHECK_NE(&from, this);
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  ::PROTOBUF_NAMESPACE_ID::uint32 cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  clouds_.MergeFrom(from.clouds_);
+  if (from.weather_station_id().size() > 0) {
+    _internal_set_weather_station_id(from._internal_weather_station_id());
+  }
+  if (from.has_valid_at()) {
+    _internal_mutable_valid_at()->PROTOBUF_NAMESPACE_ID::Timestamp::MergeFrom(from._internal_valid_at());
+  }
+  if (from.qnh_hpa() != 0) {
+    _internal_set_qnh_hpa(from._internal_qnh_hpa());
+  }
+  if (from.wind_speed_kt() != 0) {
+    _internal_set_wind_speed_kt(from._internal_wind_speed_kt());
+  }
+  if (from.wind_true_bearing_degrees() != 0) {
+    _internal_set_wind_true_bearing_degrees(from._internal_wind_true_bearing_degrees());
+  }
+}
+
+void WeatherMessage::CopyFrom(const ::PROTOBUF_NAMESPACE_ID::Message& from) {
+// @@protoc_insertion_point(generalized_copy_from_start:atc_proto.WeatherMessage)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void WeatherMessage::CopyFrom(const WeatherMessage& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:atc_proto.WeatherMessage)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool WeatherMessage::IsInitialized() const {
+  return true;
+}
+
+void WeatherMessage::InternalSwap(WeatherMessage* other) {
+  using std::swap;
+  _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
+  clouds_.InternalSwap(&other->clouds_);
+  weather_station_id_.Swap(&other->weather_station_id_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
+  ::PROTOBUF_NAMESPACE_ID::internal::memswap<
+      PROTOBUF_FIELD_OFFSET(WeatherMessage, wind_true_bearing_degrees_)
+      + sizeof(WeatherMessage::wind_true_bearing_degrees_)
+      - PROTOBUF_FIELD_OFFSET(WeatherMessage, valid_at_)>(
+          reinterpret_cast<char*>(&valid_at_),
+          reinterpret_cast<char*>(&other->valid_at_));
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata WeatherMessage::GetMetadata() const {
+  return GetMetadataStatic();
+}
+
+
+// ===================================================================
+
 void AirspaceGeometryMessage::InitAsDefaultInstance() {
   ::atc_proto::_AirspaceGeometryMessage_default_instance_._instance.get_mutable()->lateral_bounds_ = const_cast< ::atc_proto::GeoPolygon*>(
       ::atc_proto::GeoPolygon::internal_default_instance());
@@ -14583,6 +15843,15 @@ template<> PROTOBUF_NOINLINE ::atc_proto::TaxiEdgeMessage* Arena::CreateMaybeMes
 }
 template<> PROTOBUF_NOINLINE ::atc_proto::ParkingStandMessage* Arena::CreateMaybeMessage< ::atc_proto::ParkingStandMessage >(Arena* arena) {
   return Arena::CreateMessageInternal< ::atc_proto::ParkingStandMessage >(arena);
+}
+template<> PROTOBUF_NOINLINE ::atc_proto::AtisMessage* Arena::CreateMaybeMessage< ::atc_proto::AtisMessage >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::atc_proto::AtisMessage >(arena);
+}
+template<> PROTOBUF_NOINLINE ::atc_proto::WeatherMessage_CloudLayer* Arena::CreateMaybeMessage< ::atc_proto::WeatherMessage_CloudLayer >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::atc_proto::WeatherMessage_CloudLayer >(arena);
+}
+template<> PROTOBUF_NOINLINE ::atc_proto::WeatherMessage* Arena::CreateMaybeMessage< ::atc_proto::WeatherMessage >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::atc_proto::WeatherMessage >(arena);
 }
 template<> PROTOBUF_NOINLINE ::atc_proto::AirspaceGeometryMessage* Arena::CreateMaybeMessage< ::atc_proto::AirspaceGeometryMessage >(Arena* arena) {
   return Arena::CreateMessageInternal< ::atc_proto::AirspaceGeometryMessage >(arena);

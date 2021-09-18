@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +12,9 @@ namespace Atc.Server
 {
     public class TempMockLlhzRadio
     {
-        private record Atis(string Info, string ActiveRunway, int Qnh, int WindBearing, int WindSpeedKt);
+        public record Atis(string Info, string ActiveRunway, int Qnh, int WindBearing, int WindSpeedKt);
+
+        private const string CallSignFilePath = @"E:\X-Plane 11\Resources\plugins\atc2\callsign.txt";
 
         private readonly ISpeechSynthesisPlugin _synthesizer;
         private readonly RadioSpeechPlayer _player;
@@ -31,12 +34,12 @@ namespace Atc.Server
             _player = player;
             _soundFormat = new SoundFormat(bitsPerSample: 16, samplesPerSecond: 11025, channelCount: 1);
             _currentAtis = CreateRandomAtis();
-            _currentCallsign = "CGK";
+            _currentCallsign = string.Empty;
             
-            ResetFlight(_currentCallsign);
+            ResetFlight();
         }
 
-        public void ResetFlight(string callsign)
+        public void ResetFlight()
         {
             Console.WriteLine("TEMP MOCK RADIO - RESETTING FLIGHT");
 
@@ -49,7 +52,7 @@ namespace Atc.Server
 
             _currentWorkflow = SafeRunCommunicationWorkflow(_workflowCancellation.Token);
             _currentAtis = CreateRandomAtis();
-            _currentCallsign = callsign;
+            _currentCallsign = LoadCallSignOrDefault("CGK");
             
             Console.WriteLine(
                 $"TEMP MOCK RADIO - ATIS: qnh[{_currentAtis.Qnh}] rwy[{_currentAtis.ActiveRunway}] wnd[{_currentAtis.WindBearing}@{_currentAtis.WindSpeedKt}kt]");
@@ -67,7 +70,7 @@ namespace Atc.Server
 
             if (frequencyKhz <= 0)
             {
-                ResetFlight("CGK");
+                ResetFlight();
                 return;
             }
             
@@ -75,6 +78,20 @@ namespace Atc.Server
             _pilotTransmissionReceived?.SetResult();
  
             Console.WriteLine($"TEMP MOCK RADIO - RECEIVE COMPLETED");
+        }
+
+        public Atis CurrentAtis => _currentAtis;
+
+        public string CurrentCallsign => _currentCallsign;
+
+        private string LoadCallSignOrDefault(string defaultCallsign)
+        {
+            if (File.Exists(CallSignFilePath))
+            {
+                var callsign = File.ReadAllText(CallSignFilePath);
+                return string.IsNullOrWhiteSpace(callsign) ? defaultCallsign : callsign;
+            }
+            return defaultCallsign;
         }
 
         private async Task SafeRunCommunicationWorkflow(CancellationToken cancel)
@@ -193,7 +210,7 @@ namespace Atc.Server
             char info = (char)_random.Next('A', 'Z' + 1);
             int windSpeedKt = _random.Next(11);
             int windBearing = _random.Next(360) + 1;
-            int qnh = _random.Next(2800, 3005);
+            int qnh = _random.Next(2980, 3005);
             
             var activeRunway = windSpeedKt > 3
                 ? (windBearing >= 200 || windBearing <= 20 ? "29" : "11")
