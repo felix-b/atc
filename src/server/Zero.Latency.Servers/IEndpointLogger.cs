@@ -9,6 +9,10 @@ namespace Zero.Latency.Servers
         void DisposingObserver(long connectionId, string? registrationKey);
         LogWriter.LogSpan DoingSomething(long connectionId, string? registrationKey);
         Exception SomeError(long connectionId, string? registrationKey);
+        void EndpointDisposingAsync(int step);
+        void HostRunStarting();
+        void HostRunFinished();
+        void HostStoppingAsync(int step);
     }
 
     // internal class EndpointLogger : IEndpointLogger

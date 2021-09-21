@@ -12,6 +12,7 @@ namespace Zero.Latency.Servers
         where TEnvelopeOut : class 
     {
         private readonly IDeferredOperationDispatcher<TEnvelopeIn, TEnvelopeOut> _next;
+        private readonly IEndpointLogger _logger;
         private readonly Thread _inputThread;
         private readonly BlockingCollection<WorkItem> _inputQueue = new(boundedCapacity: 500);
         private readonly Thread[] _outputThreads;
@@ -19,9 +20,10 @@ namespace Zero.Latency.Servers
         private readonly CancellationTokenSource _cancellation = new();
         private bool _disposed = false;
 
-        public QueueOperationDispatcher(int outputThreadCount, IDeferredOperationDispatcher<TEnvelopeIn, TEnvelopeOut> next)
+        public QueueOperationDispatcher(int outputThreadCount, IDeferredOperationDispatcher<TEnvelopeIn, TEnvelopeOut> next, IEndpointLogger logger)
         {
             _next = next;
+            _logger = logger;
 
             _outputQueues = Enumerable.Range(0, outputThreadCount)
                 .Select(index => new BlockingCollection<OperationOutputsWorkItem>(boundedCapacity: 500))

@@ -13,7 +13,6 @@ namespace Atc.Sound
         private int _sampleRate;
         private PassType _passType;
 
-        private float _value;
         private float _c, _a1, _a2, _a3, _b1, _b2;
 
         /// <summary>

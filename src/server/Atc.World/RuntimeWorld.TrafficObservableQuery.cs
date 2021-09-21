@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Atc.Data.Primitives;
 using Zero.Latency.Servers;
@@ -17,7 +18,7 @@ namespace Atc.World
             public TrafficObservableQuery(RuntimeWorld target, GeoRect rect)
             {
                 _target = target;
-                _observer = new(target, rect);
+                _observer = new(target, rect, name: $"Traffic#{TakeNextObserverId()}");
             }
 
             public IObserverSubscription Subscribe(QueryObserver<RuntimeAircraft> callback)
@@ -32,16 +33,25 @@ namespace Atc.World
                 return _observer.Run().Keys;
             }
 
+            private static int __nextObserverId;
+
+            private static int TakeNextObserverId()
+            {
+                return Interlocked.Increment(ref __nextObserverId);
+            }
+            
             private class Observer : IWorldObserver, IObserverSubscription
             {
                 private RuntimeWorld _target;
                 private readonly GeoRect _rect;
+                private readonly string _name;
                 private Dictionary<RuntimeAircraft, int>? _lastResult;
 
-                public Observer(RuntimeWorld target, GeoRect rect)
+                public Observer(RuntimeWorld target, GeoRect rect, string name)
                 {
                     _target = target;
                     _rect = rect;
+                    _name = name;
 
                     target._logger.TrafficQueryObserverCreated(rect.Min.Lat, rect.Min.Lon, rect.Max.Lat, rect.Max.Lon);
                 }
@@ -133,6 +143,8 @@ namespace Atc.World
                     }
                 }
 
+                public string Name => _name;
+                
                 public QueryObserver<RuntimeAircraft>? Callback { get; set; }
                 
                 private bool IsAircraftInRect(RuntimeAircraft aircraft)

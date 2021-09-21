@@ -1,6 +1,6 @@
 ﻿namespace Zero.Doubt.Logging
 {
-    public enum LogLevel
+    public enum LogLevel : sbyte
     {
         Quiet = -1,
         Audit = 0,

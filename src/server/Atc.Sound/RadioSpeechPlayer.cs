@@ -45,7 +45,7 @@ namespace Atc.Sound
             
             Console.WriteLine("Playing OpenAL buffer");
 
-            _staticNoise.PlayAsyncFor(buffer.Length);
+            var nonAwaitedTask = _staticNoise.PlayAsyncFor(buffer.Length);
             _staticEdgeNoise.BeginPlay();
             await buffer.PlayAsync();
             await _staticEdgeNoise.PlayAsync();

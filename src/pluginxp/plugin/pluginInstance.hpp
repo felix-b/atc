@@ -26,9 +26,21 @@ private:
     XPLMCommandRef m_pttCommand;
     Dispatcher m_dispatcher;
     ServiceClientController m_serviceClient;
+    DataRef<int> m_dataRefCom1FrequencyKhz;
+    DataRef<int> m_dataRefCom2FrequencyKhz;
+    DataRef<float> m_dataRefQnhInHg;
+//    DataRef<int> m_dataRefWindAltitudeMetersMsl;
+//    DataRef<float> m_dataRefWindDirectionTrueDegrees;
+//    DataRef<int> m_dataRefWindSpeedKnots;
 public:
     PluginInstance() :
-        m_dispatcher()
+        m_dispatcher(),
+        m_dataRefCom1FrequencyKhz("sim/cockpit2/radios/actuators/com1_frequency_hz_833", PPL::ReadOnly),
+        m_dataRefCom2FrequencyKhz("sim/cockpit2/radios/actuators/com2_frequency_hz_833", PPL::ReadOnly),
+        m_dataRefQnhInHg("sim/weather/barometer_sealevel_inhg", PPL::ReadWrite)
+//        m_dataRefWindAltitudeMetersMsl("sim/weather/wind_altitude_msl_m[0]", PPL::ReadWrite),
+//        m_dataRefWindDirectionTrueDegrees("sim/weather/wind_direction_degt[0]", PPL::ReadWrite),
+//        m_dataRefWindSpeedKnots("sim/weather/wind_speed_kt[0]", PPL::ReadWrite)
     {
         printDebugString("INSTNC|constructor");
 
@@ -86,11 +98,19 @@ private:
         {
         case atc_proto::ServerToClient::PayloadCase::kReplyUserAcquireAircraft:
             const auto& reply = envelope.reply_user_acquire_aircraft();
+            auto qnhInHgX100 =  reply.weather().qnh_hpa(); //TODO: rename hpa->ingh as it actually is
+            auto windSpeedKt = reply.weather().wind_speed_kt();
+            auto windDirectionDegt = reply.weather().wind_true_bearing_degrees();
             printDebugString(
                 "INSTNC|WHOA Got weather from server! QNH[%d] WND[%d @ %d]",
-                reply.weather().qnh_hpa(),
-                reply.weather().wind_true_bearing_degrees(),
-                reply.weather().wind_speed_kt());
+                qnhInHgX100,
+                windDirectionDegt,
+                windSpeedKt);
+            m_dataRefQnhInHg = ((float)reply.weather().qnh_hpa()) / 100.0f;
+//            m_dataRefWindAltitudeMetersMsl = 1;
+//            m_dataRefWindDirectionTrueDegrees = windDirectionDegt;
+//            m_dataRefWindSpeedKnots = windSpeedKt;
+            printDebugString("INSTNC|WHOA done applying weather");
             break;
         }
     }
@@ -123,23 +143,6 @@ private:
             });
             break;
         }
-//
-//        //  Use the structure below to have the command executed
-//        //  continuously while the button is being held down.
-//        if (inPhase == xplm_CommandContinue)
-//        {
-//            XPLMSetDataf(gHeadPositionXDataRef, XPLMGetDataf(gHeadPositionXDataRef) + .1);
-//        }
-//
-//        //  Use this structure to have the command executed on button up only.
-//        if (inPhase == xplm_CommandEnd)
-//        {
-//            XPLMSetDataf(gHeadPositionXDataRef, XPLMGetDataf(gHeadPositionXDataRef) + .1);
-//        }
-//
-//        // Return 1 to pass the command to plugin windows and X-Plane.
-//        // Returning 0 disables further processing by X-Plane.
-//        // In this case we might return 0 or 1 because X-Plane does not duplicate our command.
     }
 
     static int pttHandlerCallback(

@@ -11,17 +11,19 @@ namespace Zero.Latency.Servers.Tests
     [TestFixture(Category = "e2e")]
     public class EndToEndTests
     {
+        private readonly IEndpointLogger _logger = new NoopEndpointLogger();
+        
         [Test]
         public async Task CanInstantiateAndDisposeEndpoint()
         {
-            var endpoint = new WebSocketEndpoint(port: 57000, urlPath: "/ws", new NoopSocketAcceptor());
+            var endpoint = new WebSocketEndpoint(port: 57000, urlPath: "/ws", new NoopSocketAcceptor(), _logger);
             await endpoint.DisposeAsync();
         }
 
         [Test]
         public async Task CanStartAndStopEndpoint()
         {
-            await using var endpoint = new WebSocketEndpoint(port: 57000, urlPath: "/ws", new NoopSocketAcceptor());
+            await using var endpoint = new WebSocketEndpoint(port: 57000, urlPath: "/ws", new NoopSocketAcceptor(), _logger);
             await endpoint.StartAsync();
             await endpoint.StopAsync(TimeSpan.FromSeconds(10));
         }
@@ -43,7 +45,7 @@ namespace Zero.Latency.Servers.Tests
                     .SendMessagesOfType<TestServerToClient>()
                     .ListenOn(portNumber: 57000, urlPath: "/ws")
                     .BindToServiceInstance(new TestServerToClient())
-                .Create(out _);
+                .Create(_logger, out _);
         }
         
         private class NoopSocketAcceptor : ISocketAcceptor

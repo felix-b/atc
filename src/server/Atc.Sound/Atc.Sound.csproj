@@ -11,4 +11,16 @@
       <PackageReference Include="OpenTK.OpenAL" Version="4.6.7" />
     </ItemGroup>
 
+    <PropertyGroup>
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+        <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Zero.Doubt.Logging.Generators\Zero.Doubt.Logging.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\Zero.Doubt.Logging\Zero.Doubt.Logging.csproj" />
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Remove="$(CompilerGeneratedFilesOutputPath)/*/**/*.cs" />
+    </ItemGroup>
+
 </Project>

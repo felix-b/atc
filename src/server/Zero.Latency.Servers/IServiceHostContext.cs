@@ -9,5 +9,7 @@ namespace Zero.Latency.Servers
         IMessageSerializer Serializer { get; }
         
         IOperationDispatcher Dispatcher { get; }
+        
+        IEndpointLogger Logger { get; }
     }
 }

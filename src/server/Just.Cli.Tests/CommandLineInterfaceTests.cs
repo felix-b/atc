@@ -7,7 +7,7 @@ namespace Just.Cli.Tests
     [TestFixture]
     public class CommandLineInterfaceTests
     {
-        [Test]
+        [Test, Ignore("TBD")]
         public void CanHandleCommand()
         {
             var cli = new TestInterface();

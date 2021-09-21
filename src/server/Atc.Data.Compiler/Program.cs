@@ -21,7 +21,7 @@ namespace Atc.Data.Compiler
             
             try
             {
-                ConsoleLog.Level = LogLevel.Debug;
+                LogEngine.Level = LogLevel.Debug;
                 BufferContextScope.UseStaticScope();            
 
                 var container = CompositionRoot();
@@ -59,7 +59,7 @@ namespace Atc.Data.Compiler
         {
             var builder = new ContainerBuilder();
 
-            builder.RegisterInstance(ConsoleLog.Writer).As<LogWriter>();
+            builder.RegisterInstance(LogEngine.Writer).As<LogWriter>();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<ICompilerLogger>()).AsImplementedInterfaces();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<IEmbeddedDataSourcesLogger>()).AsImplementedInterfaces();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<XPAptDatReader.ILogger>()).AsImplementedInterfaces();

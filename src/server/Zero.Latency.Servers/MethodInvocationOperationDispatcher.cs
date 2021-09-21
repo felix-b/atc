@@ -16,12 +16,17 @@ namespace Zero.Latency.Servers
 
         private readonly object _serviceInstance;
         private readonly Func<TEnvelopeIn, TPayloadCaseIn> _extractPayloadCase;
+        private readonly IEndpointLogger _logger;
         private readonly IReadOnlyDictionary<TPayloadCaseIn, OperationMethod> _methodByPayloadCase;
 
-        public MethodInvocationOperationDispatcher(object serviceInstance, Func<TEnvelopeIn, TPayloadCaseIn> extractPayloadCase)
+        public MethodInvocationOperationDispatcher(
+            object serviceInstance, 
+            Func<TEnvelopeIn, TPayloadCaseIn> extractPayloadCase,
+            IEndpointLogger logger)
         {
-            _extractPayloadCase = extractPayloadCase;
             _serviceInstance = serviceInstance;
+            _extractPayloadCase = extractPayloadCase;
+            _logger = logger;
             _methodByPayloadCase = BuildMethodInvocationMap(serviceInstance);
         }
 

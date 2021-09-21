@@ -13,40 +13,52 @@ namespace Zero.Latency.Servers
         private readonly string _urlPath;
         private readonly int _port;
         private readonly ISocketAcceptor _socketAcceptor;
+        private readonly IEndpointLogger _logger;
         private readonly IHost _host;
         private readonly CancellationTokenSource _disposed = new();
 
-        public WebSocketEndpoint(int port, string urlPath, ISocketAcceptor socketAcceptor)
+        public WebSocketEndpoint(int port, string urlPath, ISocketAcceptor socketAcceptor, IEndpointLogger logger)
         {
             _urlPath = urlPath.StartsWith("/") ? urlPath : "/" + urlPath;
             _port = port;
             _socketAcceptor = socketAcceptor;
+            _logger = logger;
             _host = CreateHost();
         }
 
         public async ValueTask DisposeAsync()
         {
             _disposed.Cancel(true);
-            Console.WriteLine("WebSocketEndpoint.DisposeAsync:0");
+
+            _logger.EndpointDisposingAsync(step: 1);
+            
             await _socketAcceptor.DisposeAsync();
-            Console.WriteLine("WebSocketEndpoint.DisposeAsync:1");
+            
+            _logger.EndpointDisposingAsync(step: 2);
+            
             await _host.StopAsync(TimeSpan.FromSeconds(10));
+            
             _host.Dispose();
-            Console.WriteLine("WebSocketEndpoint.DisposeAsync:2");
+            
+            _logger.EndpointDisposingAsync(step: 3);
         }
 
         public void Run()
         {
+            _logger.HostRunStarting(); 
             _host.Run();
+            _logger.HostRunFinished(); 
         }
 
         public Task StartAsync()
         {
+            _logger.HostRunStarting(); 
             return _host.StartAsync(_disposed.Token);
         }
 
         public Task RunAsync()
         {
+            _logger.HostRunStarting(); 
             return _host.RunAsync(_disposed.Token);
         }
 
@@ -57,14 +69,14 @@ namespace Zero.Latency.Servers
 
         public Task StopAsync(TimeSpan timeout)
         {
-            Console.WriteLine("WebSocketEndpoint.StopAsync:0");
+            _logger.HostStoppingAsync(step: 0);
             try
             {
                 return _host.StopAsync(timeout);
             }
             finally
             {
-                Console.WriteLine("WebSocketEndpoint.StopAsync:1");
+                _logger.HostStoppingAsync(step: 1);
             }
         }
 

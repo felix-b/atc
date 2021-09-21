@@ -6,25 +6,28 @@ namespace Atc.Sound
 {
     public unsafe class AudioContextScope : IDisposable
     {
+        private readonly ISoundSystemLogger _logger;
         private readonly ALDevice _device; 
         private readonly ALContext _context;
         private bool _disposed = false;
         
-        public AudioContextScope()
+        public AudioContextScope(ISoundSystemLogger logger)
         {
+            _logger = logger;
+            using var logSpan =_logger.InitializingSoundContext();
+            
             var version = AL.Get(ALGetString.Version);
             var vendor = AL.Get(ALGetString.Vendor);
             var renderer = AL.Get(ALGetString.Renderer);
-            Console.WriteLine($"OpenAL: version[{version}] vendor[{vendor}] renderer[{renderer}] pid[{Process.GetCurrentProcess().Id}");
+            _logger.OpenALInfo(version, vendor, renderer);
 
             var devices = ALC.GetStringList(GetEnumerationStringList.DeviceSpecifier);
-            Console.WriteLine($"ALC Devices: {string.Join(", ", devices)}");
+            _logger.ListAlcDevices(deviceList: string.Join(", ", devices));
 
             _device = ALC.OpenDevice(null);
             _context = ALC.CreateContext(_device, (int*)null);
 
             ALC.MakeContextCurrent(_context);
-            Console.WriteLine($"OpenAL: initialized context");
         }
 
         public void Dispose()
@@ -35,7 +38,7 @@ namespace Atc.Sound
             }
 
             _disposed = true;
-            Console.WriteLine($"OpenAL: deleting context");
+            _logger.DestroyingSoundContext();
             
             if (_context != ALContext.Null) 
             {

@@ -26,6 +26,7 @@ using Zero.Serialization.Buffers.Impl;
 [assembly:GenerateLogger(typeof(IEndpointLogger))]
 [assembly:GenerateLogger(typeof(WorldService.ILogger))]
 [assembly:GenerateLogger(typeof(RuntimeWorld.ILogger))]
+[assembly:GenerateLogger(typeof(ISoundSystemLogger))]
 
 namespace Atc.Server.Daemon
 {
@@ -35,26 +36,27 @@ namespace Atc.Server.Daemon
         
         static int Main(string[] args)
         {
-            Console.WriteLine("atc daemon starting");
             if (!ParseCommandLine(args, out var cacheFilePath, out var listenPort))
             {
+                Console.WriteLine("atcd - Air Traffic & Control daemon");
                 Console.WriteLine("call: atcd --cache <file_path> --listen <port_number>");
                 return 1;
             }
 
+            Console.WriteLine("atc daemon starting.");
+            InitializeLogging();
+
             try
             {
                 BufferContextScope.UseStaticScope();
-                ConsoleLog.Level = LogLevel.Debug;
 
                 var container = CompositionRoot();
                 var logger = container.Resolve<IAtcdLogger>();
 
-                using var audioContext = new AudioContextScope();
-                using (LoadCache(cacheFilePath, logger))
-                {
-                    RunEndpoint(container, listenPort).Wait();
-                }
+                using var audioContext = container.Resolve<AudioContextScope>();
+                using var cacheContext = LoadCache(cacheFilePath, logger);
+
+                RunEndpoint(container, listenPort).Wait();
             }
             catch (Exception e)
             {
@@ -101,6 +103,23 @@ namespace Atc.Server.Daemon
             }
         }
 
+        private static void InitializeLogging()
+        {
+            var binaryLogFilePath = Path.Combine(
+                Path.GetDirectoryName(Assembly.GetExecutingAssembly()?.Location ?? string.Empty) ?? string.Empty,
+                "log.zdl");
+
+            var binaryStream = BinaryLogStream.Create(binaryLogFilePath);
+            
+            LogEngine.Level = LogLevel.Debug;
+            LogEngine.SetTargetToPipeline(
+                binaryStream.CreateWriter,
+                ConsoleLogStreamWriter.Factory
+            );
+            
+            Console.WriteLine($"writing log file to: {binaryLogFilePath}");
+        }
+
         private static IDisposable LoadCache(string filePath, IAtcdLogger logger)
         {
             logger.LoadingCache(filePath);
@@ -116,11 +135,12 @@ namespace Atc.Server.Daemon
         {
             var builder = new ContainerBuilder();
 
-            builder.RegisterInstance(ConsoleLog.Writer).As<LogWriter>();
+            builder.RegisterInstance(LogEngine.Writer).As<LogWriter>();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<IAtcdLogger>()).AsImplementedInterfaces();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<IEndpointLogger>()).AsImplementedInterfaces();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<WorldService.ILogger>()).AsImplementedInterfaces();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<RuntimeWorld.ILogger>()).AsImplementedInterfaces();
+            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<ISoundSystemLogger>()).AsImplementedInterfaces();
 
             builder.RegisterType<RuntimeStateStore>().As<IRuntimeStateStore>().SingleInstance();
             builder.RegisterType<RuntimeWorld>().SingleInstance().WithParameter("startTime", DateTime.Now);
@@ -131,6 +151,7 @@ namespace Atc.Server.Daemon
             
             LoadSpeechPlugins(builder);
 
+            builder.RegisterType<AudioContextScope>().InstancePerDependency();
             builder.RegisterType<RadioSpeechPlayer>().SingleInstance();
             builder.RegisterType<TempMockLlhzRadio>().SingleInstance();
 
@@ -151,6 +172,7 @@ namespace Atc.Server.Daemon
 
             var service = container.Resolve<WorldService>();
             var world = container.Resolve<RuntimeWorld>();
+            var endpointLogger = container.Resolve<IEndpointLogger>();
             
             await using var endpoint = WebSocketEndpoint
                 .Define()
@@ -159,7 +181,7 @@ namespace Atc.Server.Daemon
                     .SendMessagesOfType<AtcProto.ServerToClient>()
                     .ListenOn(listenPortNumber, urlPath: "/ws")
                     .BindToServiceInstance(service)
-                .Create(out _taskSynchronizer);
+                .Create(endpointLogger, out _taskSynchronizer);
 
             AddDemoPlanes();
 
@@ -174,6 +196,7 @@ namespace Atc.Server.Daemon
             await endpoint.WaitForShutdownAsync();
             
             Console.WriteLine("atc daemon - listening stopped.");                    
+            Console.WriteLine("atc daemon stopping.");                    
 
             void AddDemoPlanes()
             {

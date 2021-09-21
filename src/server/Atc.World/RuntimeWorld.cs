@@ -49,7 +49,7 @@ namespace Atc.World
             Angle? pitch = null,
             Angle? roll = null)
         {
-            using var lifecycle = new OperationLifecycle(this);
+            using var lifecycle = new OperationLifecycle(this, nameof(AddNewAircraft));
 
             _store.Dispatch(this, new AircraftAddedEvent(
                 Id: _state.NextAircraftId,
@@ -80,7 +80,7 @@ namespace Atc.World
             Angle? pitch = null,
             Angle? roll = null)
         {
-            using var lifecycle = new OperationLifecycle(this);
+            using var lifecycle = new OperationLifecycle(this, nameof(AddStoredAircraft));
 
             ref var data = ref dataRef.Get();
 
@@ -109,7 +109,7 @@ namespace Atc.World
             _timestamp += delta;
 
             using var logSpan = _logger.ProgressBy((int) delta.TotalMilliseconds, (int) _timestamp.TotalMilliseconds, _tickCount);
-            using var lifecycle = new OperationLifecycle(this);
+            using var lifecycle = new OperationLifecycle(this, nameof(ProgressBy));
 
             // 1. create new empty ChangeSet and make it current in the context
             // 2. call ProgressBy on all parties involved   
@@ -125,15 +125,21 @@ namespace Atc.World
 
             foreach (var aircraft in _state.AircraftById.Values)
             {
-                aircraft.ProgressBy(delta);
+                using (_logger.ProgressByAircraft(aircraft.Id))
+                {
+                    aircraft.ProgressBy(delta);
+                }
             }
         }
 
         public void RegisterObserver(IWorldObserver observer)
         {
+            _logger.RegisteringObserver(observer.Name);
             _observers.Add(observer);
         }
 
         public TimeSpan Timestamp => _timestamp;
+
+        public ILogger Logger => _logger;
     }
 }

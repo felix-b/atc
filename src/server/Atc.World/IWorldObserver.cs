@@ -3,5 +3,6 @@
     public interface IWorldObserver
     {
         void CheckForUpdates();
+        string Name { get; }
     }
 }

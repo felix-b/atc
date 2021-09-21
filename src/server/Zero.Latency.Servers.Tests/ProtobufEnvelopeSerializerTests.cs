@@ -10,6 +10,8 @@ namespace Zero.Latency.Servers.Tests
     [TestFixture]
     public class ProtobufEnvelopeSerializerTests
     {
+        private readonly IEndpointLogger _logger = new NoopEndpointLogger();
+
         [Test]
         public void CanDeserializeClientToServer()
         {
@@ -21,7 +23,7 @@ namespace Zero.Latency.Servers.Tests
             var writer = new ArrayBufferWriter<byte>(initialCapacity: 4096);
             Serializer.Serialize(writer, original);
             var messageBytes = writer.WrittenSpan.ToArray();
-            var serializerUnderTest = new ProtobufEnvelopeSerializer<TestClientToServer>();
+            var serializerUnderTest = new ProtobufEnvelopeSerializer<TestClientToServer>(_logger);
 
             var deserialized = (TestClientToServer)serializerUnderTest.DeserializeIncomingEnvelope(
                 new ArraySegment<byte>(messageBytes, 0, messageBytes.Length)
@@ -44,7 +46,7 @@ namespace Zero.Latency.Servers.Tests
             };
 
             var writer = new ArrayBufferWriter<byte>(initialCapacity: 4096);
-            var serializerUnderTest = new ProtobufEnvelopeSerializer<TestClientToServer>();
+            var serializerUnderTest = new ProtobufEnvelopeSerializer<TestClientToServer>(_logger);
             serializerUnderTest.SerializeOutgoingEnvelope(original, writer);
 
             var deserialized = Serializer.Deserialize<TestServerToClient>(writer.WrittenSpan);

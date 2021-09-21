@@ -9,6 +9,8 @@ namespace Zero.Latency.Servers.Tests
     [TestFixture]
     public class MethodIncovationOperationDispatcherTests
     {
+        private readonly IEndpointLogger _logger = new NoopEndpointLogger();
+
         [Test]
         public void CanInvokeServiceMethods()
         {
@@ -29,7 +31,8 @@ namespace Zero.Latency.Servers.Tests
                 TestClientToServer.PayloadOneofCase
             >(
                 service,
-                request => request.PayloadCase
+                request => request.PayloadCase,
+                _logger
             );
 
             dispatcher.DispatchOperation(

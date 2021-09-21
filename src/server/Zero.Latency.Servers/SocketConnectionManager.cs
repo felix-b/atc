@@ -11,14 +11,16 @@ namespace Zero.Latency.Servers
     {
         private readonly IMessageSerializer _serializer;
         private readonly IOperationDispatcher _dispatcher;
+        private readonly IEndpointLogger _logger;
         private WriteLocked<ImmutableList<Connection>> _connections = ImmutableList<Connection>.Empty;
         private long _nextConnectionId = 1;
         private bool _disposed = false;
 
-        public SocketConnectionManager(IMessageSerializer serializer, IOperationDispatcher dispatcher)
+        public SocketConnectionManager(IMessageSerializer serializer, IOperationDispatcher dispatcher, IEndpointLogger logger)
         {
             _serializer = serializer;
             _dispatcher = dispatcher;
+            _logger = logger;
         }
 
         public async ValueTask DisposeAsync()
@@ -57,5 +59,7 @@ namespace Zero.Latency.Servers
         IMessageSerializer IServiceHostContext.Serializer => _serializer;
 
         IOperationDispatcher IServiceHostContext.Dispatcher => _dispatcher;
+
+        IEndpointLogger IServiceHostContext.Logger => _logger;
     }
 }
