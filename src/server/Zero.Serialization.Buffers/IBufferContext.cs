@@ -10,5 +10,7 @@ namespace Zero.Serialization.Buffers
         BufferContextWalker GetWalker();
         ZStringRef GetString(string s);
         bool TryGetString(string s, out ZStringRef stringRef);
+        void RunIntegrityCheck(string title);
+        string GetInflatedString(int handle);
     }
 }

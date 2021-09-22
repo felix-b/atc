@@ -18,7 +18,7 @@ namespace Zero.Latency.Servers
         private readonly WebSocket _socket;
         private readonly CancellationToken _cancelByHost;
         private readonly CancellationTokenSource _cancelForAnyReason;
-        private readonly ArrayBufferWriter<byte> _outgoingMessageBuffer = new(initialCapacity: 4096); //TODO: how to limit max buffer size?
+        private readonly ArrayBufferWriter<byte> _outgoingMessageBuffer = new(initialCapacity: 16384); //TODO: how to limit max buffer size?
         private SessionItems _sessionItems = new(initialEntryCount: 4);
         private WriteLocked<ImmutableList<ObserverEntry>> _observers = ImmutableList<ObserverEntry>.Empty;
         private Task? _receiveLoopTask = null;

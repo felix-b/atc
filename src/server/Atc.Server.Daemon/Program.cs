@@ -44,7 +44,7 @@ namespace Atc.Server.Daemon
             }
 
             Console.WriteLine("atc daemon starting.");
-            InitializeLogging();
+            //InitializeLogging();
 
             try
             {
@@ -56,6 +56,8 @@ namespace Atc.Server.Daemon
                 using var audioContext = container.Resolve<AudioContextScope>();
                 using var cacheContext = LoadCache(cacheFilePath, logger);
 
+                //BufferContext.Current.RunIntegrityCheck("Program - after load");
+                
                 RunEndpoint(container, listenPort).Wait();
             }
             catch (Exception e)
@@ -183,7 +185,11 @@ namespace Atc.Server.Daemon
                     .BindToServiceInstance(service)
                 .Create(endpointLogger, out _taskSynchronizer);
 
+            //BufferContext.Current.RunIntegrityCheck("Program-before-add-demo-planes");
+
             AddDemoPlanes();
+
+            //BufferContext.Current.RunIntegrityCheck("Program-after-add-demo-planes");
 
             var clock = container.Resolve<RuntimeClock>();
             clock.Start();
@@ -191,7 +197,9 @@ namespace Atc.Server.Daemon
             await endpoint.StartAsync();
 
             Console.WriteLine($"listening for connections on http://localhost:{listenPortNumber}/ws");                    
-            Console.WriteLine("atc daemon up.");                    
+            Console.WriteLine("atc daemon up.");  
+            
+            //BufferContext.Current.RunIntegrityCheck("Program - before run endpoint");
             
             await endpoint.WaitForShutdownAsync();
             

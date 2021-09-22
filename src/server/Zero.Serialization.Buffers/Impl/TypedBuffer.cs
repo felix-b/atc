@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
+using Force.Crc32;
 
 namespace Zero.Serialization.Buffers.Impl
 {
@@ -20,6 +23,8 @@ namespace Zero.Serialization.Buffers.Impl
         private int _freeByteIndex = 0;
         private readonly List<int> _recordPtrs = new List<int>();
         private readonly List<byte[]> _pages = new List<byte[]>();
+        
+        private readonly List<uint>? _pagesBaselineCrc32 = null;
 
         public TypedBuffer(Stream input)
         {
@@ -60,9 +65,37 @@ namespace Zero.Serialization.Buffers.Impl
             input.Read(buffer, 0, buffer.Length);
 
             _pages.Add(buffer);
+            _pagesBaselineCrc32 = _pages.Select(p => Crc32Algorithm.Compute(buffer)).ToList();
+            
+            //RunIntegrityCheck();
             //_pinnedHandle = GCHandle.Alloc(_buffer, GCHandleType.Pinned);            
         }
 
+        public void RunIntegrityCheck()
+        {
+            if (_pagesBaselineCrc32 == null)
+            {
+                Console.WriteLine($"> [!] UNABLE  TypedBuffer<{typeof(T).Name}>: baseline checksum wasn't calculated");
+                return;
+            }
+
+            for (int i = 0; i < _pages.Count; i++)
+            {
+                var baselineCrc = _pagesBaselineCrc32[i];
+                var currentCrc = Crc32Algorithm.Compute(_pages[i]);
+                if (currentCrc == baselineCrc)
+                {
+                    Console.WriteLine(
+                        $">     success TypedBuffer<{typeof(T).Name}>: CRC32 0x{currentCrc:X8}");
+                }
+                else
+                {
+                    Console.WriteLine(
+                        $"> [!] FAILURE TypedBuffer<{typeof(T).FullName}>: CRC32 baseline=0x{baselineCrc:X8}, current=0x{currentCrc:X8}");
+                }
+            }
+        }
+        
         public TypedBuffer(int initialCapacity)
         {
             _typeHandler = new StructTypeHandler(typeof(T));

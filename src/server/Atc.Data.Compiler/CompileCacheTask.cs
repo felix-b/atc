@@ -137,7 +137,7 @@ namespace Atc.Data.Compiler
             {
                 if (!worldData.AirlineByIcao.TryAdd(airlineRef.Get().Icao, airlineRef))
                 {
-                    _logger.DuplicateAirlineIcao(icao: airlineRef.Get().Icao.GetValueNonCached());
+                    _logger.DuplicateAirlineIcao(icao: airlineRef.Get().Icao.Value);
                 }
             }
         }
@@ -165,7 +165,7 @@ namespace Atc.Data.Compiler
                 }
                 else
                 {
-                    _logger.DuplicateAirportIcao(icao: airport.Header.Icao.GetValueNonCached());
+                    _logger.DuplicateAirportIcao(icao: airport.Header.Icao.Value);
                 }
             }
         }

@@ -57,6 +57,16 @@ namespace Zero.Serialization.Buffers.Tests
             throw new NotImplementedException();
         }
 
+        public void RunIntegrityCheck(string title)
+        {
+            throw new NotImplementedException();
+        }
+
+        public string GetInflatedString(int handle)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _scope.Dispose();

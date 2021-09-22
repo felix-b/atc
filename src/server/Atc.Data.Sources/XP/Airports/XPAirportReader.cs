@@ -104,7 +104,7 @@ namespace Atc.Data.Sources.XP.Airports
                 var taxiwayData = CreateTaxiwayData(nameRef, group);
                 if (taxiwayData.HasValue)
                 {
-                    _parts.TaxiwayByName.Add(nameRef.GetValueNonCached(), taxiwayData.Value);
+                    _parts.TaxiwayByName.Add(nameRef.Value, taxiwayData.Value);
                 }
             }
 
@@ -166,7 +166,7 @@ namespace Atc.Data.Sources.XP.Airports
                     if (nextEdgeRef.IsNull)
                     {
                         throw new InvalidDataException(
-                            $"Taxiway '{nameRef.GetValueNonCached()}': cannot find next edge from node id {node.Id}");
+                            $"Taxiway '{nameRef.Value}': cannot find next edge from node id {node.Id}");
                     }
                     nodeRef = nextEdgeRef.Get().Get().Node2Ref(); 
                     result.Add(nextEdgeRef.Get());

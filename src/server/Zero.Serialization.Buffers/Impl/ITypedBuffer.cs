@@ -10,6 +10,7 @@ namespace Zero.Serialization.Buffers.Impl
         void WriteTo(Stream output);
         ref byte[] GetRawBytesRef(int firstByteIndex);
         byte* GetRawRecordPointer(int firstByteIndex);
+        void RunIntegrityCheck();
         bool ReadOnly { get; }
         int InitialCapacity { get; }
         Type RecordType { get; }

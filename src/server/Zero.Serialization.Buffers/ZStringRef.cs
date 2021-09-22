@@ -12,11 +12,6 @@ namespace Zero.Serialization.Buffers
             _inner = inner;
         }
 
-        public string GetValueNonCached()
-        {
-            return _inner.Get().GetStrAndDeflate();
-        }
-        
         public string Value => _inner.Get().Str;
 
         public int Length => Value.Length;
@@ -49,7 +44,7 @@ namespace Zero.Serialization.Buffers
         {
             return _inner.GetHashCode();
         }
-        
+
         internal int ByteIndex => _inner.ByteIndex;
         
         public static implicit operator string(ZStringRef r) => r.Value;

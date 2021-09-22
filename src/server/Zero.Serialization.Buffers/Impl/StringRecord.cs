@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 
 namespace Zero.Serialization.Buffers.Impl
 {
     public unsafe struct StringRecord : IVariableSizeRecord
     {
         private int _length; 
-        private string? _inflated;
+        private int _inflatedHandle;
         private fixed char _chars[1];
 
         public StringRecord(int length)
@@ -15,34 +16,44 @@ namespace Zero.Serialization.Buffers.Impl
                 : throw new ArgumentOutOfRangeException(nameof(length), "String length cannot be negative");
 
             _length = length;
-            _inflated = null;
+            _inflatedHandle = -1;
             _chars[0] = '\0';
         }
 
         public override string ToString()
         {
-            if (_inflated == null)
-            {
-                fixed (char* p = _chars)
-                {
-                    _inflated = new string(p, 0, _length);
-                }
-            }
-            
-            return _inflated;
+            return Str;
         }
 
         public int SizeOf()
         {
             return SizeOf(_length);
         }
-        
-        public string Str => ToString();
+
+        public string Str
+        {
+            get
+            {
+                if (_inflatedHandle >= 0)
+                {
+                    return BufferContext.Current.GetInflatedString(_inflatedHandle);
+                }
+
+                string s;
+
+                fixed (char* p = _chars)
+                {
+                    s = new string(p, 0, _length);
+                }
+
+                return s;
+            }
+        }
 
         internal void SetValue(string value)
         {
             _length = value.Length;
-            _inflated = null;
+            _inflatedHandle = -1;                                                                                                                                                       
 
             for (int i = 0; i < value.Length; i++)
             {
@@ -50,15 +61,14 @@ namespace Zero.Serialization.Buffers.Impl
             }
         }
 
-        internal string GetStrAndDeflate()
+        internal int InflatedHandle
         {
-            var temp = ToString();
-            _inflated = null;
-            return temp;
+            get => _inflatedHandle;
+            set => _inflatedHandle = value;
         }
 
         //TODO: having a managed ref changes the layout; remove _inflated, to use simple layout assumptions  
-        private static readonly int _baseSize = 18;//Marshal.SizeOf(typeof(StringRecord));
+        private static readonly int _baseSize = 10;//Marshal.SizeOf(typeof(StringRecord));
 
         public static ZRef<StringRecord> Allocate(string value, IBufferContext? context = null)
         {

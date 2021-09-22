@@ -16,7 +16,7 @@ namespace Atc.Data.Sources
         {
             var output = BufferContext.Current;
             ref var airport = ref airportRef.Get();
-            var icaoCode = airport.Header.Icao.GetValueNonCached();
+            var icaoCode = airport.Header.Icao.Value;
             
             var towerRef = BufferContext.Current.AllocateRecord(new ControlFacilityData() {
                 Airport = airportRef,
@@ -52,7 +52,7 @@ namespace Atc.Data.Sources
             
             string GetPositionCallSign(ControllerPositionHeader header)
             {
-                var towerCallSign = towerRef.Get().CallSign.GetValueNonCached();
+                var towerCallSign = towerRef.Get().CallSign.Value;
                 return header.Type switch {
                     ControllerPositionType.ClearanceDelivery => $"{towerCallSign} Clearance",
                     ControllerPositionType.Ground => $"{towerCallSign} Ground",

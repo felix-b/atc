@@ -10,6 +10,7 @@ namespace Zero.Serialization.Buffers.Impl
     {
         private readonly Dictionary<Type, ITypedBuffer> _bufferByType = new();
         private readonly Dictionary<string, ZRef<StringRecord>> _stringRefByValue = new();
+        private readonly List<string> _inflatedStrings;
 
         public BufferContext(params Type[] recordTypes)
         {
@@ -17,6 +18,8 @@ namespace Zero.Serialization.Buffers.Impl
             {
                 _bufferByType.Add(type, TypedBuffer.CreateEmpty(type, initialCapacity: DefaultBufferCapacity));
             }
+
+            _inflatedStrings = new();
         }
 
         private BufferContext(Stream input)
@@ -41,7 +44,9 @@ namespace Zero.Serialization.Buffers.Impl
                     $"Unexpected end of stream. Stored buffer count is {storedBufferCount}, but was only able to read {_bufferByType.Count}.");
             }
 
-            TryLoadStringDictionary();
+            //RunIntegrityCheck("BufferContext.ctor - before TryLoadStringDictionary");
+            TryLoadStringDictionary(out _inflatedStrings);
+            //RunIntegrityCheck("BufferContext.ctor - after TryLoadStringDictionary");
         }
 
         public TypedBuffer<T> GetBuffer<T>() where T : struct
@@ -72,6 +77,21 @@ namespace Zero.Serialization.Buffers.Impl
         public BufferContextWalker GetWalker()
         {
             return new BufferContextWalker(this);
+        }
+
+        public string GetInflatedString(int handle)
+        {
+            return _inflatedStrings[handle];
+        }
+
+        public void RunIntegrityCheck(string title)
+        {
+            Console.WriteLine($"------====== BEGIN INTEGRITY CHECK: {title} ======------");
+            foreach (var buffer in _bufferByType.Values)
+            {
+                buffer.RunIntegrityCheck();
+            }
+            Console.WriteLine($"------====== END INTEGRITY CHECK: {title} ======------");
         }
 
         internal bool TryGetString(string s, out ZRef<StringRecord>? stringRef)
@@ -117,18 +137,26 @@ namespace Zero.Serialization.Buffers.Impl
             _stringRefByValue.Add(s, stringRef);
         }
 
-        private void TryLoadStringDictionary()
+        private void TryLoadStringDictionary(out List<string> inflatedStrings)
         {
-            if (_bufferByType.TryGetValue(typeof(StringRecord), out var buffer))
+            if (!_bufferByType.TryGetValue(typeof(StringRecord), out var buffer))
             {
-                var stringBuffer = (TypedBuffer<StringRecord>) buffer;
+                inflatedStrings = new List<string>();
+                return;
+            }
+
+            var stringBuffer = (TypedBuffer<StringRecord>) buffer;
+            inflatedStrings = new List<string>(capacity: buffer.RecordCount);
                 
-                for (int i = 0; i < stringBuffer.RecordCount; i++)
-                {
-                    var recordRef = new ZRef<StringRecord>(stringBuffer.RecordOffsets[i]);
-                    ref StringRecord record = ref stringBuffer[recordRef.ByteIndex];
-                    _stringRefByValue[record.Str] = recordRef;
-                }
+            for (int i = 0; i < stringBuffer.RecordCount; i++)
+            {
+                var recordRef = new ZRef<StringRecord>(stringBuffer.RecordOffsets[i]);
+                ref StringRecord record = ref stringBuffer[recordRef.ByteIndex];
+
+                var stringValue = record.Str;
+                record.InflatedHandle = inflatedStrings.Count;
+                _inflatedStrings.Add(stringValue);
+                _stringRefByValue[stringValue] = recordRef;
             }
         }
 

@@ -326,30 +326,30 @@ namespace Zero.Serialization.Buffers.Tests
         [Test]
         public void LayoutOfStringRecord()
         {
-            Unsafe.SizeOf<StringRecord>().Should().Be(24);
+            Unsafe.SizeOf<StringRecord>().Should().Be(12);
 
             var handler = new StructTypeHandler(typeof(StringRecord));
 
-            handler.Size.Should().Be(24);
+            handler.Size.Should().Be(12);
             handler.IsVariableSize.Should().Be(true);
             handler.Fields.Count.Should().Be(3);
             
             handler.Fields[0].Name.Should().Be("_length");
-            handler.Fields[0].Offset.Should().Be(8);
+            handler.Fields[0].Offset.Should().Be(0);
             handler.Fields[0].Size.Should().Be(4);
             handler.Fields[0].Type.Should().BeSameAs(typeof(int));
             handler.Fields[0].IsVariableBuffer.Should().Be(false);
             handler.Fields[0].ValueTypeHandler.Should().Be(null);
 
-            handler.Fields[1].Name.Should().Be("_inflated");
-            handler.Fields[1].Offset.Should().Be(0);
-            handler.Fields[1].Size.Should().Be(8);
-            handler.Fields[1].Type.Should().BeSameAs(typeof(string));
+            handler.Fields[1].Name.Should().Be("_inflatedHandle");
+            handler.Fields[1].Offset.Should().Be(4);
+            handler.Fields[1].Size.Should().Be(4);
+            handler.Fields[1].Type.Should().BeSameAs(typeof(int));
             handler.Fields[1].IsVariableBuffer.Should().Be(false);
             handler.Fields[1].ValueTypeHandler.Should().Be(null);
 
             handler.Fields[2].Name.Should().Be("_chars");
-            handler.Fields[2].Offset.Should().Be(16);
+            handler.Fields[2].Offset.Should().Be(8);
             handler.Fields[2].Size.Should().Be(2);
             handler.Fields[2].Type.Should().BeSameAs(typeof(char[]));
             handler.Fields[2].IsVariableBuffer.Should().Be(true);
@@ -361,12 +361,16 @@ namespace Zero.Serialization.Buffers.Tests
         {
             var handler = new StructTypeHandler(typeof(StringRecord));
             byte* pBytes = stackalloc byte[128];
+            for (int i = 0; i < 128; i++)
+            {
+                pBytes[i] = 0xDB;
+            }
             
             ref StringRecord instance = ref Unsafe.AsRef<StringRecord>(pBytes); 
             instance.SetValue("ABCD");
 
             var values = handler.GetFieldValues(pBytes);
-            handler.GetInstanceSize(pBytes).Should().Be(24); 
+            handler.GetInstanceSize(pBytes).Should().Be(16); 
 
             values.Length.Should().Be(3);
             values[0].Field.Should().BeSameAs(handler.Fields[0]);
@@ -374,7 +378,7 @@ namespace Zero.Serialization.Buffers.Tests
             values[0].Value.Should().Be(4);
 
             values[1].Field.Should().BeSameAs(handler.Fields[1]);
-            values[1].Value.Should().BeNull();
+            values[1].Value.Should().Be(-1);
 
             values[2].Field.Should().BeSameAs(handler.Fields[2]);
             values[2].Value.Should().BeOfType<char[]>();
