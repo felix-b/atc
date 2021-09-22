@@ -8,6 +8,9 @@ namespace Zero.Doubt.Logging
 {
     public class PipelineLogStreamWriter : ILogStreamWriter
     {
+        private static int _lastInstanceId = 0;
+
+        private readonly int _instanceId = Interlocked.Increment(ref _lastInstanceId);
         private readonly ILogStreamWriter[] _pipeline;
         private readonly int _sinkCount;
         //TODO: for debugging; to be removed
@@ -17,6 +20,8 @@ namespace Zero.Doubt.Logging
         {
             _pipeline = pipeline;
             _sinkCount = pipeline.Length;
+            
+            Console.WriteLine($"PipelineLogStreamWriter.ctor #{_instanceId} sync-context [{SynchronizationContext.Current?.GetType()?.Name ?? "N/A"}]");
         }
 
         public void WriteMessage(DateTime time, string id, LogLevel level)
@@ -156,7 +161,7 @@ namespace Zero.Doubt.Logging
             var newConcurrency = Interlocked.Increment(ref _concurrency); 
             if (newConcurrency > 1)
             {
-                Console.WriteLine($"!!! BINARY-LOG-STREAM-WRITER: CONCURRENCY INVARIANT VIOLATED: {newConcurrency} !!!");
+                Console.WriteLine($"!!! BINARY-LOG-STREAM-WRITER: CONCURRENCY INVARIANT VIOLATED: {newConcurrency} !!! SYNC-CTX {SynchronizationContext.Current?.GetType()?.Name ?? "N/A"}");
             }
         }
 

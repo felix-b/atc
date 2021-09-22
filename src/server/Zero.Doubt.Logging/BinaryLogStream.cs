@@ -75,14 +75,19 @@ namespace Zero.Doubt.Logging
             }
         }
         
-        public void Flush(int streamId, MemoryStream buffer)
+        public void Flush(int streamId, DateTime bufferStartedAtUtc, MemoryStream buffer)
         {
+            var utcNow = DateTime.UtcNow;
+            
             if (Monitor.TryEnter(_syncRoot, 500))
             {
                 try
                 {
                     _output.WriteByte((byte)LogStreamOpCode.BeginStreamChunk);
 
+                    _writer.Write(streamId);
+                    _writer.Write(bufferStartedAtUtc.Ticks);
+                    _writer.Write(utcNow.Ticks);
                     _writer.Write(buffer.Length);
                     buffer.Position = 0;
                     buffer.CopyTo(_output);

@@ -94,6 +94,7 @@ namespace Zero.Doubt.Logging
         {
             var buffer = GetBuffer();
             buffer.WriteOpCode(LogStreamOpCode.CloseSpan);
+            buffer.WriteTime(time);
 
             DecrementSpanDepth();
         }
@@ -102,6 +103,7 @@ namespace Zero.Doubt.Logging
         {
             var buffer = GetBuffer();
             buffer.WriteOpCode(LogStreamOpCode.BeginCloseSpan);
+            buffer.WriteTime(time);
         }
 
         public void WriteEndCloseSpan()
@@ -152,12 +154,14 @@ namespace Zero.Doubt.Logging
             private readonly BinaryLogStream _output;
             private readonly MemoryStream _stream;
             private readonly BinaryWriter _writer;
+            private readonly DateTime _startedAtUtc;
 
             public RootSpanBuffer(BinaryLogStream output)
             {
                 _output = output;
                 _stream = new MemoryStream();
                 _writer = new BinaryWriter(_stream, Encoding.UTF8, leaveOpen: true);
+                _startedAtUtc = DateTime.UtcNow;
             }
 
             public void Dispose()
@@ -169,7 +173,7 @@ namespace Zero.Doubt.Logging
             public void Flush(int streamId)
             {
                 _writer.Flush();
-                _output.Flush(streamId, _stream);
+                _output.Flush(streamId, _startedAtUtc, _stream);
             }
 
             public void WriteOpCode(LogStreamOpCode opCode)
@@ -199,6 +203,7 @@ namespace Zero.Doubt.Logging
                 _writer.Write((sbyte)level);
             }
 
+            public DateTime StartedAtUtc => _startedAtUtc;
             public BinaryWriter Writer => _writer;
         }
 

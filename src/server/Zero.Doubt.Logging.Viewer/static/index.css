@@ -1,0 +1,88 @@
+﻿body {
+    background: gray;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 50px auto;
+    font-family: monospace;
+    font-size: 13pt;
+}
+
+#secToolbar {
+    
+}
+
+#secTable {
+
+}
+
+#tblLog {
+    width: 100%;
+    background-color: white;
+}
+
+#tblLog td {
+    padding: 2px;
+}
+
+#tblLog thead tr {
+    background-color: darkorange;
+}
+
+#tblLog tbody tr:nth-child(even) {
+    background-color: white;
+}
+
+#tblLog tbody td {
+    padding: 2px;
+    border-right: 1px solid lightgray;
+}
+
+#tblLog tbody tr:nth-child(odd) {
+    background-color: whitesmoke;
+}
+
+#tblLog td.col-message {
+    width: 500px;
+}
+
+#tblLog td.col-time {
+    width: 130px;
+}
+
+#tblLog tbody td.col-time {
+    text-align: center;
+    font-size: 11pt;
+}
+
+#tblLog td.col-duration {
+    width: 90px;
+}
+
+#tblLog tbody td.col-duration {
+    text-align: right;
+    font-size: 11pt;
+}
+
+#tblLog td:last-child { 
+    width: auto; 
+}
+
+span.log-td-indent {
+    display: inline-block;
+}
+
+a.log-td-expand {
+    display: inline-block;
+    width: 30px;
+    cursor: pointer;
+}
+
+a.log-td-expand:hover {
+    color: darkorange;
+}
+
+span.log-td-msg {
+    display: inline-block;
+}
