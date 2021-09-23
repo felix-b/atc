@@ -5,6 +5,10 @@ namespace Zero.Doubt.Logging
 {
     public class NoopLogStreamWriter : ILogStreamWriter
     {
+        public void WriteAsyncParentSpanId(long spanId)
+        {
+        }
+
         public void WriteMessage(DateTime time, string id, LogLevel level)
         {
         }
@@ -25,11 +29,11 @@ namespace Zero.Doubt.Logging
         {
         }
 
-        public void WriteOpenSpan(DateTime time, string id, LogLevel level)
+        public void WriteOpenSpan(long spanId, DateTime time, string messageId, LogLevel level)
         {
         }
 
-        public void WriteBeginOpenSpan(DateTime time, string id, LogLevel level)
+        public void WriteBeginOpenSpan(long spanId, DateTime time, string messageId, LogLevel level)
         {
         }
 
@@ -47,6 +51,11 @@ namespace Zero.Doubt.Logging
 
         public void WriteEndCloseSpan()
         {
+        }
+
+        public long GetCurrentSpanId()
+        {
+            return 0;
         }
     }
 }

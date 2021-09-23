@@ -76,14 +76,14 @@ namespace Zero.Doubt.Logging.Tests
                 await canEnterEvent!.Task;
                 var context1 = holder!.GetContext();
                 var context2 = holder.GetContext();
-                RememberContextInCurrentThread(context1, taskKey);
+                RememberContextInCurrentTask(context1, taskKey);
                 await Task.Delay(10);
-                RememberContextInCurrentThread(context2, taskKey);
+                RememberContextInCurrentTask(context2, taskKey);
                 taskDoneEvents![taskKey].SetResult();
                 await canExitEvent!.Task;
             }
             
-            void RememberContextInCurrentThread(MyContext context, int threadKey)
+            void RememberContextInCurrentTask(MyContext context, int threadKey)
             {
                 lock (syncRoot!)
                 {
@@ -93,6 +93,188 @@ namespace Zero.Doubt.Logging.Tests
                         contextsByTaskKey.Add(threadKey, targetList);
                     }
                     targetList.Add(context);
+                }
+            }
+        }
+
+        [Test]
+        public async Task TasksInheritContextOfOriginator()
+        {
+            var holder = new MyContextHolder();
+            var contextsByTaskKey = new Dictionary<int, MyContext>();
+            var syncRoot = new object();
+            
+            var rootContext = holder.SetNewContext();
+            var task1 = RunTask(111);
+            var task2 = RunTask(222);
+            
+            await Task.WhenAll(task1, task2);
+
+            Assert.That(contextsByTaskKey.Count, Is.EqualTo(2));
+            Assert.That(contextsByTaskKey[111], Is.SameAs(rootContext));
+            Assert.That(contextsByTaskKey[222], Is.SameAs(rootContext));
+            
+            async Task RunTask(int taskKey)
+            {
+                lock (syncRoot)
+                {
+                    contextsByTaskKey[taskKey] = holder.GetContext();
+                }
+            }
+        }
+
+        [Test]
+        public async Task TasksOverrideOriginatorContextIndependentlyAfterYield()
+        {
+            var holder = new MyContextHolder();
+            var contextsByTaskKey = new Dictionary<int, MyContext[]>();
+            var syncRoot = new object();
+
+            var canEnterEvent = new TaskCompletionSource();
+            var canExitEvent = new TaskCompletionSource();
+            var taskReadyEvents = new Dictionary<int, TaskCompletionSource>() {
+                { 111, new TaskCompletionSource() },
+                { 222, new TaskCompletionSource() },
+            };
+            var taskDoneEvents = new Dictionary<int, TaskCompletionSource>() {
+                { 111, new TaskCompletionSource() },
+                { 222, new TaskCompletionSource() },
+            };
+            
+            holder.SetNewContext();
+            var rootContext1 = holder.GetContext();
+            
+            var task1 = RunTask(111);
+            var task2 = RunTask(222);
+            
+            await Task.WhenAll(taskReadyEvents[111].Task, taskReadyEvents[222].Task);
+            canEnterEvent.SetResult();
+            await Task.WhenAll(taskDoneEvents[111].Task, taskDoneEvents[222].Task);
+            canExitEvent.SetResult();
+
+            await Task.WhenAll(task1, task2);
+
+            var rootContext2 = holder.GetContext();
+
+            Assert.That(contextsByTaskKey.Count, Is.EqualTo(2));
+            Assert.That(contextsByTaskKey.ContainsKey(111));
+            Assert.That(contextsByTaskKey.ContainsKey(222));
+            
+            Assert.That(contextsByTaskKey[111].Length, Is.EqualTo(3));
+            Assert.That(contextsByTaskKey[111][0], Is.SameAs(rootContext1));
+            Assert.That(contextsByTaskKey[111][1], Is.Not.SameAs(rootContext1));
+            Assert.That(contextsByTaskKey[111][2], Is.SameAs(contextsByTaskKey[111][1]));
+            
+            Assert.That(contextsByTaskKey[222].Length, Is.EqualTo(3));
+            Assert.That(contextsByTaskKey[222][0], Is.SameAs(rootContext1));
+            Assert.That(contextsByTaskKey[222][1], Is.Not.SameAs(rootContext1));
+            Assert.That(contextsByTaskKey[222][2], Is.SameAs(contextsByTaskKey[222][1]));
+
+            Assert.That(contextsByTaskKey[222][2], Is.Not.SameAs(contextsByTaskKey[111][2]));
+
+            Assert.That(rootContext2, Is.SameAs(rootContext1));
+
+            async Task RunTask(int taskKey)
+            {
+                var context1 = holder.GetContext();
+                
+                taskReadyEvents![taskKey].SetResult();
+                await canEnterEvent!.Task;
+
+                var context2 = holder.SetNewContext();
+                
+                taskDoneEvents![taskKey].SetResult();
+                await canExitEvent!.Task;
+                
+                var context3 = holder.GetContext();
+
+                lock (syncRoot)
+                {
+                    contextsByTaskKey[taskKey] = new[] {context1, context2, context3};
+                }
+            }
+        }
+
+        [Test]
+        public async Task TasksOverrideOriginatorContextIndependentlyBeforeYield()
+        {
+            var holder = new MyContextHolder();
+            
+            holder.SetNewContext();
+            
+            MyContext? taskContext1 = null;
+            MyContext? taskContext2 = null;
+            
+            var rootContext1 = holder.GetContext(); 
+            
+            await RunTask();
+
+            var rootContext2 = holder.GetContext();
+
+            Assert.That(taskContext1, Is.Not.Null);
+            Assert.That(taskContext2, Is.Not.Null);
+
+            Assert.That(rootContext2, Is.SameAs(rootContext1));
+            Assert.That(taskContext1, Is.Not.SameAs(rootContext1));
+            Assert.That(taskContext2, Is.SameAs(taskContext1));
+            
+            async Task RunTask()
+            {
+                taskContext1 = holder.SetNewContext();
+                await Task.Delay(10);
+                taskContext2 = holder.GetContext();
+            }
+        }
+
+        [Test]
+        public async Task OriginatorModifiesContextIndependentlyOfSpawnTasksAfterYield()
+        {
+            var holder = new MyContextHolder();
+            var contextsByTaskKey = new Dictionary<int, MyContext[]>();
+            var syncRoot = new object();
+
+            var canEnterEvent = new TaskCompletionSource();
+            var taskReadyEvents = new Dictionary<int, TaskCompletionSource>() {
+                { 111, new TaskCompletionSource() },
+                { 222, new TaskCompletionSource() },
+            };
+            
+            var rootContext1 = holder.SetNewContext();
+            var task1 = RunTask(111);
+            var task2 = RunTask(222);
+            
+            await Task.WhenAll(taskReadyEvents[111].Task, taskReadyEvents[222].Task);
+            var rootContext2 = holder.SetNewContext();
+            canEnterEvent.SetResult();
+
+            await Task.WhenAll(task1, task2);
+
+            Assert.That(contextsByTaskKey.Count, Is.EqualTo(2));
+            Assert.That(contextsByTaskKey.ContainsKey(111));
+            Assert.That(contextsByTaskKey.ContainsKey(222));
+            
+            Assert.That(contextsByTaskKey[111].Length, Is.EqualTo(2));
+            Assert.That(contextsByTaskKey[111][0], Is.SameAs(rootContext1));
+            Assert.That(contextsByTaskKey[111][1], Is.SameAs(rootContext1));
+            Assert.That(contextsByTaskKey[111][1], Is.Not.SameAs(rootContext2));
+            
+            Assert.That(contextsByTaskKey[222].Length, Is.EqualTo(2));
+            Assert.That(contextsByTaskKey[222][0], Is.SameAs(rootContext1));
+            Assert.That(contextsByTaskKey[222][1], Is.SameAs(rootContext1));
+            Assert.That(contextsByTaskKey[222][1], Is.Not.SameAs(rootContext2));
+
+            async Task RunTask(int taskKey)
+            {
+                var context1 = holder.GetContext();
+                
+                taskReadyEvents![taskKey].SetResult();
+                await canEnterEvent!.Task;
+
+                var context2 = holder.GetContext();
+
+                lock (syncRoot)
+                {
+                    contextsByTaskKey[taskKey] = new[] {context1, context2};
                 }
             }
         }
@@ -166,7 +348,7 @@ namespace Zero.Doubt.Logging.Tests
 
         private class MyContextHolder
         {
-            private int _nextContextId = 1;
+            private int _lastContextId = 0;
             private readonly AsyncLocal<MyContext?> _myAsyncLocal = new();
             
             public MyContext GetContext() 
@@ -174,9 +356,16 @@ namespace Zero.Doubt.Logging.Tests
                 var context = _myAsyncLocal.Value;
                 if (context == null)
                 {
-                    context = new MyContext($"{Interlocked.Increment(ref _nextContextId)}");
+                    context = new MyContext($"{Interlocked.Increment(ref _lastContextId)}");
                     _myAsyncLocal.Value = context;
                 }
+                return context;
+            }
+
+            public MyContext SetNewContext()
+            {
+                var context = new MyContext($"{Interlocked.Increment(ref _lastContextId)}");
+                _myAsyncLocal.Value = context;
                 return context;
             }
         }
@@ -189,6 +378,11 @@ namespace Zero.Doubt.Logging.Tests
             }
 
             public string Id { get; }
+
+            public override string ToString()
+            {
+                return $"MyContext#{Id}";
+            }
         }
     }
 }

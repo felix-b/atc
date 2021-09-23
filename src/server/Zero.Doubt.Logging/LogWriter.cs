@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using Zero.Doubt.Logging.Engine;
 
 namespace Zero.Doubt.Logging
@@ -8,6 +9,7 @@ namespace Zero.Doubt.Logging
         private readonly Func<LogLevel> _getLevel;
         private readonly Func<DateTime> _getTime;
         private readonly Func<ILogStreamWriter> _getStream;
+        private long _lastSpanId = 0;
 
         public LogWriter(Func<LogLevel> getLevel, Func<DateTime> getTime, Func<ILogStreamWriter> getStream)
         {
@@ -219,7 +221,7 @@ namespace Zero.Doubt.Logging
             }
 
             var stream = _getStream();
-            stream.WriteOpenSpan(Time, id, level);
+            stream.WriteOpenSpan(TakeNextSpanId(), Time, id, level);
             return new LogSpan(this);
         }
 
@@ -234,7 +236,7 @@ namespace Zero.Doubt.Logging
             }
 
             var stream = _getStream();
-            stream.WriteBeginOpenSpan(Time, id, level);
+            stream.WriteBeginOpenSpan(TakeNextSpanId(), Time, id, level);
             stream.WriteValue(pair1.name, pair1.value);
             stream.WriteEndOpenSpan();
             return new LogSpan(this);
@@ -252,7 +254,7 @@ namespace Zero.Doubt.Logging
             }
 
             var stream = _getStream();
-            stream.WriteBeginOpenSpan(Time, id, level);
+            stream.WriteBeginOpenSpan(TakeNextSpanId(), Time, id, level);
             stream.WriteValue(pair1.name, pair1.value);
             stream.WriteValue(pair2.name, pair2.value);
             stream.WriteEndOpenSpan();
@@ -272,7 +274,7 @@ namespace Zero.Doubt.Logging
             }
 
             var stream = _getStream();
-            stream.WriteBeginOpenSpan(Time, id, level);
+            stream.WriteBeginOpenSpan(TakeNextSpanId(), Time, id, level);
             stream.WriteValue(pair1.name, pair1.value);
             stream.WriteValue(pair2.name, pair2.value);
             stream.WriteValue(pair3.name, pair3.value);
@@ -294,7 +296,7 @@ namespace Zero.Doubt.Logging
             }
 
             var stream = _getStream();
-            stream.WriteBeginOpenSpan(Time, id, level);
+            stream.WriteBeginOpenSpan(TakeNextSpanId(), Time, id, level);
             stream.WriteValue(pair1.name, pair1.value);
             stream.WriteValue(pair2.name, pair2.value);
             stream.WriteValue(pair3.name, pair3.value);
@@ -318,7 +320,7 @@ namespace Zero.Doubt.Logging
             }
 
             var stream = _getStream();
-            stream.WriteBeginOpenSpan(Time, id, level);
+            stream.WriteBeginOpenSpan(TakeNextSpanId(), Time, id, level);
             stream.WriteValue(pair1.name, pair1.value);
             stream.WriteValue(pair2.name, pair2.value);
             stream.WriteValue(pair3.name, pair3.value);
@@ -344,7 +346,7 @@ namespace Zero.Doubt.Logging
             }
 
             var stream = _getStream();
-            stream.WriteBeginOpenSpan(Time, id, level);
+            stream.WriteBeginOpenSpan(TakeNextSpanId(), Time, id, level);
             stream.WriteValue(pair1.name, pair1.value);
             stream.WriteValue(pair2.name, pair2.value);
             stream.WriteValue(pair3.name, pair3.value);
@@ -372,7 +374,7 @@ namespace Zero.Doubt.Logging
             }
 
             var stream = _getStream();
-            stream.WriteBeginOpenSpan(Time, id, level);
+            stream.WriteBeginOpenSpan(TakeNextSpanId(), Time, id, level);
             stream.WriteValue(pair1.name, pair1.value);
             stream.WriteValue(pair2.name, pair2.value);
             stream.WriteValue(pair3.name, pair3.value);
@@ -402,7 +404,7 @@ namespace Zero.Doubt.Logging
             }
 
             var stream = _getStream();
-            stream.WriteBeginOpenSpan(Time, id, level);
+            stream.WriteBeginOpenSpan(TakeNextSpanId(), Time, id, level);
             stream.WriteValue(pair1.name, pair1.value);
             stream.WriteValue(pair2.name, pair2.value);
             stream.WriteValue(pair3.name, pair3.value);
@@ -417,6 +419,11 @@ namespace Zero.Doubt.Logging
         
         public LogLevel Level => _getLevel();
         public DateTime Time => _getTime();
+
+        private long TakeNextSpanId()
+        {
+            return Interlocked.Increment(ref _lastSpanId);
+        }
         
         private static readonly string _errorCodeKey = "ErrorCode";
         

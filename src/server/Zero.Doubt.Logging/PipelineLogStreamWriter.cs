@@ -1,20 +1,36 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Zero.Doubt.Logging.Engine;
 
 namespace Zero.Doubt.Logging
 {
     public class PipelineLogStreamWriter : ILogStreamWriter
     {
+        private class ConcurrencyInfo
+        {
+            public int? TaskId;
+            public int ManagedThreadId;
+            public string TaskName;
+
+            public override string ToString()
+            {
+                return $"[{TaskId?.ToString() ?? "?"}@{ManagedThreadId}|{TaskName}]";
+            }
+        }
+        
         private static int _lastInstanceId = 0;
 
         private readonly int _instanceId = Interlocked.Increment(ref _lastInstanceId);
         private readonly ILogStreamWriter[] _pipeline;
         private readonly int _sinkCount;
+        private long _currentSpanId = 0;
         //TODO: for debugging; to be removed
         private int _concurrency = 0;
+        private ImmutableArray<ConcurrencyInfo> _concurrencyInfo = ImmutableArray<ConcurrencyInfo>.Empty;
 
         private PipelineLogStreamWriter(ILogStreamWriter[] pipeline)
         {
@@ -24,149 +40,183 @@ namespace Zero.Doubt.Logging
             Console.WriteLine($"PipelineLogStreamWriter.ctor #{_instanceId} sync-context [{SynchronizationContext.Current?.GetType()?.Name ?? "N/A"}]");
         }
 
+        public void WriteAsyncParentSpanId(long spanId)
+        {
+            var info = DebugIncrementConcurrency();
+            
+            for (int i = 0; i < _sinkCount; i++)
+            {
+                _pipeline[i].WriteAsyncParentSpanId(spanId);
+            }
+            
+            DebugDecrementConcurrency(info);
+        }
+
         public void WriteMessage(DateTime time, string id, LogLevel level)
         {
-            DebugIncrementConcurrency();
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
                 _pipeline[i].WriteMessage(time, id, level);
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
         public void WriteBeginMessage(DateTime time, string id, LogLevel level)
         {
-            DebugIncrementConcurrency();
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
                 _pipeline[i].WriteBeginMessage(time, id, level);
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
         public void WriteValue<T>(string key, T value)
         {
-            DebugIncrementConcurrency();
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
                 _pipeline[i].WriteValue(key, value);
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
         public void WriteException(Exception error)
         {
-            DebugIncrementConcurrency();
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
                 _pipeline[i].WriteException(error);
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
         public void WriteEndMessage()
         {
-            DebugIncrementConcurrency();
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
                 _pipeline[i].WriteEndMessage();
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
-        public void WriteOpenSpan(DateTime time, string id, LogLevel level)
+        public void WriteOpenSpan(long spanId, DateTime time, string messageId, LogLevel level)
         {
-            DebugIncrementConcurrency();
+            _currentSpanId = spanId;
+            
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
-                _pipeline[i].WriteOpenSpan(time, id, level);
+                _pipeline[i].WriteOpenSpan(spanId, time, messageId, level);
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
-        public void WriteBeginOpenSpan(DateTime time, string id, LogLevel level)
+        public void WriteBeginOpenSpan(long spanId, DateTime time, string messageId, LogLevel level)
         {
-            DebugIncrementConcurrency();
+            _currentSpanId = spanId;
+
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
-                _pipeline[i].WriteBeginOpenSpan(time, id, level);
+                _pipeline[i].WriteBeginOpenSpan(spanId, time, messageId, level);
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
         public void WriteEndOpenSpan()
         {
-            DebugIncrementConcurrency();
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
                 _pipeline[i].WriteEndOpenSpan();
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
         public void WriteCloseSpan(DateTime time)
         {
-            DebugIncrementConcurrency();
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
                 _pipeline[i].WriteCloseSpan(time);
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
         public void WriteBeginCloseSpan(DateTime time)
         {
-            DebugIncrementConcurrency();
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
                 _pipeline[i].WriteBeginCloseSpan(time);
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
         public void WriteEndCloseSpan()
         {
-            DebugIncrementConcurrency();
+            var info = DebugIncrementConcurrency();
             
             for (int i = 0; i < _sinkCount; i++)
             {
                 _pipeline[i].WriteEndCloseSpan();
             }
             
-            DebugDecrementConcurrency();
+            DebugDecrementConcurrency(info);
         }
 
-        private void DebugIncrementConcurrency()
+        public long GetCurrentSpanId()
         {
-            var newConcurrency = Interlocked.Increment(ref _concurrency); 
+            return _currentSpanId;
+        }
+
+        private ConcurrencyInfo DebugIncrementConcurrency()
+        {
+            var newConcurrency = Interlocked.Increment(ref _concurrency);
+            var newInfo = new ConcurrencyInfo() {
+                TaskId = Task.CurrentId,
+                ManagedThreadId = Thread.CurrentThread.ManagedThreadId, 
+                TaskName = LogEngine.CurrentTaskName,
+            };
+            var newConcurrencyInfo = _concurrencyInfo.Add(newInfo);
+            _concurrencyInfo = newConcurrencyInfo;
             if (newConcurrency > 1)
             {
-                Console.WriteLine($"!!! BINARY-LOG-STREAM-WRITER: CONCURRENCY INVARIANT VIOLATED: {newConcurrency} !!! SYNC-CTX {SynchronizationContext.Current?.GetType()?.Name ?? "N/A"}");
+                Console.WriteLine(
+                    $"!!! LOGGER CONCURRENCY VIOLATED: concurrent={newConcurrency} " +
+                    $"!!! SYNC-CTX {SynchronizationContext.Current?.GetType()?.Name ?? "N/A"} " +
+                    $"!!! {string.Join(" ", newConcurrencyInfo.Select(x => x.ToString()))}"
+                );
             }
+            return newInfo;
         }
 
-        private void DebugDecrementConcurrency()
+        private void DebugDecrementConcurrency(ConcurrencyInfo info)
         {
+            _concurrencyInfo = _concurrencyInfo.Remove(info);
             Interlocked.Decrement(ref _concurrency);
         }
         

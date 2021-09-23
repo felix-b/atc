@@ -44,7 +44,7 @@ namespace Atc.Server.Daemon
             }
 
             Console.WriteLine("atc daemon starting.");
-            //InitializeLogging();
+            InitializeLogging();
 
             try
             {
@@ -118,7 +118,8 @@ namespace Atc.Server.Daemon
                 binaryStream.CreateWriter,
                 ConsoleLogStreamWriter.Factory
             );
-            
+
+            LogEngine.BranchAsyncTask("atcd main");
             Console.WriteLine($"writing log file to: {binaryLogFilePath}");
         }
 

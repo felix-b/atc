@@ -8,6 +8,7 @@ using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Razor.TagHelpers;
+using Zero.Doubt.Logging;
 
 namespace Zero.Latency.Servers
 {
@@ -61,6 +62,8 @@ namespace Zero.Latency.Servers
 
         public Task RunReceiveLoop()
         {
+            LogEngine.BranchAsyncTask($"socket-receive-loop #{_id}");
+            
             ValidateActive();
 
             if (_receiveLoopTask != null)
@@ -137,6 +140,7 @@ namespace Zero.Latency.Servers
 
         private async Task PrivateRunReceiveLoop()
         {
+            LogEngine.BranchAsyncTask($"socket-receive-loop #{_id}");
             var receiveStatus = SocketReceiveStatus.Unknown;
 
             try

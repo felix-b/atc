@@ -15,11 +15,20 @@ namespace Zero.Doubt.Logging
         private readonly BinaryLogStream _output;
         private int _spanDepth = 0;
         private RootSpanBuffer? _buffer = null;
+        private long _currentSpanId = 0;
 
         public BinaryLogStreamWriter(int streamId, BinaryLogStream output)
         {
             _streamId = streamId;
             _output = output;
+        }
+
+        public void WriteAsyncParentSpanId(long spanId)
+        {
+            var buffer = GetBuffer();
+
+            buffer.WriteOpCode(LogStreamOpCode.AsyncParentSpanId);
+            buffer.WriteSpanId(spanId);
         }
 
         public void WriteMessage(DateTime time, string id, LogLevel level)
@@ -60,26 +69,31 @@ namespace Zero.Doubt.Logging
             buffer.WriteOpCode(LogStreamOpCode.EndMessage);
         }
 
-        public void WriteOpenSpan(DateTime time, string id, LogLevel level)
+        public void WriteOpenSpan(long spanId, DateTime time, string messageId, LogLevel level)
         {
             var buffer = GetBuffer();
 
             buffer.WriteOpCode(LogStreamOpCode.OpenSpan);
+            buffer.WriteSpanId(spanId);
             buffer.WriteTime(time);
-            buffer.WriteMessageId(id);
+            buffer.WriteMessageId(messageId);
             buffer.WriteLogLevel(level);
 
+            _currentSpanId = spanId;
             IncrementSpanDepth();
         }
 
-        public void WriteBeginOpenSpan(DateTime time, string id, LogLevel level)
+        public void WriteBeginOpenSpan(long spanId, DateTime time, string messageId, LogLevel level)
         {
             var buffer = GetBuffer();
 
             buffer.WriteOpCode(LogStreamOpCode.BeginOpenSpan);
+            buffer.WriteSpanId(spanId);
             buffer.WriteTime(time);
-            buffer.WriteMessageId(id);
+            buffer.WriteMessageId(messageId);
             buffer.WriteLogLevel(level);
+
+            _currentSpanId = spanId;
         }
 
         public void WriteEndOpenSpan()
@@ -112,6 +126,11 @@ namespace Zero.Doubt.Logging
             buffer.WriteOpCode(LogStreamOpCode.EndCloseSpan);
 
             DecrementSpanDepth();
+        }
+
+        public long GetCurrentSpanId()
+        {
+            return _currentSpanId;
         }
 
         private RootSpanBuffer GetBuffer()
@@ -184,6 +203,11 @@ namespace Zero.Doubt.Logging
             public void WriteTime(DateTime time)
             {
                 _writer.Write(time.Ticks);
+            }
+
+            public void WriteSpanId(long spanId)
+            {
+                _writer.Write(spanId);
             }
 
             public void WriteMessageId(string messageId)

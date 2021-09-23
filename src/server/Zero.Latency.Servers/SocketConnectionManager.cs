@@ -4,6 +4,7 @@ using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Zero.Doubt.Logging;
 
 namespace Zero.Latency.Servers
 {
@@ -39,8 +40,11 @@ namespace Zero.Latency.Servers
             {
                 throw new ObjectDisposedException($"SocketConnectionManager was disposed.");
             }
-            
-            var connection = new Connection(this, Interlocked.Increment(ref _nextConnectionId), socket, cancel);
+
+            var connectionId = Interlocked.Increment(ref _nextConnectionId);
+            LogEngine.BranchAsyncTask($"accept-socket #{connectionId}");
+                
+            var connection = new Connection(this, connectionId, socket, cancel);
             _connections.Replace(list => list.Add(connection));
             return connection.RunReceiveLoop();
         }

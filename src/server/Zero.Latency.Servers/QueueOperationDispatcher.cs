@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Zero.Doubt.Logging;
 
 namespace Zero.Latency.Servers
 {
@@ -112,6 +113,8 @@ namespace Zero.Latency.Servers
         
         private void RunInputThread()
         {
+            LogEngine.BranchAsyncTask("queue-dispatcher-input");
+            
             try
             {
                 while (!_cancellation.IsCancellationRequested)
@@ -143,6 +146,8 @@ namespace Zero.Latency.Servers
 
         private void RunOutputThread(int queueIndex)
         {
+            LogEngine.BranchAsyncTask($"queue-dispatcher-output #{queueIndex}");
+
             try
             {
                 while (!_cancellation.IsCancellationRequested)

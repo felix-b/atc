@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Zero.Doubt.Logging;
 
 namespace Zero.Latency.Servers
 {
@@ -101,6 +102,8 @@ namespace Zero.Latency.Servers
             
             app.UseWebSockets();
             app.Use(async (context, next) => {
+                LogEngine.BranchAsyncTask($"asp.net.core incoming");
+                    
                 if (context.Request.Path == _urlPath)
                 {
                     if (context.WebSockets.IsWebSocketRequest)

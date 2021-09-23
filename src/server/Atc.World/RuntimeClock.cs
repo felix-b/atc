@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using ProtoBuf.WellKnownTypes;
+using Zero.Doubt.Logging;
 using Zero.Latency.Servers;
 
 namespace Atc.World
@@ -59,6 +60,8 @@ namespace Atc.World
 
         private async Task RunTickLoop()
         {
+            LogEngine.BranchAsyncTask("runtime-world-clock");
+            
             try
             {
                 var lastTickTimestamp = _startTimestamp;

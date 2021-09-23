@@ -24,6 +24,7 @@ namespace Zero.Doubt.Logging
         private DateTime _messageTime = DateTime.MinValue;
         private string _messageId = string.Empty;
         private LogLevel _messageLevel = LogLevel.Quiet;
+        private long _currentSpanId = 0;
 
         public ConsoleLogStreamWriter()
         {
@@ -35,7 +36,12 @@ namespace Zero.Doubt.Logging
         {
             Console.WriteLine($">>> ConsoleLogStreamWriter#{_instanceId}.Finalize@[{Thread.CurrentThread.ManagedThreadId}]");
         }
-            
+
+        public void WriteAsyncParentSpanId(long spanId)
+        {
+            // nothing
+        }
+
         public void WriteMessage(DateTime time, string id, LogLevel level)
         {
             _messageTime = time;
@@ -66,16 +72,20 @@ namespace Zero.Doubt.Logging
             FlushMessage();
         }
 
-        public void WriteOpenSpan(DateTime time, string id, LogLevel level)
+        public void WriteOpenSpan(long spanId, DateTime time, string messageId, LogLevel level)
         {
+            _currentSpanId = spanId;
+            
             // _messageTime = time;
             // _messageId = id;
             // _messageLevel = level;
             // FlushMessage();
         }
 
-        public void WriteBeginOpenSpan(DateTime time, string id, LogLevel level)
+        public void WriteBeginOpenSpan(long spanId, DateTime time, string messageId, LogLevel level)
         {
+            _currentSpanId = spanId;
+
             // _messageTime = time;
             // _messageId = id;
             // _messageLevel = level;
@@ -98,6 +108,11 @@ namespace Zero.Doubt.Logging
         public void WriteEndCloseSpan()
         {
             DiscardMessage();
+        }
+
+        public long GetCurrentSpanId()
+        {
+            return _currentSpanId;
         }
 
         private void FlushMessage()

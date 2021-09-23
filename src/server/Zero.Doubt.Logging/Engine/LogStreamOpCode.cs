@@ -14,6 +14,7 @@
         BeginStreamChunk = 0xA0,
         EndStreamChunk = 0xA1,
         StringKey = 0xA2,
+        AsyncParentSpanId = 0xA3,
         // message op-codes
         Message = 0xB1,
         BeginMessage = 0xB2,
