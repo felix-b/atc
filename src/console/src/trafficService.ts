@@ -27,7 +27,7 @@ export function createTrafficService(worldService: WorldServiceClient): TrafficS
 
     const performLocalExtrapolation = (situation: AircraftMessage_Situation, elapsed: Timestamp): AircraftMessage_Situation => {
         
-        const groundSpeedKt = 350; //TODO: AircraftMessage_Situation must have it
+        const groundSpeedKt = situation.groundSpeedKt; 
         const moveStraight = (
             location: Partial<GeoPoint>, 
             heading: number, 

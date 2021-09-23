@@ -638,6 +638,7 @@ export interface AircraftMessage_Situation {
   altitudeFeetMsl: number;
   isOnGround: boolean;
   heading: number;
+  groundSpeedKt: number;
   pitch: number;
   roll: number;
   flapRatio: number;
@@ -6167,6 +6168,7 @@ const baseAircraftMessage_Situation: object = {
   altitudeFeetMsl: 0,
   isOnGround: false,
   heading: 0,
+  groundSpeedKt: 0,
   pitch: 0,
   roll: 0,
   flapRatio: 0,
@@ -6200,49 +6202,52 @@ export const AircraftMessage_Situation = {
     if (message.heading !== 0) {
       writer.uint32(37).float(message.heading);
     }
+    if (message.groundSpeedKt !== 0) {
+      writer.uint32(45).float(message.groundSpeedKt);
+    }
     if (message.pitch !== 0) {
-      writer.uint32(45).float(message.pitch);
+      writer.uint32(53).float(message.pitch);
     }
     if (message.roll !== 0) {
-      writer.uint32(53).float(message.roll);
+      writer.uint32(61).float(message.roll);
     }
     if (message.flapRatio !== 0) {
-      writer.uint32(61).float(message.flapRatio);
+      writer.uint32(69).float(message.flapRatio);
     }
     if (message.spoilerRatio !== 0) {
-      writer.uint32(69).float(message.spoilerRatio);
+      writer.uint32(77).float(message.spoilerRatio);
     }
     if (message.gearRatio !== 0) {
-      writer.uint32(77).float(message.gearRatio);
+      writer.uint32(85).float(message.gearRatio);
     }
     if (message.noseWheelAngle !== 0) {
-      writer.uint32(85).float(message.noseWheelAngle);
+      writer.uint32(93).float(message.noseWheelAngle);
     }
     if (message.landingLights === true) {
-      writer.uint32(88).bool(message.landingLights);
+      writer.uint32(96).bool(message.landingLights);
     }
     if (message.taxiLights === true) {
-      writer.uint32(96).bool(message.taxiLights);
+      writer.uint32(104).bool(message.taxiLights);
     }
     if (message.strobeLights === true) {
-      writer.uint32(104).bool(message.strobeLights);
+      writer.uint32(112).bool(message.strobeLights);
     }
-    writer.uint32(114).fork();
+    writer.uint32(122).fork();
     for (const v of message.monitoringFrequencyKhz) {
       writer.int32(v);
     }
     writer.ldelim();
     if (message.transmittingFrequencyKhz !== 0) {
-      writer.uint32(120).int32(message.transmittingFrequencyKhz);
+      writer.uint32(128).int32(message.transmittingFrequencyKhz);
     }
     if (message.squawk !== "") {
-      writer.uint32(130).string(message.squawk);
+      writer.uint32(138).string(message.squawk);
     }
     if (message.modeC === true) {
-      writer.uint32(136).bool(message.modeC);
+      writer.uint32(144).bool(message.modeC);
     }
     if (message.modeS === true) {
-      writer.uint32(144).bool(message.modeS);
+      writer.uint32(152).bool(message.modeS);
     }
     return writer;
   },
@@ -6273,33 +6278,36 @@ export const AircraftMessage_Situation = {
           message.heading = reader.float();
           break;
         case 5:
-          message.pitch = reader.float();
+          message.groundSpeedKt = reader.float();
           break;
         case 6:
-          message.roll = reader.float();
+          message.pitch = reader.float();
           break;
         case 7:
-          message.flapRatio = reader.float();
+          message.roll = reader.float();
           break;
         case 8:
-          message.spoilerRatio = reader.float();
+          message.flapRatio = reader.float();
           break;
         case 9:
-          message.gearRatio = reader.float();
+          message.spoilerRatio = reader.float();
           break;
         case 10:
-          message.noseWheelAngle = reader.float();
+          message.gearRatio = reader.float();
           break;
         case 11:
-          message.landingLights = reader.bool();
+          message.noseWheelAngle = reader.float();
           break;
         case 12:
-          message.taxiLights = reader.bool();
+          message.landingLights = reader.bool();
           break;
         case 13:
-          message.strobeLights = reader.bool();
+          message.taxiLights = reader.bool();
           break;
         case 14:
+          message.strobeLights = reader.bool();
+          break;
+        case 15:
           if ((tag & 7) === 2) {
             const end2 = reader.uint32() + reader.pos;
             while (reader.pos < end2) {
@@ -6309,16 +6317,16 @@ export const AircraftMessage_Situation = {
             message.monitoringFrequencyKhz.push(reader.int32());
           }
           break;
-        case 15:
+        case 16:
           message.transmittingFrequencyKhz = reader.int32();
           break;
-        case 16:
+        case 17:
           message.squawk = reader.string();
           break;
-        case 17:
+        case 18:
           message.modeC = reader.bool();
           break;
-        case 18:
+        case 19:
           message.modeS = reader.bool();
           break;
         default:
@@ -6356,6 +6364,11 @@ export const AircraftMessage_Situation = {
       message.heading = Number(object.heading);
     } else {
       message.heading = 0;
+    }
+    if (object.groundSpeedKt !== undefined && object.groundSpeedKt !== null) {
+      message.groundSpeedKt = Number(object.groundSpeedKt);
+    } else {
+      message.groundSpeedKt = 0;
     }
     if (object.pitch !== undefined && object.pitch !== null) {
       message.pitch = Number(object.pitch);
@@ -6448,6 +6461,8 @@ export const AircraftMessage_Situation = {
       (obj.altitudeFeetMsl = message.altitudeFeetMsl);
     message.isOnGround !== undefined && (obj.isOnGround = message.isOnGround);
     message.heading !== undefined && (obj.heading = message.heading);
+    message.groundSpeedKt !== undefined &&
+      (obj.groundSpeedKt = message.groundSpeedKt);
     message.pitch !== undefined && (obj.pitch = message.pitch);
     message.roll !== undefined && (obj.roll = message.roll);
     message.flapRatio !== undefined && (obj.flapRatio = message.flapRatio);
@@ -6503,6 +6518,11 @@ export const AircraftMessage_Situation = {
       message.heading = object.heading;
     } else {
       message.heading = 0;
+    }
+    if (object.groundSpeedKt !== undefined && object.groundSpeedKt !== null) {
+      message.groundSpeedKt = object.groundSpeedKt;
+    } else {
+      message.groundSpeedKt = 0;
     }
     if (object.pitch !== undefined && object.pitch !== null) {
       message.pitch = object.pitch;

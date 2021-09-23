@@ -8231,26 +8231,27 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kMonitoringFrequencyKhzFieldNumber = 14,
-    kSquawkFieldNumber = 16,
+    kMonitoringFrequencyKhzFieldNumber = 15,
+    kSquawkFieldNumber = 17,
     kLocationFieldNumber = 1,
     kAltitudeFeetMslFieldNumber = 2,
     kHeadingFieldNumber = 4,
-    kPitchFieldNumber = 5,
-    kRollFieldNumber = 6,
-    kFlapRatioFieldNumber = 7,
-    kSpoilerRatioFieldNumber = 8,
-    kGearRatioFieldNumber = 9,
+    kGroundSpeedKtFieldNumber = 5,
+    kPitchFieldNumber = 6,
+    kRollFieldNumber = 7,
+    kFlapRatioFieldNumber = 8,
+    kSpoilerRatioFieldNumber = 9,
+    kGearRatioFieldNumber = 10,
     kIsOnGroundFieldNumber = 3,
-    kLandingLightsFieldNumber = 11,
-    kTaxiLightsFieldNumber = 12,
-    kStrobeLightsFieldNumber = 13,
-    kNoseWheelAngleFieldNumber = 10,
-    kTransmittingFrequencyKhzFieldNumber = 15,
-    kModeCFieldNumber = 17,
-    kModeSFieldNumber = 18,
+    kLandingLightsFieldNumber = 12,
+    kTaxiLightsFieldNumber = 13,
+    kStrobeLightsFieldNumber = 14,
+    kNoseWheelAngleFieldNumber = 11,
+    kTransmittingFrequencyKhzFieldNumber = 16,
+    kModeCFieldNumber = 18,
+    kModeSFieldNumber = 19,
   };
-  // repeated int32 monitoring_frequency_khz = 14;
+  // repeated int32 monitoring_frequency_khz = 15;
   int monitoring_frequency_khz_size() const;
   private:
   int _internal_monitoring_frequency_khz_size() const;
@@ -8272,7 +8273,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   ::PROTOBUF_NAMESPACE_ID::RepeatedField< ::PROTOBUF_NAMESPACE_ID::int32 >*
       mutable_monitoring_frequency_khz();
 
-  // string squawk = 16;
+  // string squawk = 17;
   void clear_squawk();
   const std::string& squawk() const;
   void set_squawk(const std::string& value);
@@ -8324,7 +8325,16 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_heading(float value);
   public:
 
-  // float pitch = 5;
+  // float ground_speed_kt = 5;
+  void clear_ground_speed_kt();
+  float ground_speed_kt() const;
+  void set_ground_speed_kt(float value);
+  private:
+  float _internal_ground_speed_kt() const;
+  void _internal_set_ground_speed_kt(float value);
+  public:
+
+  // float pitch = 6;
   void clear_pitch();
   float pitch() const;
   void set_pitch(float value);
@@ -8333,7 +8343,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_pitch(float value);
   public:
 
-  // float roll = 6;
+  // float roll = 7;
   void clear_roll();
   float roll() const;
   void set_roll(float value);
@@ -8342,7 +8352,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_roll(float value);
   public:
 
-  // float flap_ratio = 7;
+  // float flap_ratio = 8;
   void clear_flap_ratio();
   float flap_ratio() const;
   void set_flap_ratio(float value);
@@ -8351,7 +8361,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_flap_ratio(float value);
   public:
 
-  // float spoiler_ratio = 8;
+  // float spoiler_ratio = 9;
   void clear_spoiler_ratio();
   float spoiler_ratio() const;
   void set_spoiler_ratio(float value);
@@ -8360,7 +8370,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_spoiler_ratio(float value);
   public:
 
-  // float gear_ratio = 9;
+  // float gear_ratio = 10;
   void clear_gear_ratio();
   float gear_ratio() const;
   void set_gear_ratio(float value);
@@ -8378,7 +8388,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_is_on_ground(bool value);
   public:
 
-  // bool landing_lights = 11;
+  // bool landing_lights = 12;
   void clear_landing_lights();
   bool landing_lights() const;
   void set_landing_lights(bool value);
@@ -8387,7 +8397,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_landing_lights(bool value);
   public:
 
-  // bool taxi_lights = 12;
+  // bool taxi_lights = 13;
   void clear_taxi_lights();
   bool taxi_lights() const;
   void set_taxi_lights(bool value);
@@ -8396,7 +8406,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_taxi_lights(bool value);
   public:
 
-  // bool strobe_lights = 13;
+  // bool strobe_lights = 14;
   void clear_strobe_lights();
   bool strobe_lights() const;
   void set_strobe_lights(bool value);
@@ -8405,7 +8415,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_strobe_lights(bool value);
   public:
 
-  // float nose_wheel_angle = 10;
+  // float nose_wheel_angle = 11;
   void clear_nose_wheel_angle();
   float nose_wheel_angle() const;
   void set_nose_wheel_angle(float value);
@@ -8414,7 +8424,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_nose_wheel_angle(float value);
   public:
 
-  // int32 transmitting_frequency_khz = 15;
+  // int32 transmitting_frequency_khz = 16;
   void clear_transmitting_frequency_khz();
   ::PROTOBUF_NAMESPACE_ID::int32 transmitting_frequency_khz() const;
   void set_transmitting_frequency_khz(::PROTOBUF_NAMESPACE_ID::int32 value);
@@ -8423,7 +8433,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_transmitting_frequency_khz(::PROTOBUF_NAMESPACE_ID::int32 value);
   public:
 
-  // bool mode_c = 17;
+  // bool mode_c = 18;
   void clear_mode_c();
   bool mode_c() const;
   void set_mode_c(bool value);
@@ -8432,7 +8442,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   void _internal_set_mode_c(bool value);
   public:
 
-  // bool mode_s = 18;
+  // bool mode_s = 19;
   void clear_mode_s();
   bool mode_s() const;
   void set_mode_s(bool value);
@@ -8454,6 +8464,7 @@ class AircraftMessage_Situation PROTOBUF_FINAL :
   ::atc_proto::GeoPoint* location_;
   float altitude_feet_msl_;
   float heading_;
+  float ground_speed_kt_;
   float pitch_;
   float roll_;
   float flap_ratio_;
@@ -16008,7 +16019,27 @@ inline void AircraftMessage_Situation::set_heading(float value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.heading)
 }
 
-// float pitch = 5;
+// float ground_speed_kt = 5;
+inline void AircraftMessage_Situation::clear_ground_speed_kt() {
+  ground_speed_kt_ = 0;
+}
+inline float AircraftMessage_Situation::_internal_ground_speed_kt() const {
+  return ground_speed_kt_;
+}
+inline float AircraftMessage_Situation::ground_speed_kt() const {
+  // @@protoc_insertion_point(field_get:atc_proto.AircraftMessage.Situation.ground_speed_kt)
+  return _internal_ground_speed_kt();
+}
+inline void AircraftMessage_Situation::_internal_set_ground_speed_kt(float value) {
+  
+  ground_speed_kt_ = value;
+}
+inline void AircraftMessage_Situation::set_ground_speed_kt(float value) {
+  _internal_set_ground_speed_kt(value);
+  // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.ground_speed_kt)
+}
+
+// float pitch = 6;
 inline void AircraftMessage_Situation::clear_pitch() {
   pitch_ = 0;
 }
@@ -16028,7 +16059,7 @@ inline void AircraftMessage_Situation::set_pitch(float value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.pitch)
 }
 
-// float roll = 6;
+// float roll = 7;
 inline void AircraftMessage_Situation::clear_roll() {
   roll_ = 0;
 }
@@ -16048,7 +16079,7 @@ inline void AircraftMessage_Situation::set_roll(float value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.roll)
 }
 
-// float flap_ratio = 7;
+// float flap_ratio = 8;
 inline void AircraftMessage_Situation::clear_flap_ratio() {
   flap_ratio_ = 0;
 }
@@ -16068,7 +16099,7 @@ inline void AircraftMessage_Situation::set_flap_ratio(float value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.flap_ratio)
 }
 
-// float spoiler_ratio = 8;
+// float spoiler_ratio = 9;
 inline void AircraftMessage_Situation::clear_spoiler_ratio() {
   spoiler_ratio_ = 0;
 }
@@ -16088,7 +16119,7 @@ inline void AircraftMessage_Situation::set_spoiler_ratio(float value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.spoiler_ratio)
 }
 
-// float gear_ratio = 9;
+// float gear_ratio = 10;
 inline void AircraftMessage_Situation::clear_gear_ratio() {
   gear_ratio_ = 0;
 }
@@ -16108,7 +16139,7 @@ inline void AircraftMessage_Situation::set_gear_ratio(float value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.gear_ratio)
 }
 
-// float nose_wheel_angle = 10;
+// float nose_wheel_angle = 11;
 inline void AircraftMessage_Situation::clear_nose_wheel_angle() {
   nose_wheel_angle_ = 0;
 }
@@ -16128,7 +16159,7 @@ inline void AircraftMessage_Situation::set_nose_wheel_angle(float value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.nose_wheel_angle)
 }
 
-// bool landing_lights = 11;
+// bool landing_lights = 12;
 inline void AircraftMessage_Situation::clear_landing_lights() {
   landing_lights_ = false;
 }
@@ -16148,7 +16179,7 @@ inline void AircraftMessage_Situation::set_landing_lights(bool value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.landing_lights)
 }
 
-// bool taxi_lights = 12;
+// bool taxi_lights = 13;
 inline void AircraftMessage_Situation::clear_taxi_lights() {
   taxi_lights_ = false;
 }
@@ -16168,7 +16199,7 @@ inline void AircraftMessage_Situation::set_taxi_lights(bool value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.taxi_lights)
 }
 
-// bool strobe_lights = 13;
+// bool strobe_lights = 14;
 inline void AircraftMessage_Situation::clear_strobe_lights() {
   strobe_lights_ = false;
 }
@@ -16188,7 +16219,7 @@ inline void AircraftMessage_Situation::set_strobe_lights(bool value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.strobe_lights)
 }
 
-// repeated int32 monitoring_frequency_khz = 14;
+// repeated int32 monitoring_frequency_khz = 15;
 inline int AircraftMessage_Situation::_internal_monitoring_frequency_khz_size() const {
   return monitoring_frequency_khz_.size();
 }
@@ -16235,7 +16266,7 @@ AircraftMessage_Situation::mutable_monitoring_frequency_khz() {
   return _internal_mutable_monitoring_frequency_khz();
 }
 
-// int32 transmitting_frequency_khz = 15;
+// int32 transmitting_frequency_khz = 16;
 inline void AircraftMessage_Situation::clear_transmitting_frequency_khz() {
   transmitting_frequency_khz_ = 0;
 }
@@ -16255,7 +16286,7 @@ inline void AircraftMessage_Situation::set_transmitting_frequency_khz(::PROTOBUF
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.transmitting_frequency_khz)
 }
 
-// string squawk = 16;
+// string squawk = 17;
 inline void AircraftMessage_Situation::clear_squawk() {
   squawk_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
@@ -16317,7 +16348,7 @@ inline void AircraftMessage_Situation::set_allocated_squawk(std::string* squawk)
   // @@protoc_insertion_point(field_set_allocated:atc_proto.AircraftMessage.Situation.squawk)
 }
 
-// bool mode_c = 17;
+// bool mode_c = 18;
 inline void AircraftMessage_Situation::clear_mode_c() {
   mode_c_ = false;
 }
@@ -16337,7 +16368,7 @@ inline void AircraftMessage_Situation::set_mode_c(bool value) {
   // @@protoc_insertion_point(field_set:atc_proto.AircraftMessage.Situation.mode_c)
 }
 
-// bool mode_s = 18;
+// bool mode_s = 19;
 inline void AircraftMessage_Situation::clear_mode_s() {
   mode_s_ = false;
 }

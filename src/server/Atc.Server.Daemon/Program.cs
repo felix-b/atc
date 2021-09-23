@@ -229,7 +229,8 @@ namespace Atc.Server.Daemon
                                 OperationTypes.Airline,
                                 location,
                                 Altitude.FromFeetMsl(20000 + lat * 100 + lon * 100), 
-                                Bearing.FromTrueDegrees(heading));
+                                heading: Bearing.FromTrueDegrees(heading),
+                                groundSpeed: Speed.FromKnots(350));
                         });
                     }
                 }

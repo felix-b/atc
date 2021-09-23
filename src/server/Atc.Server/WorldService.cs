@@ -259,6 +259,7 @@ namespace Atc.Server
                 },
                 AltitudeFeetMsl = state.Altitude.Feet,
                 Heading = state.Heading.Degrees,
+                GroundSpeedKt = state.GroundSpeed.Knots,
                 Pitch = state.Pitch.Degrees,
                 Roll = state.Roll.Degrees,
                 //TODO: add more

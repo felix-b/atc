@@ -1314,6 +1314,7 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_atc_2eproto::offsets[] PROTOBU
   PROTOBUF_FIELD_OFFSET(::atc_proto::AircraftMessage_Situation, altitude_feet_msl_),
   PROTOBUF_FIELD_OFFSET(::atc_proto::AircraftMessage_Situation, is_on_ground_),
   PROTOBUF_FIELD_OFFSET(::atc_proto::AircraftMessage_Situation, heading_),
+  PROTOBUF_FIELD_OFFSET(::atc_proto::AircraftMessage_Situation, ground_speed_kt_),
   PROTOBUF_FIELD_OFFSET(::atc_proto::AircraftMessage_Situation, pitch_),
   PROTOBUF_FIELD_OFFSET(::atc_proto::AircraftMessage_Situation, roll_),
   PROTOBUF_FIELD_OFFSET(::atc_proto::AircraftMessage_Situation, flap_ratio_),
@@ -1392,8 +1393,8 @@ static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOB
   { 337, -1, sizeof(::atc_proto::WeatherMessage)},
   { 348, -1, sizeof(::atc_proto::AirspaceGeometryMessage)},
   { 356, -1, sizeof(::atc_proto::AircraftMessage_Situation)},
-  { 379, -1, sizeof(::atc_proto::AircraftMessage)},
-  { 390, -1, sizeof(::atc_proto::TaxiPathMessage)},
+  { 380, -1, sizeof(::atc_proto::AircraftMessage)},
+  { 391, -1, sizeof(::atc_proto::TaxiPathMessage)},
 };
 
 static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
@@ -1599,49 +1600,49 @@ const char descriptor_table_protodef_atc_2eproto[] PROTOBUF_SECTION_VARIABLE(pro
   "e\022\025\n\rbase_feet_agl\030\003 \001(\005\"|\n\027AirspaceGeom"
   "etryMessage\022-\n\016lateral_bounds\030\001 \001(\0132\025.at"
   "c_proto.GeoPolygon\022\030\n\020lower_bound_feet\030\002"
-  " \001(\002\022\030\n\020upper_bound_feet\030\003 \001(\002\"\313\004\n\017Aircr"
+  " \001(\002\022\030\n\020upper_bound_feet\030\003 \001(\002\"\344\004\n\017Aircr"
   "aftMessage\022\n\n\002id\030\001 \001(\r\022\022\n\nmodel_icao\030\002 \001"
   "(\t\022\024\n\014airline_icao\030\003 \001(\t\022\017\n\007tail_no\030\004 \001("
   "\t\022\021\n\tcall_sign\030\005 \001(\t\0227\n\tsituation\030\006 \001(\0132"
-  "$.atc_proto.AircraftMessage.Situation\032\244\003"
+  "$.atc_proto.AircraftMessage.Situation\032\275\003"
   "\n\tSituation\022%\n\010location\030\001 \001(\0132\023.atc_prot"
   "o.GeoPoint\022\031\n\021altitude_feet_msl\030\002 \001(\002\022\024\n"
-  "\014is_on_ground\030\003 \001(\010\022\017\n\007heading\030\004 \001(\002\022\r\n\005"
-  "pitch\030\005 \001(\002\022\014\n\004roll\030\006 \001(\002\022\022\n\nflap_ratio\030"
-  "\007 \001(\002\022\025\n\rspoiler_ratio\030\010 \001(\002\022\022\n\ngear_rat"
-  "io\030\t \001(\002\022\030\n\020nose_wheel_angle\030\n \001(\002\022\026\n\016la"
-  "nding_lights\030\013 \001(\010\022\023\n\013taxi_lights\030\014 \001(\010\022"
-  "\025\n\rstrobe_lights\030\r \001(\010\022 \n\030monitoring_fre"
-  "quency_khz\030\016 \003(\005\022\"\n\032transmitting_frequen"
-  "cy_khz\030\017 \001(\005\022\016\n\006squawk\030\020 \001(\t\022\016\n\006mode_c\030\021"
-  " \001(\010\022\016\n\006mode_s\030\022 \001(\010\"M\n\017TaxiPathMessage\022"
-  "\024\n\014from_node_id\030\001 \001(\005\022\022\n\nto_node_id\030\002 \001("
-  "\005\022\020\n\010edge_ids\030\003 \003(\005*\306\001\n\013GeoEdgeType\022\024\n\020G"
-  "EO_EDGE_UNKNOWN\020\000\022\030\n\024GEO_EDGE_ARC_BY_EDG"
-  "E\020\001\022\023\n\017GEO_EDGE_CIRCLE\020\002\022\031\n\025GEO_EDGE_GRE"
-  "AT_CIRCLE\020\003\022\027\n\023GEO_EDGE_RHUMB_LINE\020\004\022\032\n\026"
-  "GEO_EDGE_CLOCKWISE_ARC\020\005\022\"\n\036GEO_EDGE_COU"
-  "NTER_CLOCKWISE_ARC\020\006*\347\001\n\020AircraftCategor"
-  "y\022\032\n\026AIRCRAFT_CATEGORY_NONE\020\000\022\033\n\027AIRCRAF"
-  "T_CATEGORY_HEAVY\020\001\022\031\n\025AIRCRAFT_CATEGORY_"
-  "JET\020\002\022\037\n\033AIRCRAFT_CATEGORY_TURBOPROP\020\004\022\032"
-  "\n\026AIRCRAFT_CATEGORY_PROP\020\010\022 \n\034AIRCRAFT_C"
-  "ATEGORY_LIGHT_PROP\020\020\022 \n\034AIRCRAFT_CATEGOR"
-  "Y_HELICPOTER\020 *\246\001\n\rOperationType\022\033\n\027AIRC"
-  "RAFT_OPERATION_NONE\020\000\022\031\n\025AIRCRAFT_OPERAT"
-  "ION_GA\020\001\022\036\n\032AIRCRAFT_OPERATION_AIRLINE\020\002"
-  "\022\034\n\030AIRCRAFT_OPERATION_CARGO\020\004\022\037\n\033AIRCRA"
-  "FT_OPERATION_MILITARY\020\010*a\n\020ParkingStandT"
-  "ype\022\023\n\017PARKING_UNKNOWN\020\000\022\020\n\014PARKING_GATE"
-  "\020\001\022\022\n\016PARKING_REMOTE\020\002\022\022\n\016PARKING_HANGAR"
-  "\020\003*T\n\014TaxiEdgeType\022\027\n\023TAXI_EDGE_GROUNDWA"
-  "Y\020\000\022\025\n\021TAXI_EDGE_TAXIWAY\020\001\022\024\n\020TAXI_EDGE_"
-  "RUNWAY\020\002*y\n\016CloudCoverType\022\023\n\017CLOUD_COVE"
-  "R_SKC\020\000\022\023\n\017CLOUD_COVER_FEW\020\001\022\023\n\017CLOUD_CO"
-  "VER_SCT\020\003\022\023\n\017CLOUD_COVER_BKN\020\006\022\023\n\017CLOUD_"
-  "COVER_OVC\020\010*H\n\tCloudType\022\024\n\020CLOUD_TYPE_N"
-  "OSIG\020\000\022\022\n\016CLOUD_TYPE_TCU\020\002\022\021\n\rCLOUD_TYPE"
-  "_CB\020\001b\006proto3"
+  "\014is_on_ground\030\003 \001(\010\022\017\n\007heading\030\004 \001(\002\022\027\n\017"
+  "ground_speed_kt\030\005 \001(\002\022\r\n\005pitch\030\006 \001(\002\022\014\n\004"
+  "roll\030\007 \001(\002\022\022\n\nflap_ratio\030\010 \001(\002\022\025\n\rspoile"
+  "r_ratio\030\t \001(\002\022\022\n\ngear_ratio\030\n \001(\002\022\030\n\020nos"
+  "e_wheel_angle\030\013 \001(\002\022\026\n\016landing_lights\030\014 "
+  "\001(\010\022\023\n\013taxi_lights\030\r \001(\010\022\025\n\rstrobe_light"
+  "s\030\016 \001(\010\022 \n\030monitoring_frequency_khz\030\017 \003("
+  "\005\022\"\n\032transmitting_frequency_khz\030\020 \001(\005\022\016\n"
+  "\006squawk\030\021 \001(\t\022\016\n\006mode_c\030\022 \001(\010\022\016\n\006mode_s\030"
+  "\023 \001(\010\"M\n\017TaxiPathMessage\022\024\n\014from_node_id"
+  "\030\001 \001(\005\022\022\n\nto_node_id\030\002 \001(\005\022\020\n\010edge_ids\030\003"
+  " \003(\005*\306\001\n\013GeoEdgeType\022\024\n\020GEO_EDGE_UNKNOWN"
+  "\020\000\022\030\n\024GEO_EDGE_ARC_BY_EDGE\020\001\022\023\n\017GEO_EDGE"
+  "_CIRCLE\020\002\022\031\n\025GEO_EDGE_GREAT_CIRCLE\020\003\022\027\n\023"
+  "GEO_EDGE_RHUMB_LINE\020\004\022\032\n\026GEO_EDGE_CLOCKW"
+  "ISE_ARC\020\005\022\"\n\036GEO_EDGE_COUNTER_CLOCKWISE_"
+  "ARC\020\006*\347\001\n\020AircraftCategory\022\032\n\026AIRCRAFT_C"
+  "ATEGORY_NONE\020\000\022\033\n\027AIRCRAFT_CATEGORY_HEAV"
+  "Y\020\001\022\031\n\025AIRCRAFT_CATEGORY_JET\020\002\022\037\n\033AIRCRA"
+  "FT_CATEGORY_TURBOPROP\020\004\022\032\n\026AIRCRAFT_CATE"
+  "GORY_PROP\020\010\022 \n\034AIRCRAFT_CATEGORY_LIGHT_P"
+  "ROP\020\020\022 \n\034AIRCRAFT_CATEGORY_HELICPOTER\020 *"
+  "\246\001\n\rOperationType\022\033\n\027AIRCRAFT_OPERATION_"
+  "NONE\020\000\022\031\n\025AIRCRAFT_OPERATION_GA\020\001\022\036\n\032AIR"
+  "CRAFT_OPERATION_AIRLINE\020\002\022\034\n\030AIRCRAFT_OP"
+  "ERATION_CARGO\020\004\022\037\n\033AIRCRAFT_OPERATION_MI"
+  "LITARY\020\010*a\n\020ParkingStandType\022\023\n\017PARKING_"
+  "UNKNOWN\020\000\022\020\n\014PARKING_GATE\020\001\022\022\n\016PARKING_R"
+  "EMOTE\020\002\022\022\n\016PARKING_HANGAR\020\003*T\n\014TaxiEdgeT"
+  "ype\022\027\n\023TAXI_EDGE_GROUNDWAY\020\000\022\025\n\021TAXI_EDG"
+  "E_TAXIWAY\020\001\022\024\n\020TAXI_EDGE_RUNWAY\020\002*y\n\016Clo"
+  "udCoverType\022\023\n\017CLOUD_COVER_SKC\020\000\022\023\n\017CLOU"
+  "D_COVER_FEW\020\001\022\023\n\017CLOUD_COVER_SCT\020\003\022\023\n\017CL"
+  "OUD_COVER_BKN\020\006\022\023\n\017CLOUD_COVER_OVC\020\010*H\n\t"
+  "CloudType\022\024\n\020CLOUD_TYPE_NOSIG\020\000\022\022\n\016CLOUD"
+  "_TYPE_TCU\020\002\022\021\n\rCLOUD_TYPE_CB\020\001b\006proto3"
   ;
 static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_atc_2eproto_deps[1] = {
   &::descriptor_table_google_2fprotobuf_2ftimestamp_2eproto,
@@ -1695,7 +1696,7 @@ static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_atc
 };
 static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_atc_2eproto_once;
 const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_atc_2eproto = {
-  false, false, descriptor_table_protodef_atc_2eproto, "atc.proto", 7853,
+  false, false, descriptor_table_protodef_atc_2eproto, "atc.proto", 7878,
   &descriptor_table_atc_2eproto_once, descriptor_table_atc_2eproto_sccs, descriptor_table_atc_2eproto_deps, 45, 1,
   schemas, file_default_instances, TableStruct_atc_2eproto::offsets,
   file_level_metadata_atc_2eproto, 45, file_level_enum_descriptors_atc_2eproto, file_level_service_descriptors_atc_2eproto,
@@ -14567,105 +14568,112 @@ const char* AircraftMessage_Situation::_InternalParse(const char* ptr, ::PROTOBU
           ptr += sizeof(float);
         } else goto handle_unusual;
         continue;
-      // float pitch = 5;
+      // float ground_speed_kt = 5;
       case 5:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 45)) {
+          ground_speed_kt_ = ::PROTOBUF_NAMESPACE_ID::internal::UnalignedLoad<float>(ptr);
+          ptr += sizeof(float);
+        } else goto handle_unusual;
+        continue;
+      // float pitch = 6;
+      case 6:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 53)) {
           pitch_ = ::PROTOBUF_NAMESPACE_ID::internal::UnalignedLoad<float>(ptr);
           ptr += sizeof(float);
         } else goto handle_unusual;
         continue;
-      // float roll = 6;
-      case 6:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 53)) {
+      // float roll = 7;
+      case 7:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 61)) {
           roll_ = ::PROTOBUF_NAMESPACE_ID::internal::UnalignedLoad<float>(ptr);
           ptr += sizeof(float);
         } else goto handle_unusual;
         continue;
-      // float flap_ratio = 7;
-      case 7:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 61)) {
+      // float flap_ratio = 8;
+      case 8:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 69)) {
           flap_ratio_ = ::PROTOBUF_NAMESPACE_ID::internal::UnalignedLoad<float>(ptr);
           ptr += sizeof(float);
         } else goto handle_unusual;
         continue;
-      // float spoiler_ratio = 8;
-      case 8:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 69)) {
+      // float spoiler_ratio = 9;
+      case 9:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 77)) {
           spoiler_ratio_ = ::PROTOBUF_NAMESPACE_ID::internal::UnalignedLoad<float>(ptr);
           ptr += sizeof(float);
         } else goto handle_unusual;
         continue;
-      // float gear_ratio = 9;
-      case 9:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 77)) {
+      // float gear_ratio = 10;
+      case 10:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 85)) {
           gear_ratio_ = ::PROTOBUF_NAMESPACE_ID::internal::UnalignedLoad<float>(ptr);
           ptr += sizeof(float);
         } else goto handle_unusual;
         continue;
-      // float nose_wheel_angle = 10;
-      case 10:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 85)) {
+      // float nose_wheel_angle = 11;
+      case 11:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 93)) {
           nose_wheel_angle_ = ::PROTOBUF_NAMESPACE_ID::internal::UnalignedLoad<float>(ptr);
           ptr += sizeof(float);
         } else goto handle_unusual;
         continue;
-      // bool landing_lights = 11;
-      case 11:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 88)) {
+      // bool landing_lights = 12;
+      case 12:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 96)) {
           landing_lights_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // bool taxi_lights = 12;
-      case 12:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 96)) {
+      // bool taxi_lights = 13;
+      case 13:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 104)) {
           taxi_lights_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // bool strobe_lights = 13;
-      case 13:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 104)) {
+      // bool strobe_lights = 14;
+      case 14:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 112)) {
           strobe_lights_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // repeated int32 monitoring_frequency_khz = 14;
-      case 14:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 114)) {
+      // repeated int32 monitoring_frequency_khz = 15;
+      case 15:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 122)) {
           ptr = ::PROTOBUF_NAMESPACE_ID::internal::PackedInt32Parser(_internal_mutable_monitoring_frequency_khz(), ptr, ctx);
           CHK_(ptr);
-        } else if (static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 112) {
+        } else if (static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 120) {
           _internal_add_monitoring_frequency_khz(::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr));
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // int32 transmitting_frequency_khz = 15;
-      case 15:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 120)) {
+      // int32 transmitting_frequency_khz = 16;
+      case 16:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 128)) {
           transmitting_frequency_khz_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // string squawk = 16;
-      case 16:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 130)) {
+      // string squawk = 17;
+      case 17:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 138)) {
           auto str = _internal_mutable_squawk();
           ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(::PROTOBUF_NAMESPACE_ID::internal::VerifyUTF8(str, "atc_proto.AircraftMessage.Situation.squawk"));
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // bool mode_c = 17;
-      case 17:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 136)) {
+      // bool mode_c = 18;
+      case 18:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 144)) {
           mode_c_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // bool mode_s = 18;
-      case 18:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 144)) {
+      // bool mode_s = 19;
+      case 19:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 152)) {
           mode_s_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
@@ -14724,95 +14732,101 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(4, this->_internal_heading(), target);
   }
 
-  // float pitch = 5;
+  // float ground_speed_kt = 5;
+  if (!(this->ground_speed_kt() <= 0 && this->ground_speed_kt() >= 0)) {
+    target = stream->EnsureSpace(target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(5, this->_internal_ground_speed_kt(), target);
+  }
+
+  // float pitch = 6;
   if (!(this->pitch() <= 0 && this->pitch() >= 0)) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(5, this->_internal_pitch(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(6, this->_internal_pitch(), target);
   }
 
-  // float roll = 6;
+  // float roll = 7;
   if (!(this->roll() <= 0 && this->roll() >= 0)) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(6, this->_internal_roll(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(7, this->_internal_roll(), target);
   }
 
-  // float flap_ratio = 7;
+  // float flap_ratio = 8;
   if (!(this->flap_ratio() <= 0 && this->flap_ratio() >= 0)) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(7, this->_internal_flap_ratio(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(8, this->_internal_flap_ratio(), target);
   }
 
-  // float spoiler_ratio = 8;
+  // float spoiler_ratio = 9;
   if (!(this->spoiler_ratio() <= 0 && this->spoiler_ratio() >= 0)) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(8, this->_internal_spoiler_ratio(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(9, this->_internal_spoiler_ratio(), target);
   }
 
-  // float gear_ratio = 9;
+  // float gear_ratio = 10;
   if (!(this->gear_ratio() <= 0 && this->gear_ratio() >= 0)) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(9, this->_internal_gear_ratio(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(10, this->_internal_gear_ratio(), target);
   }
 
-  // float nose_wheel_angle = 10;
+  // float nose_wheel_angle = 11;
   if (!(this->nose_wheel_angle() <= 0 && this->nose_wheel_angle() >= 0)) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(10, this->_internal_nose_wheel_angle(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteFloatToArray(11, this->_internal_nose_wheel_angle(), target);
   }
 
-  // bool landing_lights = 11;
+  // bool landing_lights = 12;
   if (this->landing_lights() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(11, this->_internal_landing_lights(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(12, this->_internal_landing_lights(), target);
   }
 
-  // bool taxi_lights = 12;
+  // bool taxi_lights = 13;
   if (this->taxi_lights() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(12, this->_internal_taxi_lights(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(13, this->_internal_taxi_lights(), target);
   }
 
-  // bool strobe_lights = 13;
+  // bool strobe_lights = 14;
   if (this->strobe_lights() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(13, this->_internal_strobe_lights(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(14, this->_internal_strobe_lights(), target);
   }
 
-  // repeated int32 monitoring_frequency_khz = 14;
+  // repeated int32 monitoring_frequency_khz = 15;
   {
     int byte_size = _monitoring_frequency_khz_cached_byte_size_.load(std::memory_order_relaxed);
     if (byte_size > 0) {
       target = stream->WriteInt32Packed(
-          14, _internal_monitoring_frequency_khz(), byte_size, target);
+          15, _internal_monitoring_frequency_khz(), byte_size, target);
     }
   }
 
-  // int32 transmitting_frequency_khz = 15;
+  // int32 transmitting_frequency_khz = 16;
   if (this->transmitting_frequency_khz() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(15, this->_internal_transmitting_frequency_khz(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(16, this->_internal_transmitting_frequency_khz(), target);
   }
 
-  // string squawk = 16;
+  // string squawk = 17;
   if (this->squawk().size() > 0) {
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
       this->_internal_squawk().data(), static_cast<int>(this->_internal_squawk().length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "atc_proto.AircraftMessage.Situation.squawk");
     target = stream->WriteStringMaybeAliased(
-        16, this->_internal_squawk(), target);
+        17, this->_internal_squawk(), target);
   }
 
-  // bool mode_c = 17;
+  // bool mode_c = 18;
   if (this->mode_c() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(17, this->_internal_mode_c(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(18, this->_internal_mode_c(), target);
   }
 
-  // bool mode_s = 18;
+  // bool mode_s = 19;
   if (this->mode_s() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(18, this->_internal_mode_s(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(19, this->_internal_mode_s(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -14831,7 +14845,7 @@ size_t AircraftMessage_Situation::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // repeated int32 monitoring_frequency_khz = 14;
+  // repeated int32 monitoring_frequency_khz = 15;
   {
     size_t data_size = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::
       Int32Size(this->monitoring_frequency_khz_);
@@ -14846,7 +14860,7 @@ size_t AircraftMessage_Situation::ByteSizeLong() const {
     total_size += data_size;
   }
 
-  // string squawk = 16;
+  // string squawk = 17;
   if (this->squawk().size() > 0) {
     total_size += 2 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
@@ -14870,27 +14884,32 @@ size_t AircraftMessage_Situation::ByteSizeLong() const {
     total_size += 1 + 4;
   }
 
-  // float pitch = 5;
+  // float ground_speed_kt = 5;
+  if (!(this->ground_speed_kt() <= 0 && this->ground_speed_kt() >= 0)) {
+    total_size += 1 + 4;
+  }
+
+  // float pitch = 6;
   if (!(this->pitch() <= 0 && this->pitch() >= 0)) {
     total_size += 1 + 4;
   }
 
-  // float roll = 6;
+  // float roll = 7;
   if (!(this->roll() <= 0 && this->roll() >= 0)) {
     total_size += 1 + 4;
   }
 
-  // float flap_ratio = 7;
+  // float flap_ratio = 8;
   if (!(this->flap_ratio() <= 0 && this->flap_ratio() >= 0)) {
     total_size += 1 + 4;
   }
 
-  // float spoiler_ratio = 8;
+  // float spoiler_ratio = 9;
   if (!(this->spoiler_ratio() <= 0 && this->spoiler_ratio() >= 0)) {
     total_size += 1 + 4;
   }
 
-  // float gear_ratio = 9;
+  // float gear_ratio = 10;
   if (!(this->gear_ratio() <= 0 && this->gear_ratio() >= 0)) {
     total_size += 1 + 4;
   }
@@ -14900,39 +14919,39 @@ size_t AircraftMessage_Situation::ByteSizeLong() const {
     total_size += 1 + 1;
   }
 
-  // bool landing_lights = 11;
+  // bool landing_lights = 12;
   if (this->landing_lights() != 0) {
     total_size += 1 + 1;
   }
 
-  // bool taxi_lights = 12;
+  // bool taxi_lights = 13;
   if (this->taxi_lights() != 0) {
     total_size += 1 + 1;
   }
 
-  // bool strobe_lights = 13;
+  // bool strobe_lights = 14;
   if (this->strobe_lights() != 0) {
     total_size += 1 + 1;
   }
 
-  // float nose_wheel_angle = 10;
+  // float nose_wheel_angle = 11;
   if (!(this->nose_wheel_angle() <= 0 && this->nose_wheel_angle() >= 0)) {
     total_size += 1 + 4;
   }
 
-  // int32 transmitting_frequency_khz = 15;
+  // int32 transmitting_frequency_khz = 16;
   if (this->transmitting_frequency_khz() != 0) {
-    total_size += 1 +
+    total_size += 2 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
         this->_internal_transmitting_frequency_khz());
   }
 
-  // bool mode_c = 17;
+  // bool mode_c = 18;
   if (this->mode_c() != 0) {
     total_size += 2 + 1;
   }
 
-  // bool mode_s = 18;
+  // bool mode_s = 19;
   if (this->mode_s() != 0) {
     total_size += 2 + 1;
   }
@@ -14980,6 +14999,9 @@ void AircraftMessage_Situation::MergeFrom(const AircraftMessage_Situation& from)
   }
   if (!(from.heading() <= 0 && from.heading() >= 0)) {
     _internal_set_heading(from._internal_heading());
+  }
+  if (!(from.ground_speed_kt() <= 0 && from.ground_speed_kt() >= 0)) {
+    _internal_set_ground_speed_kt(from._internal_ground_speed_kt());
   }
   if (!(from.pitch() <= 0 && from.pitch() >= 0)) {
     _internal_set_pitch(from._internal_pitch());

@@ -1071,47 +1071,50 @@ namespace AtcProto
             [global::ProtoBuf.ProtoMember(4, Name = @"heading")]
             public float Heading { get; set; }
 
-            [global::ProtoBuf.ProtoMember(5, Name = @"pitch")]
+            [global::ProtoBuf.ProtoMember(5, Name = @"ground_speed_kt")]
+            public float GroundSpeedKt { get; set; }
+
+            [global::ProtoBuf.ProtoMember(6, Name = @"pitch")]
             public float Pitch { get; set; }
 
-            [global::ProtoBuf.ProtoMember(6, Name = @"roll")]
+            [global::ProtoBuf.ProtoMember(7, Name = @"roll")]
             public float Roll { get; set; }
 
-            [global::ProtoBuf.ProtoMember(7, Name = @"flap_ratio")]
+            [global::ProtoBuf.ProtoMember(8, Name = @"flap_ratio")]
             public float FlapRatio { get; set; }
 
-            [global::ProtoBuf.ProtoMember(8, Name = @"spoiler_ratio")]
+            [global::ProtoBuf.ProtoMember(9, Name = @"spoiler_ratio")]
             public float SpoilerRatio { get; set; }
 
-            [global::ProtoBuf.ProtoMember(9, Name = @"gear_ratio")]
+            [global::ProtoBuf.ProtoMember(10, Name = @"gear_ratio")]
             public float GearRatio { get; set; }
 
-            [global::ProtoBuf.ProtoMember(10, Name = @"nose_wheel_angle")]
+            [global::ProtoBuf.ProtoMember(11, Name = @"nose_wheel_angle")]
             public float NoseWheelAngle { get; set; }
 
-            [global::ProtoBuf.ProtoMember(11, Name = @"landing_lights")]
+            [global::ProtoBuf.ProtoMember(12, Name = @"landing_lights")]
             public bool LandingLights { get; set; }
 
-            [global::ProtoBuf.ProtoMember(12, Name = @"taxi_lights")]
+            [global::ProtoBuf.ProtoMember(13, Name = @"taxi_lights")]
             public bool TaxiLights { get; set; }
 
-            [global::ProtoBuf.ProtoMember(13, Name = @"strobe_lights")]
+            [global::ProtoBuf.ProtoMember(14, Name = @"strobe_lights")]
             public bool StrobeLights { get; set; }
 
-            [global::ProtoBuf.ProtoMember(14, Name = @"monitoring_frequency_khz", IsPacked = true)]
+            [global::ProtoBuf.ProtoMember(15, Name = @"monitoring_frequency_khz", IsPacked = true)]
             public int[] MonitoringFrequencyKhzs { get; set; }
 
-            [global::ProtoBuf.ProtoMember(15, Name = @"transmitting_frequency_khz")]
+            [global::ProtoBuf.ProtoMember(16, Name = @"transmitting_frequency_khz")]
             public int TransmittingFrequencyKhz { get; set; }
 
-            [global::ProtoBuf.ProtoMember(16, Name = @"squawk")]
+            [global::ProtoBuf.ProtoMember(17, Name = @"squawk")]
             [global::System.ComponentModel.DefaultValue("")]
             public string Squawk { get; set; } = "";
 
-            [global::ProtoBuf.ProtoMember(17, Name = @"mode_c")]
+            [global::ProtoBuf.ProtoMember(18, Name = @"mode_c")]
             public bool ModeC { get; set; }
 
-            [global::ProtoBuf.ProtoMember(18, Name = @"mode_s")]
+            [global::ProtoBuf.ProtoMember(19, Name = @"mode_s")]
             public bool ModeS { get; set; }
 
         }
