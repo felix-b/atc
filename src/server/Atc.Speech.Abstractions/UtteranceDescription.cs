@@ -21,11 +21,12 @@ namespace Atc.Speech.Abstractions
             Greeting = 1,
             Farewell = 2,
             Data = 3,
-            Disfluency = 4,
-            Correction = 5,
-            Punctuation = 6,
-            Affirmation = 7,
-            Negation = 8
+            Instruction = 4,
+            Disfluency = 5,
+            Correction = 6,
+            Punctuation = 7,
+            Affirmation = 8,
+            Negation = 9
         }
 
         public record Part(PartType Type, string Text);

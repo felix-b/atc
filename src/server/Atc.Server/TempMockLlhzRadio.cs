@@ -19,11 +19,11 @@ namespace Atc.Server
         private readonly ISpeechSynthesisPlugin _synthesizer;
         private readonly RadioSpeechPlayer _player;
         private readonly SoundFormat _soundFormat;
-        private readonly Random _random = new Random(DateTime.Now.TimeOfDay.Milliseconds);
         private readonly CultureInfo _culture = CultureInfo.GetCultureInfo("he-IL");
         private Task? _currentWorkflow;
         private Atis _currentAtis;
         private string _currentCallsign;
+        private Random _random = new Random(DateTime.Now.TimeOfDay.Milliseconds);
         private CancellationTokenSource? _workflowCancellation;
         private TaskCompletionSource? _pilotTransmissionReceived;
         private TaskCompletionSource? _workflowCancellationRequested;
@@ -53,9 +53,12 @@ namespace Atc.Server
             _currentWorkflow = SafeRunCommunicationWorkflow(_workflowCancellation.Token);
             _currentAtis = CreateRandomAtis();
             _currentCallsign = LoadCallSignOrDefault("CGK");
+
+            var randomSeed = DateTime.Now.TimeOfDay.Milliseconds;
+            _random = new Random(randomSeed);
             
             Console.WriteLine(
-                $"TEMP MOCK RADIO - ATIS: qnh[{_currentAtis.Qnh}] rwy[{_currentAtis.ActiveRunway}] wnd[{_currentAtis.WindBearing}@{_currentAtis.WindSpeedKt}kt]");
+                $"TEMP MOCK RADIO - ATIS: qnh[{_currentAtis.Qnh}] rwy[{_currentAtis.ActiveRunway}] wnd[{_currentAtis.WindBearing}@{_currentAtis.WindSpeedKt}kt] rnd-seed[{randomSeed}]");
         }
 
         public void PttPushed(int frequencyKhz)
@@ -113,19 +116,19 @@ namespace Atc.Server
         {
             Console.WriteLine("TEMP MOCK RADIO - SARTING COMMUNICATION WORKFLOW");
 
-            await NextPilotTransmission(cancel);                        // CLR hello
+            await NextPilotTransmission(cancel);                          // CLR hello
             await TransmitLo(CreateClearanceGoAheadUtterance(), cancel);  // go ahead
-            await NextPilotTransmission(cancel);                        // request start
+            await NextPilotTransmission(cancel);                          // request start
             await TransmitLo(CreateStartApprovalUtterance(), cancel);     // start approved
-            await NextPilotTransmission(cancel);                        // readback
+            await NextPilotTransmission(cancel);                          // readback
             await TransmitLo(CreateClearanceHandoffUtterance(), cancel);  // hand off to tower
-            await NextPilotTransmission(cancel);                        // readback
+            await NextPilotTransmission(cancel);                          // readback
             
-            await NextPilotTransmission(cancel);                        // TWR request taxi
+            await NextPilotTransmission(cancel);                          // TWR request taxi
             await TransmitHi(CreateTaxiClearanceUtterance(), cancel);     // taxi clearance
-            await NextPilotTransmission(cancel);                        // readback
+            await NextPilotTransmission(cancel);                          // readback
             
-            await NextPilotTransmission(cancel);                        // TWR ready for departure
+            await NextPilotTransmission(cancel);                          // TWR ready for departure
 
             int takeoffRandom;
             
@@ -133,7 +136,7 @@ namespace Atc.Server
             if (takeoffRandom == 2)
             {
                 await TransmitHi(CreateHoldShortUtterance(), cancel);     // hold short
-                await NextPilotTransmission(cancel);                    // readback
+                await NextPilotTransmission(cancel);                      // readback
                 await Task.Delay(_random.Next(10000, 60000));
                 takeoffRandom = _random.Next(2);
             }
@@ -141,20 +144,50 @@ namespace Atc.Server
             if (takeoffRandom == 1)
             {
                 await TransmitHi(CreateLineUpAndWaitUtterance(), cancel); // LUAW
-                await NextPilotTransmission(cancel);                    // readback
+                await NextPilotTransmission(cancel);                      // readback
                 await Task.Delay(_random.Next(10000, 60000));
             }
             
             await TransmitHi(CreateTakeoffClearanceUtterance(), cancel);  // cleared for takeoff
-            await NextPilotTransmission(cancel);                        // readback
-            
-            await NextPilotTransmission(cancel);                        // report downwind
-            await TransmitHi(CreatePatternPositionUtterance(), cancel);   // pattern position
-            await NextPilotTransmission(cancel);                        // readback
+            await NextPilotTransmission(cancel);                          // readback
 
-            await NextPilotTransmission(cancel);                        // report final
-            await TransmitHi(CreateLandingClearanceUtterance(), cancel);  // clear to land
-            await NextPilotTransmission(cancel);                        // readback
+            //---- STAY IN PATTERN ---
+            // await NextPilotTransmission(cancel);                        // report downwind
+            // await TransmitHi(CreatePatternPositionUtterance(), cancel);   // pattern position
+            // await NextPilotTransmission(cancel);                        // readback
+            
+            //---- GO TO TRAINING ZONES ---
+            await NextPilotTransmission(cancel);                           // Batzra 800
+            await TransmitHi(CreateEnterTrainingZoneUtterance(), cancel);  // cleared to enter a training zone
+            await NextPilotTransmission(cancel);                           // readback
+            
+            await NextPilotTransmission(cancel);                           // request to leave training zone
+            int returnToBaseRandom;
+            
+            returnToBaseRandom = _random.Next(3);
+            if (returnToBaseRandom == 2)
+            {
+                await TransmitHi(CreateStandByInTrainingZoneUtterance(), cancel); // stand by in the training zone
+                await NextPilotTransmission(cancel);                              // readback
+                await Task.Delay(_random.Next(10000, 60000));
+            }
+
+            await TransmitHi(CreateExitTrainingZoneUtterance(), cancel);    // cleared to Batzra 1200
+            await NextPilotTransmission(cancel);                            // readback
+
+            await NextPilotTransmission(cancel);                            // Batzra 1200
+            await TransmitHi(CreateJoinPatternUtterance(), cancel);         // join pattern at downwind 11 / r.base 29
+            await NextPilotTransmission(cancel);                            // readback
+
+            await NextPilotTransmission(cancel);                            // downwind 11/base 29 at 1200
+            await TransmitHi(CreateDescendToPatternAltitudeUtterance(), cancel);   // descend to pattern altitude
+            await NextPilotTransmission(cancel);                            // readback
+
+            //----- FINAL ----
+            
+            await NextPilotTransmission(cancel);                            // report final 
+            await TransmitHi(CreateLandingClearanceUtterance(), cancel);    // clear to land
+            await NextPilotTransmission(cancel);                            // readback
         }
 
         private async Task NextPilotTransmission(CancellationToken cancel)
@@ -214,7 +247,7 @@ namespace Atc.Server
             
             var activeRunway = windSpeedKt > 3
                 ? (windBearing >= 200 || windBearing <= 20 ? "29" : "11")
-                : ((_random.Next(33) % 2) == 0 ? "29" : "11");
+                : (_random.Next(33) > 22 ? "11" : "29");
 
             return new Atis(
                 Info: $"{info}",
@@ -324,7 +357,7 @@ namespace Atc.Server
                     new (UtteranceDescription.PartType.Data, SpellWind()),
                     new (UtteranceDescription.PartType.Text, "מסלול"),
                     new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
-                    new (UtteranceDescription.PartType.Affirmation, "<prosody rate='0.7'>" + "רשאי להמריא" + "</prosody>"),
+                    new (UtteranceDescription.PartType.Affirmation, "<prosody rate='0.8'>" + "רשאי להמריא" + "</prosody>"),
                 }
             );
         }
@@ -356,9 +389,111 @@ namespace Atc.Server
             );
         }
 
+        private UtteranceDescription CreateEnterTrainingZoneUtterance()
+        {
+            var zoneNames = new[] {"3", "8", "9", "11", "12", "13"};
+            var zoneSquawks = new[] {"5103", "5102", "5105", "5111", "5112", "5113"};
+            var zoneIndex = _random.Next(zoneNames.Length);
+            
+            return new UtteranceDescription(
+                _culture,
+                TossADice()
+                    ? new UtteranceDescription.Part[] {
+                        new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                        new (UtteranceDescription.PartType.Text, "כנס לאזור"),
+                        new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneNames[zoneIndex])),
+                        new (UtteranceDescription.PartType.Text, "עם"),
+                        //new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneSquawks[zoneIndex])),
+                        new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(zoneSquawks[zoneIndex])}</prosody>"),
+                        
+                        new (UtteranceDescription.PartType.Affirmation, "על"),
+                        new (UtteranceDescription.PartType.Affirmation, "<phoneme alphabet='sapi' ph='h a t r a n s p o o n d e r'>הטרנספונדר</phoneme>"),
+                    }
+                    : new UtteranceDescription.Part[] {
+                        new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                        new (UtteranceDescription.PartType.Text, "אזור"),
+                        new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneNames[zoneIndex])),
+                        new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='t r a n s p o o n d e r'>טרנספונדר</phoneme>"),
+                        new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneSquawks[zoneIndex])),
+                    }
+            );
+        }
+
+        private UtteranceDescription CreateExitTrainingZoneUtterance()
+        {
+            return new UtteranceDescription(
+                _culture,
+                new UtteranceDescription.Part[] {
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Text, "צא לבצרה אלף מאתיים"),
+                }
+            );
+        }
+
+        private UtteranceDescription CreateStandByInTrainingZoneUtterance()
+        {
+            return new UtteranceDescription(
+                _culture,
+                new UtteranceDescription.Part[] {
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='h aa m t e n'>המתן</phoneme>"),
+                    new (UtteranceDescription.PartType.Text, "באזור"),
+                }
+            );
+        }
+
+        private UtteranceDescription CreateJoinPatternUtterance()
+        {
+            var parts = new List<UtteranceDescription.Part> {
+                new(UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                new(UtteranceDescription.PartType.Instruction, "שמור אלף מאתיים, "),
+            };
+
+            if (_currentAtis.ActiveRunway == "11")
+            {
+                parts.Add(new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='l e t s e e l a'>לצלע</phoneme>"));
+                parts.Add(new(UtteranceDescription.PartType.Text, "עם הרוח שמאלית אחד-אחד"));
+            }
+            else
+            {
+                parts.Add(new (UtteranceDescription.PartType.Text, "לבסיס ימנית שתיים-תשע"));
+            }
+            
+            return new UtteranceDescription(
+                _culture,
+                parts.ToArray()
+            );
+        }
+
+        private UtteranceDescription CreateDescendToPatternAltitudeUtterance()
+        {
+            var parts = new List<UtteranceDescription.Part> {
+                new(UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                new(UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='h aa n m eh k k'>הנמך</phoneme>")
+            };
+            
+            if (TossADice())
+            {
+                parts.Add(new (UtteranceDescription.PartType.Text, "לשמונה מאות"));
+            }
+            else
+            {
+                parts.AddRange(new UtteranceDescription.Part[] {
+                    new(UtteranceDescription.PartType.Text, "לגובה"),
+                    new(UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='h a k a f a a'>הקפה</phoneme>"),
+                });
+            }
+
+            return new UtteranceDescription(
+                _culture,
+                parts.ToArray()
+            );
+        }
+        
         private string SpellPhoneticString(string phonetic)
         {
             var ssml = new StringBuilder();
+            var separator = "-";
 
             for (int i = 0; i < phonetic.Length; i++)
             {
@@ -366,7 +501,11 @@ namespace Atc.Server
 
                 if (i > 0)
                 {
-                    ssml.Append('-');//char.IsDigit(c) ? ' ' : '-');
+                    if (char.IsDigit(c) && c == phonetic[i - 1])
+                    {
+                        separator = " ";
+                    }
+                    ssml.Append(separator);
                 }
 
                 if (char.IsDigit(c))
