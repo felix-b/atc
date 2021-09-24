@@ -22,6 +22,12 @@ namespace Atc.Data.Primitives
             return Lon.CompareTo(other.Lon);
         }
 
+        public void ToRadians(out float latRadians, out float lonRadians)
+        {
+            latRadians = Angle.FromDegrees((float) Lat).Radians;
+            lonRadians = Angle.FromDegrees((float) Lon).Radians;
+        }
+
         public static bool operator <(GeoPoint left, GeoPoint right)
         {
             return left.CompareTo(right) < 0;

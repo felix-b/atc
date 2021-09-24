@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Atc.Speech.Abstractions;
 
 namespace Atc.Sound
 {
-    public class RadioSpeechPlayer
+    public class RadioSpeechPlayer : IRadioSpeechPlayer
     {
         private readonly SoundBuffer _staticNoise;
         private readonly SoundBuffer _staticEdgeNoise;
@@ -24,6 +25,11 @@ namespace Atc.Sound
         public void StopPttStaticNoise()
         {
             _staticNoise.Stop();
+        }
+
+        public Task Play(byte[] data, float volume)
+        {
+            return Play(data, _standardFormat, volume);
         }
 
         public async Task Play(byte[] data, SoundFormat format, float volume)
@@ -51,5 +57,10 @@ namespace Atc.Sound
             await _staticEdgeNoise.PlayAsync();
             buffer.Stop();
         }
+
+        public SoundFormat Format => _standardFormat;
+
+        private static readonly SoundFormat _standardFormat = 
+            new SoundFormat(bitsPerSample: 16, samplesPerSecond: 11025, channelCount: 1);
     }
 }

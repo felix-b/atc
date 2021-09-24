@@ -12,6 +12,7 @@ using Atc.Sound;
 using Atc.Speech.Abstractions;
 using Atc.Speech.WinLocalPlugin;
 using Atc.World;
+using Atc.World.Comms;
 using Atc.World.Redux;
 using Autofac;
 using Just.Cli;
@@ -146,8 +147,15 @@ namespace Atc.Server.Daemon
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<ISoundSystemLogger>()).AsImplementedInterfaces();
 
             builder.RegisterType<RuntimeStateStore>().As<IRuntimeStateStore>().SingleInstance();
-            builder.RegisterType<RuntimeWorld>().SingleInstance().WithParameter("startTime", DateTime.Now);
+            builder.RegisterType<RuntimeWorld>()
+                .AsSelf()
+                .As<IWorldContext>()
+                .SingleInstance()
+                .WithParameter("startAtUtc", DateTime.UtcNow);
             builder.RegisterType<WorldService>().SingleInstance();
+
+            builder.RegisterType<RuntimeRadioEther>().SingleInstance();
+            builder.RegisterType<RuntimeRadioStationFactory>().SingleInstance();
 
             builder.Register(c => _taskSynchronizer!).SingleInstance().As<IServiceTaskSynchronizer>();
             builder.RegisterType<RuntimeClock>().SingleInstance().WithParameter("interval", TimeSpan.FromSeconds(10));

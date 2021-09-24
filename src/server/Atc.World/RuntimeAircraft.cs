@@ -4,6 +4,7 @@ using Atc.Data;
 using Atc.Data.Primitives;
 using Atc.Data.Traffic;
 using Atc.Math;
+using Atc.World.Comms;
 using Atc.World.Redux;
 using Geo.Gps;
 using Microsoft.AspNetCore.Http;
@@ -17,6 +18,7 @@ namespace Atc.World
     public partial class RuntimeAircraft
     {
         private readonly IRuntimeStateStore _store;
+        private readonly RuntimeRadioEther _ether;
         private readonly uint _id;
         private readonly string _tailNo;
         private readonly AircraftData _data;
@@ -24,6 +26,7 @@ namespace Atc.World
 
         public RuntimeAircraft(
             IRuntimeStateStore store, 
+            RuntimeRadioEther ether,
             ZRef<AircraftData> dataRef,
             GeoPoint location,
             Altitude altitude,
@@ -39,6 +42,7 @@ namespace Atc.World
             _tailNo = data.TailNo.Value;
 
             _store = store;
+            _ether = ether;
             _state = CreateInitialStateFromData(
                 ref data, 
                 location, 
@@ -50,26 +54,39 @@ namespace Atc.World
                 roll);
         }
 
-        public RuntimeAircraft(IRuntimeStateStore store, RuntimeWorld.AircraftAddedEvent addedEvent)
+        public RuntimeAircraft(
+            IRuntimeStateStore store, 
+            RuntimeRadioEther ether,
+            RuntimeWorld.AircraftAddedEvent addedEvent)
         {
             _store = store;
+            _ether = ether;
             _state = CreateInitialStateFromEvent(addedEvent, out _data);
 
             _id = addedEvent.Id;
             _tailNo = addedEvent.TailNo;
-            
         }
 
         public void ProgressBy(TimeSpan delta)
         {
             var groundDistance = Distance.FromNauticalMiles(_state.GroundSpeed.Knots * delta.TotalHours);
             GeoMath.CalculateGreatCircleDestination(
-                _state.Location, 
-                _state.Track, 
-                groundDistance, 
+                _state.Location,
+                _state.Track,
+                groundDistance,
                 out var newLocation);
 
             _store.Dispatch(this, new MovedEvent(newLocation));
+        }
+
+        public void PowerAvionicsOn(Frequency com1Frequency)
+        {
+            _store.Dispatch(new AvionicsPoweredOnEvent(com1Frequency));            
+        }
+
+        public void PowerAvionicsOff()
+        {
+            _store.Dispatch(new AvionicsPoweredOffEvent());            
         }
 
         public uint Id => _id;
@@ -99,7 +116,10 @@ namespace Atc.World
                 Roll: roll ?? Angle.FromDegrees(0), 
                 Heading: heading, 
                 Track: track ?? heading, 
-                GroundSpeed: groundSpeed ?? Speed.FromKnots(0)                    
+                GroundSpeed: groundSpeed ?? Speed.FromKnots(0),
+                AvionicsPoweredOn: false,
+                Com1Frequency: Frequency.FromKhz(120500), 
+                Com1Station: null
             );
         }
 
@@ -136,7 +156,10 @@ namespace Atc.World
                 Roll: e.Roll,
                 Heading: e.Heading,
                 Track: e.Track,
-                GroundSpeed: e.GroundSpeed                    
+                GroundSpeed: e.GroundSpeed,
+                AvionicsPoweredOn: false,
+                Com1Frequency: Frequency.FromKhz(120500), 
+                Com1Station: null
             );
         }
     }

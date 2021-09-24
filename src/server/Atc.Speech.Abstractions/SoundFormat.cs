@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Atc.Sound
+namespace Atc.Speech.Abstractions
 {
     public class SoundFormat
     {
@@ -22,6 +22,11 @@ namespace Atc.Sound
             this.BitsPerSample = bitsPerSample;
             this.SamplesPerSecond = samplesPerSecond;
             this.ChannelCount = channelCount;
+        }
+
+        public TimeSpan GetWaveDuration(int byteLength)
+        {
+            return TimeSpan.FromSeconds((double) byteLength / (double) ByteRate);
         }
 
         public int BitsPerSample { get; init; }

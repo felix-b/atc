@@ -4,26 +4,35 @@ using System.Collections.Generic;
 using Atc.Data;
 using Atc.Data.Primitives;
 using Atc.Data.Traffic;
+using Atc.World.Comms;
 using Atc.World.Redux;
 using Zero.Latency.Servers;
 using Zero.Serialization.Buffers;
-using Zero.Serialization.Buffers.Impl;
 
 namespace Atc.World
 {
-    public partial class RuntimeWorld
+    public partial class RuntimeWorld : IWorldContext
     {
         private readonly IRuntimeStateStore _store;
+        private readonly Func<RuntimeRadioEther> _etherFactory;
         private readonly ILogger _logger;
-        private readonly HashSet<IWorldObserver> _observers = new(); 
+        private readonly HashSet<IWorldObserver> _observers = new();
+        private readonly DateTime _startedAtUtc;
+        private RuntimeRadioEther? _ether = null;
         private RuntimeState _state;
-        private ulong _tickCount;
-        private TimeSpan _timestamp;
+        private ulong _tickCount = 0;
+        private TimeSpan _timestamp = TimeSpan.Zero;
 
-        public RuntimeWorld(IRuntimeStateStore store, ILogger logger, DateTime startTime)
+        public RuntimeWorld(
+            IRuntimeStateStore store, 
+            Func<RuntimeRadioEther> etherFactory, 
+            ILogger logger, 
+            DateTime startAtUtc)
         {
             _store = store;
+            _etherFactory = etherFactory;
             _logger = logger;
+            _startedAtUtc = startAtUtc;
             _state = new RuntimeState(
                 Version: 1, 
                 AircraftById: new Dictionary<uint, RuntimeAircraft>(),
@@ -138,8 +147,28 @@ namespace Atc.World
             _observers.Add(observer);
         }
 
+        public ulong CreateUniqueId(ulong lastId)
+        {
+            //TODO: apply shard ranges one day
+            return lastId + 1;
+        }
+
+        public DateTime UtcNow()
+        {
+            return _startedAtUtc + _timestamp;
+        }
+
         public TimeSpan Timestamp => _timestamp;
 
         public ILogger Logger => _logger;
+
+        private RuntimeRadioEther GetEther()
+        {
+            if (_ether == null)
+            {
+                _ether = _etherFactory();
+            }
+            return _ether;
+        }
     }
 }

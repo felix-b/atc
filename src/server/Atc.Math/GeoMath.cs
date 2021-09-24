@@ -2,6 +2,7 @@
 using Atc.Data.Primitives;
 using Geo;
 using Geo.Geodesy;
+using SysMath = System.Math;
 
 namespace Atc.Math
 {
@@ -32,6 +33,16 @@ namespace Atc.Math
                 distance.Meters);
 
             destination = new GeoPoint(calcResult.Coordinate2.Latitude, calcResult.Coordinate2.Longitude);
+        }
+
+        public static Distance QuicklyApproximateDistance(in GeoPoint p1, in GeoPoint p2)
+        {
+            p1.ToRadians(out var lat1, out var lon1);
+            p2.ToRadians(out var lat2, out var lon2);
+
+            var x = lat2 - lat1;
+            var y = (lon2 - lon1) * SysMath.Cos((lat2 + lat1) * 0.00872664626);
+            return Distance.FromKilometers((float)(111.319 * SysMath.Sqrt(x * x + y * y)));
         }
     }
 }

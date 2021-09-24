@@ -7,6 +7,7 @@ namespace Atc.World.Redux
         public void Dispatch(IRuntimeStateEvent stateEvent) 
         {
             // note: all reducers subscribe to "find me" data structure
+            // this is required for event log replication, in order to dispatch state updates on a follower side
             // 1. lookup the "find me" data structure and locate the target reducer
             // 2. invoke the target reducer with the second overload of Dispatch
             throw new System.NotImplementedException();

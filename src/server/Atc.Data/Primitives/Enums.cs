@@ -50,6 +50,12 @@
         Mhz
     }
 
+    public enum PressureUnit
+    {
+        InHg,
+        Hpa
+    }
+
     public enum BearingType
     {
         True,

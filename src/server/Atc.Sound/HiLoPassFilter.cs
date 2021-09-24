@@ -1,4 +1,5 @@
 ﻿using System;
+using Atc.Speech.Abstractions;
 
 namespace Atc.Sound
 {
