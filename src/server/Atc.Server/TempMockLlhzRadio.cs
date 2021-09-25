@@ -484,6 +484,11 @@ namespace Atc.Server
                 });
             }
 
+            parts.AddRange(new UtteranceDescription.Part[] {
+                new(UtteranceDescription.PartType.Text, "מספר"),
+                new(UtteranceDescription.PartType.Data, SpellPhoneticString(TossADice() ? "1" : "2")),
+            });
+
             return new UtteranceDescription(
                 _culture,
                 parts.ToArray()
