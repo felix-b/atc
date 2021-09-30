@@ -154,7 +154,7 @@ namespace Atc.Server.Daemon
                 .WithParameter("startAtUtc", DateTime.UtcNow);
             builder.RegisterType<WorldService>().SingleInstance();
 
-            builder.RegisterType<RuntimeRadioEther>().SingleInstance();
+            builder.RegisterType<GroundRadioStationAether>().SingleInstance();
             builder.RegisterType<RuntimeRadioStationFactory>().SingleInstance();
 
             builder.Register(c => _taskSynchronizer!).SingleInstance().As<IServiceTaskSynchronizer>();
@@ -232,6 +232,7 @@ namespace Atc.Server.Daemon
                             world.AddNewAircraft(
                                 "B738",
                                 $"N{location.Lat}{location.Lon}",
+                                callsign: null,  
                                 airlineIcao: null,
                                 AircraftCategories.Jet,
                                 OperationTypes.Airline,

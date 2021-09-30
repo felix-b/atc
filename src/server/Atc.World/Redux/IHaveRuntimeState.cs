@@ -8,6 +8,12 @@
         void SetState(TState newState);
     }
 
+    public interface IObserveRuntimeState<TState>
+        where TState : class
+    {
+        void ObserveStateChanges(TState oldState, TState newState);
+    }
+
     public interface IRuntimeStateEvent
     {
     }

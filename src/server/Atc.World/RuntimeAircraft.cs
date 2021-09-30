@@ -4,6 +4,7 @@ using Atc.Data;
 using Atc.Data.Primitives;
 using Atc.Data.Traffic;
 using Atc.Math;
+using Atc.World.Abstractions;
 using Atc.World.Comms;
 using Atc.World.Redux;
 using Geo.Gps;
@@ -17,32 +18,37 @@ namespace Atc.World
 {
     public partial class RuntimeAircraft
     {
+        private readonly IWorldContext _world;
         private readonly IRuntimeStateStore _store;
-        private readonly RuntimeRadioEther _ether;
         private readonly uint _id;
         private readonly string _tailNo;
+        private readonly string _callsign;
         private readonly AircraftData _data;
+        private readonly RuntimeRadioStation _com1;
         private RuntimeState _state; 
 
         public RuntimeAircraft(
-            IRuntimeStateStore store, 
-            RuntimeRadioEther ether,
+            IWorldContext world, 
+            IRuntimeStateStore store,
+            RuntimeRadioStationFactory radioStationFactory,
             ZRef<AircraftData> dataRef,
+            string? callsign,
             GeoPoint location,
             Altitude altitude,
-            Bearing heading,
+            Bearing heading, 
             Bearing? track = null,
             Speed? groundSpeed = null,
             Angle? pitch = null,
             Angle? roll = null)
         {
-            ref var data = ref dataRef.Get();
+            _world = world;
+            _store = store;
 
+            ref var data = ref dataRef.Get();
             _id = data.Id;
             _tailNo = data.TailNo.Value;
+            _callsign = callsign ?? _tailNo;
 
-            _store = store;
-            _ether = ether;
             _state = CreateInitialStateFromData(
                 ref data, 
                 location, 
@@ -52,15 +58,22 @@ namespace Atc.World
                 groundSpeed, 
                 pitch, 
                 roll);
+
+            _com1 = radioStationFactory.CreateStation(
+                getLocation: () => _state.Location, 
+                getElevation: () => _state.Altitude, 
+                Frequency.FromKhz(0),
+                name: $"{_callsign}/COM1",
+                _callsign);
         }
 
         public RuntimeAircraft(
+            IWorldContext world,
             IRuntimeStateStore store, 
-            RuntimeRadioEther ether,
             RuntimeWorld.AircraftAddedEvent addedEvent)
         {
+            _world = world;
             _store = store;
-            _ether = ether;
             _state = CreateInitialStateFromEvent(addedEvent, out _data);
 
             _id = addedEvent.Id;
@@ -81,12 +94,18 @@ namespace Atc.World
 
         public void PowerAvionicsOn(Frequency com1Frequency)
         {
-            _store.Dispatch(new AvionicsPoweredOnEvent(com1Frequency));            
+            _store.Dispatch(new AvionicsPoweredOnEvent(com1Frequency));
+            _store.Dispatch(new ComFrequencyChangedEvent(Com1: com1Frequency));            
         }
 
         public void PowerAvionicsOff()
         {
             _store.Dispatch(new AvionicsPoweredOffEvent());            
+        }
+
+        public void TuneCom1To(Frequency frequency)
+        {
+            _store.Dispatch(new ComFrequencyChangedEvent(Com1: frequency));            
         }
 
         public uint Id => _id;
@@ -118,8 +137,7 @@ namespace Atc.World
                 Track: track ?? heading, 
                 GroundSpeed: groundSpeed ?? Speed.FromKnots(0),
                 AvionicsPoweredOn: false,
-                Com1Frequency: Frequency.FromKhz(120500), 
-                Com1Station: null
+                Com1Frequency: Frequency.FromKhz(122900) // MULTICOM in US
             );
         }
 
@@ -158,8 +176,7 @@ namespace Atc.World
                 Track: e.Track,
                 GroundSpeed: e.GroundSpeed,
                 AvionicsPoweredOn: false,
-                Com1Frequency: Frequency.FromKhz(120500), 
-                Com1Station: null
+                Com1Frequency: Frequency.FromKhz(122900) // MULTICOM in US
             );
         }
     }

@@ -23,11 +23,16 @@ namespace Atc.World.Redux
             {
                 target.SetState(state1);
                 StateEventDispatched?.Invoke(stateEvent);
+
+                if (target is IObserveRuntimeState<TState> observer)
+                {
+                    observer.ObserveStateChanges(state0, state1);
+                }
             }
         }
 
         // This event is useful for replication of state events to followers
-        // and also for recording state events with the purpose of replaying them later
+        // and also for recording state events for replay
         public event Action<IRuntimeStateEvent>? StateEventDispatched;
     }
 }

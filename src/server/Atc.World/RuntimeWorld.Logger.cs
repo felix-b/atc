@@ -19,6 +19,8 @@ namespace Atc.World
             LogWriter.LogSpan StateOperationLifecycle(string originator);
             LogWriter.LogSpan ObserverCheckingForUpdates(string observerName);
             void RegisteringObserver(string observerName);
+            void FailedToFindRadioAether(string fromStation, int khz, double lat, double lon, float feet);
+            void FoundRadioAether(string fromStation, string groundStation, int khz, double lat, double lon, float feet);
         }
     }
 }

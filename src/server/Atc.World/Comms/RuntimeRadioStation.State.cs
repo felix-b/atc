@@ -8,6 +8,22 @@ namespace Atc.World.Comms
 {
     public partial class RuntimeRadioStation : IHaveRuntimeState<RuntimeRadioStation.RuntimeState>
     {
+        public record RuntimeState(
+            ulong StationId,
+            Frequency Frequency,
+            bool PoweredOn,
+            GroundRadioStationAether? Aether,
+            ImmutableArray<TransmissionState> IncomingTransmissions,
+            TransmissionState? OutgoingTransmission
+        );
+
+        public record TransmissionState(
+            ulong TransmittingStationId,
+            ulong Id,
+            DateTime StartedAtUtc,
+            RuntimeWave Wave
+        );
+
         public RuntimeState GetState()
         {
             return _state;
@@ -22,10 +38,25 @@ namespace Atc.World.Comms
         {
             switch (stateEvent)
             {
+                case PoweredOnEvent:
+                    return currentState with {
+                        PoweredOn = true,
+                        Aether = null,
+                        IncomingTransmissions = ImmutableArray<TransmissionState>.Empty,
+                        OutgoingTransmission = null
+                    };
+                case PoweredOffEvent:
+                    return currentState with {
+                        PoweredOn = false,
+                        Aether = null,
+                        IncomingTransmissions = ImmutableArray<TransmissionState>.Empty,
+                        OutgoingTransmission = null
+                    };
                 case FrequencySwitchedEvent switched:
                     return currentState with {
                         Frequency = switched.NewFrequency,
-                        IncomingTransmissions = switched.IncomingTransmissions,
+                        Aether = switched.Aether,
+                        IncomingTransmissions = ImmutableArray<TransmissionState>.Empty
                     };
                 case StartedTransmittingEvent startedTransmitting:
                     return currentState with {
@@ -48,7 +79,7 @@ namespace Atc.World.Comms
                 case StoppedReceivingTransmissionEvent stoppedReceiving:
                     return currentState with {
                         IncomingTransmissions = currentState.IncomingTransmissions.RemoveAll(
-                            t => t.Id == stoppedReceiving.TransmissionId
+                            t => stoppedReceiving.TransmissionId == null || t.Id == stoppedReceiving.TransmissionId
                         )
                     };
             }
@@ -56,23 +87,13 @@ namespace Atc.World.Comms
             return currentState;
         }
         
-        public record RuntimeState(
-            ulong StationId,
-            Frequency Frequency,
-            ImmutableArray<TransmissionState> IncomingTransmissions,
-            TransmissionState? OutgoingTransmission
-        );
+        public record PoweredOnEvent() : IRuntimeStateEvent;
 
-        public record TransmissionState(
-            ulong TransmittingStationId,
-            ulong Id,
-            DateTime StartedAtUtc,
-            RuntimeWave Wave
-        );
+        public record PoweredOffEvent() : IRuntimeStateEvent;
 
         public record FrequencySwitchedEvent(
             Frequency NewFrequency,
-            ImmutableArray<TransmissionState> IncomingTransmissions
+            GroundRadioStationAether? Aether
         ) : IRuntimeStateEvent;
 
         public record StartedTransmittingEvent(
@@ -86,7 +107,7 @@ namespace Atc.World.Comms
         ) : IRuntimeStateEvent;
 
         public record StoppedReceivingTransmissionEvent(
-            ulong TransmissionId
+            ulong? TransmissionId
         ) : IRuntimeStateEvent;
     }
 }

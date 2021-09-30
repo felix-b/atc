@@ -244,10 +244,10 @@ namespace Atc.Server
             int windSpeedKt = _random.Next(11);
             int windBearing = _random.Next(360) + 1;
             int qnh = _random.Next(2980, 3005);
-            
-            var activeRunway = windSpeedKt > 3
-                ? (windBearing >= 200 || windBearing <= 20 ? "29" : "11")
-                : (_random.Next(33) > 22 ? "11" : "29");
+
+            var activeRunway = windSpeedKt > 5
+                ? (windBearing >= 195 || windBearing <= 25 ? "29" : "11")
+                : "29";//(_random.Next(33) > 27 ? "11" : "29");
 
             return new Atis(
                 Info: $"{info}",
@@ -271,19 +271,31 @@ namespace Atc.Server
 
         private UtteranceDescription CreateStartApprovalUtterance()
         {
-            var qnh = _random.Next(2980, 3000).ToString();
+            var parts = new List<UtteranceDescription.Part> {
+                new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+            };
+
+            if (TossADice())
+            {
+                parts.Add(new (UtteranceDescription.PartType.Affirmation, "ההתנעה מאושרת"));
+            }
+            else
+            {
+                parts.Add(new (UtteranceDescription.PartType.Affirmation, "רשאי"));
+                parts.Add(new (UtteranceDescription.PartType.Affirmation, "<phoneme alphabet='sapi' ph='l e a t n i ah'>להתניע</phoneme>"));
+            }
+            
+            parts.AddRange(new UtteranceDescription.Part[] {
+                new (UtteranceDescription.PartType.Text, "מסלול בשימוש"),
+                new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
+                new (UtteranceDescription.PartType.Text, "הלחץ"),
+                new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(_currentAtis.Qnh.ToString())}</prosody>"),
+                new (UtteranceDescription.PartType.Farewell, "בצרה 800"),
+            });
             
             return new UtteranceDescription(
                 _culture,
-                new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
-                    new (UtteranceDescription.PartType.Affirmation, "ההתנעה מאושרת"),
-                    new (UtteranceDescription.PartType.Text, "מסלול בשימוש"),
-                    new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
-                    new (UtteranceDescription.PartType.Text, "הלחץ"),
-                    new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(_currentAtis.Qnh.ToString())}</prosody>"),
-                    new (UtteranceDescription.PartType.Farewell, "בצרה 800"),
-                }
+                parts
             );
         }
 
@@ -391,8 +403,8 @@ namespace Atc.Server
 
         private UtteranceDescription CreateEnterTrainingZoneUtterance()
         {
-            var zoneNames = new[] {"3", "8", "9", "11", "12", "13"};
-            var zoneSquawks = new[] {"5103", "5102", "5105", "5111", "5112", "5113"};
+            var zoneNames = new[] {"3", "8", "9", /*"11",*/ "12", "13"};
+            var zoneSquawks = new[] {"5103", "5102", "5105", /*"5111",*/ "5112", "5113"};
             var zoneIndex = _random.Next(zoneNames.Length);
             
             return new UtteranceDescription(
@@ -401,7 +413,7 @@ namespace Atc.Server
                     ? new UtteranceDescription.Part[] {
                         new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                         new (UtteranceDescription.PartType.Text, "כנס לאזור"),
-                        new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneNames[zoneIndex])),
+                        new (UtteranceDescription.PartType.Data, zoneNames[zoneIndex]),
                         new (UtteranceDescription.PartType.Text, "עם"),
                         //new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneSquawks[zoneIndex])),
                         new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(zoneSquawks[zoneIndex])}</prosody>"),
@@ -412,7 +424,7 @@ namespace Atc.Server
                     : new UtteranceDescription.Part[] {
                         new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                         new (UtteranceDescription.PartType.Text, "אזור"),
-                        new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneNames[zoneIndex])),
+                        new (UtteranceDescription.PartType.Data, zoneNames[zoneIndex]),
                         new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='t r a n s p o o n d e r'>טרנספונדר</phoneme>"),
                         new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneSquawks[zoneIndex])),
                     }
@@ -425,7 +437,7 @@ namespace Atc.Server
                 _culture,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
-                    new (UtteranceDescription.PartType.Text, "צא לבצרה אלף מאתיים"),
+                    new (UtteranceDescription.PartType.Text, "צא לבצרה 1200"),
                 }
             );
         }
@@ -446,17 +458,29 @@ namespace Atc.Server
         {
             var parts = new List<UtteranceDescription.Part> {
                 new(UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
-                new(UtteranceDescription.PartType.Instruction, "שמור אלף מאתיים, "),
+                new(UtteranceDescription.PartType.Instruction, "<phoneme alphabet='sapi' ph='ch m o o r'>שמור</phoneme>"),
+                new(UtteranceDescription.PartType.Data, "1200"),
             };
 
             if (_currentAtis.ActiveRunway == "11")
             {
-                parts.Add(new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='l e t s e e l a'>לצלע</phoneme>"));
-                parts.Add(new(UtteranceDescription.PartType.Text, "עם הרוח שמאלית אחד-אחד"));
+                if (TossADice())
+                {
+                    parts.Add(new(UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='l e t s e e l a'>לצלע</phoneme>"));
+                    parts.Add(new(UtteranceDescription.PartType.Text, "עם הרוח שמאלית אחד-אחד"));
+                }
+                else
+                {
+                    parts.Add(new(UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='d a v eh eh a ch k'>דווח</phoneme>"));
+                    parts.Add(new(UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='t s e e l a'>צלע</phoneme>"));
+                    parts.Add(new(UtteranceDescription.PartType.Text, "עם הרוח שמאלית אחד-אחד"));
+                }
             }
             else
             {
-                parts.Add(new (UtteranceDescription.PartType.Text, "לבסיס ימנית שתיים-תשע"));
+                parts.Add(TossADice()
+                    ? new (UtteranceDescription.PartType.Text, "לבסיס ימנית שתיים-תשע")
+                    : new (UtteranceDescription.PartType.Text, "דווח בסיס שתיים-תשע"));
             }
             
             return new UtteranceDescription(
@@ -498,7 +522,7 @@ namespace Atc.Server
         private string SpellPhoneticString(string phonetic)
         {
             var ssml = new StringBuilder();
-            var separator = "-";
+            var separator = IsLongSuccessiveDigitsNumber() ? " " : "-";
 
             for (int i = 0; i < phonetic.Length; i++)
             {
@@ -506,10 +530,6 @@ namespace Atc.Server
 
                 if (i > 0)
                 {
-                    if (char.IsDigit(c) && c == phonetic[i - 1])
-                    {
-                        separator = " ";
-                    }
                     ssml.Append(separator);
                 }
 
@@ -528,6 +548,31 @@ namespace Atc.Server
             }
             
             return ssml.ToString();
+
+            bool IsLongSuccessiveDigitsNumber()
+            {
+                if (phonetic.Length < 3 || !char.IsDigit(phonetic[0]))
+                {
+                    return false;
+                }
+
+                char lastDigit = phonetic[0];
+                for (int i = 1; i < phonetic.Length; i++)
+                {
+                    var nextDigit = phonetic[i];
+                    if (!char.IsDigit(nextDigit))
+                    {
+                        return false;
+                    }
+                    if (nextDigit == lastDigit)
+                    {
+                        return true;
+                    }
+                    lastDigit = nextDigit;
+                }
+
+                return false;
+            }
         }
 
         private string SpellWind()

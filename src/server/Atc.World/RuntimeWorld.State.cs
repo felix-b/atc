@@ -19,7 +19,7 @@ namespace Atc.World
             switch (stateEvent)
             {
                 case AircraftAddedEvent aircraftAdded:
-                    var newAircraft = new RuntimeAircraft(_store, GetEther(), aircraftAdded);
+                    var newAircraft = new RuntimeAircraft(this, _store, aircraftAdded);
                     
                     // here we're sinful of mutating a HashSet<T> rather than transforming an ImmutableHashSet<T>
                     // this is because we might be dealing with a very large number of items 
@@ -58,6 +58,7 @@ namespace Atc.World
             uint Id,
             string TypeIcao,
             string TailNo,
+            string Callsign,
             uint? ModeS, 
             AircraftCategories Category,
             OperationTypes Operations,

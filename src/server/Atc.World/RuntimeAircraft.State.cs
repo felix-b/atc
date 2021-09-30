@@ -1,20 +1,25 @@
-﻿using System;
-using System.Runtime.CompilerServices;
-using Atc.Data;
-using Atc.Data.Primitives;
-using Atc.Data.Traffic;
-using Atc.Math;
-using Atc.World.Comms;
+﻿using Atc.Data.Primitives;
 using Atc.World.Redux;
-using Microsoft.AspNetCore.Http;
-using ProtoBuf;
-using ProtoBuf.WellKnownTypes;
-using Zero.Serialization.Buffers;
 
 namespace Atc.World
 {
-    public partial class RuntimeAircraft : IHaveRuntimeState<RuntimeAircraft.RuntimeState>
+    public partial class RuntimeAircraft : 
+        IHaveRuntimeState<RuntimeAircraft.RuntimeState>, 
+        IObserveRuntimeState<RuntimeAircraft.RuntimeState>
     {
+        public record RuntimeState(
+            int Version,
+            GeoPoint Location,
+            Altitude Altitude, 
+            Angle Pitch, 
+            Angle Roll, 
+            Bearing Heading, 
+            Bearing Track, 
+            Speed GroundSpeed,
+            bool AvionicsPoweredOn,
+            Frequency Com1Frequency
+        );
+
         public RuntimeState GetState()
         {
             return _state;
@@ -39,36 +44,41 @@ namespace Atc.World
                         Version = currentState.Version + 1,
                         AvionicsPoweredOn = true,
                         Com1Frequency = avionicsOn.Com1Frequency,
-                        Com1Station = _ether.CreateAircraftStation(this, avionicsOn.Com1Frequency)
                     };
                 case AvionicsPoweredOffEvent:
-                    if (currentState.Com1Station != null)
-                    {
-                        _ether.RemoveStation(currentState.Com1Station.Id);
-                    }
                     return currentState with {
                         Version = currentState.Version + 1,
                         AvionicsPoweredOn = false,
-                        Com1Station = null
+                    };
+                case ComFrequencyChangedEvent frequencyChanged:
+                    return currentState with {
+                        Version = currentState.Version + 1,
+                        Com1Frequency = frequencyChanged.Com1,
                     };
                 default:
                     return currentState;
             }
         }
 
-        public record RuntimeState(
-            int Version,
-            GeoPoint Location,
-            Altitude Altitude, 
-            Angle Pitch, 
-            Angle Roll, 
-            Bearing Heading, 
-            Bearing Track, 
-            Speed GroundSpeed,
-            bool AvionicsPoweredOn,
-            Frequency Com1Frequency,
-            RuntimeRadioStation? Com1Station
-        );
+        void IObserveRuntimeState<RuntimeState>.ObserveStateChanges(RuntimeState oldState, RuntimeState newState)
+        {
+            if (newState.AvionicsPoweredOn != _com1.IsPoweredOn())
+            {
+                if (newState.AvionicsPoweredOn)
+                {
+                    _com1.PowerOn();
+                }
+                else
+                {
+                    _com1.PowerOff();
+                }
+            }
+
+            if (_com1.Frequency != newState.Com1Frequency)
+            {
+                _com1.TuneTo(newState.Com1Frequency);
+            }
+        }
         
         public record MovedEvent(
             GeoPoint NewLocation
@@ -76,6 +86,10 @@ namespace Atc.World
 
         public record AvionicsPoweredOnEvent(
             Frequency Com1Frequency
+        ) : IRuntimeStateEvent;
+
+        public record ComFrequencyChangedEvent(
+            Frequency Com1
         ) : IRuntimeStateEvent;
 
         public record AvionicsPoweredOffEvent : IRuntimeStateEvent;

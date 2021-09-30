@@ -4,15 +4,17 @@ namespace Atc.World.Abstractions
 {
     public abstract class Party
     {
-        protected Party(int id, string callsign, VoiceDescription defaultVoice)
+        protected Party(int id, string callsign, NatureType nature, VoiceDescription defaultVoice)
         {
             Id = id;
             Callsign = callsign;
             DefaultVoice = defaultVoice;
+            Nature = nature;
         }
 
         public int Id { get; }
         public string Callsign { get; }
+        public NatureType Nature { get; }
         public VoiceDescription DefaultVoice { get; }
 
         public abstract void ReceiveIntent(Intent intent);
@@ -21,7 +23,7 @@ namespace Atc.World.Abstractions
     public abstract class AutomaticStation : Party 
     {
         protected AutomaticStation(int id, string callsign, VoiceDescription defaultVoice, AutomaticStationType stationType) : 
-            base(id, callsign, defaultVoice)
+            base(id, callsign, NatureType.AI, defaultVoice)
         {
             StationType = stationType;
         }
@@ -31,8 +33,15 @@ namespace Atc.World.Abstractions
 
     public abstract class Person : Party
     {
-        protected Person(int id, string callsign, VoiceDescription defaultVoice, GenderType gender, AgeType age, string? firstName) : 
-            base(id, callsign, defaultVoice)
+        protected Person(
+            int id, 
+            string callsign, 
+            NatureType nature, 
+            VoiceDescription defaultVoice, 
+            GenderType gender, 
+            AgeType age, 
+            string? firstName) : 
+            base(id, callsign, nature, defaultVoice)
         {
             Gender = gender;
             Age = age;
@@ -46,16 +55,30 @@ namespace Atc.World.Abstractions
 
     public abstract class Pilot : Person
     {
-        protected Pilot(int id, string callsign, VoiceDescription defaultVoice, GenderType gender, AgeType age, string? firstName) : 
-            base(id, callsign, defaultVoice, gender, age, firstName)
+        protected Pilot(
+            int id, 
+            string callsign, 
+            NatureType nature, 
+            VoiceDescription defaultVoice, 
+            GenderType gender, 
+            AgeType age, 
+            string? firstName) : 
+            base(id, callsign, nature, defaultVoice, gender, age, firstName)
         {
         }
     }
 
     public abstract class Controller : Person 
     {
-        protected Controller(int id, string callsign, VoiceDescription defaultVoice, GenderType gender, AgeType age, string? firstName) : 
-            base(id, callsign, defaultVoice, gender, age, firstName)
+        protected Controller(
+            int id, 
+            string callsign, 
+            NatureType nature, 
+            VoiceDescription defaultVoice, 
+            GenderType gender, 
+            AgeType age, 
+            string? firstName) : 
+            base(id, callsign, nature, defaultVoice, gender, age, firstName)
         {
         }
     }
@@ -77,5 +100,11 @@ namespace Atc.World.Abstractions
         Young,
         Mature,
         Senior
+    }
+
+    public enum NatureType
+    {
+        Human = 0,
+        AI = 1
     }
 }

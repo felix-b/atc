@@ -9,23 +9,41 @@ namespace Atc.World.Comms
     {
         private readonly IWorldContext _world;
         private readonly IRuntimeStateStore _store;
+        private readonly ICommsLogger _logger;
 
-        public RuntimeRadioStationFactory(IWorldContext world, IRuntimeStateStore store)
+        public RuntimeRadioStationFactory(IWorldContext world, IRuntimeStateStore store, ICommsLogger logger)
         {
             _world = world;
             _store = store;
+            _logger = logger;
         }
 
         public RuntimeRadioStation CreateStation(
-            RuntimeRadioEther ether,
             Func<GeoPoint> getLocation,
             Func<Altitude> getElevation,
-            Frequency frequency)
+            Frequency frequency, 
+            string name,
+            string callsign)
         {
-            var stationId = _world.CreateUniqueId(_state.LastStationId);
-            var station = new RuntimeRadioStation(_world, _store, ether, stationId, getLocation, getElevation, frequency);
+            var nextStationId = _state.LastStationId + 1;
+            var uniqueStationId = _world.CreateUniqueId(nextStationId);
+            var station = new RuntimeRadioStation(
+                _world, _store, _logger, uniqueStationId, getLocation, getElevation, frequency, name, callsign);
             
-            _store.Dispatch(new UpdateLastStationId(stationId));
+            _store.Dispatch(new UpdateLastStationId(nextStationId));
+            return station;
+        }
+
+        public RuntimeRadioStation CreateGroundStation(
+            GeoPoint location,
+            Altitude elevation,
+            Frequency frequency, 
+            string name,
+            string callsign,
+            out GroundRadioStationAether aether)
+        {
+            var station = CreateStation(() => location, () => elevation, frequency, name, callsign);
+            aether = new GroundRadioStationAether(_world, _store, _logger, station);
             return station;
         }
     }
