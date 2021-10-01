@@ -7,9 +7,4 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
-    <ItemGroup>
-      <ProjectReference Include="..\Just.Utility\Just.Utility.csproj" />
-      <ProjectReference Include="..\Zero.Doubt.Logging\Zero.Doubt.Logging.csproj" />
-    </ItemGroup>
-
 </Project>

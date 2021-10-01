@@ -1,19 +1,23 @@
 using System;
 using System.Collections.Immutable;
+using System.Net;
+using Just.Utility;
 using Zero.Doubt.Logging;
 
 namespace Zero.Loss.Actors.Impl
 {
-    public class StateStore : IStateStore, IStateStoreInit
+    public class StateStore : IStateStore, IStateStoreInit, IInternalStateStore
     {
         private readonly ILogger _logger;
-        private ImmutableArray<EventListenerEntry> _eventListeners = ImmutableArray<EventListenerEntry>.Empty;
+        private readonly WriteLocked<EventListenerCollection> _eventListeners;
         private ulong _nextSequenceNo = 1;
-        private int _nextEventListenerId = 1;
 
         public StateStore(ILogger logger)
         {
             _logger = logger;
+            _eventListeners = new WriteLocked<EventListenerCollection>(new EventListenerCollection(
+                NextListenerId: 1, 
+                Listeners: ImmutableArray<EventListenerItem>.Empty));
         }
 
         public void Dispatch(IStatefulActor target, IStateEvent @event)
@@ -28,7 +32,8 @@ namespace Zero.Loss.Actors.Impl
 
                 if (!object.ReferenceEquals(state0, state1))
                 {
-                    InvokeEventListeners(sequenceNo, @event);
+                    InvokeEventListeners(new StateEventEnvelope(sequenceNo, target.UniqueId, @event));
+                    
                     target.SetState(state1);
                     target.ObserveChanges(state0, state1);
                 }
@@ -41,39 +46,64 @@ namespace Zero.Loss.Actors.Impl
 
         public void AddEventListener(StateEventListener listener, out int listenerId)
         {
-            listenerId = _nextEventListenerId++;
-            _eventListeners = _eventListeners.Add(new EventListenerEntry(listenerId, listener));
+            var collectionBefore = _eventListeners.Exchange(collection => collection.WithListener(listener));
+            listenerId = collectionBefore.NextListenerId;
         }
 
         public void RemoveEventListener(int listenerId)
         {
-            _eventListeners = _eventListeners.RemoveAll(entry => entry.Id == listenerId);
+            _eventListeners.Replace(collection => collection.WithoutListener(listenerId));
         }
 
-        private void InvokeEventListeners(ulong sequenceNo, IStateEvent @event)
+        public void ResetNextSequenceNo(ulong value)
         {
-            var listenersSnapshot = _eventListeners;
+            _logger.ResetNextSequenceNo(value);
+            _nextSequenceNo = value;
+        }
+
+        public ulong NextSequenceNo => _nextSequenceNo;
+        private void InvokeEventListeners(in StateEventEnvelope envelope)
+        {
+            var listenersSnapshot = _eventListeners.Read().Listeners;
             var count = listenersSnapshot.Length;
             
             for (int i = 0; i < count; i++)
             {
                 try
                 {
-                    listenersSnapshot[i].Callback(sequenceNo, @event);
+                    listenersSnapshot[i].Callback(envelope);
                 }
                 catch (Exception e)
                 {
-                    //TODO: log error
+                    _logger.ListenerFailed(envelope.SequenceNo, listenersSnapshot[i].Id, envelope.Event.GetType().Name, e);
                 }
             }
         }
 
-        private record EventListenerEntry(int Id, StateEventListener Callback);
+        private record EventListenerCollection(int NextListenerId, ImmutableArray<EventListenerItem> Listeners)
+        {
+            public EventListenerCollection WithListener(StateEventListener listener)
+            {
+                var listenerId = this.NextListenerId;
+                var item = new EventListenerItem(listenerId, listener);
+                return new EventListenerCollection(NextListenerId: listenerId + 1, Listeners: this.Listeners.Add(item));
+            }
+
+            public EventListenerCollection WithoutListener(int listenerId)
+            {
+                return new EventListenerCollection(
+                    this.NextListenerId, 
+                    this.Listeners.RemoveAll(item => item.Id == listenerId));
+            }
+        }
+        
+        private record EventListenerItem(int Id, StateEventListener Callback);
 
         public interface ILogger
         {
-            LogWriter.LogSpan Dispatch(ulong sequenceNo, string targetId, string eventType, string eventData);
-            void ListenerFailed(ulong sequenceNo, string eventType, Exception error);
+            LogWriter.LogSpan Dispatch(ulong sequenceNo, string targetId, string eventType, string? eventData);
+            void ListenerFailed(ulong sequenceNo, int listenerId, string eventType, Exception error);
+            void ResetNextSequenceNo(ulong value);
         }
     }
 }

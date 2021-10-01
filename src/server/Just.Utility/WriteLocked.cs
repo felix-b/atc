@@ -1,7 +1,7 @@
 using System;
 using System.Threading;
 
-namespace Zero.Latency.Servers
+namespace Just.Utility
 {
     // Sequences replacement of an immutable value in multi-threaded scenarios (e.g. collections like ImmutableList<T>) 
     // When replacing an immutable object, the new object is the result of a transformation applied to the current object: V1 = T(V0)

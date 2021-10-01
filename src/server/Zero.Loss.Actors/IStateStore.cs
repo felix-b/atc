@@ -5,6 +5,10 @@ namespace Zero.Loss.Actors
     public interface IStateStore
     {
         void Dispatch(IStatefulActor target, IStateEvent @event);
+        void Dispatch<TTarget>(in ActorRef<TTarget> targetRef, IStateEvent @event) where TTarget : class, IStatefulActor
+        {
+            Dispatch(targetRef.Get(), @event);
+        }
     }
 
     public interface IStateStoreInit
@@ -13,5 +17,19 @@ namespace Zero.Loss.Actors
         void RemoveEventListener(int listenerId);
     }
 
-    public delegate void StateEventListener(ulong sequenceNo, IStateEvent @event);
+    public readonly struct StateEventEnvelope
+    {
+        public StateEventEnvelope(ulong sequenceNo, string targetUniqueId, IStateEvent @event)
+        {
+            SequenceNo = sequenceNo;
+            TargetUniqueId = targetUniqueId;
+            Event = @event;
+        }
+
+        public readonly ulong SequenceNo;
+        public readonly string TargetUniqueId;
+        public readonly IStateEvent Event;
+    }
+    
+    public delegate void StateEventListener(in StateEventEnvelope envelope);
 }

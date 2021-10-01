@@ -5,23 +5,28 @@ using System.Linq;
 
 namespace Zero.Loss.Actors.Impl
 {
-    public partial class SupervisorActor : StatefulActor<SupervisorActor.SupervisorState>
+    public partial class SupervisorActor : StatefulActor<SupervisorActor.SupervisorState>, IInternalSupervisorActor
     {
-        private IStatefulActor? _lastCreatedActorTemp = null;
-        
         public record SupervisorState(
-            ImmutableDictionary<string, IStatefulActor> ActorByUniqueId,
-            ImmutableDictionary<string, ulong> LastInstanceIdPerTypeString
+            ImmutableDictionary<string, ActorEntry> ActorByUniqueId,
+            ImmutableDictionary<string, ulong> LastInstanceIdPerTypeString,
+            IStatefulActor? LastCreatedActor
         ) : IStateEvent;
+
+        public record ActorEntry(IStatefulActor Actor, IActivationStateEvent ActivationEvent);
+
+        private record DummySelfActivationEvent(string UniqueId) : IActivationStateEvent;
 
         public record DeactivateActorEvent(
             string UniqueId
         ) : IStateEvent;
+
+        private record ClearLastCreatedActorEvent : IStateEvent;
         
-        public bool TryGetActorById<TActor>(string uniqueId, out TActor? actor) where TActor : class, IStatefulActor
+        public bool TryGetActorObjectById<TActor>(string uniqueId, out TActor? actor) where TActor : class, IStatefulActor 
         {
-            var result = State.ActorByUniqueId.TryGetValue(uniqueId, out var untypedActor);
-            if (result && untypedActor is TActor typedActor)
+            var result = State.ActorByUniqueId.TryGetValue(uniqueId, out var entry);
+            if (result && entry!.Actor is TActor typedActor)
             {
                 actor = typedActor;
                 return true;
@@ -31,9 +36,24 @@ namespace Zero.Loss.Actors.Impl
             return false;
         }
 
-        public IEnumerable<TActor> GetAllActorsOfType<TActor>() where TActor : class, IStatefulActor
+        public bool TryGetActorById<TActor>(string uniqueId, out ActorRef<TActor>? actorRef) where TActor : class, IStatefulActor
         {
-            return State.ActorByUniqueId.Values.OfType<TActor>();
+            if (TryGetActorObjectById<TActor>(uniqueId, out var actorObj))
+            {
+                actorRef = new ActorRef<TActor>(this, actorObj!.UniqueId);
+                return true;
+            }
+
+            actorRef = null;
+            return false;
+        }
+
+        public IEnumerable<ActorRef<TActor>> GetAllActorsOfType<TActor>() where TActor : class, IStatefulActor
+        {
+            return State.ActorByUniqueId.Values
+                .Select(entry => entry.Actor)
+                .OfType<TActor>()
+                .Select(actor => new ActorRef<TActor>(this, actor.UniqueId));
         }
         
         protected override SupervisorState Reduce(SupervisorState state, IStateEvent @event)
@@ -41,42 +61,55 @@ namespace Zero.Loss.Actors.Impl
             switch (@event)
             {
                 case IActivationStateEvent activation:
-                    _lastCreatedActorTemp = ActivateActor(@event, out var typeString);
+                    var actor = ActivateActor(activation, out var typeString);
                     if (!state.LastInstanceIdPerTypeString.TryGetValue(typeString, out var lastInstanceId))
                     {
                         lastInstanceId = 0;
                     }
                     return state with {
-                        ActorByUniqueId = state.ActorByUniqueId.Add(activation.UniqueId, _lastCreatedActorTemp),
-                        LastInstanceIdPerTypeString = state.LastInstanceIdPerTypeString.SetItem(typeString, lastInstanceId + 1)
+                        ActorByUniqueId = state.ActorByUniqueId.Add(activation.UniqueId, new ActorEntry(actor, activation)),
+                        LastInstanceIdPerTypeString = state.LastInstanceIdPerTypeString.SetItem(typeString, lastInstanceId + 1),
+                        LastCreatedActor = actor
                     };
                 case DeactivateActorEvent deactivation:
-                    if (!state.ActorByUniqueId.TryGetValue(deactivation.UniqueId, out var actorToDeactivate))
+                    if (!state.ActorByUniqueId.TryGetValue(deactivation.UniqueId, out var entryToDeactivate))
                     {
-                        throw new KeyNotFoundException($"Failed to deactivate actor '{deactivation.UniqueId}': no such actor");
+                        throw new ActorNotFoundException($"Failed to deactivate actor '{deactivation.UniqueId}': no such actor");
                     }
-                    if (actorToDeactivate is IDisposable disposable)
+                    // ReSharper disable once SuspiciousTypeConversion.Global
+                    if (entryToDeactivate.Actor is IDisposable disposable)
                     {
                         disposable.Dispose();
                     }
                     return state with {
                         ActorByUniqueId = state.ActorByUniqueId.Remove(deactivation.UniqueId)
                     };
+                case ClearLastCreatedActorEvent:
+                    return state with {
+                        LastCreatedActor = null
+                    };
                 default:
                     return state;
             }
         }
 
-        private IStatefulActor ActivateActor(IStateEvent @event, out string typeString)
+        private IStatefulActor ActivateActor(IActivationStateEvent @event, out string typeString)
         {
-            throw new NotImplementedException();
+            if (!_registrationByActivationEventType.TryGetValue(@event.GetType(), out var registration))
+            {
+                throw new ActorTypeNotFoundException($"Activation event of type '{@event.GetType().Name}' was not registered");
+            }
+
+            typeString = registration.TypeString;
+            return registration.Factory(@event);
         }
 
         private static SupervisorState CreateInitialState()
         {
             return new SupervisorState(
-                ActorByUniqueId: ImmutableDictionary<string, IStatefulActor>.Empty,
-                LastInstanceIdPerTypeString: ImmutableDictionary<string, ulong>.Empty
+                ActorByUniqueId: ImmutableDictionary<string, ActorEntry>.Empty,
+                LastInstanceIdPerTypeString: ImmutableDictionary<string, ulong>.Empty,
+                LastCreatedActor: null
             );
         }
     }

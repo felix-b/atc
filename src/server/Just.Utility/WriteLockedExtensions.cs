@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Zero.Latency.Servers
+namespace Just.Utility
 {
     public static class WriteLockedExtensions
     {

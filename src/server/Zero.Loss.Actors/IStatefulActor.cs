@@ -1,7 +1,12 @@
+using System;
+using System.Globalization;
+using System.IO;
+
 namespace Zero.Loss.Actors
 {
     public interface IStatefulActor
     {
+        string GetTypeString();
         object GetState();
         object Reduce(object state, IStateEvent @event);
         void SetState(object newState);

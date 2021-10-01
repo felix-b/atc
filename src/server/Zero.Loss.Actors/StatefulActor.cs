@@ -3,11 +3,13 @@ namespace Zero.Loss.Actors
     public abstract class StatefulActor<TState> : IStatefulActor
         where TState : class
     {
+        private readonly string _typeString;
         private readonly string _uniqueId;
         private TState _state;
 
-        protected StatefulActor(string uniqueId, TState initialState)
+        protected StatefulActor(string typeString, string uniqueId, TState initialState)
         {
+            _typeString = typeString;
             _uniqueId = uniqueId;
             _state = initialState;
         }
@@ -32,7 +34,10 @@ namespace Zero.Loss.Actors
             ObserveChanges((TState)oldState, (TState)newState);
         }
 
+        string IStatefulActor.GetTypeString() => _typeString;
+        
         public string UniqueId => _uniqueId;
+
 
         protected abstract TState Reduce(TState state, IStateEvent @event);
 
