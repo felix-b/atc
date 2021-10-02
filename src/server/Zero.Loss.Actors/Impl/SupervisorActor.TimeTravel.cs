@@ -19,6 +19,7 @@ namespace Zero.Loss.Actors.Impl
             SupervisorState RebuildSupervisorState()
             {
                 var actorByIdBuilder = ImmutableDictionary.CreateBuilder<string, ActorEntry>();
+                actorByIdBuilder.Add(UniqueId, State.ActorByUniqueId[UniqueId]);
                 
                 foreach (var snapshotEntry in data.ActorEntries)
                 {
@@ -77,6 +78,7 @@ namespace Zero.Loss.Actors.Impl
         {
             var actorEntries = State.ActorByUniqueId
                 .Values
+                .Where(entry => entry.Actor != this)
                 .Select(entry => {
                     var actor = entry.Actor;
                     return new SnapshotDataActorEntry(
@@ -94,100 +96,6 @@ namespace Zero.Loss.Actors.Impl
                 _stateStore.NextSequenceNo, 
                 opaqueData);
         }
-
-        #if false
-        public bool MatchSnapshot(ActorStateSnapshot snapshot, List<string> mismatches)
-        {
-            mismatches.Clear();
-
-            if (_stateStore.NextSequenceNo != snapshot.NextSequenceNo)
-            {
-                mismatches.Add($"NextSequenceNo: store has {_stateStore.NextSequenceNo}, snapshot has {snapshot.NextSequenceNo}");
-            }
-
-            SnapshotData data = (SnapshotData) snapshot.Opaque;
-
-            MatchLastInstanceIdPerTypeString();
-            MatchActorsAndState();
-
-            return (mismatches.Count == 0);
-
-            void MatchActorsAndState()
-            {
-                var snapshotActorIds = new HashSet<string>();
-                
-                foreach (var snapshotEntry in data.ActorEntries)
-                {
-                    snapshotActorIds.Add(snapshotEntry.UniqueId);
-                    
-                    if (State.ActorByUniqueId.TryGetValue(snapshotEntry.UniqueId, out var actorEntry))
-                    {
-                        MatchImmutableObjects(
-                            $"Actor '{snapshotEntry.UniqueId}' state", 
-                            snapshotEntry.State,
-                            actorEntry.Actor.GetState());
-                        MatchImmutableObjects(
-                            $"Actor '{snapshotEntry.UniqueId}' activation event", 
-                            snapshotEntry.ActivationEvent,
-                            actorEntry.ActivationEvent);
-                    }
-                    else
-                    {
-                        mismatches.Add($"Actor '{snapshotEntry.UniqueId}' missing in supervisor");
-                    }
-                }
-
-                foreach (var unexpectedId in State.ActorByUniqueId.Keys.Where(id => !snapshotActorIds.Contains(id)))
-                {
-                    mismatches.Add($"Unexpected actor in supervisor: '{unexpectedId}'");
-                }
-            }
-            
-            void MatchLastInstanceIdPerTypeString()
-            {
-                foreach (var typeIdPair in data.LastInstanceIdPerTypeString)
-                {
-                    if (State.LastInstanceIdPerTypeString.TryGetValue(typeIdPair.Key, out var value))
-                    {
-                        if (value != typeIdPair.Value)
-                        {
-                            mismatches.Add(
-                                $"LastInstanceIdPerTypeString[{typeIdPair.Key}]: supervisor has {value}, snapshot has {typeIdPair.Value}");
-                        }
-                    }
-                    else
-                    {
-                        mismatches.Add($"LastInstanceIdPerTypeString[{typeIdPair.Key}]: entry missing in supervisor");
-                    }
-                }
-
-                foreach (var unexpectedKey in State.LastInstanceIdPerTypeString.Keys.Where(
-                    key => !data.LastInstanceIdPerTypeString.ContainsKey(key)))
-                {
-                    mismatches.Add($"LastInstanceIdPerTypeString[{unexpectedKey}]: unexpected entry in supervisor");
-                }
-            }
-
-            void MatchImmutableObjects(string name, string path, object? expected, object? actual)
-            {
-                if (expected == null || actual == null)
-                {
-                    if ((actual == null) != (expected == null))
-                    {
-                        mismatches.Add(
-                            $"{name} at {path}: expected {(expected == null ? "null" : "not-null")}, actual {(actual == null ? "null" : "not-null")}");
-                    }
-                    return;
-                }
-
-                if (actual.GetType() != expected.GetType())
-                {
-                    mismatches.Add(
-                        $"{name}: expected '', found ''");
-                }
-            }
-        }
-        #endif
 
         public ISupervisorActorTimeTravel TimeTravel => this;
 
