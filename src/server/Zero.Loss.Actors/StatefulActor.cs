@@ -38,8 +38,7 @@ namespace Zero.Loss.Actors
         
         public string UniqueId => _uniqueId;
 
-
-        protected abstract TState Reduce(TState state, IStateEvent @event);
+        protected abstract TState Reduce(TState stateBefore, IStateEvent @event);
 
         protected virtual void ObserveChanges(TState oldState, TState newState)
         {

@@ -56,23 +56,23 @@ namespace Zero.Loss.Actors.Impl
                 .Select(actor => new ActorRef<TActor>(this, actor.UniqueId));
         }
         
-        protected override SupervisorState Reduce(SupervisorState state, IStateEvent @event)
+        protected override SupervisorState Reduce(SupervisorState stateBefore, IStateEvent @event)
         {
             switch (@event)
             {
                 case IActivationStateEvent activation:
                     var actor = ActivateActor(activation, out var typeString);
-                    if (!state.LastInstanceIdPerTypeString.TryGetValue(typeString, out var lastInstanceId))
+                    if (!stateBefore.LastInstanceIdPerTypeString.TryGetValue(typeString, out var lastInstanceId))
                     {
                         lastInstanceId = 0;
                     }
-                    return state with {
-                        ActorByUniqueId = state.ActorByUniqueId.Add(activation.UniqueId, new ActorEntry(actor, activation)),
-                        LastInstanceIdPerTypeString = state.LastInstanceIdPerTypeString.SetItem(typeString, lastInstanceId + 1),
+                    return stateBefore with {
+                        ActorByUniqueId = stateBefore.ActorByUniqueId.Add(activation.UniqueId, new ActorEntry(actor, activation)),
+                        LastInstanceIdPerTypeString = stateBefore.LastInstanceIdPerTypeString.SetItem(typeString, lastInstanceId + 1),
                         LastCreatedActor = actor
                     };
                 case DeactivateActorEvent deactivation:
-                    if (!state.ActorByUniqueId.TryGetValue(deactivation.UniqueId, out var entryToDeactivate))
+                    if (!stateBefore.ActorByUniqueId.TryGetValue(deactivation.UniqueId, out var entryToDeactivate))
                     {
                         throw new ActorNotFoundException($"Failed to deactivate actor '{deactivation.UniqueId}': no such actor");
                     }
@@ -81,15 +81,15 @@ namespace Zero.Loss.Actors.Impl
                     {
                         disposable.Dispose();
                     }
-                    return state with {
-                        ActorByUniqueId = state.ActorByUniqueId.Remove(deactivation.UniqueId)
+                    return stateBefore with {
+                        ActorByUniqueId = stateBefore.ActorByUniqueId.Remove(deactivation.UniqueId)
                     };
                 case ClearLastCreatedActorEvent:
-                    return state with {
+                    return stateBefore with {
                         LastCreatedActor = null
                     };
                 default:
-                    return state;
+                    return stateBefore;
             }
         }
 

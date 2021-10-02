@@ -8,7 +8,10 @@ namespace Zero.Loss.Actors
     {
         ActorRef<TActor> CreateActor<TActor>(ActivationEventFactory<IActivationStateEvent<TActor>> activationEventFactory)
             where TActor : class, IStatefulActor;
-        
+
+        void DeleteActor<TActor>(ActorRef<TActor> actor)
+            where TActor : class, IStatefulActor;
+
         bool TryGetActorById<TActor>(string uniqueId, out ActorRef<TActor>? actor)
             where TActor : class, IStatefulActor;
 

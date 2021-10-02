@@ -7,6 +7,10 @@ namespace Zero.Loss.Actors.Tests
     {
         private readonly Dictionary<Type, Delegate> _factoryByType = new();
 
+        public SimpleDependencyContext()
+        {
+        }
+
         public SimpleDependencyContext WithTransient<T>(Func<T> factory) where T : class
         {
             _factoryByType.Add(typeof(T), factory);
@@ -34,6 +38,11 @@ namespace Zero.Loss.Actors.Tests
         public static SimpleDependencyContext NewEmpty()
         {
             return new SimpleDependencyContext();
+        }
+
+        public static SimpleDependencyContext NewWithStore(IStateStore store)
+        {
+            return new SimpleDependencyContext().WithSingleton<IStateStore>(store);
         }
     }
 }

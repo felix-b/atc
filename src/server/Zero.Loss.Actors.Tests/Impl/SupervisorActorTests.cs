@@ -19,7 +19,7 @@ namespace Zero.Loss.Actors.Tests.Impl
             var supervisor = new SupervisorActor(store, dependencies);
             supervisor.RegisterActorType<ParentActor, ParentActor.ActivationEvent>(
                 ParentActor.TypeString, 
-                (e, ctx) => new ParentActor(e));
+                (e, ctx) => new ParentActor(e, store));
 
             var actor = supervisor.CreateActor(id => new ParentActor.ActivationEvent(id, "ABC"));
 
@@ -32,7 +32,7 @@ namespace Zero.Loss.Actors.Tests.Impl
         public void CanCreateMultipleActors()
         {
             var store = new StateStore(new NoopStateStoreLogger());
-            var dependencies = SimpleDependencyContext.NewEmpty();
+            var dependencies = SimpleDependencyContext.NewWithStore(store);
 
             var supervisor = new SupervisorActor(store, dependencies);
             ParentActor.RegisterType(supervisor);
@@ -57,10 +57,29 @@ namespace Zero.Loss.Actors.Tests.Impl
         }
 
         [Test]
+        public void CanDeleteActor()
+        {
+            var store = new StateStore(new NoopStateStoreLogger());
+            var dependencies = SimpleDependencyContext.NewWithStore(store);
+
+            var supervisor = new SupervisorActor(store, dependencies);
+            ParentActor.RegisterType(supervisor);
+
+            var parent1 = ParentActor.Create(supervisor, "ABC");
+            var parent2 = ParentActor.Create(supervisor, "DEF");
+
+            supervisor.DeleteActor(parent1);
+
+            Assert.Throws<ActorNotFoundException>(() => parent1.Get());
+            
+            supervisor.GetAllActorsOfType<ParentActor>().Should().BeEquivalentTo(new[] {parent2});
+        }
+
+        [Test]
         public void CanLookupActorByUniqueId()
         {
             var store = new StateStore(new NoopStateStoreLogger());
-            var dependencies = SimpleDependencyContext.NewEmpty();
+            var dependencies = SimpleDependencyContext.NewWithStore(store);
 
             var supervisor = new SupervisorActor(store, dependencies);
             ParentActor.RegisterType(supervisor);
@@ -81,7 +100,7 @@ namespace Zero.Loss.Actors.Tests.Impl
         public void CanGetAllActorsOfType()
         {
             var store = new StateStore(new NoopStateStoreLogger());
-            var dependencies = SimpleDependencyContext.NewEmpty();
+            var dependencies = SimpleDependencyContext.NewWithStore(store);
 
             var supervisor = new SupervisorActor(store, dependencies);
             ParentActor.RegisterType(supervisor);

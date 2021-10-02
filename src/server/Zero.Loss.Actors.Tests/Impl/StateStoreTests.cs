@@ -131,16 +131,16 @@ namespace Zero.Loss.Actors.Tests.Impl
             
             public Action<MyState, MyState> Observer { get; set; }
 
-            protected override MyState Reduce(MyState state, IStateEvent @event)
+            protected override MyState Reduce(MyState stateBefore, IStateEvent @event)
             {
                 switch (@event)
                 {
                     case ChangeValueAEvent changeA:
-                        return state with {ValueA = changeA.NewValueA};
+                        return stateBefore with {ValueA = changeA.NewValueA};
                     case ChangeValueBEvent changeB:
-                        return state with {ValueB = changeB.NewValueB};
+                        return stateBefore with {ValueB = changeB.NewValueB};
                     default:
-                        return state;
+                        return stateBefore;
                 }
             }
 

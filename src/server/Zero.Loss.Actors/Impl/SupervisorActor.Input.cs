@@ -45,6 +45,23 @@ namespace Zero.Loss.Actors.Impl
             return new ActorRef<TActor>(this, actor.UniqueId);
         }
 
+        public void DeleteActor<TActor>(ActorRef<TActor> actor)
+            where TActor : class, IStatefulActor
+        {
+            if (!State.ActorByUniqueId.TryGetValue(actor.UniqueId, out var actorEntry))
+            {
+                throw new ActorNotFoundException($"Actor '{actor.UniqueId}' not found");
+            }
+
+            if (!(actorEntry.Actor is TActor))
+            {
+                throw new ActorTypeMismatchException(
+                    $"Expected actor '{actor.UniqueId}' to be '{typeof(TActor).Name}', but found '{actorEntry.Actor.GetType().Name}'");
+            }
+            
+            _stateStore.Dispatch(this, new DeactivateActorEvent(actor.UniqueId));
+        }
+
         public void RegisterActorType<TActor, TActivationEvent>(string type, ActorFactoryCallback<TActor, TActivationEvent> factory) 
             where TActor : class, IStatefulActor 
             where TActivationEvent : class, IActivationStateEvent

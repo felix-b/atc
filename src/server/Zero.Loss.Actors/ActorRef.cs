@@ -30,6 +30,11 @@ namespace Zero.Loss.Actors
             return _uniqueId.GetHashCode();
         }
 
+        public override string ToString()
+        {
+            return UniqueId;
+        }
+
         public T Get() => _supervisor.GetActorObjectByIdOrThrow<T>(_uniqueId);
         public string UniqueId => _uniqueId;
 
