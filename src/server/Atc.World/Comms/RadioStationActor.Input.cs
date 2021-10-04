@@ -5,52 +5,40 @@ using System.Runtime.CompilerServices;
 using Atc.Data.Primitives;
 using Atc.Math;
 using Atc.World.Abstractions;
-using Atc.World.Redux;
+using Zero.Loss.Actors;
 
 namespace Atc.World.Comms
 {
-    public partial class RuntimeRadioStation
+    public partial class RadioStationActor : StatefulActor<RadioStationActor.StationState>
     {
+        public static readonly string TypeString = "radio";
+        
+        private readonly ISupervisorActor _supervisor;
+        private readonly IStateStore _store;
         private readonly IWorldContext _world;
-        private readonly IRuntimeStateStore _store;
         private readonly ICommsLogger _logger;
-        private readonly Func<GeoPoint> _getLocation;
-        private readonly Func<Altitude> _getElevation;
         private readonly string _name;
         private readonly string _callsign;
-        private RuntimeRadioStation.RuntimeState _state; 
 
-        public RuntimeRadioStation(
+        public RadioStationActor(
+            ISupervisorActor supervisor,
+            IStateStore store,
             IWorldContext world,
-            IRuntimeStateStore store,
             ICommsLogger logger,
-            ulong stationId,
-            Func<GeoPoint> getLocation, 
-            Func<Altitude> getElevation, 
-            Frequency frequency, 
-            string name,
-            string callsign)
+            ActivationEvent activation)
+            : base(TypeString, activation.UniqueId, CreateInitialState(activation))
         {
-            _world = world;
+            _supervisor = supervisor;
             _store = store;
+            _world = world;
             _logger = logger;
-            _getLocation = getLocation;
-            _getElevation = getElevation;
-            _name = name;
-            _callsign = callsign;
-
-            _state = new RuntimeState(
-                stationId, 
-                frequency, 
-                PoweredOn: false,
-                Aether: null,
-                IncomingTransmissions: ImmutableArray<TransmissionState>.Empty, 
-                OutgoingTransmission: null);
+            _name = activation.Name;
+            _callsign = activation.Callsign;
         }
 
         public void PowerOn()
         {
-            if (_state.PoweredOn)
+            if (State.PoweredOn)
             {
                 return;
             }
@@ -58,66 +46,69 @@ namespace Atc.World.Comms
             _logger.StationPoweringOn(station: ToString());
             
             _store.Dispatch(this, new PoweredOnEvent());
-            TuneTo(_state.Frequency);
+            TuneTo(State.Frequency);
         }
 
         public void PowerOff()
         {
-            if (!_state.PoweredOn)
+            if (!State.PoweredOn)
             {
                 return;
             }
             
-            _state.Aether?.RemoveStation(this);
+            var thisRef = this.GetRef(_supervisor);
+            State.Aether?.Get().RemoveStation(thisRef);
+
             _store.Dispatch(this, new PoweredOffEvent());
         }
         
         public void TuneTo(Frequency frequency)
         {
-            if (!_state.PoweredOn)
+            if (!State.PoweredOn)
             {
                 _store.Dispatch(this, new FrequencySwitchedEvent(frequency, Aether: null));
                 return;
             }
             
             _logger.StationTuningTo(station: ToString(), khz: frequency.Khz);
+            var thisRef = this.GetRef(_supervisor);
+            
+            var oldAether = State.Aether;
+            oldAether?.Get().RemoveStation(thisRef);
 
-            var oldAether = _state.Aether;
-            oldAether?.RemoveStation(this);
-
-            var newAether = _world.TryFindRadioAether(this);
+            var newAether = _world.TryFindRadioAether(thisRef);
             _store.Dispatch(this, new FrequencySwitchedEvent(frequency, newAether));
-            newAether?.AddStation(this);
+            newAether?.Get().AddStation(thisRef);
         }
 
         public void CheckReachableAether()
         {
-            if (!_state.PoweredOn)
+            if (!State.PoweredOn)
             {
                 return;
             }
 
-            var frequency = _state.Frequency;
+            var frequency = State.Frequency;
+            var thisRef = this.GetRef(_supervisor);
             
-            if (_state.Aether != null && !_state.Aether.IsReachableBy(this))
+            if (State.Aether != null && !State.Aether.Value.Get().IsReachableBy(thisRef))
             {
-                _state.Aether.RemoveStation(this);
+                State.Aether.Value.Get().RemoveStation(thisRef);
                 _store.Dispatch(this, new FrequencySwitchedEvent(frequency, Aether: null));
             }
 
-            if (_state.Aether == null)
+            if (State.Aether == null)
             {
-                var newAether = _world.TryFindRadioAether(this);
+                var newAether = _world.TryFindRadioAether(thisRef);
                 if (newAether != null)
                 {
                     _store.Dispatch(this, new FrequencySwitchedEvent(frequency, newAether));
-                    newAether.AddStation(this);
+                    newAether.Value.Get().AddStation(thisRef);
                 }
             }
         }
 
-        public void AIRegisterForTransmission<TState>(IHaveRuntimeState<TState> speaker, int cookie)
-            where TState : class
+        public void AIRegisterForTransmission(ActorRef<IStatefulActor> speaker, int cookie)
         {
             GetAetherOrThrow().RegisterForTransmission(speaker, cookie);
         }
@@ -127,62 +118,67 @@ namespace Atc.World.Comms
             var aether = GetAetherOrThrow();
             
             var transmission = new TransmissionState(
-                _state.StationId,
                 aether.TakeNextTransmissionId(),
+                UniqueId,
                 _world.UtcNow(),
                 wave);
 
             _store.Dispatch(this, new StartedTransmittingEvent(transmission));
-            aether.OnTransmissionStarted(this, transmission);
+
+            var thisRef = this.GetRef(_supervisor);
+            aether.OnTransmissionStarted(thisRef, transmission);
         }
 
         public void AbortTransmission()
         {
-            var transmission = _state.OutgoingTransmission;
+            var transmission = State.OutgoingTransmission;
             _store.Dispatch(this, new StoppedTransmittingEvent());
             
             if (transmission != null)
             {
-                GetAetherOrThrow().OnTransmissionAborted(this, transmission);
+                var thisRef = this.GetRef(_supervisor);
+                GetAetherOrThrow().OnTransmissionAborted(thisRef, transmission);
             }
         }
 
         public void CompleteTransmission(Intent intent)
         {
-            var transmission = _state.OutgoingTransmission 
+            var transmission = State.OutgoingTransmission 
                 ?? throw new InvalidOperationException("No outgoing transmission");
             
             _store.Dispatch(this, new StoppedTransmittingEvent());
-            GetAetherOrThrow().OnTransmissionCompleted(this, transmission, intent);
+
+            var thisRef = this.GetRef(_supervisor);
+            GetAetherOrThrow().OnTransmissionCompleted(thisRef, transmission, intent);
         }
 
         public void BeginReceivingTransmission(TransmissionState transmission)
         {
             //var waveDuration = _speechPlayer.Format.GetWaveDuration(wave.Length);
             //var transmission = new TransmissionState(transmittingStationId, transmissionId, startedAtUtc, waveDuration, wave);
-            _store.Dispatch(new StartedReceivingTransmissionEvent(transmission));
+            _store.Dispatch(this, new StartedReceivingTransmissionEvent(transmission));
         }
 
         public void AbortReceivingTransmission(ulong id)
         {
-            _store.Dispatch(new StoppedReceivingTransmissionEvent(id));
+            _store.Dispatch(this, new StoppedReceivingTransmissionEvent(id));
         }
 
         public void AbortReceivingAllTransmissions()
         {
-            _store.Dispatch(new StoppedReceivingTransmissionEvent(TransmissionId: null));
+            _store.Dispatch(this, new StoppedReceivingTransmissionEvent(TransmissionId: null));
         }
 
         public void CompleteReceivingTransmission(ulong id, Intent intent)
         {
-            var transmission = _state.IncomingTransmissions.FirstOrDefault(t => t.Id == id)
+            var transmission = State.IncomingTransmissions.FirstOrDefault(t => t.Id == id)
                 ?? throw new InvalidOperationException("Did not start receiving specified transmission");
             
-            _store.Dispatch(new StoppedReceivingTransmissionEvent(id));
+            _store.Dispatch(this, new StoppedReceivingTransmissionEvent(id));
             IntentReceived?.Invoke(this, transmission, intent);
         }
         
-        public bool IsReachableBy(RuntimeRadioStation other)
+        public bool IsReachableBy(RadioStationActor other)
         {
             // assuming VHF band - check line of sight
             var maxRangeNm = (System.Math.Sqrt(Elevation.Feet) + System.Math.Sqrt(other.Elevation.Feet)) * 1.225;
@@ -193,26 +189,26 @@ namespace Atc.World.Comms
 
         public bool IsPoweredOn()
         {
-            return _state.PoweredOn;
+            return State.PoweredOn;
         }
 
         public bool IsTransmitting(out TransmissionState? transmission)
         {
-            transmission = _state.OutgoingTransmission; 
+            transmission = State.OutgoingTransmission; 
             return transmission != null;
         }
 
         public TransceiverStatus GetStatus()
         {
-            if (_state.IncomingTransmissions.Length > 0)
+            if (State.IncomingTransmissions.Length > 0)
             {
-                return _state.IncomingTransmissions.Length == 1 && _state.OutgoingTransmission == null
+                return State.IncomingTransmissions.Length == 1 && State.OutgoingTransmission == null
                     ? TransceiverStatus.ReceivingSingleTransmission
                     : TransceiverStatus.ReceivingMutualCancellation;
             }
             else
             {
-                return _state.OutgoingTransmission != null
+                return State.OutgoingTransmission != null
                     ? TransceiverStatus.Transmitting
                     : TransceiverStatus.Silence;
             }
@@ -223,20 +219,36 @@ namespace Atc.World.Comms
             return $"{Frequency.Khz}|{Name}";
         }
 
-        public ulong Id => _state.StationId;
         public string Name => _name;
-        public Frequency Frequency => _state.Frequency;
-        public GeoPoint Location => _getLocation();
-        public Altitude Elevation => _getElevation();
         public string Callsign => _callsign;
+        public Frequency Frequency => State.Frequency;
+        public GeoPoint Location => State.LocationGetter();
+        public Altitude Elevation => State.ElevationGetter();
 
-        public event Action<RuntimeRadioStation, TransmissionState, Intent>? IntentReceived;
+        public event Action<RadioStationActor, TransmissionState, Intent>? IntentReceived;
 
-        private GroundRadioStationAether GetAetherOrThrow()
+        private GroundRadioStationAetherActor GetAetherOrThrow()
         {
             return 
-                _state.Aether 
+                State.Aether?.Get() 
                 ?? throw new InvalidOperationException("No reachable ground station on current frequency");
+        }
+
+        public static ActorRef<RadioStationActor> Create(
+            ISupervisorActor supervisor,
+            GeoPoint location, 
+            Altitude elevation,
+            Frequency frequency, 
+            string name, 
+            string callsign)
+        {
+            return supervisor.CreateActor<RadioStationActor>(uniqueId => new ActivationEvent(uniqueId,
+                location,
+                elevation,
+                frequency,
+                Name: name,
+                Callsign: callsign
+            ));
         }
         
         public enum TransceiverStatus

@@ -13,12 +13,12 @@ namespace Atc.World
         private readonly object _syncRoot = new();
         private readonly TimeSpan _interval;
         private readonly IServiceTaskSynchronizer _synchronizer;
-        private readonly RuntimeWorld _target;
+        private readonly WorldActor _target;
         private TimeSpan _startTimestamp = TimeSpan.Zero;
         private Task? _task = null;
         private CancellationTokenSource? _stopping = null;
 
-        public RuntimeClock(TimeSpan interval, IServiceTaskSynchronizer synchronizer, RuntimeWorld target)
+        public RuntimeClock(TimeSpan interval, IServiceTaskSynchronizer synchronizer, WorldActor target)
         {
             _interval = interval;
             _synchronizer = synchronizer;

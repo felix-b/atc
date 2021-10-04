@@ -13,11 +13,11 @@ namespace Atc.Server
 {
     public partial class WorldService
     {
-        private readonly RuntimeWorld _world;
+        private readonly WorldActor _world;
         private readonly ILogger _logger;
         private readonly TempMockLlhzRadio _tempMockRadio;//TODO: temporary; remove
 
-        public WorldService(RuntimeWorld world, ILogger logger, TempMockLlhzRadio tempMockRadio)
+        public WorldService(WorldActor world, ILogger logger, TempMockLlhzRadio tempMockRadio)
         {
             _world = world;
             _logger = logger;
@@ -73,7 +73,7 @@ namespace Atc.Server
                 request.MaxLat,
                 request.MinLon);
 
-            void ObserveTrafficQuery(in QueryObservation<RuntimeAircraft> observation)
+            void ObserveTrafficQuery(in QueryObservation<AircraftActor> observation)
             {
                 if (!connection.IsActive)
                 {
@@ -92,7 +92,7 @@ namespace Atc.Server
                 }
             }
 
-            static ServerToClient CreateReplyMessage(ClientToServer incoming, IObservableQuery<RuntimeAircraft> query)
+            static ServerToClient CreateReplyMessage(ClientToServer incoming, IObservableQuery<AircraftActor> query)
             {
                 var request = incoming.query_traffic;
                 var results = query.GetResults();
@@ -173,7 +173,7 @@ namespace Atc.Server
         }
 
         private int PushAircraftAddedNotifications(
-            IEnumerable<RuntimeAircraft> allAddedAircraft,
+            IEnumerable<AircraftActor> allAddedAircraft,
             IDeferredConnectionContext<ServerToClient> connection,
             ulong replyToMessageId)
         {
@@ -194,7 +194,7 @@ namespace Atc.Server
         }
 
         private int PushAircraftUpdatedNotifications(
-            IEnumerable<RuntimeAircraft> allUpdatedAircraft,
+            IEnumerable<AircraftActor> allUpdatedAircraft,
             IDeferredConnectionContext<ServerToClient> connection,
             ulong replyToMessageId)
         {
@@ -217,7 +217,7 @@ namespace Atc.Server
         }
 
         private int PushAircraftRemovedNotifications(
-            IEnumerable<RuntimeAircraft> allRemovedAircraft,
+            IEnumerable<AircraftActor> allRemovedAircraft,
             IDeferredConnectionContext<ServerToClient> connection,
             ulong replyToMessageId)
         {
@@ -237,9 +237,8 @@ namespace Atc.Server
             return count;
         }
 
-        private static AircraftMessage CreateAircraftMessage(RuntimeAircraft aircraft)
+        private static AircraftMessage CreateAircraftMessage(AircraftActor aircraft)
         {
-            var state = aircraft.GetState();
             return new AircraftMessage() {
                 Id = aircraft.Id,
                 AirlineIcao = aircraft.AirlineData?.Get().Icao.Value,
@@ -249,19 +248,18 @@ namespace Atc.Server
             };
         }
         
-        private static AircraftMessage.Situation CreateSituationMessage(RuntimeAircraft aircraft)
+        private static AircraftMessage.Situation CreateSituationMessage(AircraftActor aircraft)
         {
-            var state = aircraft.GetState();
             return new AircraftMessage.Situation() {
                 Location = new() {
-                    Lat = state.Location.Lat,
-                    Lon = state.Location.Lon
+                    Lat = aircraft.Location.Lat,
+                    Lon = aircraft.Location.Lon
                 },
-                AltitudeFeetMsl = state.Altitude.Feet,
-                Heading = state.Heading.Degrees,
-                GroundSpeedKt = state.GroundSpeed.Knots,
-                Pitch = state.Pitch.Degrees,
-                Roll = state.Roll.Degrees,
+                AltitudeFeetMsl = aircraft.Altitude.Feet,
+                Heading = aircraft.Heading.Degrees,
+                GroundSpeedKt = aircraft.GroundSpeed.Knots,
+                Pitch = aircraft.Pitch.Degrees,
+                Roll = aircraft.Roll.Degrees,
                 //TODO: add more
             };
         }

@@ -5,30 +5,31 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atc.Data.Primitives;
 using Zero.Latency.Servers;
+using Zero.Loss.Actors;
 
 namespace Atc.World
 {
-    public partial class RuntimeWorld
+    public partial class WorldActor
     {
-        public class TrafficObservableQuery : IObservableQuery<RuntimeAircraft>
+        public class TrafficObservableQuery : IObservableQuery<AircraftActor>
         {
-            private readonly RuntimeWorld _target;
+            private readonly WorldActor _target;
             private readonly Observer _observer;
 
-            public TrafficObservableQuery(RuntimeWorld target, GeoRect rect)
+            public TrafficObservableQuery(WorldActor target, GeoRect rect)
             {
                 _target = target;
                 _observer = new(target, rect, name: $"Traffic#{TakeNextObserverId()}");
             }
 
-            public IObserverSubscription Subscribe(QueryObserver<RuntimeAircraft> callback)
+            public IObserverSubscription Subscribe(QueryObserver<AircraftActor> callback)
             {
                 _observer.Callback = callback;
                 _target.RegisterObserver(_observer);
                 return _observer;
             }
 
-            public IEnumerable<RuntimeAircraft> GetResults()
+            public IEnumerable<AircraftActor> GetResults()
             {
                 return _observer.Run().Keys;
             }
@@ -42,12 +43,12 @@ namespace Atc.World
             
             private class Observer : IWorldObserver, IObserverSubscription
             {
-                private RuntimeWorld _target;
+                private WorldActor _target;
                 private readonly GeoRect _rect;
                 private readonly string _name;
-                private Dictionary<RuntimeAircraft, int>? _lastResult;
+                private Dictionary<AircraftActor, int>? _lastResult;
 
-                public Observer(RuntimeWorld target, GeoRect rect, string name)
+                public Observer(WorldActor target, GeoRect rect, string name)
                 {
                     _target = target;
                     _rect = rect;
@@ -64,13 +65,14 @@ namespace Atc.World
                     return ValueTask.CompletedTask;
                 }
 
-                public Dictionary<RuntimeAircraft, int> Run()
+                public Dictionary<AircraftActor, int> Run()
                 {
-                    var result = _target._state.AircraftById.Values
+                    var result = _target.State.AircraftById.Values
+                        .Select<ActorRef<AircraftActor>, AircraftActor>(r => r.Get())
                         .Where(IsAircraftInRect)
                         .ToDictionary(
                             ac => ac, 
-                            ac => ac.GetState().Version
+                            ac => ac.StateVersion
                         );
 
                     if (_lastResult is null)
@@ -95,11 +97,11 @@ namespace Atc.World
                     CreateObservation(out var observation);
                     Callback(in observation);
 
-                    void CreateObservation(out QueryObservation<RuntimeAircraft> newObservation)
+                    void CreateObservation(out QueryObservation<AircraftActor> newObservation)
                     {
-                        HashSet<RuntimeAircraft> added = new();
-                        HashSet<RuntimeAircraft> updated = new();
-                        HashSet<RuntimeAircraft> removed = new();
+                        HashSet<AircraftActor> added = new();
+                        HashSet<AircraftActor> updated = new();
+                        HashSet<AircraftActor> removed = new();
 
                         if (prevResult != null)
                         {
@@ -107,7 +109,7 @@ namespace Atc.World
                             CheckRemoved();
                         }
 
-                        newObservation = new QueryObservation<RuntimeAircraft>(added, updated, removed);
+                        newObservation = new QueryObservation<AircraftActor>(added, updated, removed);
 
                         void CheckAddedAndUpdated()
                         {
@@ -145,11 +147,11 @@ namespace Atc.World
 
                 public string Name => _name;
                 
-                public QueryObserver<RuntimeAircraft>? Callback { get; set; }
+                public QueryObserver<AircraftActor>? Callback { get; set; }
                 
-                private bool IsAircraftInRect(RuntimeAircraft aircraft)
+                private bool IsAircraftInRect(AircraftActor aircraft)
                 {
-                    var location = aircraft.GetState().Location;
+                    var location = aircraft.Location;
                     return (
                         location.Lat >= _rect.Min.Lat &&
                         location.Lon >= _rect.Min.Lon &&

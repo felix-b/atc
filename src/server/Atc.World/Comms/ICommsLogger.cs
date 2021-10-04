@@ -1,6 +1,4 @@
-﻿using Atc.World.Redux;
-
-namespace Atc.World.Comms
+﻿namespace Atc.World.Comms
 {
     public interface ICommsLogger
     {

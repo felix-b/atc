@@ -55,7 +55,14 @@ namespace Zero.Loss.Actors.Impl
                 .OfType<TActor>()
                 .Select(actor => new ActorRef<TActor>(this, actor.UniqueId));
         }
-        
+
+
+        public ActorRef<TActor> GetRefToActorInstance<TActor>(TActor actorInstance)
+            where TActor : class, IStatefulActor
+        {
+            return new ActorRef<TActor>(this, actorInstance.UniqueId);
+        }
+
         protected override SupervisorState Reduce(SupervisorState stateBefore, IStateEvent @event)
         {
             switch (@event)

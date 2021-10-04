@@ -12,6 +12,7 @@
       <ProjectReference Include="..\Atc.Math\Atc.Math.csproj" />
       <ProjectReference Include="..\Atc.Speech.Abstractions\Atc.Speech.Abstractions.csproj" />
       <ProjectReference Include="..\Zero.Latency.Servers\Zero.Latency.Servers.csproj" />
+      <ProjectReference Include="..\Zero.Loss.Actors\Zero.Loss.Actors.csproj" />
       <ProjectReference Include="..\Zero.Serialization.Buffers\Zero.Serialization.Buffers.csproj" />
     </ItemGroup>
 

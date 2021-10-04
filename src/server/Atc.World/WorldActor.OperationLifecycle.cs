@@ -1,23 +1,16 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using Atc.Data;
-using Atc.Data.Primitives;
-using Atc.World.Redux;
 using Zero.Doubt.Logging;
-using Zero.Latency.Servers;
 
 namespace Atc.World
 {
-    public partial class RuntimeWorld
+    public partial class WorldActor
     {
         private struct OperationLifecycle : IDisposable
         {
-            private readonly RuntimeWorld _target;
+            private readonly WorldActor _target;
             private LogWriter.LogSpan _logSpan;
 
-            public OperationLifecycle(RuntimeWorld target, string originator)
+            public OperationLifecycle(WorldActor target, string originator)
             {
                 _target = target;
                 _logSpan = _target.Logger.StateOperationLifecycle(originator);

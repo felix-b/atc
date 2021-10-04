@@ -129,7 +129,7 @@ namespace Zero.Loss.Actors.Tests.Impl
             public string ValueA => State.ValueA;
             public string ValueB => State.ValueB;
             
-            public Action<MyState, MyState> Observer { get; set; }
+            public Action<MyState, MyState>? Observer { get; set; }
 
             protected override MyState Reduce(MyState stateBefore, IStateEvent @event)
             {

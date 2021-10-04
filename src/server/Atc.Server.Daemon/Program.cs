@@ -1,8 +1,7 @@
 ﻿using System;
+using System.ComponentModel;
 using System.IO;
-using System.Net.WebSockets;
 using System.Reflection;
-using System.Threading;
 using System.Threading.Tasks;
 using Atc.Data;
 using Atc.Data.Primitives;
@@ -13,21 +12,23 @@ using Atc.Speech.Abstractions;
 using Atc.Speech.WinLocalPlugin;
 using Atc.World;
 using Atc.World.Comms;
-using Atc.World.Redux;
 using Autofac;
 using Just.Cli;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Hosting;
 using Zero.Doubt.Logging;
 using Zero.Latency.Servers;
+using Zero.Loss.Actors;
+using Zero.Loss.Actors.Impl;
 using Zero.Serialization.Buffers;
 using Zero.Serialization.Buffers.Impl;
+using IContainer = Autofac.IContainer;
 
 [assembly:GenerateLogger(typeof(IAtcdLogger))]
 [assembly:GenerateLogger(typeof(IEndpointLogger))]
+[assembly:GenerateLogger(typeof(StateStore.ILogger))]
 [assembly:GenerateLogger(typeof(WorldService.ILogger))]
-[assembly:GenerateLogger(typeof(RuntimeWorld.ILogger))]
+[assembly:GenerateLogger(typeof(WorldActor.ILogger))]
 [assembly:GenerateLogger(typeof(ISoundSystemLogger))]
+[assembly:GenerateLogger(typeof(ICommsLogger))]
 
 namespace Atc.Server.Daemon
 {
@@ -142,33 +143,82 @@ namespace Atc.Server.Daemon
             builder.RegisterInstance(LogEngine.Writer).As<LogWriter>();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<IAtcdLogger>()).AsImplementedInterfaces();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<IEndpointLogger>()).AsImplementedInterfaces();
+            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<StateStore.ILogger>()).AsImplementedInterfaces();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<WorldService.ILogger>()).AsImplementedInterfaces();
-            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<RuntimeWorld.ILogger>()).AsImplementedInterfaces();
+            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<WorldActor.ILogger>()).AsImplementedInterfaces();
             builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<ISoundSystemLogger>()).AsImplementedInterfaces();
+            builder.RegisterType(ZLoggerFactory.GetGeneratedLoggerType<ICommsLogger>()).AsImplementedInterfaces();
 
-            builder.RegisterType<RuntimeStateStore>().As<IRuntimeStateStore>().SingleInstance();
-            builder.RegisterType<RuntimeWorld>()
-                .AsSelf()
-                .As<IWorldContext>()
-                .SingleInstance()
-                .WithParameter("startAtUtc", DateTime.UtcNow);
+            builder.RegisterType<AutofacActorDependencyContext>().As<IActorDependencyContext>().InstancePerDependency();
+            builder.RegisterType<StateStore>().As<IStateStore, IInternalStateStore>().SingleInstance();
+            builder.RegisterType<SupervisorActor>().As<ISupervisorActor, ISupervisorActorInit>().SingleInstance();
+            builder.Register(CreateWorld).As<WorldActor, IWorldContext>().SingleInstance();
             builder.RegisterType<WorldService>().SingleInstance();
-
-            builder.RegisterType<GroundRadioStationAether>().SingleInstance();
-            builder.RegisterType<RuntimeRadioStationFactory>().SingleInstance();
 
             builder.Register(c => _taskSynchronizer!).SingleInstance().As<IServiceTaskSynchronizer>();
             builder.RegisterType<RuntimeClock>().SingleInstance().WithParameter("interval", TimeSpan.FromSeconds(10));
-            
+
             LoadSpeechPlugins(builder);
 
             builder.RegisterType<AudioContextScope>().InstancePerDependency();
             builder.RegisterType<RadioSpeechPlayer>().SingleInstance();
             builder.RegisterType<TempMockLlhzRadio>().SingleInstance();
 
-            return builder.Build();
+            var container = builder.Build();
+            RegisterActorTypes(container.Resolve<ISupervisorActorInit>());
+
+            return container;
         }
 
+        private static void RegisterActorTypes(ISupervisorActorInit supervisor)
+        {
+            supervisor.RegisterActorType<WorldActor, WorldActor.WorldActivationEvent>(
+                WorldActor.TypeString, 
+                (activation, dependencies) => new WorldActor(
+                    dependencies.Resolve<IStateStore>(),
+                    dependencies.Resolve<WorldActor.ILogger>(),
+                    dependencies.Resolve<ISupervisorActor>(),
+                    activation
+                ));
+
+            supervisor.RegisterActorType<AircraftActor, AircraftActor.ActivationEvent>(
+                AircraftActor.TypeString, 
+                (activation, dependencies) => new AircraftActor(
+                    dependencies.Resolve<IWorldContext>(),
+                    dependencies.Resolve<IStateStore>(),
+                    activation
+                ));
+
+            supervisor.RegisterActorType<RadioStationActor, RadioStationActor.ActivationEvent>(
+                RadioStationActor.TypeString, 
+                (activation, dependencies) => new RadioStationActor(
+                    dependencies.Resolve<ISupervisorActor>(),
+                    dependencies.Resolve<IStateStore>(),
+                    dependencies.Resolve<IWorldContext>(),
+                    dependencies.Resolve<ICommsLogger>(),
+                    activation
+                ));
+
+            supervisor.RegisterActorType<GroundRadioStationAetherActor, GroundRadioStationAetherActor.ActivationEvent>(
+                RadioStationActor.TypeString, 
+                (activation, dependencies) => new GroundRadioStationAetherActor(
+                    dependencies.Resolve<IWorldContext>(),
+                    dependencies.Resolve<IStateStore>(),
+                    dependencies.Resolve<ICommsLogger>(),
+                    activation
+                ));
+        }
+        
+        private static WorldActor CreateWorld(IComponentContext components)
+        {
+            var supervisor = components.Resolve<ISupervisorActor>();
+            var worldRef = supervisor.CreateActor<WorldActor>(
+                uniqueId => new WorldActor.WorldActivationEvent(
+                    uniqueId, 
+                    DateTime.UtcNow));
+            return worldRef.Get();
+        }
+        
         private static void LoadSpeechPlugins(ContainerBuilder builder)
         {
             //TODO: load dynamically according to operating system
@@ -182,7 +232,7 @@ namespace Atc.Server.Daemon
             // var service = new WorldService(world, new WorldService.Logger(ConsoleLog.Writer));
 
             var service = container.Resolve<WorldService>();
-            var world = container.Resolve<RuntimeWorld>();
+            var world = container.Resolve<WorldActor>();
             var endpointLogger = container.Resolve<IEndpointLogger>();
             
             await using var endpoint = WebSocketEndpoint
@@ -229,7 +279,8 @@ namespace Atc.Server.Daemon
                         
                         _taskSynchronizer!.SubmitTask(() => {
                             // this callback runs on the Input thread
-                            world.AddNewAircraft(
+                            
+                            world.SpawnNewAircraft(
                                 "B738",
                                 $"N{location.Lat}{location.Lon}",
                                 callsign: null,  

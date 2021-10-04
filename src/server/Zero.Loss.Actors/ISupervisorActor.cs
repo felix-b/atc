@@ -18,6 +18,9 @@ namespace Zero.Loss.Actors
         IEnumerable<ActorRef<TActor>> GetAllActorsOfType<TActor>()
             where TActor : class, IStatefulActor;
         
+        ActorRef<TActor> GetRefToActorInstance<TActor>(TActor actorInstance)
+            where TActor : class, IStatefulActor;
+        
         ISupervisorActorTimeTravel TimeTravel { get; }
 
         public ActorRef<TActor> GetActorByIdOrThrow<TActor>(string uniqueId)

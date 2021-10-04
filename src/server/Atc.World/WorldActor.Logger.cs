@@ -8,14 +8,14 @@ using Zero.Latency.Servers;
 
 namespace Atc.World
 {
-    public partial class RuntimeWorld
+    public partial class WorldActor
     {
         public interface ILogger
         {
             void TrafficQueryObserverCreated(double minLat, double minLon, double maxLat, double maxLon);
             void TrafficQueryObserverDisposing(double minLat, double minLon, double maxLat, double maxLon);
             LogWriter.LogSpan ProgressBy(int deltaMs, int newTimestampMs, ulong newTickCount);
-            LogWriter.LogSpan ProgressByAircraft(uint aircraftId);
+            LogWriter.LogSpan ProgressByAircraft(string aircraftId);
             LogWriter.LogSpan StateOperationLifecycle(string originator);
             LogWriter.LogSpan ObserverCheckingForUpdates(string observerName);
             void RegisteringObserver(string observerName);
