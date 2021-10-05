@@ -8,7 +8,7 @@ namespace Atc.World
 {
     public interface IWorldContext
     {
-        ActorRef<GroundRadioStationAetherActor>? TryFindRadioAether(ActorRef<RadioStationActor> fromStationActor);
+        ActorRef<GroundRadioStationAetherActor>? TryFindRadioAether(ActorRef<RadioStationActor> fromStation);
 
         ActorRef<AircraftActor> SpawnNewAircraft(
             string typeIcao,

@@ -7,14 +7,15 @@ namespace Zero.Doubt.Logging
     {
         public static T CreateLogger<T>(LogWriter writer) where T : class
         {
-            var loggerType = GetGeneratedLoggerType<T>();
+            var loggerType = GetGeneratedLoggerType<T>(lookupAssembly: Assembly.GetCallingAssembly());
             return (T)Activator.CreateInstance(loggerType, new object[] { writer });
         }
 
-        public static Type GetGeneratedLoggerType<T>() where T : class
+        public static Type GetGeneratedLoggerType<T>(Assembly? lookupAssembly = null) where T : class
         {
+            var effectiveLookupAssembly = lookupAssembly ?? Assembly.GetCallingAssembly();
             var loggerTypeMetadataName = GetGeneratedLoggerTypeMetadataName<T>();
-            var loggerType = Assembly.GetCallingAssembly().GetType(loggerTypeMetadataName, throwOnError: true);
+            var loggerType = effectiveLookupAssembly.GetType(loggerTypeMetadataName, throwOnError: true);
             return loggerType;
         }
 

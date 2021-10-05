@@ -424,8 +424,19 @@ namespace Zero.Doubt.Logging
         {
             return Interlocked.Increment(ref _lastSpanId);
         }
-        
+
         private static readonly string _errorCodeKey = "ErrorCode";
+
+        public static readonly LogWriter Noop = CreateNoop();
+        
+        private static LogWriter CreateNoop()
+        {
+            var noopStream = new NoopLogStreamWriter();
+            return new LogWriter(
+                getLevel: () => LogLevel.Error, 
+                getStream: () => noopStream, 
+                getTime: () => DateTime.UtcNow);
+        }
         
         public struct LogSpan : IDisposable
         {

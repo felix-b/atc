@@ -22,4 +22,15 @@
       <ProjectReference Include="..\Zero.Serialization.Buffers\Zero.Serialization.Buffers.csproj" />
     </ItemGroup>
 
+    <PropertyGroup>
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+        <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Zero.Doubt.Logging.Generators\Zero.Doubt.Logging.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Remove="$(CompilerGeneratedFilesOutputPath)/*/**/*.cs" />
+    </ItemGroup>
+    
 </Project>
