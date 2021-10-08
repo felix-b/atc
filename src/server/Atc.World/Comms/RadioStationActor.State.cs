@@ -15,14 +15,18 @@ namespace Atc.World.Comms
             bool PoweredOn,
             ActorRef<GroundRadioStationAetherActor>? Aether,
             ImmutableArray<TransmissionState> IncomingTransmissions,
-            TransmissionState? OutgoingTransmission
+            TransmissionState? OutgoingTransmission,
+            RadioTransmissionWave? PendingTransmissionWave
         );
 
         public record TransmissionState(
-            ulong Id,
+            // Transmission Id enables deterministically repeatable pseudo-randomization of speech - by taking modulus of Id
+            // In this way we avoid storing/replicating the entire synthesized speech wave
+            // Not sure we want though - if using paid cloud speech services, it's beneficial to synthesize once and share the wave
+            ulong Id, 
             string TransmittingStationId,
-            DateTime StartedAtUtc,
-            RuntimeWave Wave
+            DateTime StartedAtSystemUtc,
+            RadioTransmissionWave Wave
         );
 
         public record ActivationEvent(
@@ -45,6 +49,10 @@ namespace Atc.World.Comms
         public record FrequencySwitchedEvent(
             Frequency NewFrequency,
             ActorRef<GroundRadioStationAetherActor>? Aether
+        ) : IStateEvent;
+
+        public record AIEnqueuedTransmissionEvent(
+            RadioTransmissionWave Wave
         ) : IStateEvent;
 
         public record StartedTransmittingEvent(
@@ -89,14 +97,19 @@ namespace Atc.World.Comms
                         Frequency = switched.NewFrequency,
                         Aether = switched.Aether,
                         IncomingTransmissions = ImmutableArray<TransmissionState>.Empty
+                    }; 
+                case AIEnqueuedTransmissionEvent enqueued:
+                    return stateBefore with {
+                        PendingTransmissionWave = enqueued.Wave
                     };
                 case StartedTransmittingEvent startedTransmitting:
                     return stateBefore with {
-                        OutgoingTransmission = startedTransmitting.Transmission
+                        OutgoingTransmission = startedTransmitting.Transmission,
+                        PendingTransmissionWave = null
                     };
                 case StoppedTransmittingEvent:
                     return stateBefore with {
-                        OutgoingTransmission = null
+                        OutgoingTransmission = null,
                     };
                 case StartedReceivingTransmissionEvent startedReceiving:
                     var alreadyReceivingThisTransmission = 
@@ -127,8 +140,9 @@ namespace Atc.World.Comms
                 ElevationGetter: () => activation.Elevation,
                 PoweredOn: false,
                 Aether: null,
-                IncomingTransmissions: ImmutableArray<TransmissionState>.Empty, 
-                OutgoingTransmission: null);
+                IncomingTransmissions: ImmutableArray<TransmissionState>.Empty,
+                OutgoingTransmission: null,
+                PendingTransmissionWave: null);
         }
     }
 }

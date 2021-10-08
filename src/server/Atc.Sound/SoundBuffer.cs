@@ -51,27 +51,34 @@ namespace Atc.Sound
             AL.SourcePlay(_sourceId);
         }
 
-        public Task PlayAsync()
+        public Task PlayAsync(CancellationToken cancellation)
         {
+            using var anyReasonCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposing.Token);
+            
             AL.SourceStop(_sourceId);
             AL.SourceRewind(_sourceId);
             AL.SourcePlay(_sourceId);
 
-            return Task.Delay(_length, _disposing.Token);
+            return Task.Delay(_length, anyReasonCancellation.Token);
         }
 
-        public async Task PlayAsyncFor(TimeSpan duration)
+        public async Task PlayAsyncFor(TimeSpan duration, CancellationToken cancellation)
         {
+            using var anyReasonCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _disposing.Token);
+
             AL.SourceRewind(_sourceId);
             AL.SourcePlay(_sourceId);
 
             try
             {
-                await Task.Delay(duration, _disposing.Token);
-                AL.SourceStop(_sourceId);
+                await Task.Delay(duration, anyReasonCancellation.Token);
             }
             catch (OperationCanceledException)
             {
+            }
+            finally
+            {
+                AL.SourceStop(_sourceId);
             }
         }
 

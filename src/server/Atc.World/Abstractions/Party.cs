@@ -4,15 +4,15 @@ namespace Atc.World.Abstractions
 {
     public abstract class Party
     {
-        protected Party(int id, string callsign, NatureType nature, VoiceDescription defaultVoice)
+        protected Party(string uniqueId, string callsign, NatureType nature, VoiceDescription defaultVoice)
         {
-            Id = id;
+            UniqueId = uniqueId;
             Callsign = callsign;
             DefaultVoice = defaultVoice;
             Nature = nature;
         }
 
-        public int Id { get; }
+        public string UniqueId { get; }
         public string Callsign { get; }
         public NatureType Nature { get; }
         public VoiceDescription DefaultVoice { get; }
@@ -20,10 +20,15 @@ namespace Atc.World.Abstractions
         public abstract void ReceiveIntent(Intent intent);
     }
 
-    public abstract class AutomaticStation : Party 
+    public interface IHaveParty
     {
-        protected AutomaticStation(int id, string callsign, VoiceDescription defaultVoice, AutomaticStationType stationType) : 
-            base(id, callsign, NatureType.AI, defaultVoice)
+        Party Party { get; }
+    }
+    
+    public abstract class AutomaticStationParty : Party 
+    {
+        protected AutomaticStationParty(string uniqueId, string callsign, VoiceDescription defaultVoice, AutomaticStationType stationType) : 
+            base(uniqueId, callsign, NatureType.AI, defaultVoice)
         {
             StationType = stationType;
         }
@@ -31,17 +36,17 @@ namespace Atc.World.Abstractions
         public AutomaticStationType StationType { get; }  
     }
 
-    public abstract class Person : Party
+    public abstract class PersonParty : Party
     {
-        protected Person(
-            int id, 
+        protected PersonParty(
+            string uniqueId, 
             string callsign, 
             NatureType nature, 
             VoiceDescription defaultVoice, 
             GenderType gender, 
             AgeType age, 
             string? firstName) : 
-            base(id, callsign, nature, defaultVoice)
+            base(uniqueId, callsign, nature, defaultVoice)
         {
             Gender = gender;
             Age = age;
@@ -53,32 +58,32 @@ namespace Atc.World.Abstractions
         public string? FirstName { get; }
     }
 
-    public abstract class Pilot : Person
+    public abstract class PilotParty : PersonParty
     {
-        protected Pilot(
-            int id, 
+        protected PilotParty(
+            string uniqueId, 
             string callsign, 
             NatureType nature, 
             VoiceDescription defaultVoice, 
             GenderType gender, 
             AgeType age, 
             string? firstName) : 
-            base(id, callsign, nature, defaultVoice, gender, age, firstName)
+            base(uniqueId, callsign, nature, defaultVoice, gender, age, firstName)
         {
         }
     }
 
-    public abstract class Controller : Person 
+    public abstract class ControllerParty : PersonParty 
     {
-        protected Controller(
-            int id, 
+        protected ControllerParty(
+            string uniqueId, 
             string callsign, 
             NatureType nature, 
             VoiceDescription defaultVoice, 
             GenderType gender, 
             AgeType age, 
             string? firstName) : 
-            base(id, callsign, nature, defaultVoice, gender, age, firstName)
+            base(uniqueId, callsign, nature, defaultVoice, gender, age, firstName)
         {
         }
     }

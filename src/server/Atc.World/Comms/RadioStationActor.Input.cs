@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -17,14 +18,21 @@ namespace Atc.World.Comms
         private readonly IStateStore _store;
         private readonly IWorldContext _world;
         private readonly ICommsLogger _logger;
+        private readonly ISystemEnvironment _environment;
         private readonly string _name;
         private readonly string _callsign;
+        
+        [NotEventSourced]
+        private readonly Dictionary<ulong, ListenerCallback> _listenerById = new();
+        [NotEventSourced] 
+        private ulong _nextListenerId = 1;
 
         public RadioStationActor(
             ISupervisorActor supervisor,
             IStateStore store,
             IWorldContext world,
             ICommsLogger logger,
+            ISystemEnvironment environment,
             ActivationEvent activation)
             : base(TypeString, activation.UniqueId, CreateInitialState(activation))
         {
@@ -32,6 +40,7 @@ namespace Atc.World.Comms
             _store = store;
             _world = world;
             _logger = logger;
+            _environment = environment;
             _name = activation.Name;
             _callsign = activation.Callsign;
         }
@@ -60,6 +69,8 @@ namespace Atc.World.Comms
             State.Aether?.Get().RemoveStation(thisRef);
 
             _store.Dispatch(this, new PoweredOffEvent());
+
+            InvokeListeners(receivedIntent: null);
         }
         
         public void TuneTo(Frequency frequency)
@@ -79,6 +90,8 @@ namespace Atc.World.Comms
             var newAether = _world.TryFindRadioAether(thisRef);
             _store.Dispatch(this, new FrequencySwitchedEvent(frequency, newAether));
             newAether?.Get().AddStation(thisRef);
+
+            InvokeListeners(receivedIntent: null);
         }
 
         public void CheckReachableAether()
@@ -108,25 +121,35 @@ namespace Atc.World.Comms
             }
         }
 
-        public void AIRegisterForTransmission(ActorRef<IStatefulActor> speaker, int cookie)
+        public void AIEnqueueTransmission(RadioTransmissionWave wave)
         {
-            GetAetherOrThrow().RegisterForTransmission(speaker, cookie);
+            _store.Dispatch(this, new AIEnqueuedTransmissionEvent(wave));
+            GetAetherOrThrow().EnqueueTransmission(_supervisor.GetRefToActorInstance(this), 0, out _);
         }
 
-        public void BeginTransmission(RuntimeWave wave)
+        public void BeginQueuedTransmission(int cookie)
+        {
+            BeginTransmission(
+                State.PendingTransmissionWave 
+                ?? throw new InvalidOperationException("No pending transmission in state"));
+        }
+
+        public void BeginTransmission(RadioTransmissionWave wave)
         {
             var aether = GetAetherOrThrow();
             
             var transmission = new TransmissionState(
                 aether.TakeNextTransmissionId(),
                 UniqueId,
-                _world.UtcNow(),
+                StartedAtSystemUtc: _environment.UtcNow(),
                 wave);
 
             _store.Dispatch(this, new StartedTransmittingEvent(transmission));
 
             var thisRef = this.GetRef(_supervisor);
             aether.OnTransmissionStarted(thisRef, transmission);
+
+            InvokeListeners(receivedIntent: null);
         }
 
         public void AbortTransmission()
@@ -139,6 +162,8 @@ namespace Atc.World.Comms
                 var thisRef = this.GetRef(_supervisor);
                 GetAetherOrThrow().OnTransmissionAborted(thisRef, transmission);
             }
+
+            InvokeListeners(receivedIntent: null);
         }
 
         public void CompleteTransmission(Intent intent)
@@ -150,6 +175,8 @@ namespace Atc.World.Comms
 
             var thisRef = this.GetRef(_supervisor);
             GetAetherOrThrow().OnTransmissionCompleted(thisRef, transmission, intent);
+
+            InvokeListeners(receivedIntent: null);
         }
 
         public void BeginReceivingTransmission(TransmissionState transmission)
@@ -157,16 +184,19 @@ namespace Atc.World.Comms
             //var waveDuration = _speechPlayer.Format.GetWaveDuration(wave.Length);
             //var transmission = new TransmissionState(transmittingStationId, transmissionId, startedAtUtc, waveDuration, wave);
             _store.Dispatch(this, new StartedReceivingTransmissionEvent(transmission));
+            InvokeListeners(receivedIntent: null);
         }
 
         public void AbortReceivingTransmission(ulong id)
         {
             _store.Dispatch(this, new StoppedReceivingTransmissionEvent(id));
+            InvokeListeners(receivedIntent: null);
         }
 
         public void AbortReceivingAllTransmissions()
         {
             _store.Dispatch(this, new StoppedReceivingTransmissionEvent(TransmissionId: null));
+            InvokeListeners(receivedIntent: null);
         }
 
         public void CompleteReceivingTransmission(ulong id, Intent intent)
@@ -176,6 +206,8 @@ namespace Atc.World.Comms
             
             _store.Dispatch(this, new StoppedReceivingTransmissionEvent(id));
             IntentReceived?.Invoke(this, transmission, intent);
+
+            InvokeListeners(intent);
         }
         
         public bool IsReachableBy(RadioStationActor other)
@@ -198,6 +230,18 @@ namespace Atc.World.Comms
             return transmission != null;
         }
 
+        public void AddListener(ListenerCallback listener, out ulong listenerId)
+        {
+            listenerId = _nextListenerId++;
+            _listenerById.Add(listenerId, listener);
+            InvokeSingleListener(receivedIntent: null, listenerId, listener, GetStatus());
+        }
+
+        public void RemoveListener(ulong listenerId)
+        {
+            _listenerById.Remove(listenerId);
+        }
+
         public TransceiverStatus GetStatus()
         {
             if (State.IncomingTransmissions.Length > 0)
@@ -206,11 +250,15 @@ namespace Atc.World.Comms
                     ? TransceiverStatus.ReceivingSingleTransmission
                     : TransceiverStatus.ReceivingMutualCancellation;
             }
+            else if (State.OutgoingTransmission != null)
+            {
+                return TransceiverStatus.Transmitting;
+            }
             else
             {
-                return State.OutgoingTransmission != null
-                    ? TransceiverStatus.Transmitting
-                    : TransceiverStatus.Silence;
+                return GetAetherOrThrow().IsSilentForNewConversation()
+                    ? TransceiverStatus.Silence
+                    : TransceiverStatus.DetectingSilence;
             }
         }
 
@@ -224,14 +272,48 @@ namespace Atc.World.Comms
         public Frequency Frequency => State.Frequency;
         public GeoPoint Location => State.LocationGetter();
         public Altitude Elevation => State.ElevationGetter();
+        public ActorRef<GroundRadioStationAetherActor>? Aether => State.Aether;
+        public TransmissionState? SingleIncomingTransmission => State.IncomingTransmissions.SingleOrDefault();
 
-        public event Action<RadioStationActor, TransmissionState, Intent>? IntentReceived;
+        [NotEventSourced]
+        public event IntentReceivedCallback? IntentReceived;
 
         private GroundRadioStationAetherActor GetAetherOrThrow()
         {
             return 
                 State.Aether?.Get() 
                 ?? throw new InvalidOperationException("No reachable ground station on current frequency");
+        }
+
+        private void InvokeListeners(Intent? receivedIntent)
+        {
+            if (_listenerById.Count == 0)
+            {
+                return;
+            }
+            
+            using var logSpan = _logger.InvokeAllListeners(UniqueId, intentType: receivedIntent?.Header.Type);
+            var status = GetStatus();
+            
+            foreach (var listenerIdPair in _listenerById)
+            {
+                InvokeSingleListener(receivedIntent, listenerIdPair.Key, listenerIdPair.Value, status);
+            }
+        }
+
+        private void InvokeSingleListener(Intent? receivedIntent, ulong listenerId, ListenerCallback? listenerCallback,
+            TransceiverStatus status)
+        {
+            using var logSpan = _logger.InvokingListener(UniqueId, listenerId: listenerId);
+
+            try
+            {
+                listenerCallback(this, status, receivedIntent);
+            }
+            catch (Exception e)
+            {
+                logSpan.Fail(e);
+            }
         }
 
         public static ActorRef<RadioStationActor> Create(
@@ -250,13 +332,23 @@ namespace Atc.World.Comms
                 Callsign: callsign
             ));
         }
-        
-        public enum TransceiverStatus
+
+        public static void RegisterType(ISupervisorActorInit supervisor)
         {
-            Silence,
-            ReceivingSingleTransmission,
-            ReceivingMutualCancellation,
-            Transmitting
+            supervisor.RegisterActorType<RadioStationActor, ActivationEvent>(
+                TypeString, 
+                (activation, dependencies) => new RadioStationActor(
+                    dependencies.Resolve<ISupervisorActor>(),
+                    dependencies.Resolve<IStateStore>(),
+                    dependencies.Resolve<IWorldContext>(),
+                    dependencies.Resolve<ICommsLogger>(),
+                    dependencies.Resolve<ISystemEnvironment>(),
+                    activation
+                ));
         }
+
+        public delegate void ListenerCallback(RadioStationActor station, TransceiverStatus status, Intent? receivedIntent);
+
+        public delegate void IntentReceivedCallback(RadioStationActor station, TransmissionState transmission, Intent intent);
     }
 }

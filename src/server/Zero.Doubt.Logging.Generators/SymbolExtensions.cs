@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -79,6 +80,11 @@ namespace Zero.Doubt.Logging.Generators
 
         public static TypeSyntax GetQualifiedNameSyntax(this ITypeSymbol type)
         {
+            if (IsSystemNullable(type, out var nullableUnderlyingType))
+            {
+                return SyntaxFactory.NullableType(GetQualifiedNameSyntax(nullableUnderlyingType!));
+            }
+            
             var syntax = TryGetKeywordSyntax(type) ?? GetFullNameSyntax(type);
             
             return type.NullableAnnotation == NullableAnnotation.Annotated
@@ -101,6 +107,25 @@ namespace Zero.Doubt.Logging.Generators
                 };
             }
 
+            static bool IsSystemNullable(ITypeSymbol type, out ITypeSymbol? underlyingType)
+            {
+                var nullable = (
+                    type is INamedTypeSymbol namedType &&
+                    type.NullableAnnotation == NullableAnnotation.Annotated &&
+                    type.TypeKind == TypeKind.Struct &&
+                    namedType.IsGenericType == true &&
+                    namedType.TypeArguments.Length == 1);
+
+                if (nullable)
+                {
+                    underlyingType = ((INamedTypeSymbol) type).TypeArguments[0];
+                    return true;
+                }
+
+                underlyingType = null;
+                return false;
+            }
+            
             static TypeSyntax GetFullNameSyntax(ITypeSymbol type)
             {
                 var nameParts = new List<string>(capacity: 10) {

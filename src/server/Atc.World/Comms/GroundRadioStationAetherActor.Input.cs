@@ -1,4 +1,6 @@
-﻿using Atc.World.Abstractions;
+﻿using System;
+using System.Collections.Immutable;
+using Atc.World.Abstractions;
 using Zero.Loss.Actors;
 
 namespace Atc.World.Comms
@@ -11,6 +13,7 @@ namespace Atc.World.Comms
         private readonly IStateStore _store;
         private readonly ICommsLogger _logger;
         private readonly ActorRef<RadioStationActor> _groundStation;
+        private IDeferHandle? _silenceTrigger = null;
 
         public GroundRadioStationAetherActor(
             IWorldContext world, 
@@ -61,26 +64,36 @@ namespace Atc.World.Comms
             return result;
         }
 
-        public ulong RegisterForTransmission(ActorRef<IStatefulActor> speaker, int cookie)
+        public void EnqueueTransmission(ActorRef<RadioStationActor> station, int cookie, out ulong tokenId)
         {
-            var tokenId = State.LastTransmissionQueueTokenId + 1;
-            var token = new TransmissionQueueToken(tokenId, speaker, cookie);
+            tokenId = State.LastTransmissionQueueTokenId + 1;
+            var token = new TransmissionQueueToken(tokenId, station, cookie);
 
             _store.Dispatch(this, new TransmissionTokenEnqueuedEvent(token));
-            _logger.RegisteredPendingTransmission(tokenId, speaker.UniqueId, cookie);
-            
-            return tokenId;
+            _logger.RegisteredPendingTransmission(tokenId, station.UniqueId, cookie);
+
+            if (IsSilentForNewConversation()) //TODO: differentiate a new conversation from continuation of the current one
+            {
+                _world.Defer(OnSilence);
+            }
         }
 
         public bool IsReachableBy(ActorRef<RadioStationActor> station)
         {
             return station.Get().IsReachableBy(_groundStation.Get());
         }
+
+        public bool IsSilentForNewConversation()
+        {
+            return State.SilenceSinceUtc + AviationDomain.SilenceDurationBeforeNewConversation < _world.UtcNow();
+        }
         
         public void OnTransmissionStarted(
             ActorRef<RadioStationActor> station, 
             RadioStationActor.TransmissionState transmission)
         {
+            DisarmSilenceTrigger();
+            
             foreach (var otherStation in State.StationById.Values)
             {
                 if (otherStation != station)
@@ -88,12 +101,17 @@ namespace Atc.World.Comms
                     otherStation.Get().BeginReceivingTransmission(transmission);
                 }
             }
+
+            _store.Dispatch(this, new TransmissionStartedEvent(station.UniqueId));
         }
 
         public void OnTransmissionAborted(
             ActorRef<RadioStationActor> station, 
             RadioStationActor.TransmissionState transmission)
         {
+            _store.Dispatch(this, new TransmissionEndedEvent(station.UniqueId, _world.UtcNow()));
+            ArmSilenceTrigger();
+
             foreach (var otherStation in State.StationById.Values)
             {
                 if (otherStation != station)
@@ -101,8 +119,6 @@ namespace Atc.World.Comms
                     otherStation.Get().AbortReceivingTransmission(transmission.Id);
                 }
             }
-
-            _store.Dispatch(this, new SilenceStartedEvent(_world.UtcNow()));
         }
 
         public void OnTransmissionCompleted(
@@ -110,6 +126,9 @@ namespace Atc.World.Comms
             RadioStationActor.TransmissionState transmission, 
             Intent intent)
         {
+            ArmSilenceTrigger();
+            _store.Dispatch(this, new TransmissionEndedEvent(station.UniqueId, _world.UtcNow()));
+
             foreach (var otherStation in State.StationById.Values)
             {
                 if (otherStation != station)
@@ -117,8 +136,6 @@ namespace Atc.World.Comms
                     otherStation.Get().CompleteReceivingTransmission(transmission.Id, intent);
                 }
             }
-
-            _store.Dispatch(this, new SilenceStartedEvent(_world.UtcNow()));
         }
 
         public void OnSilence()
@@ -130,14 +147,40 @@ namespace Atc.World.Comms
 
             var token = State.PendingTransmissionTokens.Peek();
             _store.Dispatch(this, new TransmissionTokenDequeuedEvent());
-            _store.Dispatch(token.Target, new QueuedTransmissionStartEvent(token.Cookie));
+            
+            token.Target.Get().BeginQueuedTransmission(token.Cookie);
         }
 
         public ActorRef<RadioStationActor> GroundStation => _groundStation;
-        
+        public ImmutableDictionary<string, ActorRef<RadioStationActor>> StationById => State.StationById;
+
+        private void ArmSilenceTrigger()
+        {
+            _silenceTrigger?.Cancel();
+            _silenceTrigger = _world.DeferBy(AviationDomain.SilenceDurationBeforeNewConversation, OnSilence);
+        }
+
+        private void DisarmSilenceTrigger()
+        {
+            _silenceTrigger?.Cancel();
+            _silenceTrigger = null;
+        }
+
         public record TransmissionQueueToken(
             ulong Id, 
-            ActorRef<IStatefulActor> Target, 
+            ActorRef<RadioStationActor> Target, 
             int Cookie);
+
+        public static void RegisterType(ISupervisorActorInit supervisor)
+        {
+            supervisor.RegisterActorType<GroundRadioStationAetherActor, ActivationEvent>(
+                TypeString, 
+                (activation, dependencies) => new GroundRadioStationAetherActor(
+                    dependencies.Resolve<IWorldContext>(),
+                    dependencies.Resolve<IStateStore>(),
+                    dependencies.Resolve<ICommsLogger>(),
+                    activation
+                ));
+        }
     }
 }

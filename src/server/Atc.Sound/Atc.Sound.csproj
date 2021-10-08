@@ -17,6 +17,7 @@
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="..\Atc.Speech.Abstractions\Atc.Speech.Abstractions.csproj" />
+        <ProjectReference Include="..\Just.Utility\Just.Utility.csproj" />
         <ProjectReference Include="..\Zero.Doubt.Logging.Generators\Zero.Doubt.Logging.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\Zero.Doubt.Logging\Zero.Doubt.Logging.csproj" />
     </ItemGroup>

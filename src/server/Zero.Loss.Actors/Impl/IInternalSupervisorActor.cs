@@ -2,7 +2,7 @@
 
 namespace Zero.Loss.Actors.Impl
 {
-    internal interface IInternalSupervisorActor
+    public interface IInternalSupervisorActor
     {
         bool TryGetActorObjectById<TActor>(string uniqueId, out TActor? actor) where TActor : class, IStatefulActor;
 

@@ -3,16 +3,28 @@
 namespace Atc.World.Abstractions
 {
     public abstract record Intent(
-        IntentHeader Header
-    );
+        IntentHeader Header)
+    {
+        public override string ToString()
+        {
+            return Header.ToString();
+        }
+    }
 
     public record IntentHeader(
         WellKnownIntentType Type,
         int CustomCode,
-        Party Originator,
-        Party? Recipient,
-        DateTime CreatedAtUtc
-    );
+        string OriginatorUniqueId,
+        string OriginatorCallsign,
+        string? RecipientUniqueId,
+        string? RecipientCallsign,
+        DateTime CreatedAtUtc)
+    {
+        public override string ToString()
+        {
+            return Type != WellKnownIntentType.Custom ? Type.ToString() : CustomCode.ToString();
+        }
+    }
 
     public enum WellKnownIntentType
     {

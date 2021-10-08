@@ -9,6 +9,8 @@ namespace Atc.World.Comms
         public record AetherState(
             ImmutableDictionary<string, ActorRef<RadioStationActor>> StationById,
             ImmutableQueue<TransmissionQueueToken> PendingTransmissionTokens,
+            ImmutableHashSet<string> TransmittingStationIds,
+            bool IsSilent,
             DateTime SilenceSinceUtc,
             ulong LastTransmissionId,
             ulong LastTransmissionQueueTokenId
@@ -25,8 +27,8 @@ namespace Atc.World.Comms
         public record TransmissionTokenEnqueuedEvent(TransmissionQueueToken Token) : IStateEvent;
         public record TransmissionTokenDequeuedEvent() : IStateEvent;
         public record TransmissionIdTakenEvent(ulong Id) : IStateEvent;
-        public record QueuedTransmissionStartEvent(int Cookie) : IStateEvent;
-        public record SilenceStartedEvent(DateTime Utc) : IStateEvent;
+        public record TransmissionStartedEvent(string StationId) : IStateEvent;
+        public record TransmissionEndedEvent(string StationId, DateTime Utc) : IStateEvent;
 
         protected override AetherState Reduce(AetherState stateBefore, IStateEvent @event)
         {
@@ -53,9 +55,17 @@ namespace Atc.World.Comms
                     return stateBefore with {
                         LastTransmissionId = idTaken.Id
                     };
-                case SilenceStartedEvent silence:
+                case TransmissionStartedEvent transmissionStarted:
                     return stateBefore with {
-                        SilenceSinceUtc = silence.Utc
+                        IsSilent = false,
+                        TransmittingStationIds = stateBefore.TransmittingStationIds.Add(transmissionStarted.StationId)
+                    };
+                case TransmissionEndedEvent transmissionEnded:
+                    var transmittingStationIds = stateBefore.TransmittingStationIds.Remove(transmissionEnded.StationId);
+                    return stateBefore with {
+                        TransmittingStationIds = transmittingStationIds,
+                        IsSilent = transmittingStationIds.IsEmpty,
+                        SilenceSinceUtc = (transmittingStationIds.IsEmpty ? transmissionEnded.Utc : stateBefore.SilenceSinceUtc)
                     };
                 default:
                     return stateBefore;
@@ -67,9 +77,11 @@ namespace Atc.World.Comms
             return new AetherState(
                 StationById: ImmutableDictionary<string, ActorRef<RadioStationActor>>.Empty,
                 PendingTransmissionTokens: ImmutableQueue<TransmissionQueueToken>.Empty,
-                SilenceSinceUtc: activation.TimetsampUtc,
+                TransmittingStationIds: ImmutableHashSet<string>.Empty,
                 LastTransmissionId: 0,
-                LastTransmissionQueueTokenId: 0);
+                LastTransmissionQueueTokenId: 0,
+                IsSilent: true,
+                SilenceSinceUtc: activation.TimetsampUtc);
         }
     }
 }

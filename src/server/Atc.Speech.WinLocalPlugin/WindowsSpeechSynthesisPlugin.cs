@@ -88,13 +88,13 @@ namespace Atc.Speech.WinLocalPlugin
         private VoiceInfo LookupVoice(VoiceDescription description)
         {
             //TODO implement the logic
-            return _voices.First(v => v.Culture.Name == description.Culture.Name);
+            return _voices.First(v => v.Culture.Name == description.Language.Code);
         }
 
         public string BuildSsml(UtteranceDescription utterance, VoiceDescription voice)
         {
             var ssml = new StringBuilder();
-            ssml.Append($"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"{utterance.Culture.Name}\">");
+            ssml.Append($"<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"{utterance.Language.Code}\">");
             ssml.Append($"<prosody volume='100' rate='1.0' pitch='low'>");
 
             foreach (var part in utterance.Parts)

@@ -1,18 +1,19 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using Atc.Data.Primitives;
 
 namespace Atc.Speech.Abstractions
 {
     public class UtteranceDescription
     {
-        public UtteranceDescription(CultureInfo culture, IEnumerable<Part> parts)
+        public UtteranceDescription(LanguageCode language, IEnumerable<Part> parts)
         {
-            Culture = culture;
+            Language = language;
             Parts = parts.ToArray();
         }
         
-        public CultureInfo Culture { get; }
+        public LanguageCode Language { get; }
         public IReadOnlyList<Part> Parts { get; }
 
         public enum PartType

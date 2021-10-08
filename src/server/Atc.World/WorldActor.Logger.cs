@@ -21,6 +21,8 @@ namespace Atc.World
             void RegisteringObserver(string observerName);
             void FailedToFindRadioAether(string fromStation, int khz, double lat, double lon, float feet);
             void FoundRadioAether(string fromStation, string groundStation, int khz, double lat, double lon, float feet);
+            void EndlessLoopInDeferredTaskQueue();
+            LogWriter.LogSpan ExecutingDeferredTasks();
         }
     }
 }

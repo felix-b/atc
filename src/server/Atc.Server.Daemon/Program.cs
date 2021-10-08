@@ -172,15 +172,8 @@ namespace Atc.Server.Daemon
 
         private static void RegisterActorTypes(ISupervisorActorInit supervisor)
         {
-            supervisor.RegisterActorType<WorldActor, WorldActor.WorldActivationEvent>(
-                WorldActor.TypeString, 
-                (activation, dependencies) => new WorldActor(
-                    dependencies.Resolve<IStateStore>(),
-                    dependencies.Resolve<WorldActor.ILogger>(),
-                    dependencies.Resolve<ISupervisorActor>(),
-                    activation
-                ));
-
+            WorldActor.RegisterType(supervisor);
+            
             supervisor.RegisterActorType<AircraftActor, AircraftActor.ActivationEvent>(
                 AircraftActor.TypeString, 
                 (activation, dependencies) => new AircraftActor(
@@ -189,24 +182,8 @@ namespace Atc.Server.Daemon
                     activation
                 ));
 
-            supervisor.RegisterActorType<RadioStationActor, RadioStationActor.ActivationEvent>(
-                RadioStationActor.TypeString, 
-                (activation, dependencies) => new RadioStationActor(
-                    dependencies.Resolve<ISupervisorActor>(),
-                    dependencies.Resolve<IStateStore>(),
-                    dependencies.Resolve<IWorldContext>(),
-                    dependencies.Resolve<ICommsLogger>(),
-                    activation
-                ));
-
-            supervisor.RegisterActorType<GroundRadioStationAetherActor, GroundRadioStationAetherActor.ActivationEvent>(
-                RadioStationActor.TypeString, 
-                (activation, dependencies) => new GroundRadioStationAetherActor(
-                    dependencies.Resolve<IWorldContext>(),
-                    dependencies.Resolve<IStateStore>(),
-                    dependencies.Resolve<ICommsLogger>(),
-                    activation
-                ));
+            RadioStationActor.RegisterType(supervisor);
+            GroundRadioStationAetherActor.RegisterType(supervisor);
         }
         
         private static WorldActor CreateWorld(IComponentContext components)

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Zero.Loss.Actors.Tests
+namespace Zero.Loss.Actors
 {
     public class SimpleDependencyContext : IActorDependencyContext
     {

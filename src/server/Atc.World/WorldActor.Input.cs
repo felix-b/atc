@@ -21,6 +21,9 @@ namespace Atc.World
         private readonly ISupervisorActor _supervisor;
         
         [NotEventSourced]        
+        private readonly DeferredTaskQueue _taskQueue;
+
+        [NotEventSourced]        
         private readonly HashSet<IWorldObserver> _observers = new();
 
         public WorldActor(
@@ -33,6 +36,7 @@ namespace Atc.World
             _store = store;
             _logger = logger;
             _supervisor = supervisor;
+            _taskQueue = new DeferredTaskQueue(logger);
 
             InitializeMockWorldObjects();
         }
@@ -71,6 +75,8 @@ namespace Atc.World
                     aircraft.Get().ProgressBy(delta);
                 }
             }
+
+            ExecuteDeferredTasks();
         }
 
         public void RegisterObserver(IWorldObserver observer)
@@ -157,20 +163,65 @@ namespace Atc.World
             _store.Dispatch(this, new AircraftAddedEvent(aircraft));
             return aircraft;
         }
+
+        public ActorRef<GroundRadioStationAetherActor> AddGroundStation(ActorRef<RadioStationActor> station)
+        {
+            var aether = _supervisor.CreateActor<GroundRadioStationAetherActor>(uniqueId => new GroundRadioStationAetherActor.ActivationEvent( 
+                uniqueId, 
+                UtcNow(), 
+                station));
+            _store.Dispatch(this, new GroundRadioStationAddedEvent(aether));
+            return aether;
+        }
         
+        public IDeferHandle Defer(Action action)
+        {
+            return _taskQueue.EnqueueWorkItem(
+                predicate: __alwaysTruePredicate, 
+                deadlineUtc: null, 
+                onPredicateTrue: action, 
+                onTimeout: null);
+        }
+
         public IDeferHandle DeferBy(TimeSpan time, Action action)
         {
-            throw new NotImplementedException();
+            return _taskQueue.EnqueueWorkItem(
+                predicate: __alwaysFalsePredicate, 
+                deadlineUtc: UtcNow() + time, 
+                onPredicateTrue: null, 
+                onTimeout: action);
         }
 
         public IDeferHandle DeferUntil(DateTime utc, Action action)
         {
-            throw new NotImplementedException();
+            return _taskQueue.EnqueueWorkItem(
+                predicate: __alwaysFalsePredicate, 
+                deadlineUtc: utc, 
+                onPredicateTrue: null, 
+                onTimeout: action);
         }
 
-        public IDeferHandle DeferUntil(Func<bool> predicate, DateTime utc, Action onPredicateTrue, Action onTimeout)
+        public IDeferHandle DeferUntil(Func<bool> predicate, DateTime deadlineUtc, Action onPredicateTrue, Action onTimeout)
         {
-            throw new NotImplementedException();
+            return _taskQueue.EnqueueWorkItem(
+                predicate, 
+                deadlineUtc, 
+                onPredicateTrue, 
+                onTimeout);
+        }
+
+        public void ExecuteDeferredTasks()
+        {
+            using var logSpan = _logger.ExecutingDeferredTasks();
+            
+            try
+            {
+                _taskQueue.RunToCompletion(UtcNow());
+            }
+            catch (Exception e)
+            {
+                logSpan.Fail(e);
+            }
         }
 
         public DateTime UtcNow()
@@ -228,12 +279,124 @@ namespace Atc.World
             // _radioAethersByKhz.Add(119150, new List<GroundRadioStationAether>() { pluto2Aether });
         }
 
+        private static readonly Func<bool> __alwaysTruePredicate = () => true; 
+        private static readonly Func<bool> __alwaysFalsePredicate = () => false; 
+        
         public static ActorRef<WorldActor> Create(ISupervisorActor supervisor, DateTime startAtUtc)
         {
             var world = supervisor.CreateActor<WorldActor>(uniqueId => new WorldActor.WorldActivationEvent(
                 uniqueId, 
                 startAtUtc));
             return world;
+        }
+
+        public static void RegisterType(ISupervisorActorInit supervisor)
+        {
+            supervisor.RegisterActorType<WorldActor, WorldActivationEvent>(
+                TypeString, 
+                (activation, dependencies) => new WorldActor(
+                    dependencies.Resolve<IStateStore>(),
+                    dependencies.Resolve<ILogger>(),
+                    dependencies.Resolve<ISupervisorActor>(),
+                    activation
+                ));
+        }
+
+        internal class DeferredTaskQueue
+        {
+            private readonly ILogger _logger;
+            private readonly LinkedList<WorkItem> _workItems = new();
+
+            public DeferredTaskQueue(ILogger logger)
+            {
+                _logger = logger;
+            }
+
+            public IDeferHandle EnqueueWorkItem(Func<bool>? predicate, DateTime? deadlineUtc, Action? onPredicateTrue, Action? onTimeout)
+            {
+                var node = _workItems.AddLast(new WorkItem(0, onPredicateTrue, onTimeout, predicate, deadlineUtc));
+                return new DeferredTaskQueueItemHandle(_workItems, node);
+            }
+
+            public void RunToCompletion(DateTime timestampUtc)
+            {
+                const int maxAllowedCycles = 10;
+                
+                for (int cycleCount = 0; cycleCount < maxAllowedCycles; cycleCount++)
+                {
+                    RunOnce(timestampUtc, out var processedItemCount);
+                
+                    if (processedItemCount == 0)
+                    {
+                        return;
+                    }
+                }
+                
+                _logger.EndlessLoopInDeferredTaskQueue();
+            }
+
+            public void RunOnce(DateTime timestampUtc, out int processedItemCount)
+            {
+                processedItemCount = 0;
+                
+                for (var node = _workItems.First ; node != null ; )
+                {
+                    var currentNode = node;
+                    var nextNode = currentNode.Next;
+                    
+                    if (ShouldRunItem(node.Value, out var actionToRun))
+                    {
+                        processedItemCount++;
+                        _workItems.Remove(node);
+                        actionToRun?.Invoke();
+                    }
+
+                    node = nextNode;
+                }
+
+                bool ShouldRunItem(WorkItem item, out Action? actionToRun)
+                {
+                    if (item.Predicate == null || item.Predicate())
+                    {
+                        actionToRun = item.OnPredicateTrue;
+                        return true;
+                    }
+
+                    if (item.DeadlineUtc.HasValue && item.DeadlineUtc >= timestampUtc)
+                    {
+                        actionToRun = item.OnTimeout;
+                        return true;
+                    }
+
+                    actionToRun = null;
+                    return false;
+                }
+            }
+            
+            private class DeferredTaskQueueItemHandle : IDeferHandle
+            {
+                private readonly LinkedList<WorkItem> _list;
+                private readonly LinkedListNode<WorkItem> _node;
+
+                public DeferredTaskQueueItemHandle(LinkedList<WorkItem> list, LinkedListNode<WorkItem> node)
+                {
+                    _list = list;
+                    _node = node;
+                }
+
+                public void Cancel()
+                {
+                    _list.Remove(_node);
+                }
+            }
+
+            public record WorkItem(
+                ulong Id,
+                Action? OnPredicateTrue, 
+                Action? OnTimeout, 
+                Func<bool>? Predicate, 
+                DateTime? DeadlineUtc
+            );
         }
     }
 }

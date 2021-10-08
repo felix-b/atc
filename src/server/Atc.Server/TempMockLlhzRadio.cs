@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Atc.Data.Primitives;
 using Atc.Sound;
 using Atc.Speech.Abstractions;
 
@@ -19,7 +20,7 @@ namespace Atc.Server
         private readonly ISpeechSynthesisPlugin _synthesizer;
         private readonly RadioSpeechPlayer _player;
         private readonly SoundFormat _soundFormat;
-        private readonly CultureInfo _culture = CultureInfo.GetCultureInfo("he-IL");
+        private readonly LanguageCode _language = "he-IL";
         private Task? _currentWorkflow;
         private Atis _currentAtis;
         private string _currentCallsign;
@@ -221,7 +222,7 @@ namespace Atc.Server
             Console.WriteLine("TEMP MOCK RADIO - PREPARING TRANSMISSION");
 
             var voice = new VoiceDescription(
-                utterance.Culture, 
+                utterance.Language, 
                 VoiceGender.Male, 
                 VoiceType.Bass, 
                 VoiceRate.Medium, 
@@ -233,7 +234,7 @@ namespace Atc.Server
 
             Console.WriteLine("TEMP MOCK RADIO - TRANSMISSION SYNTHESIZED! PLAYING NOW...");
             
-            await _player.Play(speech.Wave, _soundFormat, volume);
+            await _player.Play(speech.Wave, _soundFormat, volume, CancellationToken.None);
 
             Console.WriteLine("TEMP MOCK RADIO - TRANSMISSION PLAYED TO END");
         }
@@ -260,7 +261,7 @@ namespace Atc.Server
         private UtteranceDescription CreateClearanceGoAheadUtterance()
         {
             return new UtteranceDescription(
-                _culture,
+                _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Affirmation, "שלום, "),
@@ -294,7 +295,7 @@ namespace Atc.Server
             });
             
             return new UtteranceDescription(
-                _culture,
+                _language,
                 parts
             );
         }
@@ -302,7 +303,7 @@ namespace Atc.Server
         private UtteranceDescription CreateClearanceHandoffUtterance()
         {
             return new UtteranceDescription(
-                _culture,
+                _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "לאחר התנעה "),
@@ -330,13 +331,13 @@ namespace Atc.Server
                     new (UtteranceDescription.PartType.Text, "בשימוש."),
                 };
             
-            return new UtteranceDescription(_culture, parts);
+            return new UtteranceDescription(_language, parts);
         }
 
         private UtteranceDescription CreateHoldShortUtterance()
         {
             return new UtteranceDescription(
-                _culture,
+                _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Punctuation, ","),
@@ -349,7 +350,7 @@ namespace Atc.Server
         private UtteranceDescription CreateLineUpAndWaitUtterance()
         {
             return new UtteranceDescription(
-                _culture,
+                _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "מסלול"),
@@ -362,7 +363,7 @@ namespace Atc.Server
         private UtteranceDescription CreateTakeoffClearanceUtterance()
         {
             return new UtteranceDescription(
-                _culture,
+                _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Data, "רוח"),
@@ -377,7 +378,7 @@ namespace Atc.Server
         private UtteranceDescription CreatePatternPositionUtterance()
         {
             return new UtteranceDescription(
-                _culture,
+                _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "מספר"),
@@ -389,7 +390,7 @@ namespace Atc.Server
         private UtteranceDescription CreateLandingClearanceUtterance()
         {
             return new UtteranceDescription(
-                _culture,
+                _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Data, "רוח"),
@@ -408,7 +409,7 @@ namespace Atc.Server
             var zoneIndex = _random.Next(zoneNames.Length);
             
             return new UtteranceDescription(
-                _culture,
+                _language,
                 TossADice()
                     ? new UtteranceDescription.Part[] {
                         new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
@@ -434,7 +435,7 @@ namespace Atc.Server
         private UtteranceDescription CreateExitTrainingZoneUtterance()
         {
             return new UtteranceDescription(
-                _culture,
+                _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "צא לבצרה 1200"),
@@ -445,7 +446,7 @@ namespace Atc.Server
         private UtteranceDescription CreateStandByInTrainingZoneUtterance()
         {
             return new UtteranceDescription(
-                _culture,
+                _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='h aa m t e n'>המתן</phoneme>"),
@@ -484,7 +485,7 @@ namespace Atc.Server
             }
             
             return new UtteranceDescription(
-                _culture,
+                _language,
                 parts.ToArray()
             );
         }
@@ -514,7 +515,7 @@ namespace Atc.Server
             });
 
             return new UtteranceDescription(
-                _culture,
+                _language,
                 parts.ToArray()
             );
         }

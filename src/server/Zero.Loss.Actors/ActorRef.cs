@@ -3,13 +3,13 @@ using Zero.Loss.Actors.Impl;
 
 namespace Zero.Loss.Actors
 {
-    public readonly struct ActorRef<T> : IEquatable<ActorRef<T>> 
+    public readonly struct ActorRef<T> : IAnyActorRef, IEquatable<ActorRef<T>> 
         where T : class, IStatefulActor
     {
         private readonly IInternalSupervisorActor _supervisor;
         private readonly string _uniqueId;
 
-        internal ActorRef(IInternalSupervisorActor supervisor, string uniqueId)
+        public ActorRef(IInternalSupervisorActor supervisor, string uniqueId)
         {
             _supervisor = supervisor;
             _uniqueId = uniqueId;
@@ -47,5 +47,10 @@ namespace Zero.Loss.Actors
         {
             return !(left == right);
         }
+    }
+
+    public interface IAnyActorRef
+    {
+        string UniqueId { get; }
     }
 }

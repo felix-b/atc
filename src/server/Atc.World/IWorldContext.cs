@@ -8,6 +8,8 @@ namespace Atc.World
 {
     public interface IWorldContext
     {
+        ActorRef<GroundRadioStationAetherActor> AddGroundStation(ActorRef<RadioStationActor> station);
+
         ActorRef<GroundRadioStationAetherActor>? TryFindRadioAether(ActorRef<RadioStationActor> fromStation);
 
         ActorRef<AircraftActor> SpawnNewAircraft(
@@ -25,9 +27,10 @@ namespace Atc.World
             Angle? pitch = null,
             Angle? roll = null);
         
+        IDeferHandle Defer(Action action);
         IDeferHandle DeferBy(TimeSpan time, Action action);
         IDeferHandle DeferUntil(DateTime utc, Action action);
-        IDeferHandle DeferUntil(Func<bool> predicate, DateTime utc, Action onPredicateTrue, Action onTimeout);
+        IDeferHandle DeferUntil(Func<bool> predicate, DateTime deadlineUtc, Action onPredicateTrue, Action onTimeout);
         
         DateTime UtcNow();
     }
