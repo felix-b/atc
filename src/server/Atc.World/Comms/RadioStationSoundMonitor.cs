@@ -85,10 +85,11 @@ namespace Atc.World.Comms
                         _playCancellation?.Cancel();
                         _playTask.SafeContinueWith(() => {
                             _playCancellation = new CancellationTokenSource();
-                            _playTask = _player.Play(
-                                _radioStation.SingleIncomingTransmission!.Wave.Bytes, 
-                                volume: 1.0f, 
-                                _playCancellation.Token);
+                            return BeginPlayTransmissionSpeech(_radioStation.SingleIncomingTransmission!, _playCancellation.Token);
+                            // _playTask = _player.Play(
+                            //     _radioStation.SingleIncomingTransmission!.Wave.Bytes, 
+                            //     volume: 1.0f, 
+                            //     _playCancellation.Token);
                         });
                         break;
                     case TransceiverStatus.ReceivingMutualCancellation:
@@ -128,7 +129,7 @@ namespace Atc.World.Comms
             }
             
             await _player.Play(
-                _radioStation.SingleIncomingTransmission!.Wave.Bytes, 
+                effectiveWaveBytes, 
                 volume: 1.0f, 
                 cancellation);
         }

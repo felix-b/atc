@@ -64,13 +64,13 @@ namespace Atc.World.Comms
             return result;
         }
 
-        public void EnqueueTransmission(ActorRef<RadioStationActor> station, int cookie, out ulong tokenId)
+        public void AIEnqueueForTransmission(ActorRef<IRadioOperatingActor> speaker, int cookie, out ulong tokenId)
         {
             tokenId = State.LastTransmissionQueueTokenId + 1;
-            var token = new TransmissionQueueToken(tokenId, station, cookie);
+            var token = new TransmissionQueueToken(tokenId, speaker, cookie);
 
             _store.Dispatch(this, new TransmissionTokenEnqueuedEvent(token));
-            _logger.RegisteredPendingTransmission(tokenId, station.UniqueId, cookie);
+            _logger.RegisteredPendingTransmission(tokenId, speaker.UniqueId, cookie);
 
             if (IsSilentForNewConversation()) //TODO: differentiate a new conversation from continuation of the current one
             {
@@ -168,7 +168,7 @@ namespace Atc.World.Comms
 
         public record TransmissionQueueToken(
             ulong Id, 
-            ActorRef<RadioStationActor> Target, 
+            ActorRef<IRadioOperatingActor> Target, 
             int Cookie);
 
         public static void RegisterType(ISupervisorActorInit supervisor)

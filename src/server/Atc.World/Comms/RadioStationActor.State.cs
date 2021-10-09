@@ -15,8 +15,7 @@ namespace Atc.World.Comms
             bool PoweredOn,
             ActorRef<GroundRadioStationAetherActor>? Aether,
             ImmutableArray<TransmissionState> IncomingTransmissions,
-            TransmissionState? OutgoingTransmission,
-            RadioTransmissionWave? PendingTransmissionWave
+            TransmissionState? OutgoingTransmission
         );
 
         public record TransmissionState(
@@ -49,10 +48,6 @@ namespace Atc.World.Comms
         public record FrequencySwitchedEvent(
             Frequency NewFrequency,
             ActorRef<GroundRadioStationAetherActor>? Aether
-        ) : IStateEvent;
-
-        public record AIEnqueuedTransmissionEvent(
-            RadioTransmissionWave Wave
         ) : IStateEvent;
 
         public record StartedTransmittingEvent(
@@ -98,14 +93,9 @@ namespace Atc.World.Comms
                         Aether = switched.Aether,
                         IncomingTransmissions = ImmutableArray<TransmissionState>.Empty
                     }; 
-                case AIEnqueuedTransmissionEvent enqueued:
-                    return stateBefore with {
-                        PendingTransmissionWave = enqueued.Wave
-                    };
                 case StartedTransmittingEvent startedTransmitting:
                     return stateBefore with {
-                        OutgoingTransmission = startedTransmitting.Transmission,
-                        PendingTransmissionWave = null
+                        OutgoingTransmission = startedTransmitting.Transmission
                     };
                 case StoppedTransmittingEvent:
                     return stateBefore with {
@@ -141,8 +131,7 @@ namespace Atc.World.Comms
                 PoweredOn: false,
                 Aether: null,
                 IncomingTransmissions: ImmutableArray<TransmissionState>.Empty,
-                OutgoingTransmission: null,
-                PendingTransmissionWave: null);
+                OutgoingTransmission: null);
         }
     }
 }

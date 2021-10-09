@@ -2,6 +2,7 @@
 {
     public enum TransceiverStatus
     {
+        NoReachableAether,
         DetectingSilence,
         Silence,
         ReceivingSingleTransmission,

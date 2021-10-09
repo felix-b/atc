@@ -121,17 +121,12 @@ namespace Atc.World.Comms
             }
         }
 
-        public void AIEnqueueTransmission(RadioTransmissionWave wave)
+        public void AIEnqueueForTransmission(IRadioOperatingActor speaker, int cookie, out ulong queueTokenId)
         {
-            _store.Dispatch(this, new AIEnqueuedTransmissionEvent(wave));
-            GetAetherOrThrow().EnqueueTransmission(_supervisor.GetRefToActorInstance(this), 0, out _);
-        }
-
-        public void BeginQueuedTransmission(int cookie)
-        {
-            BeginTransmission(
-                State.PendingTransmissionWave 
-                ?? throw new InvalidOperationException("No pending transmission in state"));
+            GetAetherOrThrow().AIEnqueueForTransmission(
+                _supervisor.GetRefToActorInstance(speaker), 
+                cookie, 
+                out queueTokenId);
         }
 
         public void BeginTransmission(RadioTransmissionWave wave)
@@ -244,7 +239,11 @@ namespace Atc.World.Comms
 
         public TransceiverStatus GetStatus()
         {
-            if (State.IncomingTransmissions.Length > 0)
+            if (State.Aether == null)
+            {
+                return TransceiverStatus.NoReachableAether;
+            }
+            else if (State.IncomingTransmissions.Length > 0)
             {
                 return State.IncomingTransmissions.Length == 1 && State.OutgoingTransmission == null
                     ? TransceiverStatus.ReceivingSingleTransmission
@@ -273,7 +272,11 @@ namespace Atc.World.Comms
         public GeoPoint Location => State.LocationGetter();
         public Altitude Elevation => State.ElevationGetter();
         public ActorRef<GroundRadioStationAetherActor>? Aether => State.Aether;
-        public TransmissionState? SingleIncomingTransmission => State.IncomingTransmissions.SingleOrDefault();
+
+        public TransmissionState? SingleIncomingTransmission =>
+            State.IncomingTransmissions.Length == 1
+                ? State.IncomingTransmissions[0]
+                : null;
 
         [NotEventSourced]
         public event IntentReceivedCallback? IntentReceived;

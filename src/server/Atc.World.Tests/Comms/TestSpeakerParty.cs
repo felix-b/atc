@@ -4,9 +4,9 @@ using Atc.World.Abstractions;
 
 namespace Atc.World.Tests.Comms
 {
-    internal class TestSpeaker : PersonParty
+    internal class TestSpeakerParty : PersonParty
     {
-        public TestSpeaker(string callsign) : 
+        public TestSpeakerParty(string callsign) : 
             base("test/#123", callsign, NatureType.AI, VoiceDescription.Default, GenderType.Male, AgeType.Mature, firstName: null)
         {
         }

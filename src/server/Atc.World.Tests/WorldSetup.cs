@@ -15,23 +15,27 @@ namespace Atc.World.Tests
     {
         public WorldSetup(Action<SimpleDependencyContext>? configureDependencyContext = null)
         {
-            DependencyContext = new SimpleDependencyContext();
-            DependencyContext.WithSingleton<ISystemEnvironment>(Environment);
-            DependencyContext.WithSingleton<IVerbalizationService>(new SimpleVerbalizationService());
+            DependencyContextBuilder = new SimpleDependencyContext();
+            DependencyContextBuilder.WithSingleton<ISystemEnvironment>(Environment);
             
+            configureDependencyContext?.Invoke(DependencyContextBuilder);
+
+            DependencyContextBuilder.WithSingleton<IVerbalizationService>(new TestVerbalizationService());
+            DependencyContextBuilder.WithSingleton<LogWriter>(LogWriter.Noop);
+
             CommsLogger = ZLoggerFactory.CreateLogger<ICommsLogger>(LogWriter.Noop);
             var storeLogger = ZLoggerFactory.CreateLogger<StateStore.ILogger>(LogWriter.Noop);
             
-            DependencyContext.WithSingleton<ICommsLogger>(CommsLogger);
-            DependencyContext.WithSingleton<StateStore.ILogger>(storeLogger);
-            DependencyContext.WithSingleton<WorldActor.ILogger>(ZLoggerFactory.CreateLogger<WorldActor.ILogger>(LogWriter.Noop));
-            DependencyContext.WithSingleton<ISoundSystemLogger>(ZLoggerFactory.CreateLogger<ISoundSystemLogger>(LogWriter.Noop));
+            DependencyContextBuilder.WithSingleton<ICommsLogger>(CommsLogger);
+            DependencyContextBuilder.WithSingleton<StateStore.ILogger>(storeLogger);
+            DependencyContextBuilder.WithSingleton<WorldActor.ILogger>(ZLoggerFactory.CreateLogger<WorldActor.ILogger>(LogWriter.Noop));
+            DependencyContextBuilder.WithSingleton<ISoundSystemLogger>(ZLoggerFactory.CreateLogger<ISoundSystemLogger>(LogWriter.Noop));
 
             Store = new StateStore(storeLogger);
-            DependencyContext.WithSingleton<IStateStore>(Store);
+            DependencyContextBuilder.WithSingleton<IStateStore>(Store);
             
-            Supervisor = new SupervisorActor(Store, DependencyContext);
-            DependencyContext.WithSingleton<ISupervisorActor>(Supervisor);
+            Supervisor = new SupervisorActor(Store, DependencyContextBuilder);
+            DependencyContextBuilder.WithSingleton<ISupervisorActor>(Supervisor);
             
             WorldActor.RegisterType(Supervisor);
             RadioStationActor.RegisterType(Supervisor);
@@ -41,10 +45,8 @@ namespace Atc.World.Tests
             World = Supervisor.CreateActor<WorldActor>(id => new WorldActor.WorldActivationEvent(
                 id, 
                 new DateTime(2021, 10, 15, 10, 30, 0, DateTimeKind.Utc)));
-            DependencyContext.WithSingleton<IWorldContext>(World.Get());
+            DependencyContextBuilder.WithSingleton<IWorldContext>(World.Get());
 
-            configureDependencyContext?.Invoke(DependencyContext);
-            
             Stations = new();
             Aethers = new();
         }
@@ -81,7 +83,8 @@ namespace Atc.World.Tests
             return new(station, aether);
         }
 
-        public SimpleDependencyContext DependencyContext { get; }
+        public SimpleDependencyContext DependencyContextBuilder { get; }
+        public IActorDependencyContext DependencyContext => DependencyContextBuilder;
         public StateStore Store { get; }
         public SupervisorActor Supervisor { get; }
         public ActorRef<WorldActor> World { get; }

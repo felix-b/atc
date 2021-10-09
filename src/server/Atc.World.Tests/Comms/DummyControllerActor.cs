@@ -7,7 +7,7 @@ using Zero.Loss.Actors;
 
 namespace Atc.World.Tests.Comms
 {
-    public class DummyControllerActor : StatefulActor<DummyControllerActor.DummyState>, IHaveParty
+    public class DummyControllerActor : StatefulActor<DummyControllerActor.DummyState>, IRadioOperatingActor, IHaveParty
     {
         public static readonly string TypeString = "dummy";
         
@@ -34,14 +34,14 @@ namespace Atc.World.Tests.Comms
             _world = world;
             _party = new DummyControllerParty(
                 activation.UniqueId, 
-                State.Radio.Get().Callsign, 
+                callsign: State.Radio.Get().Callsign, 
                 NatureType.AI, 
                 VoiceDescription.Default, 
                 GenderType.Male, 
                 AgeType.Senior,
-                "Bob");
+                firstName: "Bob");
             
-            _world.DeferBy(TimeSpan.FromSeconds(1), () => {
+            _world.DeferBy(TimeSpan.FromSeconds(5), () => {
                 State.Radio.Get().PowerOn();
                 TransmitGreeting();
             });
@@ -53,16 +53,27 @@ namespace Atc.World.Tests.Comms
                 ? stateBefore with {RepeatCount = stateBefore.RepeatCount + 1}
                 : stateBefore;
         }
-        
-        private void TransmitGreeting()
+
+        public void BeginQueuedTransmission(int cookie)
         {
             var wave = new RadioTransmissionWave(
                 "en-US",
                 new byte[0],
                 TimeSpan.FromSeconds(5),
-                new TestGreetingIntent(_world, State.RepeatCount, State.Radio));
+                new TestGreetingIntent(_world, State.RepeatCount, fromPartyActor: this));
             
-            State.Radio.Get().AIEnqueueTransmission(wave);
+            State.Radio.Get().BeginTransmission(wave);
+            
+            //TODO: we must have a feedback from speech synthesis about the actual duration of the transmission!!
+            _world.DeferBy(TimeSpan.FromSeconds(5), () => {  
+                State.Radio.Get().CompleteTransmission(wave.GetIntentOrThrow());
+                _world.DeferBy(TimeSpan.FromSeconds(10), TransmitGreeting);
+            });
+        }
+
+        private void TransmitGreeting()
+        {
+            State.Radio.Get().AIEnqueueForTransmission(this, 123, out _);
             _store.Dispatch(this, new IncrementRepeatCountEvent());
         }
 

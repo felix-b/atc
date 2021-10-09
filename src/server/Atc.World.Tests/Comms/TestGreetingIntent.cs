@@ -19,7 +19,20 @@ namespace Atc.World.Tests.Comms
         {
             RepeatCount = repeatCount;
         }
-        
+
+        public TestGreetingIntent(IWorldContext world, int repeatCount, IStatefulActor fromPartyActor, ActorRef<RadioStationActor>? to = null) 
+            : base(new IntentHeader(
+                WellKnownIntentType.Greeting, 
+                CustomCode: 0, 
+                OriginatorUniqueId: fromPartyActor.UniqueId,
+                OriginatorCallsign: ((IHaveParty)fromPartyActor).Party.Callsign,
+                RecipientUniqueId: to?.UniqueId,
+                RecipientCallsign: to?.Get().Callsign,
+                CreatedAtUtc: world.UtcNow()))
+        {
+            RepeatCount = repeatCount;
+        }
+
         public int RepeatCount { get; }
     }
 }

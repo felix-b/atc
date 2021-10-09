@@ -11,16 +11,29 @@ namespace Zero.Loss.Actors
         {
         }
 
+        public bool Has<T>() where T : class
+        {
+            return _factoryByType.ContainsKey(typeof(T));
+        }
+
         public SimpleDependencyContext WithTransient<T>(Func<T> factory) where T : class
         {
-            _factoryByType.Add(typeof(T), factory);
+            if (!Has<T>())
+            {
+                _factoryByType.Add(typeof(T), factory);
+            }
+
             return this;
         }
 
         public SimpleDependencyContext WithSingleton<T>(T instance) where T : class
         {
-            Func<T> singletonGetter = () => instance;
-            _factoryByType.Add(typeof(T), singletonGetter);
+            if (!Has<T>())
+            {
+                Func<T> singletonGetter = () => instance;
+                _factoryByType.Add(typeof(T), singletonGetter);
+            }
+            
             return this;
         }
 

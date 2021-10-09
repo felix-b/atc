@@ -348,6 +348,7 @@ namespace Atc.World
                     {
                         processedItemCount++;
                         _workItems.Remove(node);
+                        node.Value.Removed = true;
                         actionToRun?.Invoke();
                     }
 
@@ -362,7 +363,7 @@ namespace Atc.World
                         return true;
                     }
 
-                    if (item.DeadlineUtc.HasValue && item.DeadlineUtc >= timestampUtc)
+                    if (item.DeadlineUtc.HasValue && timestampUtc >= item.DeadlineUtc)
                     {
                         actionToRun = item.OnTimeout;
                         return true;
@@ -386,17 +387,23 @@ namespace Atc.World
 
                 public void Cancel()
                 {
-                    _list.Remove(_node);
+                    if (!_node.Value.Removed)
+                    {
+                        _list.Remove(_node);
+                        _node.Value.Removed = true;
+                    }
                 }
             }
 
             public record WorkItem(
                 ulong Id,
-                Action? OnPredicateTrue, 
-                Action? OnTimeout, 
-                Func<bool>? Predicate, 
-                DateTime? DeadlineUtc
-            );
+                Action? OnPredicateTrue,
+                Action? OnTimeout,
+                Func<bool>? Predicate,
+                DateTime? DeadlineUtc)
+            {
+                public bool Removed { get; set; } = false;
+            }
         }
     }
 }
