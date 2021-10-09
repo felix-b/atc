@@ -7,7 +7,7 @@ namespace Atc.World.Comms.Verbalizers
 {
     public class USEnglishVerbalizer : IVerbalizer
     {
-        public UtteranceDescription VerbalizeIntent(Party speaker, Intent intent)
+        public UtteranceDescription VerbalizeIntent(PartyDescription speaker, Intent intent)
         {
             if (intent.Header.Type == WellKnownIntentType.Greeting)
             {

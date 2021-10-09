@@ -18,11 +18,15 @@ namespace Atc.World.Tests.Comms
         public void ControllersTransmittingInCyclesAtLLHZ()
         {
             LogEngine.SetTargetToConsole();
-            var setup = new WorldSetup(dependencies => dependencies
-                .WithSingleton<LogWriter>(LogEngine.Writer)
+            var setup = new WorldSetup(dependencies => {
+                dependencies.WithSingleton<LogWriter>(LogEngine.Writer);
+            });
+
+            using var audioContext = new AudioContextScope(setup.DependencyContext.Resolve<ISoundSystemLogger>());
+            setup.DependencyContextBuilder
                 .WithSingleton<ISpeechSynthesisPlugin>(new WindowsSpeechSynthesisPlugin())
-                .WithSingleton<IRadioSpeechPlayer>(new RadioSpeechPlayer()));
-        
+                .WithSingleton<IRadioSpeechPlayer>(new RadioSpeechPlayer());
+            
             var llhzClrDel = setup.AddGroundStation(
                 Frequency.FromKhz(130850),
                 new GeoPoint(32.179766d, 34.834404d),
@@ -49,8 +53,6 @@ namespace Atc.World.Tests.Comms
             llhzTwrSecondary.Station.Get().PowerOn();
             plutoPrimary.Station.Get().PowerOn();
             plutoSecondary.Station.Get().PowerOn();
-
-            using var audioContext = new AudioContextScope(setup.DependencyContext.Resolve<ISoundSystemLogger>());
             
             var llhzClrDelController = setup.Supervisor.CreateActor<DummyControllerActor>(
                 id => new DummyControllerActor.DummyActivationEvent(id, llhzClrDel.Station));

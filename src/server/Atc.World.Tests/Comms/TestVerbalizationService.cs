@@ -9,14 +9,14 @@ namespace Atc.World.Tests.Comms
 {
     public class TestVerbalizationService : IVerbalizationService
     {
-        public IVerbalizer GetVerbalizer(Party speaker, LanguageCode language)
+        public IVerbalizer GetVerbalizer(PartyDescription speaker, LanguageCode language)
         {
             return new TestVerbalizer();
         }
                 
         public class TestVerbalizer : IVerbalizer
         {
-            public UtteranceDescription VerbalizeIntent(Party speaker, Intent intent)
+            public UtteranceDescription VerbalizeIntent(PartyDescription speaker, Intent intent)
             {
                 if (intent is TestGreetingIntent greeting)
                 {

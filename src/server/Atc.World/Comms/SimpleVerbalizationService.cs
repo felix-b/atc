@@ -14,7 +14,7 @@ namespace Atc.World.Comms
                 { "en-US", new USEnglishVerbalizer() }
             };
         
-        public IVerbalizer GetVerbalizer(Party speaker, LanguageCode language)
+        public IVerbalizer GetVerbalizer(PartyDescription speaker, LanguageCode language)
         {
             return __verbalizerByLanguageCode[language];
         }

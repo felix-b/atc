@@ -6,12 +6,12 @@ namespace Atc.World.Abstractions
 {
     public interface IVerbalizationService
     {
-        IVerbalizer GetVerbalizer(Party speaker, LanguageCode language);
+        IVerbalizer GetVerbalizer(PartyDescription speaker, LanguageCode language);
     }
     
     public interface IVerbalizer
     {
-        UtteranceDescription VerbalizeIntent(Party speaker, Intent intent);
+        UtteranceDescription VerbalizeIntent(PartyDescription speaker, Intent intent);
         LanguageCode Language { get; }
     }
 }

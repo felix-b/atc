@@ -25,14 +25,14 @@ namespace Atc.World.Tests.Comms
 
         private readonly IStateStore _store;
         private readonly IWorldContext _world;
-        private readonly ControllerParty _party;
+        private readonly PersonDescription _party;
 
         public DummyControllerActor(IStateStore store, IWorldContext world, DummyActivationEvent activation) 
             : base(TypeString, activation.UniqueId, new DummyState(RepeatCount: 0, activation.Radio))
         {
             _store = store;
             _world = world;
-            _party = new DummyControllerParty(
+            _party = new PersonDescription(
                 activation.UniqueId, 
                 callsign: State.Radio.Get().Callsign, 
                 NatureType.AI, 
@@ -89,25 +89,6 @@ namespace Atc.World.Tests.Comms
             );
         }
 
-        private class DummyControllerParty : ControllerParty
-        {
-            public DummyControllerParty(
-                string uniqueId, 
-                string callsign, 
-                NatureType nature, 
-                VoiceDescription defaultVoice, 
-                GenderType gender, 
-                AgeType age, 
-                string? firstName) 
-                : base(uniqueId, callsign, nature, defaultVoice, gender, age, firstName)
-            {
-            }
-
-            public override void ReceiveIntent(Intent intent)
-            {
-            }
-        }
-
-        public Party Party => _party;
+        public PartyDescription Party => _party;
     }
 }

@@ -147,12 +147,12 @@ namespace Atc.World.Comms
             try
             {
                 var partyActor = _supervisor.GetActorByIdOrThrow<IStatefulActor>(intent.Header.OriginatorUniqueId);
-                var party = ((IHaveParty) partyActor.Get()).Party;
+                PartyDescription party = ((IHaveParty) partyActor.Get()).Party;
                 var verbalizer = _verbalization.GetVerbalizer(party, transmission.Wave.Language);
                 var utterance = verbalizer.VerbalizeIntent(party, intent);
                 //TODO: why DefaultVoice?
                 //TODO: remember AssignedPlatformVoiceId 
-                var result = await _synthesizer.SynthesizeUtteranceWave(utterance, party.DefaultVoice);
+                var result = await _synthesizer.SynthesizeUtteranceWave(utterance, party.Voice);
                 return result.Wave;
             }
             catch (Exception e)
