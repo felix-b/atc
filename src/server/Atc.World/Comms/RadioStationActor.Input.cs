@@ -129,7 +129,7 @@ namespace Atc.World.Comms
                 out queueTokenId);
         }
 
-        public void BeginTransmission(RadioTransmissionWave wave)
+        public void BeginTransmission(RadioTransmissionWave wave, TransmissionDurationUpdateCallback? onDurationUpdate = null)
         {
             var aether = GetAetherOrThrow();
             
@@ -142,7 +142,7 @@ namespace Atc.World.Comms
             _store.Dispatch(this, new StartedTransmittingEvent(transmission));
 
             var thisRef = this.GetRef(_supervisor);
-            aether.OnTransmissionStarted(thisRef, transmission);
+            aether.OnTransmissionStarted(thisRef, transmission, onDurationUpdate);
 
             InvokeListeners(receivedIntent: null);
         }
@@ -353,5 +353,7 @@ namespace Atc.World.Comms
         public delegate void ListenerCallback(RadioStationActor station, TransceiverStatus status, Intent? receivedIntent);
 
         public delegate void IntentReceivedCallback(RadioStationActor station, TransmissionState transmission, Intent intent);
+
+        public delegate void TransmissionDurationUpdateCallback(TimeSpan actualDuration);
     }
 }

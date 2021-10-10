@@ -385,6 +385,13 @@ namespace Atc.World
                     _node = node;
                 }
 
+                public void UpdateDeadline(DateTime newDeadlineUtc)
+                {
+                    _node.Value = _node.Value with {
+                        DeadlineUtc = newDeadlineUtc
+                    };
+                }
+
                 public void Cancel()
                 {
                     if (!_node.Value.Removed)

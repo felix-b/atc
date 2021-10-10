@@ -9,7 +9,7 @@ namespace Atc.World.Tests.Comms
 {
     public class TestVerbalizationService : IVerbalizationService
     {
-        public IVerbalizer GetVerbalizer(PartyDescription speaker, LanguageCode language)
+        public IVerbalizer GetVerbalizer(PartyDescription speaker, LanguageCode? language = null)
         {
             return new TestVerbalizer();
         }

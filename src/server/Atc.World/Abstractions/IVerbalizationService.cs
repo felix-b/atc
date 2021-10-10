@@ -6,7 +6,7 @@ namespace Atc.World.Abstractions
 {
     public interface IVerbalizationService
     {
-        IVerbalizer GetVerbalizer(PartyDescription speaker, LanguageCode language);
+        IVerbalizer GetVerbalizer(PartyDescription speaker, LanguageCode? language = null);
     }
     
     public interface IVerbalizer

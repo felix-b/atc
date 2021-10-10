@@ -14,10 +14,10 @@ namespace Atc.World.Comms
                 { "en-US", new USEnglishVerbalizer() }
             };
         
-        public IVerbalizer GetVerbalizer(PartyDescription speaker, LanguageCode language)
+        public IVerbalizer GetVerbalizer(PartyDescription speaker, LanguageCode? language = null)
         {
-            return __verbalizerByLanguageCode[language];
+            var effectiveLanguage = language ?? speaker.Voice.Language;
+            return __verbalizerByLanguageCode[effectiveLanguage];
         }
-
     }
 }

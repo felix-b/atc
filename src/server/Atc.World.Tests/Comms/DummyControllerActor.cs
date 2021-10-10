@@ -7,44 +7,35 @@ using Zero.Loss.Actors;
 
 namespace Atc.World.Tests.Comms
 {
-    public class DummyControllerActor : StatefulActor<DummyControllerActor.DummyState>, IRadioOperatingActor, IHaveParty
+    public class DummyControllerActor : RadioOperatingActor<DummyControllerActor.DummyState>
     {
         public static readonly string TypeString = "dummy";
         
         public record DummyState(
-            int RepeatCount,
-            ActorRef<RadioStationActor> Radio
-        );
+            ActorRef<RadioStationActor> Radio,
+            Intent? PendingTransmissionIntent,
+            int RepeatCount
+        ) : RadioOperatorState(Radio, PendingTransmissionIntent);
         
         public record DummyActivationEvent(
             string UniqueId, 
             ActorRef<RadioStationActor> Radio
-        ) : IActivationStateEvent<DummyControllerActor>;
+        ) : RadioOperatorActivationEvent(UniqueId, Radio), IActivationStateEvent<DummyControllerActor>;
         
         public record IncrementRepeatCountEvent() : IStateEvent;
 
-        private readonly IStateStore _store;
-        private readonly IWorldContext _world;
-        private readonly PersonDescription _party;
-
-        public DummyControllerActor(IStateStore store, IWorldContext world, DummyActivationEvent activation) 
-            : base(TypeString, activation.UniqueId, new DummyState(RepeatCount: 0, activation.Radio))
+        public DummyControllerActor(IStateStore store, IWorldContext world, IVerbalizationService verbalizationService, DummyActivationEvent activation) 
+            : base(TypeString, store, verbalizationService, world, CreateParty(activation), activation, CreateInitialState(activation))
         {
-            _store = store;
-            _world = world;
-            _party = new PersonDescription(
-                activation.UniqueId, 
-                callsign: State.Radio.Get().Callsign, 
-                NatureType.AI, 
-                VoiceDescription.Default, 
-                GenderType.Male, 
-                AgeType.Senior,
-                firstName: "Bob");
-            
-            _world.DeferBy(TimeSpan.FromSeconds(5), () => {
+            World.DeferBy(TimeSpan.FromSeconds(5), () => {
                 State.Radio.Get().PowerOn();
                 TransmitGreeting();
             });
+        }
+
+        private static DummyState CreateInitialState(DummyActivationEvent activation)
+        {
+            return new DummyState(RepeatCount: 0, Radio: activation.Radio, PendingTransmissionIntent: null);
         }
 
         protected override DummyState Reduce(DummyState stateBefore, IStateEvent @event)
@@ -54,27 +45,10 @@ namespace Atc.World.Tests.Comms
                 : stateBefore;
         }
 
-        public void BeginQueuedTransmission(int cookie)
-        {
-            var wave = new RadioTransmissionWave(
-                "en-US",
-                new byte[0],
-                TimeSpan.FromSeconds(5),
-                new TestGreetingIntent(_world, State.RepeatCount, fromPartyActor: this));
-            
-            State.Radio.Get().BeginTransmission(wave);
-            
-            //TODO: we must have a feedback from speech synthesis about the actual duration of the transmission!!
-            _world.DeferBy(TimeSpan.FromSeconds(5), () => {  
-                State.Radio.Get().CompleteTransmission(wave.GetIntentOrThrow());
-                _world.DeferBy(TimeSpan.FromSeconds(10), TransmitGreeting);
-            });
-        }
-
         private void TransmitGreeting()
         {
             State.Radio.Get().AIEnqueueForTransmission(this, 123, out _);
-            _store.Dispatch(this, new IncrementRepeatCountEvent());
+            Store.Dispatch(this, new IncrementRepeatCountEvent());
         }
 
         public static void RegisterType(ISupervisorActorInit supervisor)
@@ -84,11 +58,27 @@ namespace Atc.World.Tests.Comms
                 (activation, dependencies) => new DummyControllerActor(
                     dependencies.Resolve<IStateStore>(),
                     dependencies.Resolve<IWorldContext>(), 
+                    dependencies.Resolve<IVerbalizationService>(), 
                     activation
                 )
             );
         }
 
-        public PartyDescription Party => _party;
+        protected override void ReceiveIntent(Intent intent)
+        {
+            //nothing
+        }
+
+        private static PartyDescription CreateParty(DummyActivationEvent activation)
+        {
+            return new PersonDescription(
+                activation.UniqueId, 
+                callsign: activation.Radio.Get().Callsign, 
+                NatureType.AI, 
+                VoiceDescription.Default, 
+                GenderType.Male, 
+                AgeType.Senior,
+                firstName: "Bob");
+        }
     }
 }

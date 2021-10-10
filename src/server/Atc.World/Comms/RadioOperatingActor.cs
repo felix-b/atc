@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using Atc.World.Abstractions;
 using Zero.Loss.Actors;
 
@@ -11,17 +12,23 @@ namespace Atc.World.Comms
 
     public record RadioOperatorState(
         ActorRef<RadioStationActor> Radio,
-        Intent? PendingTransmissionIntent 
+        Intent? PendingTransmissionIntent
     );
-
-    public record SetPendingIntentEvent(Intent? Intent) : IStateEvent;
     
+    public record SetPendingIntentEvent(Intent Intent) : IStateEvent;
+
+    public record ClearPendingIntentEvent() : IStateEvent;
+
     public abstract class RadioOperatingActor<TState> : StatefulActor<TState>, IRadioOperatingActor
         where TState : RadioOperatorState
     {
+        [NotEventSourced] 
+        private IDeferHandle? _transmissionCompletionHandle = null;
+        
         protected RadioOperatingActor(
             string typeString,
             IStateStore store,
+            IVerbalizationService verbalizationService,
             IWorldContext world,
             PartyDescription party, 
             RadioOperatorActivationEvent activation, 
@@ -29,6 +36,7 @@ namespace Atc.World.Comms
             base(typeString, activation.UniqueId, initialState)
         {
             Store = store;
+            VerbalizationService = verbalizationService;
             World = world;
             Party = party;
             
@@ -44,7 +52,10 @@ namespace Atc.World.Comms
                     return stateBefore with {
                         PendingTransmissionIntent = setPending.Intent
                     };
-                    break;
+                case ClearPendingIntentEvent:
+                    return stateBefore with {
+                        PendingTransmissionIntent = null
+                    };
                 default:
                     return stateBefore;
             }
@@ -55,26 +66,25 @@ namespace Atc.World.Comms
             var intent = State.PendingTransmissionIntent
                 ?? throw new InvalidOperationException($"{UniqueId}: no pending intent in {nameof(BeginQueuedTransmission)}");
                 
+            var verbalizer = VerbalizationService.GetVerbalizer(Party);
+            var utterance = verbalizer.VerbalizeIntent(Party, intent);
             var wave = new RadioTransmissionWave(
-                "en-US", //TODO: allow specifying a language
-                new byte[0],
-                TimeSpan.FromSeconds(5),
-                intent);
+                Utterance: utterance,
+                Voice: Party.Voice,
+                SoundBuffers: null);
             
-            Store.Dispatch(this, new SetPendingIntentEvent(null));
-            State.Radio.Get().BeginTransmission(wave);
+            Store.Dispatch(this, new ClearPendingIntentEvent());
+            State.Radio.Get().BeginTransmission(wave, actualDuration => {
+                _transmissionCompletionHandle.UpdateDeadline(World.UtcNow() + actualDuration);
+            });
             
-            //TODO: we must have a feedback from speech synthesis about the actual duration of the transmission!!
-            World.DeferBy(TimeSpan.FromSeconds(5), () => {  
-                State.Radio.Get().CompleteTransmission(wave.GetIntentOrThrow());
+            _transmissionCompletionHandle = World.DeferBy(utterance.EstimatedDuration, () => {  
+                _transmissionCompletionHandle = null;
+                State.Radio.Get().CompleteTransmission(intent);
             });
         }
 
         public PartyDescription Party { get; }
-        public IStateStore Store { get; }
-        public IWorldContext World { get; }
-
-        public RadioStationActor Radio => State.Radio.Get();
 
         protected abstract void ReceiveIntent(Intent intent);
 
@@ -83,5 +93,10 @@ namespace Atc.World.Comms
             Store.Dispatch(this, new SetPendingIntentEvent(intent));
             Radio.AIEnqueueForTransmission(this, 0 ,out _);
         }
+
+        protected IStateStore Store { get; }
+        protected IWorldContext World { get; }
+        protected IVerbalizationService VerbalizationService { get; }
+        protected RadioStationActor Radio => State.Radio.Get();
     }
 }

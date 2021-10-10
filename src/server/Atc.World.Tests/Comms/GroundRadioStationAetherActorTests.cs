@@ -25,11 +25,11 @@ namespace Atc.World.Tests.Comms
 
             setup.World.Get().ProgressBy(TimeSpan.FromSeconds(30));
             
-            var wave = new RadioTransmissionWave(
-                "en-US",
-                new byte[0], 
-                TimeSpan.FromSeconds(3), 
-                new TestGreetingIntent(setup.WorldContext, 1, groundStation, airStation1));
+            // var wave = new RadioTransmissionWave(
+            //     "en-US",
+            //     new byte[0], 
+            //     TimeSpan.FromSeconds(3), 
+            //     new TestGreetingIntent(setup.WorldContext, 1, groundStation, airStation1));
             
             //groundStation.Get().AIEnqueueForTransmission(this, cookie: 123);
 

@@ -11,6 +11,7 @@ using Atc.Sound;
 using Atc.Speech.Abstractions;
 using Atc.Speech.WinLocalPlugin;
 using Atc.World;
+using Atc.World.Abstractions;
 using Atc.World.Comms;
 using Autofac;
 using Just.Cli;
@@ -157,6 +158,7 @@ namespace Atc.Server.Daemon
 
             builder.Register(c => _taskSynchronizer!).SingleInstance().As<IServiceTaskSynchronizer>();
             builder.RegisterType<RuntimeClock>().SingleInstance().WithParameter("interval", TimeSpan.FromSeconds(10));
+            builder.RegisterType<RealSystemEnvironment>().As<ISystemEnvironment>().SingleInstance();
 
             LoadSpeechPlugins(builder);
 

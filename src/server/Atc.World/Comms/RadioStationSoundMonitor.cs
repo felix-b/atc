@@ -118,10 +118,11 @@ namespace Atc.World.Comms
 
         private async Task BeginPlayTransmissionSpeech(RadioStationActor.TransmissionState transmission, CancellationToken cancellation)
         {
-            var shouldSynthesizeSpeech = !transmission.Wave.HasBytes;
-            var effectiveWaveBytes = shouldSynthesizeSpeech
-                ? await SynthesizeSpeech(transmission, cancellation)
-                : transmission.Wave.Bytes;
+            var shouldSynthesizeSpeech = true; //!transmission.Wave.HasSound;
+            var effectiveWaveBytes = await SynthesizeSpeech(transmission, cancellation); 
+                // shouldSynthesizeSpeech
+                // ? await SynthesizeSpeech(transmission, cancellation)
+                // : transmission.Wave.SoundBytes;
 
             if (cancellation.IsCancellationRequested)
             {
@@ -136,23 +137,21 @@ namespace Atc.World.Comms
         
         private async Task<byte[]> SynthesizeSpeech(RadioStationActor.TransmissionState transmission, CancellationToken cancellation)
         {
-            var intent = transmission.Wave.GetIntentOrThrow();
-
+            if (transmission.Wave.Utterance == null || transmission.Wave.Voice == null)
+            {
+                throw _logger.CannotSynthesizeSpeechNoUttteranceOrVoice(transmission.Id, transmission.TransmittingStationId);
+            }
+        
             using var logSpan = _logger.SynthesizingSpeech(
                 transmissionId: transmission.Id, 
-                intentType: intent.Header.ToString(),
-                fromCallsign: intent.Header.OriginatorCallsign, 
-                toCallsign: intent.Header.RecipientCallsign);
+                fromCallsign:_supervisor.GetActorByIdOrThrow<RadioStationActor>(transmission.TransmittingStationId).Get().Callsign, 
+                utterance: transmission.Wave.Utterance!.ToString()!);
 
             try
             {
-                var partyActor = _supervisor.GetActorByIdOrThrow<IStatefulActor>(intent.Header.OriginatorUniqueId);
-                PartyDescription party = ((IHaveParty) partyActor.Get()).Party;
-                var verbalizer = _verbalization.GetVerbalizer(party, transmission.Wave.Language);
-                var utterance = verbalizer.VerbalizeIntent(party, intent);
-                //TODO: why DefaultVoice?
+                //TODO: use cancellation token
                 //TODO: remember AssignedPlatformVoiceId 
-                var result = await _synthesizer.SynthesizeUtteranceWave(utterance, party.Voice);
+                var result = await _synthesizer.SynthesizeUtteranceWave(transmission.Wave.Utterance, transmission.Wave.Voice!);
                 return result.Wave;
             }
             catch (Exception e)

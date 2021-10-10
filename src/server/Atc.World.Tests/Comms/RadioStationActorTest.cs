@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Atc.Data.Primitives;
+using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 using Atc.World.Comms;
 using FluentAssertions;
 using NUnit.Framework;
@@ -119,10 +121,9 @@ namespace Atc.World.Tests.Comms
 
             var intent = new TestGreetingIntent(setup.WorldContext, 1, from: airStation2, to: groundStation1); 
             var transmission = new RadioTransmissionWave(
-                "en-US",
-                new byte[0], 
-                TimeSpan.Zero,
-                intent);
+                new UtteranceDescription("en-US", new UtteranceDescription.Part[0], TimeSpan.FromSeconds(5)),
+                VoiceDescription.Default,  
+                null);
             
             airStation2.Get().BeginTransmission(transmission);
             airStation2.Get().CompleteTransmission(intent);
@@ -167,10 +168,9 @@ namespace Atc.World.Tests.Comms
 
             var intent = new TestGreetingIntent(setup.WorldContext, 1, from: airStation1, to: groundStation1); 
             var transmission = new RadioTransmissionWave(
-                "en-US",
-                new byte[0], 
-                TimeSpan.Zero,
-                intent);
+                new UtteranceDescription("en-US", new UtteranceDescription.Part[0], TimeSpan.FromSeconds(5)),
+                VoiceDescription.Default,  
+                null);
 
             airStation1.Get().BeginTransmission(transmission);
             
@@ -198,12 +198,10 @@ namespace Atc.World.Tests.Comms
             airStation1.Get().PowerOn();
             setup.World.Get().ProgressBy(TimeSpan.FromSeconds(30));
 
-            var intent = new TestGreetingIntent(setup.WorldContext, 1, from: airStation1, to: groundStation1); 
             var transmission = new RadioTransmissionWave(
-                "en-US",
-                new byte[0], 
-                TimeSpan.Zero,
-                intent);
+                new UtteranceDescription("en-US", new UtteranceDescription.Part[0], TimeSpan.FromSeconds(5)),
+                VoiceDescription.Default,  
+                null);
 
             airStation1.Get().BeginTransmission(transmission);
             
@@ -233,10 +231,9 @@ namespace Atc.World.Tests.Comms
 
             var intent = new TestGreetingIntent(setup.WorldContext, 1, from: airStation1, to: groundStation1); 
             var transmission = new RadioTransmissionWave(
-                "en-US",
-                new byte[0], 
-                TimeSpan.Zero,
-                intent);
+                new UtteranceDescription("en-US", new UtteranceDescription.Part[0], TimeSpan.FromSeconds(5)),
+                VoiceDescription.Default,  
+                null);
 
             airStation1.Get().BeginTransmission(transmission);
             airStation1.Get().CompleteTransmission(intent);

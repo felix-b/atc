@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Atc.Data.Primitives;
@@ -7,14 +8,19 @@ namespace Atc.Speech.Abstractions
 {
     public class UtteranceDescription
     {
-        public UtteranceDescription(LanguageCode language, IEnumerable<Part> parts)
+        public UtteranceDescription(
+            LanguageCode language, 
+            IEnumerable<Part> parts, 
+            TimeSpan? estimatedDuration = null) //TODO: temporary, should be required
         {
             Language = language;
             Parts = parts.ToArray();
+            EstimatedDuration = estimatedDuration ?? TimeSpan.FromSeconds(5);
         }
         
         public LanguageCode Language { get; }
         public IReadOnlyList<Part> Parts { get; }
+        public TimeSpan EstimatedDuration { get; }
 
         public enum PartType
         {

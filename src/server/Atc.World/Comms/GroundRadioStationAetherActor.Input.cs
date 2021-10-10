@@ -13,7 +13,12 @@ namespace Atc.World.Comms
         private readonly IStateStore _store;
         private readonly ICommsLogger _logger;
         private readonly ActorRef<RadioStationActor> _groundStation;
+        
+        [NotEventSourced]
         private IDeferHandle? _silenceTrigger = null;
+
+        [NotEventSourced]
+        private RadioStationActor.TransmissionDurationUpdateCallback? _durationUpdateCallback = null;
 
         public GroundRadioStationAetherActor(
             IWorldContext world, 
@@ -90,9 +95,11 @@ namespace Atc.World.Comms
         
         public void OnTransmissionStarted(
             ActorRef<RadioStationActor> station, 
-            RadioStationActor.TransmissionState transmission)
+            RadioStationActor.TransmissionState transmission,
+            RadioStationActor.TransmissionDurationUpdateCallback? onDurationUpdate)
         {
             DisarmSilenceTrigger();
+            _durationUpdateCallback = onDurationUpdate;
             
             foreach (var otherStation in State.StationById.Values)
             {
@@ -110,6 +117,7 @@ namespace Atc.World.Comms
             RadioStationActor.TransmissionState transmission)
         {
             _store.Dispatch(this, new TransmissionEndedEvent(station.UniqueId, _world.UtcNow()));
+            _durationUpdateCallback = null;
             ArmSilenceTrigger();
 
             foreach (var otherStation in State.StationById.Values)
@@ -126,8 +134,9 @@ namespace Atc.World.Comms
             RadioStationActor.TransmissionState transmission, 
             Intent intent)
         {
-            ArmSilenceTrigger();
             _store.Dispatch(this, new TransmissionEndedEvent(station.UniqueId, _world.UtcNow()));
+            _durationUpdateCallback = null;
+            ArmSilenceTrigger();
 
             foreach (var otherStation in State.StationById.Values)
             {
@@ -149,6 +158,18 @@ namespace Atc.World.Comms
             _store.Dispatch(this, new TransmissionTokenDequeuedEvent());
             
             token.Target.Get().BeginQueuedTransmission(token.Cookie);
+        }
+
+        public void OnActualTransmissionDurationAvailable(TimeSpan duration)
+        {
+            try
+            {
+                _durationUpdateCallback?.Invoke(duration);
+            }
+            finally
+            {
+                _durationUpdateCallback = null;
+            }
         }
 
         public ActorRef<RadioStationActor> GroundStation => _groundStation;

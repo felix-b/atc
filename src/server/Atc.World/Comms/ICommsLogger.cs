@@ -13,6 +13,7 @@ namespace Atc.World.Comms
         void RegisteredPendingTransmission(ulong tokenId, string speaker, int cookie);
         LogWriter.LogSpan InvokingListener(string uniqueId, ulong listenerId);
         LogWriter.LogSpan InvokeAllListeners(string uniqueId, WellKnownIntentType? intentType);
-        LogWriter.LogSpan SynthesizingSpeech(ulong transmissionId, string intentType, string fromCallsign, string? toCallsign);
+        LogWriter.LogSpan SynthesizingSpeech(ulong transmissionId, string fromCallsign, string utterance);
+        InvalidOperationException CannotSynthesizeSpeechNoUttteranceOrVoice(ulong transmissionId, string stationId);
     }
 }

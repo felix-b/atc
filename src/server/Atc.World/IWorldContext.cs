@@ -37,6 +37,7 @@ namespace Atc.World
 
     public interface IDeferHandle
     {
+        void UpdateDeadline(DateTime newDeadlineUtc);
         void Cancel();
     }
 }
