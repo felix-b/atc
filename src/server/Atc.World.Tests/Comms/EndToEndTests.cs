@@ -17,6 +17,11 @@ namespace Atc.World.Tests.Comms
         [Test]
         public void ControllersTransmittingInCyclesAtLLHZ()
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
+            
             LogEngine.SetTargetToConsole();
             var setup = new WorldSetup(dependencies => {
                 dependencies.WithSingleton<LogWriter>(LogEngine.Writer);

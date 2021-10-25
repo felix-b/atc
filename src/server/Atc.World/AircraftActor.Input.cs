@@ -70,7 +70,7 @@ namespace Atc.World
         public Speed GroundSpeed => State.GroundSpeed;
         public Angle Pitch => State.Pitch;
         public Angle Roll => State.Roll;
-
+        public ActorRef<RadioStationActor> Com1Radio => State.Com1Radio;
         
         public static ActorRef<AircraftActor> SpawnNewAircraft(
             ISupervisorActor supervisor,

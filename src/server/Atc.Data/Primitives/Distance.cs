@@ -124,6 +124,8 @@ namespace Atc.Data.Primitives
             return new Distance((float)value, LengthUnit.NauticalMile);
         }
 
+        public static Distance Zero => new Distance(0, LengthUnit.NauticalMile);
+
         public static bool operator ==(Distance left, Distance right)
         {
             return left.Equals(right);

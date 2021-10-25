@@ -1,4 +1,4 @@
-﻿using Atc.Data.Primitives;
+﻿   using Atc.Data.Primitives;
 using Atc.World.Comms;
 using Zero.Loss.Actors;
 
@@ -39,8 +39,6 @@ namespace Atc.World.LLHZ
                 Frequency.FromKhz(119150),
                 new GeoPoint(32.179766d, 34.834404d),
                 "Pluto");
-            
-            
         }
         
         private ActorRef<RadioStationActor> AddGroundStation(Frequency frequency, GeoPoint location, string callsign)

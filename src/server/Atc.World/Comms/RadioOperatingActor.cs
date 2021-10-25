@@ -19,7 +19,7 @@ namespace Atc.World.Comms
 
     public record ClearPendingIntentEvent() : IStateEvent;
 
-    public abstract class RadioOperatingActor<TState> : StatefulActor<TState>, IRadioOperatingActor
+    public abstract class RadioOperatingActor<TState> : StatefulActor<TState>, IPilotRadioOperatingActor
         where TState : RadioOperatorState
     {
         [NotEventSourced] 
@@ -86,6 +86,21 @@ namespace Atc.World.Comms
 
         public PartyDescription Party { get; }
 
+        IntentHeader IPilotRadioOperatingActor.CreateIntentHeader(WellKnownIntentType type, int customCode = 0)
+        {
+            var fromStation = State.Radio.Get();
+            var toStation = fromStation.Aether!.Value.Get().GroundStation.Get();
+
+            return new IntentHeader(
+                type,
+                customCode,
+                fromStation.UniqueId,
+                fromStation.Callsign,
+                toStation.UniqueId,
+                toStation.Callsign,
+                World.UtcNow());
+        }
+        
         protected abstract void ReceiveIntent(Intent intent);
 
         protected void Transmit(Intent intent)

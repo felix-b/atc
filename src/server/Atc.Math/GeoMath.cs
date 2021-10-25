@@ -16,12 +16,19 @@ namespace Atc.Math
             var p2 = new Coordinate(end2.Lat, end2.Lon);
             var calcResult = GeodeticCalculations.CalculateGreatCircleLine(p1, p2);
 
-            line = new GeoLine(
-                end1,
-                end2,
-                length: Distance.FromMeters((float) calcResult.Distance.SiValue),
-                bearing12: Bearing.FromTrueDegrees((float) calcResult.Bearing12),
-                bearing21: Bearing.FromTrueDegrees((float) calcResult.Bearing21));
+            if (calcResult != null)
+            {
+                line = new GeoLine(
+                    end1,
+                    end2,
+                    length: Distance.FromMeters((float) calcResult.Distance.SiValue),
+                    bearing12: Bearing.FromTrueDegrees((float) calcResult.Bearing12),
+                    bearing21: Bearing.FromTrueDegrees((float) calcResult.Bearing21));
+            }
+            else
+            {
+                line = new GeoLine(end1, end2, Distance.Zero, Bearing.FromTrueDegrees(0), Bearing.FromTrueDegrees(0));
+            }
         }
 
         public static void CalculateGreatCircleDestination(in GeoPoint origin, Bearing bearing, Distance distance, out GeoPoint destination)

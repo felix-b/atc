@@ -1,15 +1,19 @@
 ﻿using System;
+using Zero.Loss.Actors;
 
 namespace Atc.World.Abstractions
 {
     public abstract record Intent(
-        IntentHeader Header)
+        IntentHeader Header,
+        IntentOptions Options)
     {
         public override string ToString()
         {
             return Header.ToString();
         }
     }
+
+
 
     public record IntentHeader(
         WellKnownIntentType Type,
@@ -45,7 +49,7 @@ namespace Atc.World.Abstractions
         CrossRunwayInstructionReadback = 0x052,
         HoldShortRunwayInstruction = 0x053,
         HoldShortRunwayInstructionReadback = 0x054,
-        ReadyForTakeoffReport = 0x060,
+        ReadyForDepartureReport = 0x060,
         TakeoffClearance = 0x061,
         TakeoffClearanceReadback = 0x062,
         LineUpAndWaitInstruction = 0x063,
@@ -60,11 +64,57 @@ namespace Atc.World.Abstractions
         EnterTrainingZoneInstruction = 0x0B1,
         EnterTrainingZoneInstructionReadback = 0x0B2,
         LeaveTrainingZoneRequest = 0x0C0,
-        LeaveTrainingZoneStandByInstruction = 0x0C1, 
-        LeaveTrainingZoneStandByInstructionReadback = 0x0C2, 
-        FinalReport = 0x0D0,
+        LeaveTrainingZoneStandByInstruction = 0x0C1,
+        LeaveTrainingZoneStandByInstructionReadback = 0x0C2,
+        FinalApproachReport = 0x0D0,
         LandingClearance = 0x0D1,
         LandingClearanceReadback = 0x0D2,
+        MonitorFrequencyInstruction = 0x0E0,
+        MonitorFrequencyInstructionReadback = 0x0E1,
         //TBD.............
+    }
+
+    public record IntentOptions(
+        IntentCondition? Condition,
+        IntentOptionFlags Flags)
+    {
+        public static readonly IntentOptions Default = new IntentOptions(Condition: null, IntentOptionFlags.None);
+    }
+
+    public record IntentCondition(
+        ConditionSubjectType Subject,
+        ConditionTimingType Timing,
+        ActorRef<AircraftActor>? SubjectAircraft = null,
+        TimeSpan? SubjectInterval = null,
+        DateTime? SubjectTime = null
+    );
+
+    [Flags]
+    public enum IntentOptionFlags
+    {
+        None = 0x00,
+        HasGreeting = 0x01,
+        HasFarewell = 0x02
+    }
+
+    public enum ConditionSubjectType
+    {
+        Startup,
+        ReadyToTaxi,
+        Takeoff,
+        Land,
+        Vacate,
+        Park,
+        Aircraft,
+        Vehicle,
+        TimeInterval,
+        Time
+    }
+
+    public enum ConditionTimingType
+    {
+        Before,
+        After,
+        During
     }
 }

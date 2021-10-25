@@ -7,4 +7,9 @@ namespace Atc.World.Comms
     {
         void BeginQueuedTransmission(int cookie);
     }
+
+    public interface IPilotRadioOperatingActor : IRadioOperatingActor
+    {
+        IntentHeader CreateIntentHeader(WellKnownIntentType type, int customCode = 0);
+    }
 }

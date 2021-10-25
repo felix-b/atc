@@ -42,13 +42,15 @@ namespace Atc.World.Tests.Comms
         {
             return @event is IncrementRepeatCountEvent
                 ? stateBefore with {RepeatCount = stateBefore.RepeatCount + 1}
-                : stateBefore;
+                : base.Reduce(stateBefore, @event);
         }
 
         private void TransmitGreeting()
         {
-            State.Radio.Get().AIEnqueueForTransmission(this, 123, out _);
+            Transmit(new TestGreetingIntent(World, State.RepeatCount, this, null));
+            
             Store.Dispatch(this, new IncrementRepeatCountEvent());
+            World.DeferBy(TimeSpan.FromSeconds(5), TransmitGreeting);
         }
 
         public static void RegisterType(ISupervisorActorInit supervisor)
