@@ -13,8 +13,6 @@ namespace Atc.World.Abstractions
         }
     }
 
-
-
     public record IntentHeader(
         WellKnownIntentType Type,
         int CustomCode,

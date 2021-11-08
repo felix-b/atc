@@ -11,7 +11,7 @@ using Zero.Loss.Actors;
 namespace Atc.World.LLHZ
 {
     public class LlhzPilotActor : 
-        RadioOperatingActor<LlhzPilotActor.PilotState>
+        AIRadioOperatingActor<LlhzPilotActor.PilotState>
     {
         public const string TypeString = "llhz/ai/pilot";
 
@@ -49,6 +49,11 @@ namespace Atc.World.LLHZ
             State.Workflow.ReceiveIntent(intent);
         }
 
+        protected override ImmutableStateMachine CreateStateMachine()
+        {
+            return CreatePatternFlightWorkflow();
+        }
+
         protected override PilotState Reduce(PilotState stateBefore, IStateEvent @event)
         {
             switch (@event)
@@ -77,22 +82,25 @@ namespace Atc.World.LLHZ
 
         private ImmutableStateMachine CreatePatternFlightWorkflow()
         {
-            var builder = new ImmutableStateMachine.Builder();
+            var builder = new ImmutableStateMachine.Builder(
+                initialStateName: "PREFLIGHT_INSPECTION",
+                dispatchEvent: DispatchStateMachineEvent,
+                scheduleDelay: ScheduleStateMachineDelay);
             
             builder.AddState("PREFLIGHT_INSPECTION", state => state
-                .OnEnter(sequence => {
-                    sequence.AddDelayStep(TimeSpan.FromMinutes(1));
-                    sequence.AddTriggerStep("PREFLIGHT_INSPECTION_OK");
+                .OnEnterStartSequence(sequence => {
+                    sequence.AddDelayStep("CHECKLIST", TimeSpan.FromMinutes(1));
+                    sequence.AddTriggerStep("DONE", "PREFLIGHT_INSPECTION_OK");
                 })
                 .OnTrigger("PREFLIGHT_INSPECTION_OK", transitionTo: "CONTACT_CLEARANCE")
             );
 
-            builder.AddConversationState("CONTACT_CLEARANCE", state => state 
+            builder.AddConversationState(this, "CONTACT_CLEARANCE", state => state 
                 .Monitor(Frequency.FromKhz(130850)) 
                 .Transmit(() => new GreetingIntent(this))
                 .Receive<GoAheadInstructionIntent>(transitionTo: "REQUEST_STARTUP"));
 
-            builder.AddConversationState("REQUEST_STARTUP", state => state
+            builder.AddConversationState(this, "REQUEST_STARTUP", state => state
                 .Transmit(() => new StartupRequestIntent(
                     this,
                     DepartureIntentType.ToStayInPattern,
@@ -105,7 +113,7 @@ namespace Atc.World.LLHZ
                     transitionTo: "HANDOFF_TO_TOWER")
                 );
                     
-            builder.AddConversationState("HANDOFF_TO_TOWER", state => state
+            builder.AddConversationState(this, "HANDOFF_TO_TOWER", state => state
                 .Receive<MonitorFrequencyIntent>(
                     memorizeIntent: true,
                     readback: () => new MonitorFrequencyReadbackIntent(

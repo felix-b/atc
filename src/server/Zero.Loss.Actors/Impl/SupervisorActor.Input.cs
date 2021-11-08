@@ -40,6 +40,8 @@ namespace Zero.Loss.Actors.Impl
 
             var actor = State.LastCreatedActor as TActor 
                 ?? throw new Exception("Internal error: actor was not created or type mismatch.");
+
+            (actor as IStartableActor)?.Start();
             
             _stateStore.Dispatch(this, new ClearLastCreatedActorEvent());
             return new ActorRef<TActor>(this, actor.UniqueId);

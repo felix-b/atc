@@ -47,7 +47,7 @@ namespace Atc.World.Tests.Comms
 
         private void TransmitGreeting()
         {
-            Transmit(new TestGreetingIntent(World, State.RepeatCount, this, null));
+            InitiateTransmission(new TestGreetingIntent(World, State.RepeatCount, this, null));
             
             Store.Dispatch(this, new IncrementRepeatCountEvent());
             World.DeferBy(TimeSpan.FromSeconds(5), TransmitGreeting);

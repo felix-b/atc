@@ -115,5 +115,23 @@ namespace Zero.Loss.Actors.Tests.Impl
                 .Select(r => r.Get())
                 .Should().BeEquivalentTo(new[] {child1, child2});
         }
+
+        [Test]
+        public void CanStartAStartableActor()
+        {
+            var store = new StateStore(new NoopStateStoreLogger());
+            var dependencies = SimpleDependencyContext.NewEmpty();
+
+            var supervisor = new SupervisorActor(store, dependencies);
+            supervisor.RegisterActorType<StartableActor, StartableActor.ActivationEvent>(
+                ParentActor.TypeString, 
+                (e, ctx) => new StartableActor(e, store));
+
+            var actor = supervisor.CreateActor(id => new StartableActor.ActivationEvent(id));
+
+            actor.UniqueId.Should().Be("test/parent/#1");
+            actor.Get().Should().NotBeNull();
+            actor.Get().StartCount.Should().Be(1);
+        }
     }
 }
