@@ -1,12 +1,13 @@
 ﻿using Atc.Speech.Abstractions;
 using Atc.World.Abstractions;
+using Atc.World.AI;
 using Atc.World.Comms;
 using Zero.Loss.Actors;
 
 namespace Atc.World.LLHZ
 {
-    public class LlhzClearanceControllerActor : 
-        RadioOperatingActor<LlhzClearanceControllerActor.DeliveryControllerState>
+    public class LlhzDeliveryControllerActor : 
+        RadioOperatingActor<LlhzDeliveryControllerActor.DeliveryControllerState>
     {
         public const string TypeString = "llhz/atc/clrdel";
 
@@ -18,9 +19,9 @@ namespace Atc.World.LLHZ
         public record ActivationEvent(
             string UniqueId,
             ActorRef<RadioStationActor> Radio
-        ) : RadioOperatorActivationEvent(UniqueId, Radio), IActivationStateEvent<LlhzClearanceControllerActor>;
+        ) : RadioOperatorActivationEvent(UniqueId, Radio), IActivationStateEvent<LlhzDeliveryControllerActor>;
 
-        public LlhzClearanceControllerActor(ActivationEvent activation, IStateStore store, IWorldContext world, IVerbalizationService verbaliarionService) 
+        public LlhzDeliveryControllerActor(ActivationEvent activation, IStateStore store, IWorldContext world, IVerbalizationService verbaliarionService) 
             : base(
                 TypeString, 
                 store, 
