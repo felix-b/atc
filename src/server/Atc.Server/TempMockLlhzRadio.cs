@@ -16,6 +16,9 @@ namespace Atc.Server
         public record Atis(string Info, string ActiveRunway, int Qnh, int WindBearing, int WindSpeedKt);
 
         private const string CallSignFilePath = @"E:\X-Plane 11\Resources\plugins\atc2\callsign.txt";
+        
+        private static readonly string[] TrainingZoneNames = new[] {"3", "8", "9", /*"11",*/ "12", "13"};
+        private static readonly string[] TrainingZoneSquawks = new[] {"5103", "5102", "5105", /*"5111",*/ "5112", "5113"};
 
         private readonly ISpeechSynthesisPlugin _synthesizer;
         private readonly RadioSpeechPlayer _player;
@@ -159,10 +162,26 @@ namespace Atc.Server
             
             //---- GO TO TRAINING ZONES ---
             await NextPilotTransmission(cancel);                           // Batzra 800
-            await TransmitHi(CreateEnterTrainingZoneUtterance(), cancel);  // cleared to enter a training zone
-            await NextPilotTransmission(cancel);                           // readback
+            var zoneIndex = _random.Next(TrainingZoneNames.Length) <= 2 ? 3 : 4; // select 12 or 13
+            var isNorthenZone = TrainingZoneNames[zoneIndex] == "12" || TrainingZoneNames[zoneIndex] == "13";
+
+            if (isNorthenZone)
+            {
+                await TransmitHi(CreateClearedDror800Utterance(zoneIndex), cancel);  // cleared to Dror 800
+                await NextPilotTransmission(cancel);                                 // readback
+                await NextPilotTransmission(cancel);                                 // report Dror 800
+                await TransmitHi(CreateHandOffToPlutoUtterance(), cancel);           // monitor Pluto 118.4 bye
+                await NextPilotTransmission(cancel);                                 // readback
+                await NextPilotTransmission(cancel);                                 // Pluto greeting
+                await TransmitHi(CreateClearedHasharon1500Utterance(), cancel);      // cleared to Tzomet HaSharon 1500
+                await NextPilotTransmission(cancel);                                 // readback
+                await NextPilotTransmission(cancel);                                 // report Tzomet HaSharon 1500
+            }
+
+            await TransmitHi(CreateEnterTrainingZoneUtterance(zoneIndex), cancel);  // cleared to enter a training zone
+            await NextPilotTransmission(cancel);                                    // readback
             
-            await NextPilotTransmission(cancel);                           // request to leave training zone
+            await NextPilotTransmission(cancel);                                    // request to leave training zone
             int returnToBaseRandom;
             
             returnToBaseRandom = _random.Next(3);
@@ -173,11 +192,27 @@ namespace Atc.Server
                 await Task.Delay(_random.Next(10000, 60000));
             }
 
-            await TransmitHi(CreateExitTrainingZoneUtterance(), cancel);    // cleared to Batzra 1200
-            await NextPilotTransmission(cancel);                            // readback
+            if (isNorthenZone)
+            {
+                await TransmitHi(CreateExitToHasharon2000Utterance(), cancel);    // cleared to Batzra 1200
+                await NextPilotTransmission(cancel);                              // readback
+                await NextPilotTransmission(cancel);                              // report HaSharon 2000
+                await TransmitHi(CreateClearedDror2000MonitorLlhzTowerUtterance(), cancel);  // cleared to Dror 2000 monitor LLHZ TWR
+                await NextPilotTransmission(cancel);                              // readback
+                await NextPilotTransmission(cancel);                              // report Dror 2000 to LLHZ TWR
+                await TransmitHi(CreateClearedToBatzra2000Utterance(), cancel);   // cleared to Dror 2000 monitor LLHZ TWR
+                await NextPilotTransmission(cancel);                              // readback
+            }
+            else
+            {
+                await TransmitHi(CreateExitToBatzra1200Utterance(), cancel);   // cleared to Batzra 1200
+                await NextPilotTransmission(cancel);                           // readback
+            }
 
             await NextPilotTransmission(cancel);                            // Batzra 1200
-            await TransmitHi(CreateJoinPatternUtterance(), cancel);         // join pattern at downwind 11 / r.base 29
+            await TransmitHi(CreateJoinPatternUtterance(isNorthenZone 
+                ? 2000 
+                : 1200), cancel);                                           // join pattern at downwind 11 / r.base 29
             await NextPilotTransmission(cancel);                            // readback
 
             await NextPilotTransmission(cancel);                            // downwind 11/base 29 at 1200
@@ -402,22 +437,69 @@ namespace Atc.Server
             );
         }
 
-        private UtteranceDescription CreateEnterTrainingZoneUtterance()
+        private UtteranceDescription CreateClearedDror800Utterance(int zoneIndex)
         {
-            var zoneNames = new[] {"3", "8", "9", /*"11",*/ "12", "13"};
-            var zoneSquawks = new[] {"5103", "5102", "5105", /*"5111",*/ "5112", "5113"};
-            var zoneIndex = _random.Next(zoneNames.Length);
-            
+            return new UtteranceDescription(
+                _language,
+                TossADice()
+                    ? new UtteranceDescription.Part[] {
+                        new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                        new (UtteranceDescription.PartType.Text, "אזור"),
+                        new (UtteranceDescription.PartType.Data, TrainingZoneNames[zoneIndex]),
+                        new (UtteranceDescription.PartType.Text, "עם"),
+                        //new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneSquawks[zoneIndex])),
+                        new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(TrainingZoneSquawks[zoneIndex])}</prosody>"),
+                        new (UtteranceDescription.PartType.Affirmation, "על"),
+                        new (UtteranceDescription.PartType.Affirmation, "<phoneme alphabet='sapi' ph='h a t r a n s p o o n d e r'>הטרנספונדר</phoneme>"),
+                        new (UtteranceDescription.PartType.Data, "שמונה מאות לדרור"),
+                    }
+                    : new UtteranceDescription.Part[] {
+                        new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                        new (UtteranceDescription.PartType.Text, "אזור"),
+                        new (UtteranceDescription.PartType.Data, TrainingZoneNames[zoneIndex]),
+                        new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='t r a n s p o o n d e r'>טרנספונדר</phoneme>"),
+                        new (UtteranceDescription.PartType.Data, SpellPhoneticString(TrainingZoneSquawks[zoneIndex])),
+                        new (UtteranceDescription.PartType.Data, "בני דרור שמונה מאות"),
+                    }
+            );
+        }
+        
+        private UtteranceDescription CreateClearedHasharon1500Utterance()
+        {
+            return new UtteranceDescription(
+                _language,
+                new UtteranceDescription.Part[] {
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Data, "פלוטו שלום,"),
+                    new (UtteranceDescription.PartType.Data, "אלף חמש מאות לצומת השרון"),
+                }
+            );                                              
+        }
+        
+        private UtteranceDescription CreateHandOffToPlutoUtterance()
+        {
+            return new UtteranceDescription(
+                _language,
+                new UtteranceDescription.Part[] {
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Data, "תעבור לפלוטו על אחד אחד שמונה ארבע"),
+                    new (UtteranceDescription.PartType.Text, "להישמע"),
+                }
+            );
+        }
+
+        private UtteranceDescription CreateEnterTrainingZoneUtterance(int zoneIndex)
+        {
             return new UtteranceDescription(
                 _language,
                 TossADice()
                     ? new UtteranceDescription.Part[] {
                         new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                         new (UtteranceDescription.PartType.Text, "כנס לאזור"),
-                        new (UtteranceDescription.PartType.Data, zoneNames[zoneIndex]),
+                        new (UtteranceDescription.PartType.Data, TrainingZoneNames[zoneIndex]),
                         new (UtteranceDescription.PartType.Text, "עם"),
                         //new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneSquawks[zoneIndex])),
-                        new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(zoneSquawks[zoneIndex])}</prosody>"),
+                        new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(TrainingZoneSquawks[zoneIndex])}</prosody>"),
                         
                         new (UtteranceDescription.PartType.Affirmation, "על"),
                         new (UtteranceDescription.PartType.Affirmation, "<phoneme alphabet='sapi' ph='h a t r a n s p o o n d e r'>הטרנספונדר</phoneme>"),
@@ -425,20 +507,53 @@ namespace Atc.Server
                     : new UtteranceDescription.Part[] {
                         new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                         new (UtteranceDescription.PartType.Text, "אזור"),
-                        new (UtteranceDescription.PartType.Data, zoneNames[zoneIndex]),
+                        new (UtteranceDescription.PartType.Data, TrainingZoneNames[zoneIndex]),
                         new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='t r a n s p o o n d e r'>טרנספונדר</phoneme>"),
-                        new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneSquawks[zoneIndex])),
+                        new (UtteranceDescription.PartType.Data, SpellPhoneticString(TrainingZoneSquawks[zoneIndex])),
                     }
             );
         }
 
-        private UtteranceDescription CreateExitTrainingZoneUtterance()
+        private UtteranceDescription CreateExitToBatzra1200Utterance()
         {
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "צא לבצרה 1200"),
+                }
+            );
+        }
+
+        private UtteranceDescription CreateExitToHasharon2000Utterance()
+        {
+            return new UtteranceDescription(
+                _language,
+                new UtteranceDescription.Part[] {
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Text, "צא לצומת השרון בגובה אלפיים"),
+                }
+            );
+        }
+
+        private UtteranceDescription CreateClearedDror2000MonitorLlhzTowerUtterance()
+        {
+            return new UtteranceDescription(
+                _language,
+                new UtteranceDescription.Part[] {
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Text, "שמור אלפיים לדרור תעבור להרצליה על אחד שתיים שתיים שתיים להישמע"),
+                }
+            );
+        }
+        
+        private UtteranceDescription CreateClearedToBatzra2000Utterance()
+        {
+            return new UtteranceDescription(
+                _language,
+                new UtteranceDescription.Part[] {
+                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Text, "שמור גובה 2000 לבצרה"),
                 }
             );
         }
@@ -455,11 +570,13 @@ namespace Atc.Server
             );
         }
 
-        private UtteranceDescription CreateJoinPatternUtterance()
+        private UtteranceDescription CreateJoinPatternUtterance(int currentAltitudeFeet)
         {
             var parts = new List<UtteranceDescription.Part> {
                 new(UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
-                new(UtteranceDescription.PartType.Instruction, "<phoneme alphabet='sapi' ph='ch m o o r'>שמור</phoneme>"),
+                currentAltitudeFeet == 1200 
+                    ? new(UtteranceDescription.PartType.Instruction, "<phoneme alphabet='sapi' ph='ch m o o r'>שמור</phoneme>")
+                    : new(UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='h aa n m eh k k'>הנמך</phoneme>"),
                 new(UtteranceDescription.PartType.Data, "1200"),
             };
 
@@ -511,7 +628,7 @@ namespace Atc.Server
 
             parts.AddRange(new UtteranceDescription.Part[] {
                 new(UtteranceDescription.PartType.Text, "מספר"),
-                new(UtteranceDescription.PartType.Data, SpellPhoneticString(TossADice() ? "1" : "2")),
+                new(UtteranceDescription.PartType.Data, SpellPhoneticString(TossADice() ? "1" : "שתיים לפניך פיינל")),
             });
 
             return new UtteranceDescription(
