@@ -173,7 +173,7 @@ namespace Atc.Server
                 await TransmitHi(CreateHandOffToPlutoUtterance(), cancel);           // monitor Pluto 118.4 bye
                 await NextPilotTransmission(cancel);                                 // readback
                 await NextPilotTransmission(cancel);                                 // Pluto greeting
-                await TransmitHi(CreateClearedHasharon1500Utterance(), cancel);      // cleared to Tzomet HaSharon 1500
+                await TransmitHi(CreateClearedHasharon1500Utterance(), cancel);      // cleared to Tzomet HaSharon 1500 + QNH
                 await NextPilotTransmission(cancel);                                 // readback
                 await NextPilotTransmission(cancel);                                 // report Tzomet HaSharon 1500
             }
@@ -199,8 +199,8 @@ namespace Atc.Server
                 await NextPilotTransmission(cancel);                              // report HaSharon 2000
                 await TransmitHi(CreateClearedDror2000MonitorLlhzTowerUtterance(), cancel);  // cleared to Dror 2000 monitor LLHZ TWR
                 await NextPilotTransmission(cancel);                              // readback
-                await NextPilotTransmission(cancel);                              // report Dror 2000 to LLHZ TWR
-                await TransmitHi(CreateClearedToBatzra2000Utterance(), cancel);   // cleared to Dror 2000 monitor LLHZ TWR
+                await NextPilotTransmission(cancel);                              // greet LLHZ TWR report Dror 2000
+                await TransmitHi(CreateClearedToBatzra2000Utterance(), cancel);   // cleared to Bazra 2000 + QHN
                 await NextPilotTransmission(cancel);                              // readback
             }
             else
@@ -209,7 +209,7 @@ namespace Atc.Server
                 await NextPilotTransmission(cancel);                           // readback
             }
 
-            await NextPilotTransmission(cancel);                            // Batzra 1200
+            await NextPilotTransmission(cancel);                            // Batzra 1200/2000
             await TransmitHi(CreateJoinPatternUtterance(isNorthenZone 
                 ? 2000 
                 : 1200), cancel);                                           // join pattern at downwind 11 / r.base 29
@@ -472,6 +472,8 @@ namespace Atc.Server
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Data, "פלוטו שלום,"),
                     new (UtteranceDescription.PartType.Data, "אלף חמש מאות לצומת השרון"),
+                    new (UtteranceDescription.PartType.Text, "הלחץ"),
+                    new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>שתיים תשע תשע שתיים</prosody>"),
                 }
             );                                              
         }
@@ -553,6 +555,8 @@ namespace Atc.Server
                 _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Text, "הרצליה שלום, הלחץ"),
+                    new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(_currentAtis.Qnh.ToString())}</prosody>"),
                     new (UtteranceDescription.PartType.Text, "שמור גובה 2000 לבצרה"),
                 }
             );
