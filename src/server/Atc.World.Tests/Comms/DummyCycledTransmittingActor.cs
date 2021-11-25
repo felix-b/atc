@@ -2,14 +2,13 @@
 using Atc.Speech.Abstractions;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
-using Microsoft.AspNetCore.Mvc;
 using Zero.Loss.Actors;
 
 namespace Atc.World.Tests.Comms
 {
-    public class DummyControllerActor : RadioOperatingActor<DummyControllerActor.DummyState>
+    public class DummyCycledTransmittingActor : RadioOperatingActor<DummyCycledTransmittingActor.DummyState>
     {
-        public static readonly string TypeString = "dummy";
+        public static readonly string TypeString = "dummy-cycle";
         
         public record DummyState(
             ActorRef<RadioStationActor> Radio,
@@ -20,11 +19,11 @@ namespace Atc.World.Tests.Comms
         public record DummyActivationEvent(
             string UniqueId, 
             ActorRef<RadioStationActor> Radio
-        ) : RadioOperatorActivationEvent(UniqueId, Radio), IActivationStateEvent<DummyControllerActor>;
+        ) : RadioOperatorActivationEvent(UniqueId, Radio), IActivationStateEvent<DummyCycledTransmittingActor>;
         
         public record IncrementRepeatCountEvent() : IStateEvent;
 
-        public DummyControllerActor(IStateStore store, IWorldContext world, IVerbalizationService verbalizationService, DummyActivationEvent activation) 
+        public DummyCycledTransmittingActor(IStateStore store, IWorldContext world, IVerbalizationService verbalizationService, DummyActivationEvent activation) 
             : base(TypeString, store, verbalizationService, world, CreateParty(activation), activation, CreateInitialState(activation))
         {
             World.DeferBy(TimeSpan.FromSeconds(5), () => {
@@ -55,9 +54,9 @@ namespace Atc.World.Tests.Comms
 
         public static void RegisterType(ISupervisorActorInit supervisor)
         {
-            supervisor.RegisterActorType<DummyControllerActor, DummyActivationEvent>(
+            supervisor.RegisterActorType<DummyCycledTransmittingActor, DummyActivationEvent>(
                 TypeString,
-                (activation, dependencies) => new DummyControllerActor(
+                (activation, dependencies) => new DummyCycledTransmittingActor(
                     dependencies.Resolve<IStateStore>(),
                     dependencies.Resolve<IWorldContext>(), 
                     dependencies.Resolve<IVerbalizationService>(), 

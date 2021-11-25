@@ -2,7 +2,7 @@ using System;
 
 namespace Zero.Loss.Actors
 {
-    public interface IStateStore
+    public interface IStateStore //TODO: rename; IEventStore? IEventSource? 
     {
         void Dispatch(IStatefulActor target, IStateEvent @event);
         void Dispatch<TTarget>(in ActorRef<TTarget> targetRef, IStateEvent @event) where TTarget : class, IStatefulActor

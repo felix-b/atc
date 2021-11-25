@@ -161,7 +161,7 @@ namespace Atc.World.AI
 
         public record TriggerEvent(
             string TriggerId,
-            Intent? Intent
+            Intent? Intent = null
         ) : IStateEvent;
 
         public record TransitionEvent(
@@ -312,7 +312,9 @@ namespace Atc.World.AI
             private readonly string _name;
             private readonly IRadioOperatingActor _actor;
             private readonly List<ReceiveEntry> _receive = new();
+            private readonly ImmutableDictionary<string, TransitionDescription>.Builder _transitionByTriggerId;
             private Frequency? _monitor = null;
+            private StateEnterCallback? _onEnterCallback = null;
             private Func<Intent>? _transmit = null;
             private string? _afterTransmitTransitionTo = null;
 
@@ -320,6 +322,22 @@ namespace Atc.World.AI
             {
                 _name = name;
                 _actor = actor;
+                _transitionByTriggerId = ImmutableDictionary.CreateBuilder<string, TransitionDescription>(); 
+            }
+
+            public ConversationStateBuilder OnEnter(StateEnterCallback callback)
+            {
+                _onEnterCallback = callback;
+                return this;
+            }
+
+            public ConversationStateBuilder OnTrigger(string triggerId, string transitionTo, bool memorizeIntent = false)
+            {
+                _transitionByTriggerId.Add(
+                    triggerId, 
+                    new TransitionDescription(triggerId, transitionTo, memorizeIntent));
+
+                return this;
             }
 
             public ConversationStateBuilder Monitor(Frequency frequency)
@@ -363,7 +381,7 @@ namespace Atc.World.AI
                 var mainState = new StateDescription(
                     _name,
                     onMainStateEnter,
-                    EmptyTransitionMap);
+                    _transitionByTriggerId.ToImmutable());
                 destination.Add(mainState);
 
                 var needReadyState = _transmit == null && _receive.Count == 0;
@@ -372,7 +390,7 @@ namespace Atc.World.AI
                     destination.Add(new StateDescription(
                         readyStateName,
                         NoopEnterCallback,
-                        EmptyTransitionMap));
+                        _transitionByTriggerId.ToImmutable()));
                 }
                 
                 void CreateMonitorPart(out StateEnterCallback outOnMainStateEnter)
@@ -382,6 +400,7 @@ namespace Atc.World.AI
                         {
                             _actor.MonitorFrequency(_monitor.Value);
                         }
+                        _onEnterCallback?.Invoke(machine);
                         machine.TransitionTo(mainNextStateName);
                     };
                 }

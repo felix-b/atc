@@ -60,6 +60,11 @@ namespace Atc.World.AI
         {
             World.DeferBy(interval, onDue);
         }
+
+        protected ImmutableStateMachine.Builder CreateStateMachineBuilder(string initialStateName)
+        {
+            return new ImmutableStateMachine.Builder(initialStateName, DispatchStateMachineEvent, ScheduleStateMachineDelay);
+        }
     }
 
     public static class AIRadioOperatingActor

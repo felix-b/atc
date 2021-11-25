@@ -4,6 +4,7 @@ using Atc.Data.Primitives;
 using Atc.Sound;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
+using Atc.World.Tests.AI;
 using Atc.World.Tests.Comms;
 using Zero.Doubt.Logging;
 using Zero.Loss.Actors;
@@ -40,7 +41,8 @@ namespace Atc.World.Tests
             WorldActor.RegisterType(Supervisor);
             RadioStationActor.RegisterType(Supervisor);
             GroundRadioStationAetherActor.RegisterType(Supervisor);
-            DummyControllerActor.RegisterType(Supervisor);
+            DummyCycledTransmittingActor.RegisterType(Supervisor);
+            DummyPingPongActor.RegisterType(Supervisor);
 
             World = Supervisor.CreateActor<WorldActor>(id => new WorldActor.WorldActivationEvent(
                 id, 

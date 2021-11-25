@@ -15,7 +15,7 @@ namespace Atc.World.Tests.Comms
     public class EndToEndTests
     {
         [Test]
-        public void ControllersTransmittingInCyclesAtLLHZ()
+        public void DummyTransmissionsCycleAtLLHZ()
         {
             if (!OperatingSystem.IsWindows())
             {
@@ -59,17 +59,17 @@ namespace Atc.World.Tests.Comms
             plutoPrimary.Station.Get().PowerOn();
             plutoSecondary.Station.Get().PowerOn();
             
-            var llhzClrDelController = setup.Supervisor.CreateActor<DummyControllerActor>(
-                id => new DummyControllerActor.DummyActivationEvent(id, llhzClrDel.Station));
+            var llhzClrDelController = setup.Supervisor.CreateActor<DummyCycledTransmittingActor>(
+                id => new DummyCycledTransmittingActor.DummyActivationEvent(id, llhzClrDel.Station));
             
-            var llhzTwrController = setup.Supervisor.CreateActor<DummyControllerActor>(
-                id => new DummyControllerActor.DummyActivationEvent(id, llhzTwrPrimary.Station));
+            var llhzTwrController = setup.Supervisor.CreateActor<DummyCycledTransmittingActor>(
+                id => new DummyCycledTransmittingActor.DummyActivationEvent(id, llhzTwrPrimary.Station));
 
             // setup.Supervisor.CreateActor<DummyControllerActor>(
             //     id => new DummyControllerActor.DummyActivationEvent(id, llhzTwrSecondary.Station));
 
-            var plutoController = setup.Supervisor.CreateActor<DummyControllerActor>(
-                id => new DummyControllerActor.DummyActivationEvent(id, plutoPrimary.Station));
+            var plutoController = setup.Supervisor.CreateActor<DummyCycledTransmittingActor>(
+                id => new DummyCycledTransmittingActor.DummyActivationEvent(id, plutoPrimary.Station));
 
             // setup.Supervisor.CreateActor<DummyControllerActor>(
             //     id => new DummyControllerActor.DummyActivationEvent(id, plutoSecondary.Station));
