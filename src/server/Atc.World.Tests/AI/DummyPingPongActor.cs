@@ -24,6 +24,7 @@ namespace Atc.World.Tests.AI
             ActorRef<RadioStationActor> Radio,
             Intent? PendingTransmissionIntent,
             PingPongRole Role,
+            ActorRef<DummyPingPongActor>? Counterparty,
             int RepeatCount
         ) : RadioOperatorState(Radio, PendingTransmissionIntent);
 
@@ -34,6 +35,8 @@ namespace Atc.World.Tests.AI
         ) : RadioOperatorActivationEvent(UniqueId, Radio), IActivationStateEvent<DummyPingPongActor>;
 
         public record IncrementRepeatCountEvent : IStateEvent;
+
+        public record SetCounterpartyEvent(ActorRef<DummyPingPongActor> Counterparty) : IStateEvent;
 
         [NotEventSourced]
         private readonly List<string> _intentLog = new(); 
@@ -54,7 +57,14 @@ namespace Atc.World.Tests.AI
             });
         }
 
+        public void SetCounterparty(ActorRef<DummyPingPongActor> counterparty)
+        {
+            Store.Dispatch(this, new SetCounterpartyEvent(counterparty));
+        }
+        
         public IReadOnlyList<string> IntentLog => _intentLog;
+
+        public string Callsign => Radio.Callsign;
         
         protected override PingPongState Reduce(PingPongState stateBefore, IStateEvent @event)
         {
@@ -64,6 +74,10 @@ namespace Atc.World.Tests.AI
                     return stateBefore with {
                         RepeatCount = stateBefore.RepeatCount + 1
                     };
+                case SetCounterpartyEvent setCounterparty:
+                    return stateBefore with {
+                        Counterparty = setCounterparty.Counterparty
+                    };
                 default:
                     return base.Reduce(stateBefore, @event);
             }
@@ -71,8 +85,8 @@ namespace Atc.World.Tests.AI
 
         protected override void ReceiveIntent(Intent intent)
         {
-            var timestamp = World.UtcNow().TimeOfDay.Seconds;
-            _intentLog.Add($"{timestamp}:{intent.Header.OriginatorCallsign}->{intent.Header.RecipientCallsign}:{intent}");
+            var time = World.UtcNow().TimeOfDay;
+            _intentLog.Add($"{time}:{intent.Header.OriginatorCallsign}->{intent.Header.RecipientCallsign}:{intent}");
 
             base.ReceiveIntent(intent);
         }
@@ -91,19 +105,19 @@ namespace Atc.World.Tests.AI
                 "DELAY_NEXT_PING",
                 state => state.OnEnterStartSequence(sequence => sequence
                     .AddDelayStep("DELAY", TimeSpan.FromSeconds(5))
-                    .AddStep("TRANSITION", machine => machine.TransitionTo("PING"))
+                    .AddTransitionStep("TRANSITION", targetStateName: "PING")
                 ));
             
             builder.AddConversationState(this, "PING", state => state
                 .OnEnter(machine => Store.Dispatch(this, new IncrementRepeatCountEvent()))
-                .Transmit(() => new TestPingIntent(World, State.RepeatCount, this))
+                .Transmit(() => new TestPingIntent(World, State.RepeatCount, this, State.Counterparty))
                 .Receive<TestPongIntent>(transitionTo: "DELAY_NEXT_PING")
             );
             
             builder.AddConversationState(this, "AWAIT_PONG", state => state
                 .OnEnter(machine => Store.Dispatch(this, new IncrementRepeatCountEvent()))
-                .Receive<TestPongIntent>(
-                    readback: () => new TestPongIntent(World, State.RepeatCount, this),
+                .Receive<TestPingIntent>(
+                    readback: () => new TestPongIntent(World, State.RepeatCount, this, State.Counterparty),
                     transitionTo: "AWAIT_PONG")
             );
 
@@ -141,6 +155,7 @@ namespace Atc.World.Tests.AI
                 Radio: activation.Radio, 
                 PendingTransmissionIntent: null, 
                 Role: activation.Role, 
+                Counterparty: null,
                 RepeatCount: 0);
         }
     }

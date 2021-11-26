@@ -25,10 +25,15 @@ namespace Atc.World.Tests.Comms
                             UtteranceDescription.PartType.Greeting, 
                             $"This is a test greeting number {greeting.RepeatCount} from {intent.Header.OriginatorCallsign}"
                         )
-                    });
+                    }, estimatedDuration: TimeSpan.FromSeconds(5));
                 }
 
-                throw new NotImplementedException();
+                return new UtteranceDescription(Language, new[] {
+                    new UtteranceDescription.Part(
+                        UtteranceDescription.PartType.Text, 
+                        intent.ToString()
+                    )
+                }, estimatedDuration: TimeSpan.FromSeconds(5));
             }
 
             public LanguageCode Language { get; } = "en-US";

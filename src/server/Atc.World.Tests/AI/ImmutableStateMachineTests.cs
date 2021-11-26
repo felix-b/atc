@@ -92,7 +92,8 @@ namespace Atc.World.Tests.AI
 
             private void DispatchEvent(IStateEvent @event)
             {
-                _machineN = ImmutableStateMachine.Reduce(_machineN, @event);
+                var machineEvent = (IImmutableStateMachineEvent) @event;  
+                _machineN = ImmutableStateMachine.Reduce(_machineN, machineEvent);
                 _machineN.Start();
             }
 
@@ -284,6 +285,23 @@ namespace Atc.World.Tests.AI
             
             machines.MachineN.State.Name.Should().Be("END");
             log.Should().BeEmpty();
+        }
+
+        [Test]
+        public void CanRunSequenceWithTransitionStep()
+        {
+            var machines = new TestMachineWithEventsContainer(
+                dispatchEvent => BuildTestStateMachine(
+                    onAddStateBegin: state => state.OnTrigger("A", transitionTo: "MIDDLE"),
+                    onAddStateMiddle: state => state.OnEnterStartSequence(sequence => {
+                        sequence.AddTransitionStep("S1", "END");
+                    }),
+                    onDispatchEvent: dispatchEvent
+                )
+            );
+            machines.MachineN.State.Name.Should().Be("BEGIN");
+            machines.MachineN.ReceiveTrigger("A");
+            machines.MachineN.State.Name.Should().Be("END");
         }
 
         [Test]

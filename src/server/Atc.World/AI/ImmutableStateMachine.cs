@@ -83,7 +83,7 @@ namespace Atc.World.AI
 
         public static ImmutableStateMachine Reduce(
             ImmutableStateMachine machineBefore, 
-            IStateEvent @event)
+            IImmutableStateMachineEvent @event)
         {
             switch (@event)
             {
@@ -162,11 +162,11 @@ namespace Atc.World.AI
         public record TriggerEvent(
             string TriggerId,
             Intent? Intent = null
-        ) : IStateEvent;
+        ) : IStateEvent, IImmutableStateMachineEvent;
 
         public record TransitionEvent(
             string StateName
-        ) : IStateEvent;
+        ) : IStateEvent, IImmutableStateMachineEvent;
         
         public class Builder
         {
@@ -530,6 +530,12 @@ namespace Atc.World.AI
                 return this;
             }
 
+            public SequenceBuilder AddTransitionStep(string name, string targetStateName)
+            {
+                _steps.Add(new TransitionStep(name, targetStateName));
+                return this;
+            }
+
             internal void AppendStates(StateDescription parentState, StateDescription finishState, IList<StateDescription> destination)
             {
                 for (int i = 0 ; i < _steps.Count ; i++)
@@ -597,12 +603,31 @@ namespace Atc.World.AI
                             this.Action(machine);
                             machine.TransitionTo(nextStateName);
                         },
-                        TransitionByTriggerId: ImmutableDictionary<string, TransitionDescription>.Empty
+                        TransitionByTriggerId: EmptyTransitionMap
                     );
                     destination.Add(state);
                 }
             }
 
+            private record TransitionStep(string Name, string TargetStateName) : Step(Name)
+            {
+                public override void AppendStates(
+                    StateDescription parentState,
+                    StateDescription finishState,
+                    Step? nextStep,
+                    IList<StateDescription> destination)
+                {
+                    var state = new StateDescription(
+                        Name: GetStepStateName(parentState.Name, this),
+                        OnEnter: machine => {
+                            machine.TransitionTo(TargetStateName);
+                        },
+                        TransitionByTriggerId: EmptyTransitionMap
+                    );
+                    destination.Add(state);
+                }
+            }
+            
             private record TriggrtStep(string Name, string TriggerId) : Step(Name)
             {
                 public override void AppendStates(
@@ -674,5 +699,9 @@ namespace Atc.World.AI
                 targetStateName, 
                 memorizeIntent));
         }
+    }
+
+    public interface IImmutableStateMachineEvent : IStateEvent
+    {
     }
 }

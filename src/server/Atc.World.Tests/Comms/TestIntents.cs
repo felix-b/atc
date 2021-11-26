@@ -1,6 +1,7 @@
 ﻿using System.Security.Cryptography.X509Certificates;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
+using Atc.World.Tests.AI;
 using Zero.Loss.Actors;
 
 namespace Atc.World.Tests.Comms
@@ -44,7 +45,7 @@ namespace Atc.World.Tests.Comms
     {
         public const int IntentCode = 100;
         
-        public TestPingIntent(IWorldContext world, int repeatCount, ActorRef<RadioStationActor> from, ActorRef<RadioStationActor>? to = null) 
+        public TestPingIntent(IWorldContext world, int repeatCount, ActorRef<RadioStationActor> from, ActorRef<RadioStationActor>? to) 
             : base(
                 new IntentHeader(
                     WellKnownIntentType.Custom, 
@@ -59,7 +60,7 @@ namespace Atc.World.Tests.Comms
             RepeatCount = repeatCount;
         }
 
-        public TestPingIntent(IWorldContext world, int repeatCount, IStatefulActor fromPartyActor, ActorRef<RadioStationActor>? to = null) 
+        public TestPingIntent(IWorldContext world, int repeatCount, IStatefulActor fromPartyActor, ActorRef<DummyPingPongActor>? to) 
             : base(
                 new IntentHeader(
                     WellKnownIntentType.Custom, 
@@ -86,7 +87,7 @@ namespace Atc.World.Tests.Comms
     {
         public const int IntentCode = 101;
         
-        public TestPongIntent(IWorldContext world, int repeatCount, ActorRef<RadioStationActor> from, ActorRef<RadioStationActor>? to = null) 
+        public TestPongIntent(IWorldContext world, int repeatCount, ActorRef<RadioStationActor> from, ActorRef<DummyPingPongActor>? to) 
             : base(
                 new IntentHeader(
                     WellKnownIntentType.Custom, 
@@ -101,7 +102,7 @@ namespace Atc.World.Tests.Comms
             RepeatCount = repeatCount;
         }
 
-        public TestPongIntent(IWorldContext world, int repeatCount, IStatefulActor fromPartyActor, ActorRef<RadioStationActor>? to = null) 
+        public TestPongIntent(IWorldContext world, int repeatCount, IStatefulActor fromPartyActor, ActorRef<DummyPingPongActor>? to) 
             : base(
                 new IntentHeader(
                     WellKnownIntentType.Custom, 

@@ -39,6 +39,17 @@ namespace Atc.World.AI
             _stateMachine.ReceiveIntent(intent);
         }
 
+        protected override TState Reduce(TState stateBefore, IStateEvent @event)
+        {
+            if (@event is IImmutableStateMachineEvent machineEvent)
+            {
+                _stateMachine = ImmutableStateMachine.Reduce(_stateMachine, machineEvent);
+                _stateMachine.Start();
+            }
+            
+            return base.Reduce(stateBefore, @event);
+        }
+
         protected abstract ImmutableStateMachine CreateStateMachine();
 
         protected override void OnTransmissionStarted()
@@ -64,6 +75,11 @@ namespace Atc.World.AI
         protected ImmutableStateMachine.Builder CreateStateMachineBuilder(string initialStateName)
         {
             return new ImmutableStateMachine.Builder(initialStateName, DispatchStateMachineEvent, ScheduleStateMachineDelay);
+        }
+
+        protected ImmutableStateMachine GetCurrentStateMachineSnapshot()
+        {
+            return _stateMachine;
         }
     }
 
