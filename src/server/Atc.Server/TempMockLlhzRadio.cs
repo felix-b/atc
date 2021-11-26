@@ -27,6 +27,7 @@ namespace Atc.Server
         private Task? _currentWorkflow;
         private Atis _currentAtis;
         private string _currentCallsign;
+        private bool _isPatternFlight = false;
         private Random _random = new Random(DateTime.Now.TimeOfDay.Milliseconds);
         private CancellationTokenSource? _workflowCancellation;
         private TaskCompletionSource? _pilotTransmissionReceived;
@@ -54,9 +55,9 @@ namespace Atc.Server
             _workflowCancellationRequested = new TaskCompletionSource();
             _workflowCancellation = new CancellationTokenSource();
 
-            _currentWorkflow = SafeRunCommunicationWorkflow(_workflowCancellation.Token);
+            _currentCallsign = LoadCallSignOrDefault("CGK", out _isPatternFlight);
             _currentAtis = CreateRandomAtis();
-            _currentCallsign = LoadCallSignOrDefault("CGK");
+            _currentWorkflow = SafeRunCommunicationWorkflow(_workflowCancellation.Token);
 
             var randomSeed = DateTime.Now.TimeOfDay.Milliseconds;
             _random = new Random(randomSeed);
@@ -91,13 +92,26 @@ namespace Atc.Server
 
         public string CurrentCallsign => _currentCallsign;
 
-        private string LoadCallSignOrDefault(string defaultCallsign)
+        private string LoadCallSignOrDefault(string defaultCallsign, out bool isPatternFlight)
         {
-            if (File.Exists(CallSignFilePath))
+            try
             {
-                var callsign = File.ReadAllText(CallSignFilePath);
-                return string.IsNullOrWhiteSpace(callsign) ? defaultCallsign : callsign;
+                if (File.Exists(CallSignFilePath))
+                {
+                    var lines = File.ReadAllLines(CallSignFilePath);
+                    var callsign = lines[0].Trim();
+                    isPatternFlight = lines.Length > 1 && lines[1].Trim() == "pattern";  
+                    var result = string.IsNullOrWhiteSpace(callsign) ? defaultCallsign : callsign;
+                    Console.WriteLine($"Read callsign.txt success: CALLSIGN[{result}] PATTERN[{isPatternFlight}]");
+                    return result;
+                }
             }
+            catch (Exception e)
+            {
+                Console.WriteLine($"ERROR! failed to read callsign.txt: {e.Message}");
+            }
+
+            isPatternFlight = false;
             return defaultCallsign;
         }
 
@@ -105,7 +119,14 @@ namespace Atc.Server
         {
             try
             {
-                await RunCommunicationWorkflow(cancel);
+                if (_isPatternFlight)
+                {
+                    await RunPatternFlightWorkflow(cancel);
+                }
+                else
+                {
+                    await RunTrainingZonesFlightWorkflow(cancel);
+                }
             }
             catch (OperationCanceledException)
             {
@@ -116,9 +137,64 @@ namespace Atc.Server
             }
         }
 
-        private async Task RunCommunicationWorkflow(CancellationToken cancel)
+        private async Task RunPatternFlightWorkflow(CancellationToken cancel)
         {
-            Console.WriteLine("TEMP MOCK RADIO - SARTING COMMUNICATION WORKFLOW");
+            Console.WriteLine("TEMP MOCK RADIO - SARTING COMMUNICATION WORKFLOW - PATTERN FLIGHT");
+
+            await NextPilotTransmission(cancel); // CLR hello
+            await TransmitLo(CreateClearanceGoAheadUtterance(), cancel); // go ahead
+            await NextPilotTransmission(cancel); // request start
+            await TransmitLo(CreateStartApprovalUtterance(), cancel); // start approved
+            await NextPilotTransmission(cancel); // readback
+            await TransmitLo(CreateClearanceHandoffUtterance(), cancel); // hand off to tower
+            await NextPilotTransmission(cancel); // readback
+
+            await NextPilotTransmission(cancel); // TWR request taxi
+            await TransmitHi(CreateTaxiClearanceUtterance(), cancel); // taxi clearance
+            await NextPilotTransmission(cancel); // readback
+
+            await NextPilotTransmission(cancel); // TWR ready for departure
+
+            int takeoffRandom;
+
+            takeoffRandom = _random.Next(3);
+            if (takeoffRandom == 2)
+            {
+                await TransmitHi(CreateHoldShortUtterance(), cancel); // hold short
+                await NextPilotTransmission(cancel); // readback
+                await Task.Delay(_random.Next(10000, 60000));
+                takeoffRandom = _random.Next(2);
+            }
+
+            if (takeoffRandom == 1)
+            {
+                await TransmitHi(CreateLineUpAndWaitUtterance(), cancel); // LUAW
+                await NextPilotTransmission(cancel); // readback
+                await Task.Delay(_random.Next(10000, 60000));
+            }
+
+            await TransmitHi(CreateTakeoffClearanceUtterance(), cancel); // cleared for takeoff
+            await NextPilotTransmission(cancel); // readback
+
+            while (!cancel.IsCancellationRequested)
+            {
+                //---- DOWNWIND ----
+
+                await NextPilotTransmission(cancel); // report downwind
+                await TransmitHi(CreatePatternPositionUtterance(), cancel); // pattern position
+                await NextPilotTransmission(cancel); // readback
+
+                //----- FINAL ----
+
+                await NextPilotTransmission(cancel); // report final 
+                await TransmitHi(CreateLandingClearanceUtterance(), cancel); // clear to land
+                await NextPilotTransmission(cancel); // readback
+            }
+        }
+
+        private async Task RunTrainingZonesFlightWorkflow(CancellationToken cancel)
+        {
+            Console.WriteLine("TEMP MOCK RADIO - SARTING COMMUNICATION WORKFLOW - TRAINING ZONES FLIGHT");
 
             await NextPilotTransmission(cancel);                          // CLR hello
             await TransmitLo(CreateClearanceGoAheadUtterance(), cancel);  // go ahead
@@ -325,10 +401,14 @@ namespace Atc.Server
                 new (UtteranceDescription.PartType.Text, "מסלול בשימוש"),
                 new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
                 new (UtteranceDescription.PartType.Text, "הלחץ"),
-                new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(_currentAtis.Qnh.ToString())}</prosody>"),
-                new (UtteranceDescription.PartType.Farewell, "בצרה 800"),
+                new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(_currentAtis.Qnh.ToString())}</prosody>")
             });
-            
+
+            if (!_isPatternFlight)
+            {
+                parts.Add(new(UtteranceDescription.PartType.Farewell, "בצרה 800"));
+            }
+
             return new UtteranceDescription(
                 _language,
                 parts
@@ -412,18 +492,28 @@ namespace Atc.Server
 
         private UtteranceDescription CreatePatternPositionUtterance()
         {
+            var number = TossADice() ? 2 : 3;
+            var traffic = number == 2 
+                ? "לפניך פיינל" 
+                : "לפניך בסיס";
+            
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
                     new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "מספר"),
-                    new (UtteranceDescription.PartType.Data, SpellPhoneticString(TossADice() ? "1" : "2")),
+                    new (UtteranceDescription.PartType.Data, SpellPhoneticString(number.ToString())),
+                    new (UtteranceDescription.PartType.Text, traffic),
                 }
             );
         }
 
         private UtteranceDescription CreateLandingClearanceUtterance()
         {
+            var clearanceWording = _isPatternFlight 
+                ? "רשאי לגעת" 
+                : "רשאי לנחות";
+            
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
@@ -432,7 +522,7 @@ namespace Atc.Server
                     new (UtteranceDescription.PartType.Data, SpellWind()),
                     new (UtteranceDescription.PartType.Text, "מסלול"),
                     new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
-                    new (UtteranceDescription.PartType.Affirmation, "<prosody rate='0.8'>" + "רשאי לנחות" + "</prosody>"),
+                    new (UtteranceDescription.PartType.Affirmation, "<prosody rate='0.8'>" + clearanceWording + "</prosody>"),
                 }
             );
         }
