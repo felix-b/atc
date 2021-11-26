@@ -71,6 +71,7 @@ namespace Atc.World
         public Angle Pitch => State.Pitch;
         public Angle Roll => State.Roll;
         public ActorRef<RadioStationActor> Com1Radio => State.Com1Radio;
+        public string Callsign => State.Callsign;
         
         public static ActorRef<AircraftActor> SpawnNewAircraft(
             ISupervisorActor supervisor,
@@ -127,7 +128,8 @@ namespace Atc.World
                 Heading: heading,
                 Track: track ?? heading,
                 GroundSpeed: groundSpeed ?? Speed.FromKnots(0),
-                Com1Radio: com1Radio
+                Com1Radio: com1Radio,
+                Callsign: effectiveCallsign
             );
 
             var actor = supervisor.CreateActor(uniqueId => new ActivationEvent(
@@ -172,7 +174,8 @@ namespace Atc.World
                 Heading: heading,
                 Track: track ?? heading,
                 GroundSpeed: groundSpeed ?? Speed.FromKnots(0),
-                Com1Radio: com1Radio
+                Com1Radio: com1Radio,
+                Callsign: effectiveCallsign
             );
             
             var actor = supervisor.CreateActor(uniqueId => new ActivationEvent(

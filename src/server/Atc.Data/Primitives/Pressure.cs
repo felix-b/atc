@@ -19,6 +19,8 @@ namespace Atc.Data.Primitives
         public float Hpa => _unit == PressureUnit.Hpa ? _value : throw new NotImplementedException();
         public float InHg => _unit == PressureUnit.InHg ? _value : throw new NotImplementedException();
 
+        public static readonly Pressure Qne = new Pressure(29.92f, PressureUnit.InHg);
+        
         public static Pressure FromHpa(float value)
         {
             return new Pressure(value, PressureUnit.Hpa);

@@ -19,7 +19,8 @@ namespace Atc.World
             Bearing Heading, 
             Bearing Track, 
             Speed GroundSpeed,
-            ActorRef<RadioStationActor> Com1Radio
+            ActorRef<RadioStationActor> Com1Radio,
+            string Callsign
         );
 
         public record ActivationEvent(

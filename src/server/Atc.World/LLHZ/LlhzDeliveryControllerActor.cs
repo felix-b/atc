@@ -1,4 +1,5 @@
-﻿using Atc.Speech.Abstractions;
+﻿using Atc.Data.Primitives;
+using Atc.Speech.Abstractions;
 using Atc.World.Abstractions;
 using Atc.World.AI;
 using Atc.World.Comms;
@@ -7,9 +8,9 @@ using Zero.Loss.Actors;
 namespace Atc.World.LLHZ
 {
     public class LlhzDeliveryControllerActor : 
-        RadioOperatingActor<LlhzDeliveryControllerActor.DeliveryControllerState>
+        AIRadioOperatingActor<LlhzDeliveryControllerActor.DeliveryControllerState>
     {
-        public const string TypeString = "llhz/atc/clrdel";
+        public const string TypeString = "llhz-atc-clrdel";
 
         public record DeliveryControllerState(
             ActorRef<RadioStationActor> Radio,
@@ -29,19 +30,15 @@ namespace Atc.World.LLHZ
                 world, 
                 CreateParty(), 
                 activation, 
-                new DeliveryControllerState(activation.Radio, null))
+                CreateInitialState(activation))
         {
             State.Radio.Get().PowerOn();
+            State.Radio.Get().TuneTo(Frequency.FromKhz(130850));
         }
 
-        protected override void ReceiveIntent(Intent intent)
+        protected override ImmutableStateMachine CreateStateMachine()
         {
             throw new System.NotImplementedException();
-        }
-
-        protected override DeliveryControllerState Reduce(DeliveryControllerState stateBefore, IStateEvent @event)
-        {
-            return stateBefore;
         }
 
         private static PartyDescription CreateParty()
@@ -54,6 +51,13 @@ namespace Atc.World.LLHZ
                 GenderType.Male, 
                 AgeType.Senior, 
                 "Bob");
+        }
+        
+        private static DeliveryControllerState CreateInitialState(ActivationEvent activation)
+        {
+            return new DeliveryControllerState(
+                Radio: activation.Radio, 
+                PendingTransmissionIntent: null);
         }
     }
 }
