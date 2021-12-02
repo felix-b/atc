@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Threading;
 using Atc.Data.Primitives;
@@ -18,10 +19,10 @@ namespace Atc.World.LLHZ
         public record PilotState(
             ActorRef<RadioStationActor> Radio,
             Intent? PendingTransmissionIntent,
+            ImmutableStateMachine StateMachine, 
             ActorRef<AircraftActor> Aircraft,
-            DepartureIntentType DepartureType,
-            ImmutableStateMachine Workflow
-        ) : RadioOperatorState(Radio, PendingTransmissionIntent);
+            DepartureIntentType DepartureType
+        ) : AIRadioOperatorState(Radio, PendingTransmissionIntent, StateMachine);
 
         public record ActivationEvent(
             string UniqueId,
@@ -29,42 +30,30 @@ namespace Atc.World.LLHZ
             DepartureIntentType DepartureType
         ) : RadioOperatorActivationEvent(UniqueId, Aircraft.Get().Com1Radio), IActivationStateEvent<LlhzPilotActor>;
 
-        public record InitWorkflowEvent : IStateEvent;
-        
-        public LlhzPilotActor(ActivationEvent activation, IStateStore store, IWorldContext world, IVerbalizationService verbaliazionService) 
+        public LlhzPilotActor(
+            ActivationEvent activation, 
+            IStateStore store, 
+            IWorldContext world, 
+            AIRadioOperatingActor.ILogger logger,
+            IVerbalizationService verbaliazionService) 
             : base(
                 TypeString, 
                 store, 
                 verbaliazionService, 
                 world, 
+                logger,
                 CreateParty(activation), 
                 activation, 
                 CreateInitialState(activation))
         {
-            State.Radio.Get().PowerOn();
-        }
-
-        protected override void ReceiveIntent(Intent intent)
-        {
-            State.Workflow.ReceiveIntent(intent);
+            World.Defer(() => {
+                State.Radio.Get().PowerOn();
+            });
         }
 
         protected override ImmutableStateMachine CreateStateMachine()
         {
             return CreatePatternFlightWorkflow();
-        }
-
-        protected override PilotState Reduce(PilotState stateBefore, IStateEvent @event)
-        {
-            switch (@event)
-            {
-                case InitWorkflowEvent:
-                    return stateBefore with {
-                        Workflow = CreateWorkflow()
-                    };
-                default:
-                    return stateBefore;
-            }
         }
 
         private ImmutableStateMachine CreateWorkflow()
@@ -89,7 +78,7 @@ namespace Atc.World.LLHZ
             
             builder.AddState("PREFLIGHT_INSPECTION", state => state
                 .OnEnterStartSequence(sequence => {
-                    sequence.AddDelayStep("CHECKLIST", TimeSpan.FromMinutes(1));
+                    sequence.AddDelayStep("CHECKLIST", TimeSpan.FromMinutes(1), inheritTriggers: false);
                     sequence.AddTriggerStep("DONE", "PREFLIGHT_INSPECTION_OK");
                 })
                 .OnTrigger("PREFLIGHT_INSPECTION_OK", transitionTo: "CONTACT_CLEARANCE")
@@ -174,6 +163,20 @@ namespace Atc.World.LLHZ
             throw new NotImplementedException();
         }
 
+        public static void RegisterType(ISupervisorActorInit supervisor)
+        {
+            supervisor.RegisterActorType<LlhzPilotActor, ActivationEvent>(
+                TypeString,
+                (activation, dependencies) => new LlhzPilotActor(
+                    activation,
+                    dependencies.Resolve<IStateStore>(),
+                    dependencies.Resolve<IWorldContext>(), 
+                    dependencies.Resolve<AIRadioOperatingActor.ILogger>(),
+                    dependencies.Resolve<IVerbalizationService>() 
+                )
+            );
+        }
+        
         private static PartyDescription CreateParty(ActivationEvent activation)
         {
             return new PersonDescription(
@@ -191,9 +194,9 @@ namespace Atc.World.LLHZ
             return new PilotState(
                 activation.Radio,
                 null,
+                ImmutableStateMachine.Empty,
                 activation.Aircraft,
-                activation.DepartureType,
-                ImmutableStateMachine.Empty);
+                activation.DepartureType);
         }
     }
 }

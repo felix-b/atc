@@ -37,6 +37,7 @@ namespace Zero.Loss.Actors
 
         public T Get() => _supervisor.GetActorObjectByIdOrThrow<T>(_uniqueId);
         public string UniqueId => _uniqueId;
+        public bool CanGet => _supervisor != null;
 
         public static bool operator ==(ActorRef<T> left, ActorRef<T> right)
         {
@@ -46,6 +47,11 @@ namespace Zero.Loss.Actors
         public static bool operator !=(ActorRef<T> left, ActorRef<T> right)
         {
             return !(left == right);
+        }
+
+        public static implicit operator ActorRef<IStatefulActor>(ActorRef<T> source)
+        {
+            return new ActorRef<IStatefulActor>(source._supervisor, source._uniqueId);
         }
     }
 

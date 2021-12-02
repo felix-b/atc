@@ -13,7 +13,11 @@ namespace Zero.Loss.Actors.Impl
             IStatefulActor? LastCreatedActor
         ) : IStateEvent;
 
-        public record ActorEntry(IStatefulActor Actor, IActivationStateEvent ActivationEvent);
+        public record ActorEntry(
+            IStatefulActor Actor, 
+            IActivationStateEvent ActivationEvent,
+            ulong SequenceNo
+        );
 
         private record DummySelfActivationEvent(string UniqueId) : IActivationStateEvent;
 
@@ -26,6 +30,11 @@ namespace Zero.Loss.Actors.Impl
         public bool TryGetActorObjectById<TActor>(string uniqueId, out TActor? actor) where TActor : class, IStatefulActor 
         {
             var result = State.ActorByUniqueId.TryGetValue(uniqueId, out var entry);
+            if (!result && _tryGetActorEntryBeingRestored != null)
+            {
+                result = _tryGetActorEntryBeingRestored(uniqueId, out entry);
+            }
+            
             if (result && entry!.Actor is TActor typedActor)
             {
                 actor = typedActor;
@@ -74,7 +83,9 @@ namespace Zero.Loss.Actors.Impl
                         lastInstanceId = 0;
                     }
                     return stateBefore with {
-                        ActorByUniqueId = stateBefore.ActorByUniqueId.Add(activation.UniqueId, new ActorEntry(actor, activation)),
+                        ActorByUniqueId = stateBefore.ActorByUniqueId.Add(
+                            activation.UniqueId, 
+                            new ActorEntry(actor, activation, _stateStore.NextSequenceNo)),
                         LastInstanceIdPerTypeString = stateBefore.LastInstanceIdPerTypeString.SetItem(typeString, lastInstanceId + 1),
                         LastCreatedActor = actor
                     };

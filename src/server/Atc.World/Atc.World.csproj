@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Atc.Data.Sources\Atc.Data.Sources.csproj" />
       <ProjectReference Include="..\Atc.Data\Atc.Data.csproj" />
       <ProjectReference Include="..\Atc.Math\Atc.Math.csproj" />
       <ProjectReference Include="..\Atc.Speech.Abstractions\Atc.Speech.Abstractions.csproj" />

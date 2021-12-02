@@ -11,6 +11,8 @@ namespace Atc.World.Abstractions
         {
             return Header.ToString();
         }
+
+        public string CallsignCalling => Header.OriginatorCallsign;
     }
 
     public record IntentHeader(

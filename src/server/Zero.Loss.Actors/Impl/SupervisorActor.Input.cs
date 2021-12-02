@@ -18,7 +18,7 @@ namespace Zero.Loss.Actors.Impl
             _stateStore = stateStore;
             _dependencyContext = dependencyContext;
 
-            var selfEntry = new ActorEntry(this, new DummySelfActivationEvent(UniqueId));
+            var selfEntry = new ActorEntry(this, new DummySelfActivationEvent(UniqueId), SequenceNo: 0);
             (this as IStatefulActor).SetState(State with {
                 ActorByUniqueId = State.ActorByUniqueId.Add(UniqueId, selfEntry)
             });

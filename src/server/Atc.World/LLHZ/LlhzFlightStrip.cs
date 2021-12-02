@@ -6,12 +6,16 @@ namespace Atc.World.LLHZ
     public record LlhzFlightStrip(
         DepartureIntentType DepartureType,
         ActorRef<AircraftActor> Aircraft,
-        LlhzFlightStripLane Lane
-    );
+        LlhzFlightStripLane Lane)
+    {
+        public string Callsign => Aircraft.Get().Callsign;
+    }
 
     public enum LlhzFlightStripLane
     {
-        StartupDeclined = 0,
+        Unspecified = 0,
+        Parked = 1,
+        StartupDeclined,
         StartupApproved,
         TaxiDeclined,
         TaxiApproved,

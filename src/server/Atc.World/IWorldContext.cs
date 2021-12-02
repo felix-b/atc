@@ -10,7 +10,9 @@ namespace Atc.World
     {
         ActorRef<GroundRadioStationAetherActor> AddGroundStation(ActorRef<RadioStationActor> station);
 
-        ActorRef<GroundRadioStationAetherActor>? TryFindRadioAether(ActorRef<RadioStationActor> fromStation);
+        ActorRef<GroundRadioStationAetherActor>? TryFindRadioAether(
+            ActorRef<RadioStationActor> fromStation, 
+            Frequency? newFrequency);
 
         ActorRef<AircraftActor> SpawnNewAircraft(
             string typeIcao,

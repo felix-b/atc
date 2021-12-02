@@ -33,25 +33,92 @@ namespace Atc.World.Tests.AI
             actor.CurrentStateName.Should().Be("END");
         }
 
-        public class TestActor : AIRadioOperatingActor<RadioOperatorState>
+        [Test]
+        public void CanTimeTravel()
+        {
+            var setup = new WorldSetup();
+            TestActor.RegisterType(setup.Supervisor);
+            
+            var radio = setup.AddGroundStation(
+                Frequency.FromKhz(118000),
+                new GeoPoint(32, 34),
+                "R1").Station;  
+
+            var actor = setup.Supervisor.CreateActor<TestActor>(uniqueId =>
+                new TestActor.TestActivationEvent(uniqueId, radio)
+            ).Get();
+
+            actor.CurrentStateName.Should().Be("START");
+            var snapshot = setup.Supervisor.TimeTravel.TakeSnapshot();
+            
+            actor.ReceiveTestTrigger();
+            actor.CurrentStateName.Should().Be("END");
+
+            setup.Supervisor.TimeTravel.RestoreSnapshot(snapshot);
+            actor.CurrentStateName.Should().Be("START");
+        }
+
+        [Test]
+        public void CanTimeTravelWithResurrection()
+        {
+            var setup = new WorldSetup();
+            TestActor.RegisterType(setup.Supervisor);
+
+            var snapshot0 = setup.Supervisor.TimeTravel.TakeSnapshot();
+
+            var radio = setup.AddGroundStation(
+                Frequency.FromKhz(118000),
+                new GeoPoint(32, 34),
+                "R1").Station;  
+
+            var actorRef = setup.Supervisor.CreateActor<TestActor>(uniqueId =>
+                new TestActor.TestActivationEvent(uniqueId, radio)
+            );
+
+            actorRef.Get().CurrentStateName.Should().Be("START");
+            var snapshot1 = setup.Supervisor.TimeTravel.TakeSnapshot();
+            
+            actorRef.Get().ReceiveTestTrigger();
+            actorRef.Get().CurrentStateName.Should().Be("END");
+            var snapshot2 = setup.Supervisor.TimeTravel.TakeSnapshot();
+
+            setup.Supervisor.TimeTravel.RestoreSnapshot(snapshot0);
+            Assert.Throws<ActorNotFoundException>(() => actorRef.Get());
+            
+            setup.Supervisor.TimeTravel.RestoreSnapshot(snapshot2);
+            actorRef.Get().CurrentStateName.Should().Be("END");
+            
+            setup.Supervisor.TimeTravel.RestoreSnapshot(snapshot1);
+            actorRef.Get().CurrentStateName.Should().Be("START");
+        }
+
+        public class TestActor : AIRadioOperatingActor<TestActor.TestActorState>
         {
             public const string TypeString = "test";
+
+            public record TestActorState(
+                ActorRef<RadioStationActor> Radio,
+                Intent? PendingTransmissionIntent,
+                ImmutableStateMachine StateMachine
+            ) : AIRadioOperatorState(Radio, PendingTransmissionIntent, StateMachine);
             
             public record TestActivationEvent(
                 string UniqueId, 
                 ActorRef<RadioStationActor> Radio
             ) : RadioOperatorActivationEvent(UniqueId, Radio), IActivationStateEvent<TestActor>;
-            
+
             public TestActor(
-                IStateStore store, 
-                IVerbalizationService verbalizationService, 
-                IWorldContext world, 
-                TestActivationEvent activation) 
+                IStateStore store,
+                IVerbalizationService verbalizationService,
+                IWorldContext world,
+                AIRadioOperatingActor.ILogger logger,
+                TestActivationEvent activation)
                 : base(
-                    TypeString, 
-                    store, 
-                    verbalizationService, 
+                    TypeString,
+                    store,
+                    verbalizationService,
                     world, 
+                    logger,
                     CreateParty(activation), 
                     activation, 
                     CreateInitialState(activation))
@@ -83,6 +150,7 @@ namespace Atc.World.Tests.AI
                         dependencies.Resolve<IStateStore>(),
                         dependencies.Resolve<IVerbalizationService>(), 
                         dependencies.Resolve<IWorldContext>(), 
+                        dependencies.Resolve<AIRadioOperatingActor.ILogger>(), 
                         activation
                     )
                 );
@@ -100,11 +168,12 @@ namespace Atc.World.Tests.AI
                     firstName: "Bob");
             }
         
-            private static RadioOperatorState CreateInitialState(TestActivationEvent activation)
+            private static TestActorState CreateInitialState(TestActivationEvent activation)
             {
-                return new RadioOperatorState(
+                return new TestActorState(
                     Radio: activation.Radio, 
-                    PendingTransmissionIntent: null);
+                    PendingTransmissionIntent: null,
+                    StateMachine: ImmutableStateMachine.Empty);
             }
         }
     }

@@ -8,10 +8,13 @@ namespace Zero.Loss.Actors.Impl
 {
     public partial class SupervisorActor : ISupervisorActorTimeTravel
     {
+        private delegate bool TryGetActorEntryFunc(string uniqueId, out ActorEntry? entry);
+        private TryGetActorEntryFunc? _tryGetActorEntryBeingRestored = null;
+        
         void ISupervisorActorTimeTravel.RestoreSnapshot(ActorStateSnapshot snapshot)
         {
             SnapshotData data = (SnapshotData) snapshot.Opaque;
-            
+
             _stateStore.ResetNextSequenceNo(snapshot.NextSequenceNo);
             var rebuiltState = RebuildSupervisorState();
             ((IStatefulActor) this).SetState(rebuiltState);
@@ -20,21 +23,33 @@ namespace Zero.Loss.Actors.Impl
             {
                 var actorByIdBuilder = ImmutableDictionary.CreateBuilder<string, ActorEntry>();
                 actorByIdBuilder.Add(UniqueId, State.ActorByUniqueId[UniqueId]);
-                
-                foreach (var snapshotEntry in data.ActorEntries)
+                _tryGetActorEntryBeingRestored = actorByIdBuilder.TryGetValue;
+
+                try
+                {
+                    RebuildAllActorEntries(actorByIdBuilder);
+                    return new SupervisorState(
+                        ActorByUniqueId: actorByIdBuilder.ToImmutable(),
+                        LastInstanceIdPerTypeString: data.LastInstanceIdPerTypeString,
+                        LastCreatedActor: null);
+                }
+                finally
+                {
+                    _tryGetActorEntryBeingRestored = null;
+                }
+            }
+
+            void RebuildAllActorEntries(ImmutableDictionary<string, ActorEntry>.Builder actorByIdBuilder)
+            {
+                foreach (var snapshotEntry in data.ActorEntries.OrderBy(entry => entry.SequenceNo))
                 {
                     var actorEntry = RebuildActorEntry(snapshotEntry);
                     actorByIdBuilder.Add(snapshotEntry.UniqueId, actorEntry);
-                    
+
                     var currentState = actorEntry.Actor.GetState();
                     actorEntry.Actor.SetState(snapshotEntry.State);
                     actorEntry.Actor.ObserveChanges(currentState, snapshotEntry.State);
                 }
-
-                return new SupervisorState(
-                    ActorByUniqueId: actorByIdBuilder.ToImmutable(),
-                    LastInstanceIdPerTypeString: data.LastInstanceIdPerTypeString,
-                    LastCreatedActor: null);
             }
             
             ActorEntry RebuildActorEntry(SnapshotDataActorEntry snapshotEntry)
@@ -47,7 +62,7 @@ namespace Zero.Loss.Actors.Impl
                 if (_registrationByActivationEventType.TryGetValue(snapshotEntry.ActivationEvent.GetType(), out var registration))
                 {
                     var resurrectedActor = registration.Factory(snapshotEntry.ActivationEvent);
-                    return new ActorEntry(resurrectedActor, snapshotEntry.ActivationEvent);
+                    return new ActorEntry(resurrectedActor, snapshotEntry.ActivationEvent, snapshotEntry.SequenceNo);
                 }
 
                 throw new ActorTypeNotFoundException();
@@ -84,6 +99,7 @@ namespace Zero.Loss.Actors.Impl
                     return new SnapshotDataActorEntry(
                         actor.UniqueId,
                         entry.ActivationEvent,
+                        entry.SequenceNo,
                         actor.GetState());
                 })
                 .ToImmutableArray();
@@ -105,8 +121,8 @@ namespace Zero.Loss.Actors.Impl
         
         private record SnapshotDataActorEntry(
             string UniqueId, 
-            IActivationStateEvent ActivationEvent, 
+            IActivationStateEvent ActivationEvent,
+            ulong SequenceNo,
             object State);
-        
     }
 }

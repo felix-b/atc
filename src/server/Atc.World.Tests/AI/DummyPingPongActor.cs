@@ -23,10 +23,11 @@ namespace Atc.World.Tests.AI
         public record PingPongState(
             ActorRef<RadioStationActor> Radio,
             Intent? PendingTransmissionIntent,
+            ImmutableStateMachine StateMachine,
             PingPongRole Role,
             ActorRef<DummyPingPongActor>? Counterparty,
             int RepeatCount
-        ) : RadioOperatorState(Radio, PendingTransmissionIntent);
+        ) : AIRadioOperatorState(Radio, PendingTransmissionIntent, StateMachine);
 
         public record DummyActivationEvent(
             string UniqueId, 
@@ -45,9 +46,10 @@ namespace Atc.World.Tests.AI
             IStateStore store, 
             IVerbalizationService verbalizationService, 
             IWorldContext world, 
+            AIRadioOperatingActor.ILogger logger,
             DummyActivationEvent activation) 
             : base(
-                TypeString, store, verbalizationService, world, CreateParty(activation), activation, CreateInitialState(activation))
+                TypeString, store, verbalizationService, world, logger, CreateParty(activation), activation, CreateInitialState(activation))
         {
             World.Defer(() => {
                 DispatchStateMachineEvent(new ImmutableStateMachine.TriggerEvent(
@@ -104,7 +106,7 @@ namespace Atc.World.Tests.AI
             builder.AddState(
                 "DELAY_NEXT_PING",
                 state => state.OnEnterStartSequence(sequence => sequence
-                    .AddDelayStep("DELAY", TimeSpan.FromSeconds(5))
+                    .AddDelayStep("DELAY", TimeSpan.FromSeconds(5), inheritTriggers: false)
                     .AddTransitionStep("TRANSITION", targetStateName: "PING")
                 ));
             
@@ -132,6 +134,7 @@ namespace Atc.World.Tests.AI
                     dependencies.Resolve<IStateStore>(),
                     dependencies.Resolve<IVerbalizationService>(), 
                     dependencies.Resolve<IWorldContext>(), 
+                    dependencies.Resolve<AIRadioOperatingActor.ILogger>(), 
                     activation
                 )
             );
@@ -153,7 +156,8 @@ namespace Atc.World.Tests.AI
         {
             return new PingPongState(
                 Radio: activation.Radio, 
-                PendingTransmissionIntent: null, 
+                PendingTransmissionIntent: null,
+                StateMachine: ImmutableStateMachine.Empty,
                 Role: activation.Role, 
                 Counterparty: null,
                 RepeatCount: 0);

@@ -244,7 +244,7 @@ namespace Atc.World.Tests.AI
                     onAddStateBegin: state => {
                         state.OnEnterStartSequence(
                             sequence => sequence
-                                .AddDelayStep("S1", TimeSpan.FromMinutes(1))
+                                .AddDelayStep("S1", TimeSpan.FromMinutes(1), inheritTriggers: false)
                                 .AddStep("S2", m => log.Add("step-S2"))
                         );
                     },

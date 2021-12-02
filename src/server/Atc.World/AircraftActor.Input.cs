@@ -185,5 +185,17 @@ namespace Atc.World
 
             return actor;
         }
+        
+        public static void RegisterType(ISupervisorActorInit supervisor)
+        {
+            supervisor.RegisterActorType<AircraftActor,  ActivationEvent>(
+                TypeString,
+                (activation, dependencies) => new AircraftActor(
+                    dependencies.Resolve<IWorldContext>(), 
+                    dependencies.Resolve<IStateStore>(),
+                    activation
+                )
+            );
+        }
     }
 }

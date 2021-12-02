@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using Atc.Data.Primitives;
 using Atc.Sound;
 using Atc.World.Abstractions;
+using Atc.World.AI;
 using Atc.World.Comms;
+using Atc.World.LLHZ;
 using Atc.World.Tests.AI;
 using Atc.World.Tests.Comms;
+using FluentAssertions;
 using Zero.Doubt.Logging;
 using Zero.Loss.Actors;
 using Zero.Loss.Actors.Impl;
@@ -14,23 +17,33 @@ namespace Atc.World.Tests
 {
     public class WorldSetup
     {
-        public WorldSetup(Action<SimpleDependencyContext>? configureDependencyContext = null)
+        private readonly DateTime _worldStartTimeUtc = new DateTime(2021, 10, 15, 10, 30, 0, DateTimeKind.Utc);
+        private Func<IEnumerable<InspectingLogWriter.LogEntry>>? _getInspectableLogEntries = null;
+
+        public WorldSetup(
+            Action<SimpleDependencyContext>? configureDependencyContext = null,
+            bool enableInspectableLogs = false)
         {
+            var effectiveLogWriter = enableInspectableLogs
+                ? InspectingLogWriter.Create(LogLevel.Debug, SafeWorldUtcNow, out _getInspectableLogEntries)
+                : LogWriter.Noop;
+
             DependencyContextBuilder = new SimpleDependencyContext();
             DependencyContextBuilder.WithSingleton<ISystemEnvironment>(Environment);
             
             configureDependencyContext?.Invoke(DependencyContextBuilder);
 
             DependencyContextBuilder.WithSingleton<IVerbalizationService>(new TestVerbalizationService());
-            DependencyContextBuilder.WithSingleton<LogWriter>(LogWriter.Noop);
+            DependencyContextBuilder.WithSingleton<LogWriter>(effectiveLogWriter);
 
-            CommsLogger = ZLoggerFactory.CreateLogger<ICommsLogger>(LogWriter.Noop);
-            var storeLogger = ZLoggerFactory.CreateLogger<StateStore.ILogger>(LogWriter.Noop);
+            CommsLogger = ZLoggerFactory.CreateLogger<ICommsLogger>(effectiveLogWriter);
+            var storeLogger = ZLoggerFactory.CreateLogger<StateStore.ILogger>(effectiveLogWriter);
             
             DependencyContextBuilder.WithSingleton<ICommsLogger>(CommsLogger);
             DependencyContextBuilder.WithSingleton<StateStore.ILogger>(storeLogger);
-            DependencyContextBuilder.WithSingleton<WorldActor.ILogger>(ZLoggerFactory.CreateLogger<WorldActor.ILogger>(LogWriter.Noop));
-            DependencyContextBuilder.WithSingleton<ISoundSystemLogger>(ZLoggerFactory.CreateLogger<ISoundSystemLogger>(LogWriter.Noop));
+            DependencyContextBuilder.WithSingleton<WorldActor.ILogger>(ZLoggerFactory.CreateLogger<WorldActor.ILogger>(effectiveLogWriter));
+            DependencyContextBuilder.WithSingleton<ISoundSystemLogger>(ZLoggerFactory.CreateLogger<ISoundSystemLogger>(effectiveLogWriter));
+            DependencyContextBuilder.WithSingleton<AIRadioOperatingActor.ILogger>(ZLoggerFactory.CreateLogger<AIRadioOperatingActor.ILogger>(effectiveLogWriter));
 
             Store = new StateStore(storeLogger);
             DependencyContextBuilder.WithSingleton<IStateStore>(Store);
@@ -41,16 +54,35 @@ namespace Atc.World.Tests
             WorldActor.RegisterType(Supervisor);
             RadioStationActor.RegisterType(Supervisor);
             GroundRadioStationAetherActor.RegisterType(Supervisor);
+            AircraftActor.RegisterType(Supervisor);
             DummyCycledTransmittingActor.RegisterType(Supervisor);
             DummyPingPongActor.RegisterType(Supervisor);
+            LlhzAirportActor.RegisterType(Supervisor);
+            LlhzDeliveryControllerActor.RegisterType(Supervisor);
+            LlhzPilotActor.RegisterType(Supervisor);
 
-            World = Supervisor.CreateActor<WorldActor>(id => new WorldActor.WorldActivationEvent(
-                id, 
-                new DateTime(2021, 10, 15, 10, 30, 0, DateTimeKind.Utc)));
+            World = Supervisor.CreateActor<WorldActor>(id => {
+                return new WorldActor.WorldActivationEvent(
+                    id, 
+                    _worldStartTimeUtc);
+            });
             DependencyContextBuilder.WithSingleton<IWorldContext>(World.Get());
 
             Stations = new();
             Aethers = new();
+        }
+
+        public void AddIntentListener(Action<Intent> onIntent)
+        {
+            Store.AddEventListener(ListenToIntents, out _);
+
+            void ListenToIntents(in StateEventEnvelope envelope)
+            {
+                if (envelope.Event is ImmutableStateMachine.TriggerEvent trigger && trigger.Intent != null)
+                {
+                    onIntent(trigger.Intent);
+                }
+            }
         }
 
         public ActorRef<RadioStationActor> AddAirStation(Frequency frequency, GeoPoint location, Altitude elevation, string callsign)
@@ -85,6 +117,32 @@ namespace Atc.World.Tests
             return new(station, aether);
         }
 
+        public void RunWorldIterations(TimeSpan iterationInterval, int iterationCount)
+        {
+            for (int iteration = 0 ; iteration < iterationCount ; iteration++)
+            {
+                World.Get().ProgressBy(iterationInterval);
+            }
+        }
+
+        public IEnumerable<InspectingLogWriter.LogEntry> GetLogEntries()
+        {
+            if (_getInspectableLogEntries != null)
+            {
+                return _getInspectableLogEntries();
+            }
+
+            throw new InvalidOperationException("Inspectable logs were not enabled");
+        }
+
+        public DateTime SafeWorldUtcNow()
+        {
+            return World.CanGet
+                ? World.Get().UtcNow()
+                : _worldStartTimeUtc;
+        }
+
+        public DateTime WorldStartTimeUtc => _worldStartTimeUtc;
         public SimpleDependencyContext DependencyContextBuilder { get; }
         public IActorDependencyContext DependencyContext => DependencyContextBuilder;
         public StateStore Store { get; }

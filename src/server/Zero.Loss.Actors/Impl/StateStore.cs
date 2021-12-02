@@ -10,7 +10,10 @@ namespace Zero.Loss.Actors.Impl
     {
         private readonly ILogger _logger;
         private readonly WriteLocked<EventListenerCollection> _eventListeners;
+        
         private ulong _nextSequenceNo = 1;
+        private bool _dispatching = false;
+        
 
         public StateStore(ILogger logger)
         {
@@ -22,8 +25,14 @@ namespace Zero.Loss.Actors.Impl
 
         public void Dispatch(IStatefulActor target, IStateEvent @event)
         {
+            if (_dispatching)
+            {
+                throw new InvalidOperationException("Reentrant dispatch detected. Use World.Defer() instead.");
+            }
+
             var sequenceNo = _nextSequenceNo++;
             using var logSpan = _logger.Dispatch(sequenceNo, target.UniqueId, @event.GetType().Name, @event.ToString());
+            _dispatching = true;
 
             try
             {
@@ -41,6 +50,10 @@ namespace Zero.Loss.Actors.Impl
             catch (Exception e)
             {
                 logSpan.Fail(e);
+            }
+            finally
+            {
+                _dispatching = false;
             }
         }
 

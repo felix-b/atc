@@ -91,11 +91,14 @@ namespace Atc.World
             return lastId + 1;
         }
 
-        public ActorRef<GroundRadioStationAetherActor>? TryFindRadioAether(ActorRef<RadioStationActor> fromStationActor)
+        public ActorRef<GroundRadioStationAetherActor>? TryFindRadioAether(
+            ActorRef<RadioStationActor> fromStationActor,
+            Frequency? newFrequency)
         {
             var fromStation = fromStationActor.Get();
+            var effectiveFrequency = newFrequency ?? fromStation.Frequency; 
             
-            if (State.RadioAetherByKhz.TryGetValue(fromStation.Frequency.Khz, out var aetherList))
+            if (State.RadioAetherByKhz.TryGetValue(effectiveFrequency.Khz, out var aetherList))
             {
                 foreach (var aether in aetherList)
                 {
@@ -349,7 +352,15 @@ namespace Atc.World
                         processedItemCount++;
                         _workItems.Remove(node);
                         node.Value.Removed = true;
-                        actionToRun?.Invoke();
+
+                        try
+                        {
+                            actionToRun?.Invoke();
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.DeferredTaskFailed(id: node.Value.Id, e);
+                        }
                     }
 
                     node = nextNode;

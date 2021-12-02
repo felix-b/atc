@@ -13,27 +13,31 @@ namespace Atc.World.AI
     public class ImmutableStateMachine : IStateMachineContext
     {
         public static readonly string ResumeAfterDelayTriggerId = "RESUME_AFTER_DELAY";
+        public static readonly string AnyIntentTriggerId = "ANY_INTENT";
         public static readonly StateEnterCallback NoopEnterCallback = (ctx) => { };
         public static readonly ImmutableDictionary<string, TransitionDescription> EmptyTransitionMap =
             ImmutableDictionary<string, TransitionDescription>.Empty;
         
         public readonly ImmutableDictionary<string, StateDescription> StateByName;
         public readonly StateDescription State;
+        public readonly Intent? LastReceivedIntent;
         public readonly ImmutableDictionary<Type, Intent> MemorizedIntentByType;
 
         private readonly DispatchEventCallback _dispatchEvent;
         private readonly ScheduleDelayCallback _scheduleDelay;
 
         public ImmutableStateMachine(
-            ImmutableDictionary<string, StateDescription> stateByName, 
+            ImmutableDictionary<string, StateDescription> stateByName,
             string currentStateName,
             string? previousStateName,
+            Intent? lastReceivedIntent,
             ImmutableDictionary<Type, Intent> memorizedIntentByType,
             DispatchEventCallback dispatchEvent,
             ScheduleDelayCallback scheduleDelay)
         {
             StateByName = stateByName;
             State = currentStateName.Length > 0 ? StateByName[currentStateName] : StateDescription.Empty;
+            LastReceivedIntent = lastReceivedIntent;
             MemorizedIntentByType = memorizedIntentByType;
             
             _dispatchEvent = dispatchEvent;
@@ -45,10 +49,24 @@ namespace Atc.World.AI
             State.OnEnter(this);
         }
             
-        public void ReceiveIntent(Intent intent)
+        public bool ReceiveIntent(Intent intent)
         {
             var triggerId = GetTriggerIdFromIntentType(intent.GetType());
-            _dispatchEvent(new TriggerEvent(triggerId, intent));
+            
+            if (State.TransitionByTriggerId.ContainsKey(triggerId))
+            {
+                _dispatchEvent(new TriggerEvent(triggerId, intent));
+                return true;
+            }
+            else if (State.TransitionByTriggerId.ContainsKey(AnyIntentTriggerId))
+            {
+                _dispatchEvent(new TriggerEvent(AnyIntentTriggerId, intent));
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public void ReceiveTrigger(string triggerId)
@@ -56,9 +74,9 @@ namespace Atc.World.AI
             _dispatchEvent(new TriggerEvent(triggerId, Intent: null));
         }
 
-        public void TransitionTo(string stateName)
+        public void TransitionTo(string stateName, bool resetLastReceivedIntent)
         {
-            _dispatchEvent(new TransitionEvent(stateName));
+            _dispatchEvent(new TransitionEvent(stateName, resetLastReceivedIntent));
         }
         
         public T GetMemorizedIntent<T>() where T : Intent
@@ -73,10 +91,13 @@ namespace Atc.World.AI
             return found;
         }
 
+        Intent? IStateMachineContext.LastReceivedIntent => LastReceivedIntent;
+
         public static readonly ImmutableStateMachine Empty = new ImmutableStateMachine(
             stateByName: ImmutableDictionary<string, StateDescription>.Empty, 
             currentStateName: string.Empty,
             previousStateName: null,
+            lastReceivedIntent: null,
             memorizedIntentByType: ImmutableDictionary<Type, Intent>.Empty, 
             dispatchEvent: (e) => { },
             scheduleDelay: (t, onDue) => { });
@@ -112,6 +133,7 @@ namespace Atc.World.AI
                     machineBefore.StateByName,
                     currentStateName: transition.TargetStateName,
                     previousStateName: machineBefore.State.Name,
+                    lastReceivedIntent: trigger.Intent,
                     memorizedIntentByType: transition.MemorizeIntent 
                         ? machineBefore.MemorizedIntentByType.Add(trigger.Intent!.GetType(), trigger.Intent!)
                         : machineBefore.MemorizedIntentByType,
@@ -125,6 +147,9 @@ namespace Atc.World.AI
                     machineBefore.StateByName,
                     currentStateName: transitionTo.StateName,
                     previousStateName: machineBefore.State.Name,
+                    lastReceivedIntent: transitionTo.ResetLastReceivedIntent 
+                        ? null 
+                        : machineBefore.LastReceivedIntent,
                     machineBefore.MemorizedIntentByType,
                     machineBefore._dispatchEvent,
                     machineBefore._scheduleDelay);
@@ -165,7 +190,8 @@ namespace Atc.World.AI
         ) : IStateEvent, IImmutableStateMachineEvent;
 
         public record TransitionEvent(
-            string StateName
+            string StateName,
+            bool ResetLastReceivedIntent
         ) : IStateEvent, IImmutableStateMachineEvent;
         
         public class Builder
@@ -214,6 +240,7 @@ namespace Atc.World.AI
                     stateList.ToImmutableDictionary(s => s.Name, s => s),
                     _initialStateName,
                     previousStateName: null,
+                    lastReceivedIntent: null,
                     memorizedIntentByType: ImmutableDictionary<Type, Intent>.Empty, 
                     _dispatchEvent,
                     _scheduleDelay);
@@ -270,6 +297,13 @@ namespace Atc.World.AI
                 return OnTrigger(triggerId, transitionTo, memorizeIntent);
             }
 
+            public RegularStateBuilder OnAnyIntent(
+                string transitionTo, 
+                bool memorizeIntent = false)
+            {
+                return OnTrigger(AnyIntentTriggerId, transitionTo, memorizeIntent);
+            }
+
             void IStateBuilder.AppendStates(IList<StateDescription> destination)
             {
                 if (HasSequence)
@@ -287,14 +321,17 @@ namespace Atc.World.AI
                 void AppendStatesWithSequence()
                 {
                     var firstSequenceStateName = _onEnterSequence!.GetFirstStepStateName(_name);
+                    var immutableTransitions = _transitionByTriggerId.ToImmutable();
                     var thisState = new StateDescription(
                         _name,
-                        machine => { machine.TransitionTo(firstSequenceStateName); },
-                        ImmutableDictionary<string, TransitionDescription>.Empty);
+                        machine => {
+                            machine.TransitionTo(firstSequenceStateName, resetLastReceivedIntent: false);
+                        },
+                        immutableTransitions);
                     var finishState = new StateDescription(
                         SequenceBuilder.GetSequenceFinishStateName(_name),
                         NoopEnterCallback,
-                        _transitionByTriggerId.ToImmutable());
+                        immutableTransitions);
 
                     destination.Add(thisState);
 
@@ -373,7 +410,7 @@ namespace Atc.World.AI
                 AppendReceiveStates(destination, out var receiveStateName);
                 AppendInitialTransmitStates(
                     destination, 
-                    afterTransmissionTransitionTo: receiveStateName ?? readyStateName, 
+                    afterTransmissionTransitionTo: receiveStateName ?? _afterTransmitTransitionTo ?? readyStateName, 
                     out var mainNextStateName);
 
                 CreateMonitorPart(out var onMainStateEnter);
@@ -512,9 +549,9 @@ namespace Atc.World.AI
         {
             private readonly List<Step> _steps = new();
             
-            public SequenceBuilder AddDelayStep(string name, TimeSpan interval)
+            public SequenceBuilder AddDelayStep(string name, TimeSpan interval, bool inheritTriggers)
             {
-                _steps.Add(new DelayStep(name, interval));
+                _steps.Add(new DelayStep(name, interval, inheritTriggers));
                 return this;
             }
 
@@ -648,7 +685,7 @@ namespace Atc.World.AI
                 }
             }
 
-            private record DelayStep(string Name, TimeSpan Interval) : Step(Name)
+            private record DelayStep(string Name, TimeSpan Interval, bool InheritTriggers) : Step(Name)
             {
                 public override void AppendStates(
                     StateDescription parentState,
@@ -664,10 +701,14 @@ namespace Atc.World.AI
                         });
                     };
 
+                    var baseTransitions = InheritTriggers
+                        ? parentState.TransitionByTriggerId
+                        : ImmutableDictionary<string, TransitionDescription>.Empty;
+                    
                     var state = new StateDescription(
                         Name: GetStepStateName(parentState.Name, this),
                         OnEnter: onEnter,
-                        TransitionByTriggerId: ImmutableDictionary<string, TransitionDescription>.Empty.Add(
+                        TransitionByTriggerId: baseTransitions.Add(
                             ResumeAfterDelayTriggerId,
                             new TransitionDescription(
                                 ResumeAfterDelayTriggerId, 
@@ -681,9 +722,12 @@ namespace Atc.World.AI
     
     public interface IStateMachineContext
     {
-        void ReceiveIntent(Intent intent);
+        bool ReceiveIntent(Intent intent);
         void ReceiveTrigger(string triggerId);
-        void TransitionTo(string stateName);
+        void TransitionTo(string stateName, bool resetLastReceivedIntent = true);
+        T GetMemorizedIntent<T>() where T : Intent;
+        bool TryGetMemorizedIntent<T>(out T? intent) where T : Intent;
+        Intent? LastReceivedIntent { get; }
     }
 
     public static class TransitionMapExtensions

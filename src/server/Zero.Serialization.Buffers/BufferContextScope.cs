@@ -54,6 +54,15 @@ namespace Zero.Serialization.Buffers
             }
         }
 
+        public static void ClearStaticScope()
+        {
+            StaticScopeProvider.Clear();
+            if (_scopeProvider is StaticScopeProvider)
+            {
+                _scopeProvider = null;
+            }
+        }
+        
         public static bool HasCurrent => GetScopeProvider().Current != null; 
         
         public static IBufferContext CurrentContext => 
@@ -104,6 +113,11 @@ namespace Zero.Serialization.Buffers
                 {
                     _current = value;
                 }
+            }
+
+            public static void Clear()
+            {
+                _current = null;
             }
         }
     }

@@ -43,7 +43,7 @@ namespace Atc.World.Comms
             Party = party;
             
             Radio.IntentReceived += (station, transmission, intent) => ReceiveIntent(intent);
-            Radio.PowerOn();
+            world.Defer(() => Radio.PowerOn());
         }
 
         public void MonitorFrequency(Frequency frequency)

@@ -87,7 +87,7 @@ namespace Atc.World.Comms
             var oldAether = State.Aether;
             oldAether?.Get().RemoveStation(thisRef);
 
-            var newAether = _world.TryFindRadioAether(thisRef);
+            var newAether = _world.TryFindRadioAether(thisRef, frequency);
             _store.Dispatch(this, new FrequencySwitchedEvent(frequency, newAether));
             newAether?.Get().AddStation(thisRef);
 
@@ -112,7 +112,7 @@ namespace Atc.World.Comms
 
             if (State.Aether == null)
             {
-                var newAether = _world.TryFindRadioAether(thisRef);
+                var newAether = _world.TryFindRadioAether(thisRef, frequency);
                 if (newAether != null)
                 {
                     _store.Dispatch(this, new FrequencySwitchedEvent(frequency, newAether));

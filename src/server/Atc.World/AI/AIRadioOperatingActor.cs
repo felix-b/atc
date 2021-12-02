@@ -6,21 +6,26 @@ using Zero.Loss.Actors;
 namespace Atc.World.AI
 {
     public abstract class AIRadioOperatingActor<TState> : RadioOperatingActor<TState>, IStartableActor
-        where TState : RadioOperatorState
+        where TState : AIRadioOperatorState
     {
-        private ImmutableStateMachine _stateMachine;
+        public record InitStateMachineEvent(
+            ImmutableStateMachine StateMachine
+        ) : IStateEvent;
+        
+        private readonly AIRadioOperatingActor.ILogger _logger;
         
         protected AIRadioOperatingActor(
             string typeString, 
             IStateStore store, 
             IVerbalizationService verbalizationService, 
-            IWorldContext world, 
+            IWorldContext world,
+            AIRadioOperatingActor.ILogger logger,
             PartyDescription party, 
             RadioOperatorActivationEvent activation, 
             TState initialState) 
             : base(typeString, store, verbalizationService, world, party, activation, initialState)
         {
-            _stateMachine = ImmutableStateMachine.Empty;
+            _logger = logger;
         }
 
         void IStartableActor.Start()
@@ -30,36 +35,55 @@ namespace Atc.World.AI
         
         protected virtual void OnStart()
         {
-            _stateMachine = CreateStateMachine();
-            _stateMachine.Start();
+            var stateMachine = CreateStateMachine();
+            Store.Dispatch(this, new InitStateMachineEvent(stateMachine));
+            stateMachine.Start();
         }
         
         protected override void ReceiveIntent(Intent intent)
         {
-            _stateMachine.ReceiveIntent(intent);
+            State.StateMachine.ReceiveIntent(intent);
         }
 
         protected override TState Reduce(TState stateBefore, IStateEvent @event)
         {
-            if (@event is IImmutableStateMachineEvent machineEvent)
+            switch (@event)
             {
-                _stateMachine = ImmutableStateMachine.Reduce(_stateMachine, machineEvent);
-                _stateMachine.Start();
+                case InitStateMachineEvent init:
+                    return stateBefore with {
+                        StateMachine = init.StateMachine 
+                    };
+                case IImmutableStateMachineEvent machineEvent:
+                    var oldStateMachine = stateBefore.StateMachine;
+                    var newStateMachine = ImmutableStateMachine.Reduce(oldStateMachine, machineEvent);
+                    if (newStateMachine == oldStateMachine)
+                    {
+                        return stateBefore;
+                    }
+                    
+                    _logger.ActorTransitionedState(UniqueId, oldStateMachine.State.Name, newStateMachine.State.Name);
+                    World.Defer(() => {
+                        newStateMachine.Start();
+                    });
+
+                    return stateBefore with {
+                        StateMachine = newStateMachine
+                    };
+                default:            
+                    return base.Reduce(stateBefore, @event);
             }
-            
-            return base.Reduce(stateBefore, @event);
         }
 
         protected abstract ImmutableStateMachine CreateStateMachine();
 
         protected override void OnTransmissionStarted()
         {
-            _stateMachine.ReceiveTrigger(AIRadioOperatingActor.TransmissionStartedTriggerId);
+            State.StateMachine.ReceiveTrigger(AIRadioOperatingActor.TransmissionStartedTriggerId);
         }
 
         protected override void OnTransmissionFinished()
         {
-            _stateMachine.ReceiveTrigger(AIRadioOperatingActor.TransmissionFinishedTriggerId);
+            State.StateMachine.ReceiveTrigger(AIRadioOperatingActor.TransmissionFinishedTriggerId);
         }
 
         protected void DispatchStateMachineEvent(IStateEvent @event)
@@ -79,7 +103,7 @@ namespace Atc.World.AI
 
         protected ImmutableStateMachine GetCurrentStateMachineSnapshot()
         {
-            return _stateMachine;
+            return State.StateMachine;
         }
     }
 
@@ -87,5 +111,16 @@ namespace Atc.World.AI
     {
         public static readonly string TransmissionStartedTriggerId = "TRANSMISSION_STARTED";
         public static readonly string TransmissionFinishedTriggerId = "TRANSMISSION_FINISHED";
+
+        public interface ILogger
+        {
+            void ActorTransitionedState(string actorId, string oldState, string newState);
+        }
     }
+
+    public abstract record AIRadioOperatorState(
+        ActorRef<RadioStationActor> Radio,
+        Intent? PendingTransmissionIntent,
+        ImmutableStateMachine StateMachine
+    ) : RadioOperatorState(Radio, PendingTransmissionIntent);
 }
