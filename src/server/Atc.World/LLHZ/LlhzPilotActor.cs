@@ -155,7 +155,7 @@ namespace Atc.World.LLHZ
         
         private T GetMemorizedIntent<T>() where T : Intent
         {
-            throw new NotImplementedException();
+            return State.StateMachine.GetMemorizedIntent<T>();
         }
 
         private ImmutableStateMachine CreateTrainingZoneFlightWorkflow()

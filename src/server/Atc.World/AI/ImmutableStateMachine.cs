@@ -17,7 +17,8 @@ namespace Atc.World.AI
         public static readonly StateEnterCallback NoopEnterCallback = (ctx) => { };
         public static readonly ImmutableDictionary<string, TransitionDescription> EmptyTransitionMap =
             ImmutableDictionary<string, TransitionDescription>.Empty;
-        
+
+        public readonly ulong Age;
         public readonly ImmutableDictionary<string, StateDescription> StateByName;
         public readonly StateDescription State;
         public readonly Intent? LastReceivedIntent;
@@ -26,7 +27,31 @@ namespace Atc.World.AI
         private readonly DispatchEventCallback _dispatchEvent;
         private readonly ScheduleDelayCallback _scheduleDelay;
 
+        [NotEventSourced]
+        private Action? _stateFinalizer = null;
+
         public ImmutableStateMachine(
+            ImmutableDictionary<string, StateDescription> stateByName,
+            string currentStateName,
+            string? previousStateName,
+            Intent? lastReceivedIntent,
+            ImmutableDictionary<Type, Intent> memorizedIntentByType,
+            DispatchEventCallback dispatchEvent,
+            ScheduleDelayCallback scheduleDelay) 
+        : this(
+            age: 1,
+            stateByName,
+            currentStateName,
+            previousStateName,
+            lastReceivedIntent,
+            memorizedIntentByType,
+            dispatchEvent,
+            scheduleDelay)
+        {
+        }
+
+        public ImmutableStateMachine(
+            ulong age,
             ImmutableDictionary<string, StateDescription> stateByName,
             string currentStateName,
             string? previousStateName,
@@ -35,6 +60,7 @@ namespace Atc.World.AI
             DispatchEventCallback dispatchEvent,
             ScheduleDelayCallback scheduleDelay)
         {
+            Age = age;
             StateByName = stateByName;
             State = currentStateName.Length > 0 ? StateByName[currentStateName] : StateDescription.Empty;
             LastReceivedIntent = lastReceivedIntent;
@@ -55,12 +81,12 @@ namespace Atc.World.AI
             
             if (State.TransitionByTriggerId.ContainsKey(triggerId))
             {
-                _dispatchEvent(new TriggerEvent(triggerId, intent));
+                _dispatchEvent(new TriggerEvent(Age, triggerId, intent));
                 return true;
             }
             else if (State.TransitionByTriggerId.ContainsKey(AnyIntentTriggerId))
             {
-                _dispatchEvent(new TriggerEvent(AnyIntentTriggerId, intent));
+                _dispatchEvent(new TriggerEvent(Age, AnyIntentTriggerId, intent));
                 return true;
             }
             else
@@ -71,12 +97,12 @@ namespace Atc.World.AI
 
         public void ReceiveTrigger(string triggerId)
         {
-            _dispatchEvent(new TriggerEvent(triggerId, Intent: null));
+            _dispatchEvent(new TriggerEvent(Age, triggerId, Intent: null));
         }
 
         public void TransitionTo(string stateName, bool resetLastReceivedIntent)
         {
-            _dispatchEvent(new TransitionEvent(stateName, resetLastReceivedIntent));
+            _dispatchEvent(new TransitionEvent(Age, stateName, resetLastReceivedIntent));
         }
         
         public T GetMemorizedIntent<T>() where T : Intent
@@ -91,7 +117,51 @@ namespace Atc.World.AI
             return found;
         }
 
+        public void ScheduleDelay(TimeSpan interval, Action onDue)
+        {
+            var handle = _scheduleDelay(interval, () => {
+                try
+                {
+                    onDue();
+                }
+                catch (Exception e)
+                {
+                    //TODO: add log
+                }
+                finally
+                {
+                    ResetStateFinalizer();        
+                }
+            });
+            
+            SetStateFinalizer(() => handle.Cancel());
+        }
+
+        ulong IStateMachineContext.Age => Age;
+        
+        string IStateMachineContext.CurrentStateName => State.Name;
+
         Intent? IStateMachineContext.LastReceivedIntent => LastReceivedIntent;
+
+        private void SetStateFinalizer(Action finalizer)
+        {
+            if (_stateFinalizer != null)
+            {
+                throw new InvalidOperationException("State finalizer callback was already set for this instance");
+            }
+            _stateFinalizer = finalizer;
+        }
+        
+        private void RunStateFinalizer()
+        {
+            _stateFinalizer?.Invoke();
+            _stateFinalizer = null;
+        }
+
+        private void ResetStateFinalizer()
+        {
+            _stateFinalizer = null;
+        }
 
         public static readonly ImmutableStateMachine Empty = new ImmutableStateMachine(
             stateByName: ImmutableDictionary<string, StateDescription>.Empty, 
@@ -100,20 +170,31 @@ namespace Atc.World.AI
             lastReceivedIntent: null,
             memorizedIntentByType: ImmutableDictionary<Type, Intent>.Empty, 
             dispatchEvent: (e) => { },
-            scheduleDelay: (t, onDue) => { });
+            scheduleDelay: (t, onDue) => IDeferHandle.Noop);
 
         public static ImmutableStateMachine Reduce(
             ImmutableStateMachine machineBefore, 
             IImmutableStateMachineEvent @event)
         {
-            switch (@event)
+            var machineAfter = PureReduce();
+            if (!object.ReferenceEquals(machineBefore, machineAfter))
             {
-                case TriggerEvent trigger:
-                    return HandleTriggerEvent(trigger);
-                case TransitionEvent transitionTo:
-                    return HandleTransitionEvent(transitionTo);
-                default:
-                    return machineBefore;
+                machineBefore.RunStateFinalizer();
+            }
+
+            return machineAfter;
+
+            ImmutableStateMachine PureReduce()
+            {
+                switch (@event)
+                {
+                    case TriggerEvent trigger:
+                        return HandleTriggerEvent(trigger);
+                    case TransitionEvent transitionTo:
+                        return HandleTransitionEvent(transitionTo);
+                    default:
+                        return machineBefore;
+                }
             }
 
             ImmutableStateMachine HandleTriggerEvent(TriggerEvent trigger)
@@ -128,8 +209,9 @@ namespace Atc.World.AI
                 {
                     throw new InvalidOperationException($"Transition sets MemorizeIntent but trigger has null Intent");
                 }
-                    
+
                 return new ImmutableStateMachine(
+                    age: machineBefore.Age + 1,
                     machineBefore.StateByName,
                     currentStateName: transition.TargetStateName,
                     previousStateName: machineBefore.State.Name,
@@ -144,6 +226,7 @@ namespace Atc.World.AI
             ImmutableStateMachine HandleTransitionEvent(TransitionEvent transitionTo)
             {
                 return new ImmutableStateMachine(
+                    age: machineBefore.Age + 1,
                     machineBefore.StateByName,
                     currentStateName: transitionTo.StateName,
                     previousStateName: machineBefore.State.Name,
@@ -176,7 +259,7 @@ namespace Atc.World.AI
 
         public delegate void DispatchEventCallback(IStateEvent @event);
 
-        public delegate void ScheduleDelayCallback(TimeSpan interval, Action onDue);
+        public delegate IDeferHandle ScheduleDelayCallback(TimeSpan interval, Action onDue);
 
         public record TransitionDescription(
             string TriggerId,
@@ -185,14 +268,28 @@ namespace Atc.World.AI
         );
 
         public record TriggerEvent(
+            ulong Age,
             string TriggerId,
-            Intent? Intent = null
-        ) : IStateEvent, IImmutableStateMachineEvent;
+            Intent? Intent = null) 
+            : IStateEvent, IImmutableStateMachineEvent
+        {
+            public override string ToString()
+            {
+                return $"TRIG:{TriggerId}{(Intent != null ? $":{Intent}" : string.Empty)}";
+            }
+        }
 
         public record TransitionEvent(
+            ulong Age,
             string StateName,
-            bool ResetLastReceivedIntent
-        ) : IStateEvent, IImmutableStateMachineEvent;
+            bool ResetLastReceivedIntent) 
+            : IStateEvent, IImmutableStateMachineEvent
+        {
+            public override string ToString()
+            {
+                return $"TRAN:{StateName}{(ResetLastReceivedIntent ? "+RLI" : string.Empty)}";
+            }
+        }
         
         public class Builder
         {
@@ -693,10 +790,11 @@ namespace Atc.World.AI
                     Step? nextStep,
                     IList<StateDescription> destination)
                 {
+                    var thisStateName = GetStepStateName(parentState.Name, this);
                     var nextStateName = GetNextStateName(parentState, nextStep);
 
                     StateEnterCallback onEnter = (machine) => {
-                        ((ImmutableStateMachine) machine)._scheduleDelay(Interval, () => {
+                        machine.ScheduleDelay(Interval, () => {
                             machine.ReceiveTrigger(ResumeAfterDelayTriggerId);
                         });
                     };
@@ -706,7 +804,7 @@ namespace Atc.World.AI
                         : ImmutableDictionary<string, TransitionDescription>.Empty;
                     
                     var state = new StateDescription(
-                        Name: GetStepStateName(parentState.Name, this),
+                        Name: thisStateName,
                         OnEnter: onEnter,
                         TransitionByTriggerId: baseTransitions.Add(
                             ResumeAfterDelayTriggerId,
@@ -727,6 +825,9 @@ namespace Atc.World.AI
         void TransitionTo(string stateName, bool resetLastReceivedIntent = true);
         T GetMemorizedIntent<T>() where T : Intent;
         bool TryGetMemorizedIntent<T>(out T? intent) where T : Intent;
+        void ScheduleDelay(TimeSpan interval, Action onDue);
+        ulong Age { get; }
+        string CurrentStateName { get; }
         Intent? LastReceivedIntent { get; }
     }
 
@@ -747,5 +848,6 @@ namespace Atc.World.AI
 
     public interface IImmutableStateMachineEvent : IStateEvent
     {
+        ulong Age { get; }
     }
 }

@@ -14,5 +14,12 @@ namespace Atc.World.Tests
         {
             return assertions.BeEquivalentTo(expectation, options => options.WithStrictOrdering());
         }
+
+        public static AndConstraint<GenericCollectionAssertions<T>> BeStrictlyEquivalentTo<T>(
+            this GenericCollectionAssertions<T> assertions, 
+            params T[] expectation)
+        {
+            return assertions.BeEquivalentTo(expectation, options => options.WithStrictOrdering());
+        }
     }
 }

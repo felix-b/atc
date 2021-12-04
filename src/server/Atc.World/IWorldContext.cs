@@ -41,5 +41,23 @@ namespace Atc.World
     {
         void UpdateDeadline(DateTime newDeadlineUtc);
         void Cancel();
+        static IDeferHandle Noop => NoopDeferHandle.Instance;
+    }
+
+    internal class NoopDeferHandle : IDeferHandle
+    {
+        public static readonly NoopDeferHandle Instance = new NoopDeferHandle();
+
+        private NoopDeferHandle()
+        {
+        }
+        
+        public void UpdateDeadline(DateTime newDeadlineUtc)
+        {
+        }
+
+        public void Cancel()
+        {
+        }
     }
 }

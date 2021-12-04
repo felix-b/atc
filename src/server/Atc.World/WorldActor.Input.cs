@@ -309,6 +309,7 @@ namespace Atc.World
         {
             private readonly ILogger _logger;
             private readonly LinkedList<WorkItem> _workItems = new();
+            private ulong _nextWorkItemId = 1;
 
             public DeferredTaskQueue(ILogger logger)
             {
@@ -317,7 +318,8 @@ namespace Atc.World
 
             public IDeferHandle EnqueueWorkItem(Func<bool>? predicate, DateTime? deadlineUtc, Action? onPredicateTrue, Action? onTimeout)
             {
-                var node = _workItems.AddLast(new WorkItem(0, onPredicateTrue, onTimeout, predicate, deadlineUtc));
+                var workItemId = _nextWorkItemId++;
+                var node = _workItems.AddLast(new WorkItem(workItemId, onPredicateTrue, onTimeout, predicate, deadlineUtc));
                 return new DeferredTaskQueueItemHandle(_workItems, node);
             }
 
@@ -346,20 +348,21 @@ namespace Atc.World
                 {
                     var currentNode = node;
                     var nextNode = currentNode.Next;
+                    var workItem = node.Value;
                     
-                    if (ShouldRunItem(node.Value, out var actionToRun))
+                    if (!workItem.Removed && ShouldRunItem(workItem, out var actionToRun))
                     {
-                        processedItemCount++;
-                        _workItems.Remove(node);
-                        node.Value.Removed = true;
-
                         try
                         {
+                            processedItemCount++;
+                            _workItems.Remove(node);
+                            workItem.Removed = true;
+
                             actionToRun?.Invoke();
                         }
                         catch (Exception e)
                         {
-                            _logger.DeferredTaskFailed(id: node.Value.Id, e);
+                            _logger.DeferredTaskFailed(id: workItem.Id, e);
                         }
                     }
 

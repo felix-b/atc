@@ -27,7 +27,7 @@ namespace Atc.World.Tests.AI
                 onDispatchEvent ?? new ImmutableStateMachine.DispatchEventCallback(e => { });
 
             var effectiveScheduleDelay =
-                onScheduleDelay ?? new ImmutableStateMachine.ScheduleDelayCallback((t, onDue) => { });
+                onScheduleDelay ?? new ImmutableStateMachine.ScheduleDelayCallback((t, onDue) => IDeferHandle.Noop);
 
             var builder = new ImmutableStateMachine.Builder("BEGIN", effectiveDispatchEvent, effectiveScheduleDelay);
 
@@ -237,6 +237,7 @@ namespace Atc.World.Tests.AI
             ImmutableStateMachine.ScheduleDelayCallback scheduleDelay = (time, onDue) => {
                 log.Add($"schedule-delay({time})");
                 onDelayDue = onDue;
+                return IDeferHandle.Noop;
             };
             
             var machines = new TestMachineWithEventsContainer(
@@ -310,7 +311,7 @@ namespace Atc.World.Tests.AI
             var builder = new ImmutableStateMachine.Builder(
                 initialStateName: "BEGIN", 
                 dispatchEvent: e => { }, 
-                scheduleDelay: (e, t) => { });
+                scheduleDelay: (e, t) => IDeferHandle.Noop);
 
             var actor = Mock.Of<IRadioOperatingActor>();
             var intentToTransmit = new TestIntentOne();
@@ -351,7 +352,10 @@ namespace Atc.World.Tests.AI
                 var builder = new ImmutableStateMachine.Builder(
                     initialStateName: "BEGIN", 
                     dispatchEvent, 
-                    scheduleDelay: (t, f) => log.Add($"scheudle-delay({t})"));
+                    scheduleDelay: (t, f) => {
+                        log.Add($"scheudle-delay({t})");
+                        return IDeferHandle.Noop;
+                    });
 
                 builder.AddConversationState(actorMock.Object, "BEGIN", state => state
                     .Monitor(Frequency.FromKhz(123450))
@@ -384,7 +388,10 @@ namespace Atc.World.Tests.AI
                 var builder = new ImmutableStateMachine.Builder(
                     initialStateName: "BEGIN", 
                     dispatchEvent, 
-                    scheduleDelay: (t, f) => log.Add($"scheudle-delay({t})"));
+                    scheduleDelay: (t, f) => {
+                        log.Add($"scheudle-delay({t})");
+                        return IDeferHandle.Noop;
+                    });
 
                 builder.AddConversationState(actorMock.Object, "BEGIN", state => state
                     .Monitor(Frequency.FromKhz(123450))
@@ -419,7 +426,10 @@ namespace Atc.World.Tests.AI
                 var builder = new ImmutableStateMachine.Builder(
                     initialStateName: "BEGIN", 
                     dispatchEvent, 
-                    scheduleDelay: (t, f) => log.Add($"scheudle-delay({t})"));
+                    scheduleDelay: (t, f) => {
+                        log.Add($"scheudle-delay({t})");
+                        return IDeferHandle.Noop;
+                    });
 
                 builder.AddConversationState(actorMock.Object, "BEGIN", state => state
                     .Monitor(Frequency.FromKhz(123450))
@@ -454,7 +464,10 @@ namespace Atc.World.Tests.AI
                 var builder = new ImmutableStateMachine.Builder(
                     initialStateName: "BEGIN", 
                     dispatchEvent, 
-                    scheduleDelay: (t, f) => log.Add($"scheudle-delay({t})"));
+                    scheduleDelay: (t, f) => {
+                        log.Add($"scheudle-delay({t})");
+                        return IDeferHandle.Noop;
+                    });
 
                 builder.AddConversationState(actorMock.Object, "BEGIN", state => state
                     .Monitor(Frequency.FromKhz(123450))
@@ -488,7 +501,10 @@ namespace Atc.World.Tests.AI
                 var builder = new ImmutableStateMachine.Builder(
                     initialStateName: "BEGIN", 
                     dispatchEvent, 
-                    scheduleDelay: (t, f) => log.Add($"scheudle-delay({t})"));
+                    scheduleDelay: (t, f) => {
+                        log.Add($"scheudle-delay({t})");
+                        return IDeferHandle.Noop;
+                    });
 
                 builder.AddConversationState(actorMock.Object, "BEGIN", state => state
                     .Monitor(Frequency.FromKhz(123450))
@@ -528,7 +544,10 @@ namespace Atc.World.Tests.AI
                 var builder = new ImmutableStateMachine.Builder(
                     initialStateName: "BEGIN", 
                     dispatchEvent, 
-                    scheduleDelay: (t, f) => log.Add($"scheudle-delay({t})"));
+                    scheduleDelay: (t, f) => {
+                        log.Add($"scheudle-delay({t})");
+                        return IDeferHandle.Noop;
+                    });
 
                 builder.AddConversationState(actorMock.Object, "BEGIN", state => state
                     .Monitor(Frequency.FromKhz(123450))
@@ -552,7 +571,10 @@ namespace Atc.World.Tests.AI
                 var builder = new ImmutableStateMachine.Builder(
                     initialStateName: "BEGIN", 
                     dispatchEvent, 
-                    scheduleDelay: (t, f) => log.Add($"scheudle-delay({t})"));
+                    scheduleDelay: (t, f) => {
+                        log.Add($"scheudle-delay({t})");
+                        return IDeferHandle.Noop; 
+                    });
 
                 builder.AddConversationState(actorMock.Object, "BEGIN", state => state
                     .Transmit(() => intentToTransmit, transitionTo: "END")
@@ -578,7 +600,10 @@ namespace Atc.World.Tests.AI
                 var builder = new ImmutableStateMachine.Builder(
                     initialStateName: "BEGIN", 
                     dispatchEvent, 
-                    scheduleDelay: (t, f) => log.Add($"scheudle-delay({t})"));
+                    scheduleDelay: (t, f) => {
+                        log.Add($"scheudle-delay({t})");
+                        return IDeferHandle.Noop;
+                    });
 
                 builder.AddConversationState(actorMock.Object, "BEGIN", state => state
                     .Receive<TestIntentTwo>(

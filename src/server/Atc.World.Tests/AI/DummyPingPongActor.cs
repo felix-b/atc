@@ -53,6 +53,7 @@ namespace Atc.World.Tests.AI
         {
             World.Defer(() => {
                 DispatchStateMachineEvent(new ImmutableStateMachine.TriggerEvent(
+                    Age: State.StateMachine.Age,
                     State.Role == PingPongRole.Ping
                         ? "START_PING_ROLE"
                         : "START_PONG_ROLE"));

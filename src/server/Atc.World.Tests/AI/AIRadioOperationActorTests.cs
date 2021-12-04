@@ -127,7 +127,7 @@ namespace Atc.World.Tests.AI
 
             public void ReceiveTestTrigger()
             {
-                DispatchStateMachineEvent(new ImmutableStateMachine.TriggerEvent("ABC"));
+                DispatchStateMachineEvent(new ImmutableStateMachine.TriggerEvent(Age: 1, "ABC"));
             }
 
             public string CurrentStateName => GetCurrentStateMachineSnapshot().State.Name;

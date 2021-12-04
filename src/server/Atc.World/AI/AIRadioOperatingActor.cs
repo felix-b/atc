@@ -55,13 +55,18 @@ namespace Atc.World.AI
                     };
                 case IImmutableStateMachineEvent machineEvent:
                     var oldStateMachine = stateBefore.StateMachine;
+                    if (machineEvent.Age < oldStateMachine.Age)
+                    {
+                        throw new InvalidActorEventException(
+                            $"Attempt to dispatch an older age event ({machineEvent.Age}), but machine age is {oldStateMachine.Age}");
+                    }
                     var newStateMachine = ImmutableStateMachine.Reduce(oldStateMachine, machineEvent);
                     if (newStateMachine == oldStateMachine)
                     {
                         return stateBefore;
                     }
                     
-                    _logger.ActorTransitionedState(UniqueId, oldStateMachine.State.Name, newStateMachine.State.Name);
+                    _logger.ActorTransitionedState(UniqueId, oldStateMachine.State.Name, machineEvent.ToString()!, newStateMachine.State.Name);
                     World.Defer(() => {
                         newStateMachine.Start();
                     });
@@ -88,12 +93,17 @@ namespace Atc.World.AI
 
         protected void DispatchStateMachineEvent(IStateEvent @event)
         {
+            if (@event is IImmutableStateMachineEvent machineEvent && machineEvent.Age < State.StateMachine.Age)
+            {
+                return;
+            }
+                
             Store.Dispatch(this, @event);
         }
 
-        protected void ScheduleStateMachineDelay(TimeSpan interval, Action onDue)
+        protected IDeferHandle ScheduleStateMachineDelay(TimeSpan interval, Action onDue)
         {
-            World.DeferBy(interval, onDue);
+            return World.DeferBy(interval, onDue);
         }
 
         protected ImmutableStateMachine.Builder CreateStateMachineBuilder(string initialStateName)
@@ -114,7 +124,7 @@ namespace Atc.World.AI
 
         public interface ILogger
         {
-            void ActorTransitionedState(string actorId, string oldState, string newState);
+            void ActorTransitionedState(string actorId, string oldState, string trigger, string newState);
         }
     }
 

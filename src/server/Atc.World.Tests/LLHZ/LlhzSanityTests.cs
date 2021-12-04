@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Atc.World.Abstractions;
+using Atc.World.Comms;
 using Atc.World.LLHZ;
 using FluentAssertions;
 using NUnit.Framework;
@@ -59,12 +60,18 @@ namespace Atc.World.Tests.LLHZ
 
             setup.RunWorldIterations(TimeSpan.FromSeconds(1), 120);
 
-            var stateTransiitonLog = setup.GetLogEntries()
-                .Where(e => e.Id == "AIRadioOperatingActor.ActorTransitionedState")
-                .Select(e => $"{e.Time} : {e.KeyValuePairs["actorId"]} : {e.KeyValuePairs["oldState"]}->{e.KeyValuePairs["newState"]}")
-                .ToArray();
-            
-            intentLog.Count.Should().BeGreaterThan(0);
+            // var stateTransiitonLog = setup.GetLogEntries()
+            //     .Where(e => e.Id == "AIRadioOperatingActor.ActorTransitionedState")
+            //     .Select(e => $"{e.Time} : {e.KeyValuePairs["actorId"]} : {e.KeyValuePairs["oldState"]}->{e.KeyValuePairs["trigger"]}->{e.KeyValuePairs["newState"]}")
+            //     .ToArray();
+
+            intentLog.Select(intent => intent.GetType()).Should().BeStrictlyEquivalentTo(
+                typeof(GreetingIntent),
+                typeof(GoAheadInstructionIntent),
+                typeof(StartupRequestIntent),
+                typeof(StartupApprovalIntent),
+                typeof(StartupApprovalReadbackIntent)
+            );
         }
     }
 }

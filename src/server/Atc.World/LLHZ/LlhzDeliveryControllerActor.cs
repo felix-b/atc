@@ -33,7 +33,12 @@ namespace Atc.World.LLHZ
             LlhzFlightStrip FlightStrip,
             Intent? Transmit
         ) : IStateEvent;
-        
+
+        public record UpdateFlightStripEvent(
+            LlhzFlightStrip FlightStrip,
+            Intent? Transmit
+        ) : IStateEvent;
+
         public LlhzDeliveryControllerActor(
             ActivationEvent activation, 
             IStateStore store, 
@@ -77,7 +82,7 @@ namespace Atc.World.LLHZ
                 })
             );
 
-            builder.AddConversationState(this, "TRANSMIT", state => state
+            builder.AddConversationState(this, "ACT", state => state
                 .Transmit(GetIntentToTransmitNextOrThrow, transitionTo: "THINK")
                 //TODO: add OnAnyIntent to AWAIT_SILENCE, for the case another intent comes in that's more urgent to handle
             );
@@ -89,13 +94,38 @@ namespace Atc.World.LLHZ
         {
             switch (@event)
             {
-                case AddFlightStripEvent addFlightStrip:
-                    return stateBefore with {
-                        StripBoard = stateBefore.StripBoard.Add(addFlightStrip.FlightStrip.Callsign, addFlightStrip.FlightStrip),
-                        IntentToTransmitNext = addFlightStrip.Transmit
-                    };
+                case AddFlightStripEvent add:
+                    return HandleAddFlightStrp(add);
+                case UpdateFlightStripEvent update:
+                    return HandleUpdateFlightStrp(update);
                 default:
                     return base.Reduce(stateBefore, @event);
+            }
+
+            DeliveryControllerState HandleAddFlightStrp(AddFlightStripEvent @event)
+            {
+                var callsign = @event.FlightStrip.Callsign;
+                if (stateBefore.StripBoard.ContainsKey(callsign))
+                {
+                    throw new InvalidActorEventException($"Flight strip for callsign '{callsign}' was already added");
+                }
+                return stateBefore with {
+                    StripBoard = stateBefore.StripBoard.Add(callsign, @event.FlightStrip),
+                    IntentToTransmitNext = @event.Transmit
+                };
+            }
+
+            DeliveryControllerState HandleUpdateFlightStrp(UpdateFlightStripEvent @event)
+            {
+                var callsign = @event.FlightStrip.Callsign;
+                if (!stateBefore.StripBoard.ContainsKey(callsign))
+                {
+                    throw new InvalidActorEventException($"No flight strip for callsign '{callsign}'");
+                }
+                return stateBefore with {
+                    StripBoard = stateBefore.StripBoard.SetItem(callsign, @event.FlightStrip),
+                    IntentToTransmitNext = @event.Transmit
+                };
             }
         }
 
@@ -106,7 +136,28 @@ namespace Atc.World.LLHZ
         
         private void Think(IStateMachineContext context)
         {
-            if (context.LastReceivedIntent is GreetingIntent greeting)
+            switch (context.LastReceivedIntent)
+            {
+                case GreetingIntent greeting:
+                    HandleGreeting(greeting);
+                    break;
+                case StartupRequestIntent startupRequest:
+                    HandleStartupRequest(startupRequest);
+                    break;
+                case StartupApprovalReadbackIntent approvalReadback:
+                    HandleStartupApprovalReadback(approvalReadback);
+                    break;
+                default:
+                    context.TransitionTo("SLEEP");
+                    break;
+            }
+
+            if (State.IntentToTransmitNext != null)
+            {
+                context.TransitionTo("ACT"); //???, resetLastReceivedIntent: false);
+            }
+
+            void HandleGreeting(GreetingIntent greeting)
             {
                 var aircraft = State.Airport.Get().GetAircraftByCallsign(greeting.CallsignCalling);
                 var flightStrip = new LlhzFlightStrip(
@@ -117,16 +168,29 @@ namespace Atc.World.LLHZ
                     aircraft,
                     WellKnownIntentType.GoAheadInstruction,
                     header => new GoAheadInstructionIntent(header, IntentOptions.Default));
-                
                 Store.Dispatch(this, new AddFlightStripEvent(
                     flightStrip,
                     Transmit: goAhead));
-                
-                context.TransitionTo("TRANSMIT", resetLastReceivedIntent: false);
             }
-            else
+
+            void HandleStartupRequest(StartupRequestIntent request)
             {
-                context.TransitionTo("SLEEP");
+                var flightStrip = State.StripBoard[request.CallsignCalling];
+                var vfrClearance = new VfrClearance(null, null, null);
+                var approval = CreateIntent(
+                    flightStrip.Aircraft,
+                    WellKnownIntentType.StartupApproval,
+                    header => new StartupApprovalIntent(header, IntentOptions.Default, vfrClearance));
+                Store.Dispatch(this, new UpdateFlightStripEvent(
+                    flightStrip with {
+                        Lane = LlhzFlightStripLane.StartupApproved
+                    },
+                    Transmit: approval));
+            }
+
+            void HandleStartupApprovalReadback(StartupApprovalReadbackIntent readback)
+            {
+                
             }
         }
 
