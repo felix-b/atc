@@ -229,41 +229,22 @@ namespace Atc.World.Tests.AI
         }
 
         [Test] 
-        public void CanRunSequenceWithDelayStep()
+        public void CanReceiveTimeout()
         {
-            var log = new List<string>();
-            Action onDelayDue = () => { };
-            
-            ImmutableStateMachine.ScheduleDelayCallback scheduleDelay = (time, onDue) => {
-                log.Add($"schedule-delay({time})");
-                onDelayDue = onDue;
-                return IDeferHandle.Noop;
-            };
-            
             var machines = new TestMachineWithEventsContainer(
                 dispatchEvent => BuildTestStateMachine(
                     onAddStateBegin: state => {
-                        state.OnEnterStartSequence(
-                            sequence => sequence
-                                .AddDelayStep("S1", TimeSpan.FromMinutes(1), inheritTriggers: false)
-                                .AddStep("S2", m => log.Add("step-S2"))
-                        );
+                        state.OnTimeout(TimeSpan.FromMinutes(1), transitionTo: "END");
                     },
-                    onDispatchEvent: dispatchEvent,
-                    onScheduleDelay: scheduleDelay 
+                    onDispatchEvent: dispatchEvent
                 )
             );
             
-            machines.MachineN.State.Name.Should().Be("BEGIN/S1");
+            machines.MachineN.State.Name.Should().Be("BEGIN");
 
-            log.Should().BeEquivalentTo("schedule-delay(00:01:00)");
-
-            onDelayDue();
+            machines.MachineN.ReceiveTimeout();
             
-            log.Should().BeStrictlyEquivalentTo(
-                "schedule-delay(00:01:00)",
-                "step-S2"
-            );
+            machines.MachineN.State.Name.Should().Be("END");
         }
 
         [Test] 

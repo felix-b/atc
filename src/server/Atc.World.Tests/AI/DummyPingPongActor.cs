@@ -106,10 +106,8 @@ namespace Atc.World.Tests.AI
 
             builder.AddState(
                 "DELAY_NEXT_PING",
-                state => state.OnEnterStartSequence(sequence => sequence
-                    .AddDelayStep("DELAY", TimeSpan.FromSeconds(5), inheritTriggers: false)
-                    .AddTransitionStep("TRANSITION", targetStateName: "PING")
-                ));
+                state => state.OnTimeout(TimeSpan.FromSeconds(5), transitionTo: "PING")
+            );
             
             builder.AddConversationState(this, "PING", state => state
                 .OnEnter(machine => Store.Dispatch(this, new IncrementRepeatCountEvent()))

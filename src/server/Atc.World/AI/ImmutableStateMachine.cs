@@ -26,9 +26,6 @@ namespace Atc.World.AI
         private readonly DispatchEventCallback _dispatchEvent;
         private readonly ScheduleDelayCallback _scheduleDelay;
 
-        [NotEventSourced]
-        private Action? _stateFinalizer = null;
-
         public ImmutableStateMachine(
             ImmutableDictionary<string, StateDescription> stateByName,
             string currentStateName,
@@ -122,51 +119,11 @@ namespace Atc.World.AI
             return found;
         }
 
-        public void ScheduleDelay(TimeSpan interval, Action onDue)
-        {
-            var handle = _scheduleDelay(interval, () => {
-                try
-                {
-                    onDue();
-                }
-                catch (Exception e)
-                {
-                    //TODO: add log
-                }
-                finally
-                {
-                    ResetStateFinalizer();        
-                }
-            });
-            
-            SetStateFinalizer(() => handle.Cancel());
-        }
-
         ulong IStateMachineContext.Age => Age;
         
         string IStateMachineContext.CurrentStateName => State.Name;
 
         Intent? IStateMachineContext.LastReceivedIntent => LastReceivedIntent;
-
-        private void SetStateFinalizer(Action finalizer)
-        {
-            if (_stateFinalizer != null)
-            {
-                throw new InvalidOperationException("State finalizer callback was already set for this instance");
-            }
-            _stateFinalizer = finalizer;
-        }
-        
-        private void RunStateFinalizer()
-        {
-            _stateFinalizer?.Invoke();
-            _stateFinalizer = null;
-        }
-
-        private void ResetStateFinalizer()
-        {
-            _stateFinalizer = null;
-        }
 
         public static readonly ImmutableStateMachine Empty = new ImmutableStateMachine(
             stateByName: ImmutableDictionary<string, StateDescription>.Empty, 
@@ -175,31 +132,20 @@ namespace Atc.World.AI
             lastReceivedIntent: null,
             memorizedIntentByType: ImmutableDictionary<Type, Intent>.Empty, 
             dispatchEvent: (e) => { },
-            scheduleDelay: (t, onDue) => IDeferHandle.Noop);
+                scheduleDelay: (t, onDue) => IDeferHandle.Noop);
 
         public static ImmutableStateMachine Reduce(
             ImmutableStateMachine machineBefore, 
             IImmutableStateMachineEvent @event)
         {
-            var machineAfter = PureReduce();
-            if (!object.ReferenceEquals(machineBefore, machineAfter))
+            switch (@event)
             {
-                machineBefore.RunStateFinalizer();
-            }
-
-            return machineAfter;
-
-            ImmutableStateMachine PureReduce()
-            {
-                switch (@event)
-                {
-                    case TriggerEvent trigger:
-                        return HandleTriggerEvent(trigger);
-                    case TransitionEvent transitionTo:
-                        return HandleTransitionEvent(transitionTo);
-                    default:
-                        return machineBefore;
-                }
+                case TriggerEvent trigger:
+                    return HandleTriggerEvent(trigger);
+                case TransitionEvent transitionTo:
+                    return HandleTransitionEvent(transitionTo);
+                default:
+                    return machineBefore;
             }
 
             ImmutableStateMachine HandleTriggerEvent(TriggerEvent trigger)
@@ -675,12 +621,6 @@ namespace Atc.World.AI
         {
             private readonly List<Step> _steps = new();
             
-            public SequenceBuilder AddDelayStep(string name, TimeSpan interval, bool inheritTriggers)
-            {
-                _steps.Add(new DelayStep(name, interval, inheritTriggers));
-                return this;
-            }
-
             public SequenceBuilder AddStep(string name, StateEnterCallback action)
             {
                 _steps.Add(new ActionStep(name, action));
@@ -810,40 +750,6 @@ namespace Atc.World.AI
                     destination.Add(state);
                 }
             }
-
-            private record DelayStep(string Name, TimeSpan Interval, bool InheritTriggers) : Step(Name)
-            {
-                public override void AppendStates(
-                    StateDescription parentState,
-                    StateDescription finishState,
-                    Step? nextStep,
-                    IList<StateDescription> destination)
-                {
-                    var thisStateName = GetStepStateName(parentState.Name, this);
-                    var nextStateName = GetNextStateName(parentState, nextStep);
-
-                    StateEnterCallback onEnter = (machine) => {
-                        machine.ScheduleDelay(Interval, () => {
-                            machine.ReceiveTrigger(ResumeAfterDelayTriggerId);
-                        });
-                    };
-
-                    var baseTransitions = InheritTriggers
-                        ? parentState.TransitionByTriggerId
-                        : ImmutableDictionary<string, TransitionDescription>.Empty;
-                    
-                    var state = new StateDescription(
-                        Name: thisStateName,
-                        OnEnter: onEnter,
-                        TransitionByTriggerId: baseTransitions.Add(
-                            ResumeAfterDelayTriggerId,
-                            new TransitionDescription(
-                                ResumeAfterDelayTriggerId, 
-                                nextStateName, 
-                                MemorizeIntent: false)));
-                    destination.Add(state);
-                }
-            }
         }
     }
     
@@ -854,7 +760,6 @@ namespace Atc.World.AI
         void TransitionTo(string stateName, bool resetLastReceivedIntent = true);
         T GetMemorizedIntent<T>() where T : Intent;
         bool TryGetMemorizedIntent<T>(out T? intent) where T : Intent;
-        void ScheduleDelay(TimeSpan interval, Action onDue);
         ulong Age { get; }
         string CurrentStateName { get; }
         Intent? LastReceivedIntent { get; }
