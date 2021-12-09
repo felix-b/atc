@@ -43,7 +43,7 @@ namespace Atc.World.Comms
             Party = party;
             
             Radio.IntentReceived += (station, transmission, intent) => ReceiveIntent(intent);
-            world.Defer(() => Radio.PowerOn());
+            world.Defer($"power-on-radio|{UniqueId}", () => Radio.PowerOn());
         }
 
         public void MonitorFrequency(Frequency frequency)
@@ -76,7 +76,7 @@ namespace Atc.World.Comms
 
             OnTransmissionStarted();
 
-            _transmissionCompletionHandle = World.DeferBy(utterance.EstimatedDuration, () => {  
+            _transmissionCompletionHandle = World.DeferBy($"end-transmission|{UniqueId}", utterance.EstimatedDuration, () => {  
                 _transmissionCompletionHandle = null;
                 State.Radio.Get().CompleteTransmission(intent);
                 OnTransmissionFinished();

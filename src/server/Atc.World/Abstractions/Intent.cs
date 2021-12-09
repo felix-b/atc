@@ -1,4 +1,5 @@
 ﻿using System;
+using Atc.Data.Primitives;
 using Zero.Loss.Actors;
 
 namespace Atc.World.Abstractions
@@ -18,6 +19,9 @@ namespace Atc.World.Abstractions
     public record IntentHeader(
         WellKnownIntentType Type,
         int CustomCode,
+        //TODO: GeoPoint OriginatorPosition, // for determining priority of handling
+        //TODO: IntentCategory Category, // for determining priority of handling
+        //TODO: int? PriorityOverride, // for determining priority of handling
         string OriginatorUniqueId,
         string OriginatorCallsign,
         string? RecipientUniqueId,

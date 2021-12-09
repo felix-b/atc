@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Immutable;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
 using Zero.Loss.Actors;
@@ -8,11 +9,12 @@ namespace Atc.World.AI
     public abstract class AIRadioOperatingActor<TState> : RadioOperatingActor<TState>, IStartableActor
         where TState : AIRadioOperatorState
     {
-        public record InitStateMachineEvent(
-            ImmutableStateMachine StateMachine
-        ) : IStateEvent;
-        
+        public record InitStateMachineEvent : IStateEvent;
+
         private readonly AIRadioOperatingActor.ILogger _logger;
+        
+        [NotEventSourced]
+        private IDeferHandle? _currentStateTimeoutHandle = null;
         
         protected AIRadioOperatingActor(
             string typeString, 
@@ -35,9 +37,8 @@ namespace Atc.World.AI
         
         protected virtual void OnStart()
         {
-            var stateMachine = CreateStateMachine();
-            Store.Dispatch(this, new InitStateMachineEvent(stateMachine));
-            stateMachine.Start();
+            Store.Dispatch(this, new InitStateMachineEvent());
+            StartNewState(State.StateMachine.Age);
         }
         
         protected override void ReceiveIntent(Intent intent)
@@ -51,7 +52,7 @@ namespace Atc.World.AI
             {
                 case InitStateMachineEvent init:
                     return stateBefore with {
-                        StateMachine = init.StateMachine 
+                        StateMachine = CreateStateMachine() 
                     };
                 case IImmutableStateMachineEvent machineEvent:
                     var oldStateMachine = stateBefore.StateMachine;
@@ -65,12 +66,12 @@ namespace Atc.World.AI
                     {
                         return stateBefore;
                     }
-                    
-                    _logger.ActorTransitionedState(UniqueId, oldStateMachine.State.Name, machineEvent.ToString()!, newStateMachine.State.Name);
-                    World.Defer(() => {
-                        newStateMachine.Start();
-                    });
 
+                    _logger.ActorTransitionedState(UniqueId, oldStateMachine.State.Name, machineEvent.ToString()!, newStateMachine.State.Name);
+                    World.Defer(
+                        $"{UniqueId}|start-state|{newStateMachine.State.Name}|age={newStateMachine.Age}",
+                        () => StartNewState(newStateMachine.Age));
+                    
                     return stateBefore with {
                         StateMachine = newStateMachine
                     };
@@ -103,7 +104,7 @@ namespace Atc.World.AI
 
         protected IDeferHandle ScheduleStateMachineDelay(TimeSpan interval, Action onDue)
         {
-            return World.DeferBy(interval, onDue);
+            return World.DeferBy($"{UniqueId}|schedule-delay|{interval.TotalSeconds}", interval, onDue);
         }
 
         protected ImmutableStateMachine.Builder CreateStateMachineBuilder(string initialStateName)
@@ -114,6 +115,35 @@ namespace Atc.World.AI
         protected ImmutableStateMachine GetCurrentStateMachineSnapshot()
         {
             return State.StateMachine;
+        }
+
+        private void StartNewState(ulong machineAge)
+        {
+            if (State.StateMachine.Age > machineAge)
+            {
+                return;
+            }
+            
+            _currentStateTimeoutHandle?.Cancel();
+            
+            var newMachine = State.StateMachine;
+            var newAge = newMachine.Age;
+            var newTimeoutInterval = newMachine.State.TimeoutInterval;
+            if (newTimeoutInterval.HasValue)
+            {
+                _currentStateTimeoutHandle = World.DeferBy(
+                    $"{UniqueId}|state-timeout|{newMachine.State.Name}",
+                    newTimeoutInterval.Value, 
+                    () => {
+                        if (State.StateMachine.Age == newAge)
+                        {
+                            State.StateMachine.ReceiveTimeout();
+                        }
+                    }
+                );
+            }
+            
+            newMachine.Start();
         }
     }
 

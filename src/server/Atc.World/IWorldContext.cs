@@ -29,10 +29,10 @@ namespace Atc.World
             Angle? pitch = null,
             Angle? roll = null);
         
-        IDeferHandle Defer(Action action);
-        IDeferHandle DeferBy(TimeSpan time, Action action);
-        IDeferHandle DeferUntil(DateTime utc, Action action);
-        IDeferHandle DeferUntil(Func<bool> predicate, DateTime deadlineUtc, Action onPredicateTrue, Action onTimeout);
+        IDeferHandle Defer(string description, Action action);
+        IDeferHandle DeferBy(string description, TimeSpan time, Action action);
+        IDeferHandle DeferUntil(string description, DateTime utc, Action action);
+        IDeferHandle DeferUntil(string description, Func<bool> predicate, DateTime deadlineUtc, Action onPredicateTrue, Action onTimeout);
         
         DateTime UtcNow();
     }

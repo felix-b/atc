@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Reflection.PortableExecutable;
 using Atc.Data.Primitives;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
@@ -13,6 +11,7 @@ namespace Atc.World.AI
     public class ImmutableStateMachine : IStateMachineContext
     {
         public static readonly string ResumeAfterDelayTriggerId = "RESUME_AFTER_DELAY";
+        public static readonly string TimedOutTriggerId = "TIMED_OUT";
         public static readonly string AnyIntentTriggerId = "ANY_INTENT";
         public static readonly StateEnterCallback NoopEnterCallback = (ctx) => { };
         public static readonly ImmutableDictionary<string, TransitionDescription> EmptyTransitionMap =
@@ -84,15 +83,21 @@ namespace Atc.World.AI
                 _dispatchEvent(new TriggerEvent(Age, triggerId, intent));
                 return true;
             }
-            else if (State.TransitionByTriggerId.ContainsKey(AnyIntentTriggerId))
+            else //if (State.TransitionByTriggerId.ContainsKey(AnyIntentTriggerId))
             {
                 _dispatchEvent(new TriggerEvent(Age, AnyIntentTriggerId, intent));
                 return true;
             }
-            else
-            {
-                return false;
-            }
+            // else
+            // {
+            //     //TODO: log warning
+            //     return false;
+            // }
+        }
+
+        public void ReceiveTimeout()
+        {
+            ReceiveTrigger(TimedOutTriggerId);
         }
 
         public void ReceiveTrigger(string triggerId)
@@ -201,22 +206,30 @@ namespace Atc.World.AI
             {
                 var stateBefore = machineBefore.State;
                 
-                if (!stateBefore.TransitionByTriggerId.TryGetValue(trigger.TriggerId, out var transition))
+                if (stateBefore.TransitionByTriggerId.TryGetValue(trigger.TriggerId, out var transition))
                 {
-                    throw new KeyNotFoundException($"State '{stateBefore.Name}' has no transition for trigger '{trigger.TriggerId}'");
+                    if (transition.MemorizeIntent && trigger.Intent == null)
+                    {
+                        throw new InvalidOperationException($"Transition sets MemorizeIntent but trigger has null Intent");
+                    }
                 }
-                if (transition.MemorizeIntent && trigger.Intent == null)
+
+                if (transition == null && trigger.Intent == null)
                 {
-                    throw new InvalidOperationException($"Transition sets MemorizeIntent but trigger has null Intent");
+                    return machineBefore;
                 }
+
+                var nextStateName = transition != null
+                    ? transition.TargetStateName
+                    : machineBefore.State.Name;
 
                 return new ImmutableStateMachine(
                     age: machineBefore.Age + 1,
                     machineBefore.StateByName,
-                    currentStateName: transition.TargetStateName,
+                    currentStateName: nextStateName,
                     previousStateName: machineBefore.State.Name,
                     lastReceivedIntent: trigger.Intent,
-                    memorizedIntentByType: transition.MemorizeIntent 
+                    memorizedIntentByType: transition?.MemorizeIntent == true 
                         ? machineBefore.MemorizedIntentByType.Add(trigger.Intent!.GetType(), trigger.Intent!)
                         : machineBefore.MemorizedIntentByType,
                     machineBefore._dispatchEvent,
@@ -247,7 +260,8 @@ namespace Atc.World.AI
         public record StateDescription(
             string Name,
             StateEnterCallback OnEnter,
-            ImmutableDictionary<string, TransitionDescription> TransitionByTriggerId)
+            ImmutableDictionary<string, TransitionDescription> TransitionByTriggerId,
+            TimeSpan? TimeoutInterval = null)
         {
             public static readonly StateDescription Empty = new StateDescription(
                 Name: string.Empty,
@@ -353,6 +367,7 @@ namespace Atc.World.AI
         {
             private readonly string _name;
             private readonly ImmutableDictionary<string, TransitionDescription>.Builder _transitionByTriggerId;
+            private TimeSpan? _timeoutInterval = null;
             private StateEnterCallback? _onEnterCallback = null;
             private SequenceBuilder? _onEnterSequence = null;
 
@@ -368,13 +383,19 @@ namespace Atc.World.AI
                 _onEnterCallback = callback;
                 return this;
             }
-
+            
             public RegularStateBuilder OnEnterStartSequence(Action<SequenceBuilder> buildSequence)
             {
                 _onEnterCallback = null;
                 _onEnterSequence = new SequenceBuilder();
                 buildSequence(_onEnterSequence);
                 return this;
+            }
+
+            public RegularStateBuilder OnTimeout(TimeSpan interval, string transitionTo)
+            {
+                _timeoutInterval = interval;
+                return OnTrigger(TimedOutTriggerId, transitionTo);
             }
 
             public RegularStateBuilder OnTrigger(string triggerId, string transitionTo, bool memorizeIntent = false)
@@ -403,6 +424,12 @@ namespace Atc.World.AI
 
             void IStateBuilder.AppendStates(IList<StateDescription> destination)
             {
+                if (_timeoutInterval.HasValue && HasSequence)
+                {
+                    throw new NotSupportedException(
+                        $"State '{_name}': OnEnterStartSequence and OnTimeout cannot be use together.");
+                }
+
                 if (HasSequence)
                 {
                     AppendStatesWithSequence();
@@ -412,7 +439,8 @@ namespace Atc.World.AI
                     destination.Add(new StateDescription(
                         _name,
                         _onEnterCallback ?? NoopEnterCallback,
-                        _transitionByTriggerId.ToImmutable()));
+                        _transitionByTriggerId.ToImmutable(),
+                        _timeoutInterval));
                 }
 
                 void AppendStatesWithSequence()
@@ -439,6 +467,7 @@ namespace Atc.World.AI
             }
 
             internal bool HasSequence => _onEnterSequence != null && !_onEnterSequence.IsEmpty;
+
         }
 
         public class ConversationStateBuilder : IStateBuilder

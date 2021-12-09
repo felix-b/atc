@@ -51,7 +51,7 @@ namespace Atc.World.Tests.AI
             : base(
                 TypeString, store, verbalizationService, world, logger, CreateParty(activation), activation, CreateInitialState(activation))
         {
-            World.Defer(() => {
+            World.Defer("ignite_ping_pong_cycle", () => {
                 DispatchStateMachineEvent(new ImmutableStateMachine.TriggerEvent(
                     Age: State.StateMachine.Age,
                     State.Role == PingPongRole.Ping

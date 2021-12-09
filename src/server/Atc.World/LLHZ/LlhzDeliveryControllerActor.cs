@@ -20,7 +20,8 @@ namespace Atc.World.LLHZ
             ImmutableStateMachine StateMachine,
             ActorRef<LlhzAirportActor> Airport,
             ImmutableDictionary<string, LlhzFlightStrip> StripBoard,
-            Intent? IntentToTransmitNext
+            ImmutableQueue<Intent> IncomingIntents,
+            ImmutableQueue<Intent> OutgoingIntents
         ) : AIRadioOperatorState(Radio, PendingTransmissionIntent, StateMachine);
 
         public record ActivationEvent(
@@ -29,13 +30,19 @@ namespace Atc.World.LLHZ
             ActorRef<LlhzAirportActor> Airport
         ) : RadioOperatorActivationEvent(UniqueId, Radio), IActivationStateEvent<LlhzDeliveryControllerActor>;
 
+        public record DequeueIncomingIntent : IStateEvent;
+
+        public record DequeueOutgoingIntent : IStateEvent;
+
         public record AddFlightStripEvent(
             LlhzFlightStrip FlightStrip,
+            bool ConsumeIncomingIntent,
             Intent? Transmit
         ) : IStateEvent;
 
         public record UpdateFlightStripEvent(
             LlhzFlightStrip FlightStrip,
+            bool ConsumeIncomingIntent,
             Intent? Transmit
         ) : IStateEvent;
 
@@ -55,7 +62,7 @@ namespace Atc.World.LLHZ
                 activation, 
                 CreateInitialState(activation))
         {
-            World.Defer(() => {
+            World.Defer($"power-on-radio|{UniqueId}", () => {
                 State.Radio.Get().PowerOn();
                 State.Radio.Get().TuneTo(Frequency.FromKhz(130850));
             });
@@ -69,18 +76,11 @@ namespace Atc.World.LLHZ
                 scheduleDelay: ScheduleStateMachineDelay);
 
             builder.AddState("SLEEP", state => state
-                .OnEnterStartSequence(sequence => {
-                    sequence.AddDelayStep("TIMER", TimeSpan.FromSeconds(5), inheritTriggers: true);
-                    sequence.AddTransitionStep("TICK", targetStateName: "THINK");
-                })
                 .OnAnyIntent(transitionTo: "THINK", memorizeIntent: false)
+                .OnTimeout(TimeSpan.FromSeconds(5), transitionTo: "THINK")
             );
 
-            builder.AddState("THINK", state => state
-                .OnEnterStartSequence(sequence => {
-                    sequence.AddStep("RUN_LOGIC", Think);
-                })
-            );
+            builder.AddState("THINK", state => state.OnEnter(Think));
 
             builder.AddConversationState(this, "ACT", state => state
                 .Transmit(GetIntentToTransmitNextOrThrow, transitionTo: "THINK")
@@ -94,12 +94,32 @@ namespace Atc.World.LLHZ
         {
             switch (@event)
             {
+                case DequeueIncomingIntent:
+                    return stateBefore with {
+                        IncomingIntents = stateBefore.IncomingIntents.Dequeue()
+                    };
+                case DequeueOutgoingIntent:
+                    return stateBefore with {
+                        OutgoingIntents = stateBefore.OutgoingIntents.Dequeue()
+                    };
                 case AddFlightStripEvent add:
                     return HandleAddFlightStrp(add);
                 case UpdateFlightStripEvent update:
                     return HandleUpdateFlightStrp(update);
                 default:
-                    return base.Reduce(stateBefore, @event);
+                    return HandleBaseEvent();
+            }
+
+            DeliveryControllerState HandleBaseEvent()
+            {
+                var stateAfter = base.Reduce(stateBefore, @event);
+                if (stateAfter != stateBefore && stateAfter.StateMachine.LastReceivedIntent != null)
+                {
+                    return stateAfter with {
+                        IncomingIntents = stateAfter.IncomingIntents.Enqueue(stateAfter.StateMachine.LastReceivedIntent)
+                    };
+                }
+                return stateAfter;
             }
 
             DeliveryControllerState HandleAddFlightStrp(AddFlightStripEvent @event)
@@ -111,7 +131,12 @@ namespace Atc.World.LLHZ
                 }
                 return stateBefore with {
                     StripBoard = stateBefore.StripBoard.Add(callsign, @event.FlightStrip),
-                    IntentToTransmitNext = @event.Transmit
+                    IncomingIntents = @event.ConsumeIncomingIntent
+                        ? stateBefore.IncomingIntents.Dequeue()
+                        : stateBefore.IncomingIntents,
+                    OutgoingIntents = @event.Transmit != null  
+                        ? stateBefore.OutgoingIntents.Enqueue(@event.Transmit)
+                        : stateBefore.OutgoingIntents
                 };
             }
 
@@ -124,37 +149,59 @@ namespace Atc.World.LLHZ
                 }
                 return stateBefore with {
                     StripBoard = stateBefore.StripBoard.SetItem(callsign, @event.FlightStrip),
-                    IntentToTransmitNext = @event.Transmit
+                    IncomingIntents = @event.ConsumeIncomingIntent
+                        ? stateBefore.IncomingIntents.Dequeue()
+                        : stateBefore.IncomingIntents,
+                    OutgoingIntents = @event.Transmit != null  
+                        ? stateBefore.OutgoingIntents.Enqueue(@event.Transmit)
+                        : stateBefore.OutgoingIntents
                 };
             }
         }
 
         private Intent GetIntentToTransmitNextOrThrow()
         {
-            return State.IntentToTransmitNext ?? throw new InvalidOperationException("IntentToTransmitNext is null");
+            if (State.OutgoingIntents.IsEmpty)
+            {
+                throw new InvalidOperationException("IntentToTransmitNext is null");
+            }
+
+            var intent = State.OutgoingIntents.Peek();
+            //TODO: defer dequeue until begin of transmission??? -> avoid loosing outgoing intent on failover
+            Store.Dispatch(this, new DequeueOutgoingIntent());
+            return intent;
         }
         
         private void Think(IStateMachineContext context)
         {
-            switch (context.LastReceivedIntent)
+            while (!State.IncomingIntents.IsEmpty)
             {
-                case GreetingIntent greeting:
-                    HandleGreeting(greeting);
-                    break;
-                case StartupRequestIntent startupRequest:
-                    HandleStartupRequest(startupRequest);
-                    break;
-                case StartupApprovalReadbackIntent approvalReadback:
-                    HandleStartupApprovalReadback(approvalReadback);
-                    break;
-                default:
-                    context.TransitionTo("SLEEP");
-                    break;
+                var nextIncomingIntent = State.IncomingIntents.Peek();
+
+                switch (nextIncomingIntent)
+                {
+                    case GreetingIntent greeting:
+                        HandleGreeting(greeting);
+                        break;
+                    case StartupRequestIntent startupRequest:
+                        HandleStartupRequest(startupRequest);
+                        break;
+                    case StartupApprovalReadbackIntent approvalReadback:
+                        HandleStartupApprovalReadback(approvalReadback);
+                        break;
+                    default:
+                        Store.Dispatch(this, new DequeueIncomingIntent());
+                        break;
+                }
             }
 
-            if (State.IntentToTransmitNext != null)
+            if (!State.OutgoingIntents.IsEmpty)
             {
-                context.TransitionTo("ACT"); //???, resetLastReceivedIntent: false);
+                State.StateMachine.TransitionTo("ACT", resetLastReceivedIntent: true);
+            }
+            else
+            {
+                State.StateMachine.TransitionTo("SLEEP", resetLastReceivedIntent: true);
             }
 
             void HandleGreeting(GreetingIntent greeting)
@@ -170,6 +217,7 @@ namespace Atc.World.LLHZ
                     header => new GoAheadInstructionIntent(header, IntentOptions.Default));
                 Store.Dispatch(this, new AddFlightStripEvent(
                     flightStrip,
+                    ConsumeIncomingIntent: true,
                     Transmit: goAhead));
             }
 
@@ -185,12 +233,13 @@ namespace Atc.World.LLHZ
                     flightStrip with {
                         Lane = LlhzFlightStripLane.StartupApproved
                     },
+                    ConsumeIncomingIntent: true,
                     Transmit: approval));
             }
 
             void HandleStartupApprovalReadback(StartupApprovalReadbackIntent readback)
             {
-                
+                Store.Dispatch(this, new DequeueIncomingIntent());
             }
         }
 
@@ -247,7 +296,8 @@ namespace Atc.World.LLHZ
                 StateMachine: ImmutableStateMachine.Empty,
                 Airport: activation.Airport,
                 StripBoard: ImmutableDictionary<string, LlhzFlightStrip>.Empty,
-                IntentToTransmitNext: null);
+                IncomingIntents: ImmutableQueue<Intent>.Empty, 
+                OutgoingIntents: ImmutableQueue<Intent>.Empty);
         }
     }
 }

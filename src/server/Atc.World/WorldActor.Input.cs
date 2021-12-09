@@ -177,36 +177,40 @@ namespace Atc.World
             return aether;
         }
         
-        public IDeferHandle Defer(Action action)
+        public IDeferHandle Defer(string description, Action action)
         {
             return _taskQueue.EnqueueWorkItem(
+                description,
                 predicate: __alwaysTruePredicate, 
                 deadlineUtc: null, 
                 onPredicateTrue: action, 
                 onTimeout: null);
         }
 
-        public IDeferHandle DeferBy(TimeSpan time, Action action)
+        public IDeferHandle DeferBy(string description, TimeSpan time, Action action)
         {
             return _taskQueue.EnqueueWorkItem(
+                description,
                 predicate: __alwaysFalsePredicate, 
                 deadlineUtc: UtcNow() + time, 
                 onPredicateTrue: null, 
                 onTimeout: action);
         }
 
-        public IDeferHandle DeferUntil(DateTime utc, Action action)
+        public IDeferHandle DeferUntil(string description, DateTime utc, Action action)
         {
             return _taskQueue.EnqueueWorkItem(
+                description,
                 predicate: __alwaysFalsePredicate, 
                 deadlineUtc: utc, 
                 onPredicateTrue: null, 
                 onTimeout: action);
         }
 
-        public IDeferHandle DeferUntil(Func<bool> predicate, DateTime deadlineUtc, Action onPredicateTrue, Action onTimeout)
+        public IDeferHandle DeferUntil(string description, Func<bool> predicate, DateTime deadlineUtc, Action onPredicateTrue, Action onTimeout)
         {
             return _taskQueue.EnqueueWorkItem(
+                description,
                 predicate, 
                 deadlineUtc, 
                 onPredicateTrue, 
@@ -316,10 +320,10 @@ namespace Atc.World
                 _logger = logger;
             }
 
-            public IDeferHandle EnqueueWorkItem(Func<bool>? predicate, DateTime? deadlineUtc, Action? onPredicateTrue, Action? onTimeout)
+            public IDeferHandle EnqueueWorkItem(string description, Func<bool>? predicate, DateTime? deadlineUtc, Action? onPredicateTrue, Action? onTimeout)
             {
                 var workItemId = _nextWorkItemId++;
-                var node = _workItems.AddLast(new WorkItem(workItemId, onPredicateTrue, onTimeout, predicate, deadlineUtc));
+                var node = _workItems.AddLast(new WorkItem(workItemId, description, onPredicateTrue, onTimeout, predicate, deadlineUtc));
                 return new DeferredTaskQueueItemHandle(_workItems, node);
             }
 
@@ -418,6 +422,7 @@ namespace Atc.World
 
             public record WorkItem(
                 ulong Id,
+                string Description,
                 Action? OnPredicateTrue,
                 Action? OnTimeout,
                 Func<bool>? Predicate,

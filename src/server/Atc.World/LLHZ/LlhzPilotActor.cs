@@ -46,7 +46,7 @@ namespace Atc.World.LLHZ
                 activation, 
                 CreateInitialState(activation))
         {
-            World.Defer(() => {
+            World.Defer($"power-on-radio|{UniqueId}", () => {
                 State.Radio.Get().PowerOn();
             });
         }
@@ -77,11 +77,7 @@ namespace Atc.World.LLHZ
                 scheduleDelay: ScheduleStateMachineDelay);
             
             builder.AddState("PREFLIGHT_INSPECTION", state => state
-                .OnEnterStartSequence(sequence => {
-                    sequence.AddDelayStep("CHECKLIST", TimeSpan.FromMinutes(1), inheritTriggers: false);
-                    sequence.AddTriggerStep("DONE", "PREFLIGHT_INSPECTION_OK");
-                })
-                .OnTrigger("PREFLIGHT_INSPECTION_OK", transitionTo: "CONTACT_CLEARANCE")
+                .OnTimeout(TimeSpan.FromMinutes(1), transitionTo: "CONTACT_CLEARANCE")
             );
 
             builder.AddConversationState(this, "CONTACT_CLEARANCE", state => state 

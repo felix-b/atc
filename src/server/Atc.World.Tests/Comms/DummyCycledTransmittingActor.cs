@@ -26,7 +26,7 @@ namespace Atc.World.Tests.Comms
         public DummyCycledTransmittingActor(IStateStore store, IWorldContext world, IVerbalizationService verbalizationService, DummyActivationEvent activation) 
             : base(TypeString, store, verbalizationService, world, CreateParty(activation), activation, CreateInitialState(activation))
         {
-            World.DeferBy(TimeSpan.FromSeconds(5), () => {
+            World.DeferBy("transmit-first", TimeSpan.FromSeconds(5), () => {
                 State.Radio.Get().PowerOn();
                 TransmitGreeting();
             });
@@ -49,7 +49,7 @@ namespace Atc.World.Tests.Comms
             InitiateTransmission(new TestGreetingIntent(World, State.RepeatCount, this, null));
             
             Store.Dispatch(this, new IncrementRepeatCountEvent());
-            World.DeferBy(TimeSpan.FromSeconds(5), TransmitGreeting);
+            World.DeferBy("transmit-next", TimeSpan.FromSeconds(5), TransmitGreeting);
         }
 
         public static void RegisterType(ISupervisorActorInit supervisor)

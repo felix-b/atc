@@ -60,10 +60,10 @@ namespace Atc.World.Tests.LLHZ
 
             setup.RunWorldIterations(TimeSpan.FromSeconds(1), 120);
 
-            // var stateTransiitonLog = setup.GetLogEntries()
-            //     .Where(e => e.Id == "AIRadioOperatingActor.ActorTransitionedState")
-            //     .Select(e => $"{e.Time} : {e.KeyValuePairs["actorId"]} : {e.KeyValuePairs["oldState"]}->{e.KeyValuePairs["trigger"]}->{e.KeyValuePairs["newState"]}")
-            //     .ToArray();
+            var stateTransiitonLog = setup.GetLogEntries()
+                .Where(e => e.Id == "AIRadioOperatingActor.ActorTransitionedState")
+                .Select(e => $"{e.Time} : {e.KeyValuePairs["actorId"]} : {e.KeyValuePairs["oldState"]}->{e.KeyValuePairs["trigger"]}->{e.KeyValuePairs["newState"]}")
+                .ToArray();
 
             intentLog.Select(intent => intent.GetType()).Should().BeStrictlyEquivalentTo(
                 typeof(GreetingIntent),

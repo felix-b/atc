@@ -79,7 +79,7 @@ namespace Atc.World.Comms
 
             if (IsSilentForNewConversation()) //TODO: differentiate a new conversation from continuation of the current one
             {
-                _world.Defer(OnSilence);
+                _world.Defer($"aether-next-conversation|{UniqueId}", OnSilence);
             }
         }
 
@@ -178,7 +178,10 @@ namespace Atc.World.Comms
         private void ArmSilenceTrigger()
         {
             _silenceTrigger?.Cancel();
-            _silenceTrigger = _world.DeferBy(AviationDomain.SilenceDurationBeforeNewConversation, OnSilence);
+            _silenceTrigger = _world.DeferBy(
+                $"aether-silence-detected|{UniqueId}",
+                AviationDomain.SilenceDurationBeforeNewConversation, 
+                OnSilence);
         }
 
         private void DisarmSilenceTrigger()
