@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security;
 using Atc.Data.Primitives;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 using Atc.World;
 using AtcProto;
 using ProtoBuf.WellKnownTypes;

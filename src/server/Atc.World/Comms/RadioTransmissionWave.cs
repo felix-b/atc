@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using Atc.Data.Primitives;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 using Atc.World.Abstractions;
 
 namespace Atc.World.Comms

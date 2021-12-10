@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <LangVersion>9.0</LangVersion>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Atc.Data\Atc.Data.csproj" />
+      <ProjectReference Include="..\Zero.Loss.Actors\Zero.Loss.Actors.csproj" />
+    </ItemGroup>
+
+</Project>

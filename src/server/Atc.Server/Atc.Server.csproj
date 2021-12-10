@@ -15,6 +15,7 @@
       <ProjectReference Include="..\Atc.Data\Atc.Data.csproj" />
       <ProjectReference Include="..\Atc.Sound\Atc.Sound.csproj" />
       <ProjectReference Include="..\Atc.Speech.Abstractions\Atc.Speech.Abstractions.csproj" />
+      <ProjectReference Include="..\Atc.World.Abstractions\Atc.World.Abstractions.csproj" />
       <ProjectReference Include="..\Atc.World\Atc.World.csproj" />
       <ProjectReference Include="..\Zero.Doubt.Logging\Zero.Doubt.Logging.csproj" />
       <ProjectReference Include="..\Zero.Latency.Servers.Tests\Zero.Latency.Servers.Tests.csproj" />

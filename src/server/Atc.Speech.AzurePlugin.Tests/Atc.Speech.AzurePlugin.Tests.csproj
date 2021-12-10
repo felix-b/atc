@@ -16,7 +16,12 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Atc.Sound\Atc.Sound.csproj" />
       <ProjectReference Include="..\Atc.Speech.AzurePlugin\Atc.Speech.AzurePlugin.csproj" />
+      <ProjectReference Include="..\Atc.World.Abstractions\Atc.World.Abstractions.csproj" />
+      <ProjectReference Include="..\Atc.World.Testability\Atc.World.Testability.csproj" />
+      <ProjectReference Include="..\Atc.World\Atc.World.csproj" />
+      <ProjectReference Include="..\Zero.Loss.Actors\Zero.Loss.Actors.csproj" />
     </ItemGroup>
     
 </Project>

@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using Atc.Data.Primitives;
 
-namespace Atc.Speech.Abstractions
+namespace Atc.World.Abstractions
 {
     public class UtteranceDescription
     {

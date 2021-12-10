@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using Atc.Data.Primitives;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 using Atc.World.Abstractions;
 using Atc.World.Comms.Verbalizers;
 
-namespace Atc.World.Tests.Comms
+namespace Atc.World.Testability.Comms
 {
     public class TestVerbalizationService : IVerbalizationService
     {

@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using Atc.Data.Primitives;
 using Atc.Sound;
 using Atc.World.Abstractions;
 using Atc.World.AI;
 using Atc.World.Comms;
 using Atc.World.LLHZ;
-using Atc.World.Tests.AI;
-using Atc.World.Tests.Comms;
-using FluentAssertions;
+using Atc.World.Testability.Comms;
 using Zero.Doubt.Logging;
 using Zero.Loss.Actors;
 using Zero.Loss.Actors.Impl;
 
-namespace Atc.World.Tests
+namespace Atc.World.Testability
 {
     public class WorldSetup
     {
@@ -55,8 +55,8 @@ namespace Atc.World.Tests
             RadioStationActor.RegisterType(Supervisor);
             GroundRadioStationAetherActor.RegisterType(Supervisor);
             AircraftActor.RegisterType(Supervisor);
-            DummyCycledTransmittingActor.RegisterType(Supervisor);
-            DummyPingPongActor.RegisterType(Supervisor);
+            // DummyCycledTransmittingActor.RegisterType(Supervisor);
+            // DummyPingPongActor.RegisterType(Supervisor);
             LlhzAirportActor.RegisterType(Supervisor);
             LlhzDeliveryControllerActor.RegisterType(Supervisor);
             LlhzPilotActor.RegisterType(Supervisor);
@@ -161,6 +161,21 @@ namespace Atc.World.Tests
 
         public class TestSystemEnvironment : ISystemEnvironment
         {
+            private static readonly string _thisAssemblyFolderPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly()!.Location)!;
+
+            public string GetInstallRelativePath(string relativePath)
+            {
+                return Path.Combine(
+                    _thisAssemblyFolderPath,
+                    "..",
+                    "..",
+                    "..",
+                    "..",
+                    "..",
+                    "..",
+                    relativePath);
+            }
+
             DateTime ISystemEnvironment.UtcNow()
             {
                 return this.UtcNow;

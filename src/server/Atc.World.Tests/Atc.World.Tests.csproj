@@ -22,6 +22,8 @@
       <ProjectReference Include="..\Atc.Math\Atc.Math.csproj" />
       <ProjectReference Include="..\Atc.Sound\Atc.Sound.csproj" />
       <ProjectReference Include="..\Atc.Speech.WinLocalPlugin\Atc.Speech.WinLocalPlugin.csproj" />
+      <ProjectReference Include="..\Atc.World.Abstractions\Atc.World.Abstractions.csproj" />
+      <ProjectReference Include="..\Atc.World.Testability\Atc.World.Testability.csproj" />
       <ProjectReference Include="..\Atc.World\Atc.World.csproj" />
       <ProjectReference Include="..\Zero.Serialization.Buffers\Zero.Serialization.Buffers.csproj" />
     </ItemGroup>

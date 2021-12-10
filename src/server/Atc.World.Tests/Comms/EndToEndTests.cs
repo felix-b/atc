@@ -2,10 +2,12 @@
 using System.Threading;
 using Atc.Data.Primitives;
 using Atc.Sound;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 using Atc.Speech.WinLocalPlugin;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
+using Atc.World.Testability;
+using Atc.World.Testability.Comms;
 using NUnit.Framework;
 using Zero.Doubt.Logging;
 
@@ -30,7 +32,7 @@ namespace Atc.World.Tests.Comms
             using var audioContext = new AudioContextScope(setup.DependencyContext.Resolve<ISoundSystemLogger>());
             setup.DependencyContextBuilder
                 .WithSingleton<ISpeechSynthesisPlugin>(new WindowsSpeechSynthesisPlugin())
-                .WithSingleton<IRadioSpeechPlayer>(new RadioSpeechPlayer());
+                .WithSingleton<IRadioSpeechPlayer>(new RadioSpeechPlayer(setup.Environment));
             
             var llhzClrDel = setup.AddGroundStation(
                 Frequency.FromKhz(130850),

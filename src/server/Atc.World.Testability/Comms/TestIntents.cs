@@ -1,12 +1,12 @@
 ﻿using System.Security.Cryptography.X509Certificates;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
-using Atc.World.Tests.AI;
+using Atc.World.Testability.AI;
 using Zero.Loss.Actors;
 
-namespace Atc.World.Tests.Comms
+namespace Atc.World.Testability.Comms
 {
-    internal record TestGreetingIntent : Intent
+    public record TestGreetingIntent : Intent
     {
         public TestGreetingIntent(IWorldContext world, int repeatCount, ActorRef<RadioStationActor> from, ActorRef<RadioStationActor>? to = null) 
             : base(
@@ -41,7 +41,7 @@ namespace Atc.World.Tests.Comms
         public int RepeatCount { get; }
     }
 
-    internal record TestPingIntent : Intent
+    public record TestPingIntent : Intent
     {
         public const int IntentCode = 100;
         
@@ -83,7 +83,7 @@ namespace Atc.World.Tests.Comms
         }
     }
 
-    internal record TestPongIntent : Intent
+    public record TestPongIntent : Intent
     {
         public const int IntentCode = 101;
         

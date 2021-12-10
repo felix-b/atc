@@ -1,6 +1,5 @@
 ﻿using System.Globalization;
 using Atc.Data.Primitives;
-using Atc.Speech.Abstractions;
 
 namespace Atc.World.Abstractions
 {

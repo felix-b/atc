@@ -2,6 +2,8 @@
 using System.Linq;
 using System.Threading;
 using Atc.Data.Primitives;
+using Atc.World.Testability;
+using Atc.World.Testability.AI;
 using FluentAssertions;
 using NUnit.Framework;
 

@@ -1,23 +1,25 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 using Just.Utility;
 
 namespace Atc.Sound
 {
     public class RadioSpeechPlayer : IRadioSpeechPlayer
     {
+        private readonly ISystemEnvironment _environment;
         private readonly SoundBuffer _staticNoise;
         private readonly SoundBuffer _staticEdgeNoise;
         private readonly SoundBuffer _staticMutualCancellationNoise;
         private SoundBuffer? _currentSpeech = null;
 
-        public RadioSpeechPlayer()
+        public RadioSpeechPlayer(ISystemEnvironment environment)
         {
-            _staticNoise = SoundBuffer.LoadFromFile(@"D:\TnC\atc2\assets\sounds\radio-static-loop-1.wav", looping: true);
-            _staticEdgeNoise = SoundBuffer.LoadFromFile(@"D:\TnC\atc2\assets\sounds\radio-static-edge-m.wav", looping: false);
-            _staticMutualCancellationNoise = SoundBuffer.LoadFromFile(@"D:\TnC\atc2\assets\sounds\radio-static-loop-1.wav", looping: true);
+            _environment = environment;
+            _staticNoise = SoundBuffer.LoadFromFile(environment.GetAssetFilePath("sounds/radio-static-loop-1.wav"), looping: true);
+            _staticEdgeNoise = SoundBuffer.LoadFromFile(environment.GetAssetFilePath("sounds/radio-static-edge-m.wav"), looping: false);
+            _staticMutualCancellationNoise = SoundBuffer.LoadFromFile(environment.GetAssetFilePath("sounds/radio-static-loop-1.wav"), looping: true);
         }
 
         public void Dispose()

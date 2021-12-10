@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atc.Data.Primitives;
 using Atc.Sound;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 
 namespace Atc.Server
 {

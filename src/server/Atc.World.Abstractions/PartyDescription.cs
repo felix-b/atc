@@ -1,6 +1,4 @@
-﻿using Atc.Speech.Abstractions;
-
-namespace Atc.World.Abstractions
+﻿namespace Atc.World.Abstractions
 {
     public abstract class PartyDescription
     {

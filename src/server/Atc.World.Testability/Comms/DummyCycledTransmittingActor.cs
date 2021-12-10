@@ -1,10 +1,10 @@
 ﻿using System;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
 using Zero.Loss.Actors;
 
-namespace Atc.World.Tests.Comms
+namespace Atc.World.Testability.Comms
 {
     public class DummyCycledTransmittingActor : RadioOperatingActor<DummyCycledTransmittingActor.DummyState>
     {

@@ -1,6 +1,6 @@
 ﻿using System;
 using Atc.Data.Primitives;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 using Atc.World.Abstractions;
 
 namespace Atc.World.Comms.Verbalizers

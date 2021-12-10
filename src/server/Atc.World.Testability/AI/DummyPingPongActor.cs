@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using Atc.Data.Primitives;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 using Atc.World.Abstractions;
 using Atc.World.AI;
 using Atc.World.Comms;
-using Atc.World.Tests.Comms;
+using Atc.World.Testability.Comms;
 using Zero.Loss.Actors;
 
-namespace Atc.World.Tests.AI
+namespace Atc.World.Testability.AI
 {
     public class DummyPingPongActor : AIRadioOperatingActor<DummyPingPongActor.PingPongState>
     {

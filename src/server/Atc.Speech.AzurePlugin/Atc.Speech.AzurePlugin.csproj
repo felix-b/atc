@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Atc.Speech.Abstractions\Atc.Speech.Abstractions.csproj" />
+        <ProjectReference Include="..\Atc.World.Abstractions\Atc.World.Abstractions.csproj" />
     </ItemGroup>
 
     <ItemGroup>

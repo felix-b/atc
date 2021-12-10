@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Atc.Speech.Abstractions
+namespace Atc.World.Abstractions
 {
     public class SoundFormat
     {

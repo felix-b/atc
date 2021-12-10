@@ -1,5 +1,4 @@
 ﻿using System;
-using Atc.Data.Primitives;
 using Zero.Loss.Actors;
 
 namespace Atc.World.Abstractions
@@ -86,9 +85,9 @@ namespace Atc.World.Abstractions
     }
 
     public record IntentCondition(
-        ConditionSubjectType Subject,
+        ConditionSubjectType SubjectType,
         ConditionTimingType Timing,
-        ActorRef<AircraftActor>? SubjectAircraft = null,
+        ActorRef<IStatefulActor>? Subject = null,
         TimeSpan? SubjectInterval = null,
         DateTime? SubjectTime = null
     );

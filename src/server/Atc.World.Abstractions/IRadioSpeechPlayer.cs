@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Atc.Speech.Abstractions
+namespace Atc.World.Abstractions
 {
     public interface IRadioSpeechPlayer : IDisposable
     {

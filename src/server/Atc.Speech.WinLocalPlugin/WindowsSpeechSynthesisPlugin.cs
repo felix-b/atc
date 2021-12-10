@@ -7,7 +7,7 @@ using System.Speech.AudioFormat;
 using System.Speech.Synthesis;
 using System.Text;
 using System.Threading.Tasks;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 
 namespace Atc.Speech.WinLocalPlugin
 {
@@ -72,7 +72,7 @@ namespace Atc.Speech.WinLocalPlugin
             if (_activeOutput != null && _activeCompletion != null)
             {
                 _synthesizer.SetOutputToNull();
-                _activeCompletion.SetResult(new(_activeOutput.ToArray(), null));
+                _activeCompletion.SetResult(new(_activeOutput.ToArray(), null, null));
                 Console.WriteLine($"SYNTHESIZER COMPLETED! wave buffer size = {_activeOutput.Length}");
                 _activeOutput.Dispose();
             }

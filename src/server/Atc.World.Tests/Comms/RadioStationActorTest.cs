@@ -2,11 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Atc.Data.Primitives;
-using Atc.Speech.Abstractions;
+using Atc.World.Abstractions;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
+using Atc.World.Testability;
+using Atc.World.Testability.Comms;
 using FluentAssertions;
 using NUnit.Framework;
+using Zero.Loss.Actors;
 
 namespace Atc.World.Tests.Comms
 {
@@ -17,12 +20,12 @@ namespace Atc.World.Tests.Comms
         public void ShouldAddGroundStation()
         {
             var setup = new WorldSetup();
-            
+
             var (station, aether) = setup.AddGroundStation(
                 Frequency.FromKhz(121000), new GeoPoint(40, 12), "ground1");
 
             station.Get().PowerOn();
-            
+
             station.Get().IsPoweredOn().Should().BeTrue();
             station.Get().Aether.Should().Be(aether);
             aether.Get().StationById[station.UniqueId].Should().Be(station);
@@ -32,7 +35,7 @@ namespace Atc.World.Tests.Comms
         public void ShouldTuneToGroundStation()
         {
             var setup = new WorldSetup();
-            
+
             var (groundStation, aether) = setup.AddGroundStation(
                 Frequency.FromKhz(121000), new GeoPoint(40, 12), "ground1");
 
@@ -49,7 +52,7 @@ namespace Atc.World.Tests.Comms
         public void ShouldNotTuneToUnreachableGroundStation()
         {
             var setup = new WorldSetup();
-            
+
             var (groundStation, aether) = setup.AddGroundStation(
                 Frequency.FromKhz(121000), new GeoPoint(-140, 12), "ground1");
 
@@ -64,7 +67,7 @@ namespace Atc.World.Tests.Comms
         public void ShouldNotTuneToGroundStationOnDifferentFrequency()
         {
             var setup = new WorldSetup();
-            
+
             var aether = setup.AddGroundStation(
                 Frequency.FromKhz(129000), new GeoPoint(40, 12), "ground1");
 
@@ -80,7 +83,7 @@ namespace Atc.World.Tests.Comms
         {
             var setup = new WorldSetup();
             var listenerLog = new List<string>();
-            
+
             var (groundStation1, aether1) = setup.AddGroundStation(
                 Frequency.FromKhz(123000), new GeoPoint(40, 12), "ground1");
             var airStation1 = setup.AddAirStation(
@@ -98,7 +101,7 @@ namespace Atc.World.Tests.Comms
 
             RadioStationActor.ListenerCallback listener = (station, status, intent) => {
                 listenerLog.Add(
-                    $"{station.Callsign}:{status}" + 
+                    $"{station.Callsign}:{status}" +
                     (intent != null ? $"+received:{intent.Header.Type}" : string.Empty)
                 );
             };
@@ -106,56 +109,60 @@ namespace Atc.World.Tests.Comms
                 listenerLog.Add(
                     $"{station.Callsign}:received-intent:{intent.Header.Type}");
             };
-            
+
             groundStation1.Get().AddListener(listener, out _);
             groundStation1.Get().IntentReceived += intentReceived;
-            
+
             airStation1.Get().AddListener(listener, out _);
             airStation1.Get().IntentReceived += intentReceived;
-            
+
             airStation2.Get().AddListener(listener, out _);
             airStation2.Get().IntentReceived += intentReceived;
-            
+
             airStation3.Get().AddListener(listener, out _);
             airStation3.Get().IntentReceived += intentReceived;
 
-            var intent = new TestGreetingIntent(setup.WorldContext, 1, from: airStation2, to: groundStation1); 
+            var intent = new TestGreetingIntent(setup.WorldContext, 1, @from: airStation2, to: groundStation1);
             var transmission = new RadioTransmissionWave(
                 new UtteranceDescription("en-US", new UtteranceDescription.Part[0], TimeSpan.FromSeconds(5)),
-                VoiceDescription.Default,  
+                VoiceDescription.Default,
                 null);
-            
+
             airStation2.Get().BeginTransmission(transmission);
             airStation2.Get().CompleteTransmission(intent);
-            
-            listenerLog.Take(4).Should().BeEquivalentTo(new[] {
-                "ground1:Silence",
-                "air1:Silence",
-                "air2:Silence",
-                "air3:Silence"
-            });
-            listenerLog.Skip(4).Take(4).Should().BeEquivalentTo(new[] {
-                "air3:ReceivingSingleTransmission",
-                "air1:ReceivingSingleTransmission",
-                "ground1:ReceivingSingleTransmission",
-                "air2:Transmitting",
-            });
-            listenerLog.Skip(8).Should().BeEquivalentTo(new[] {
-                "air3:received-intent:Greeting",
-                "air3:DetectingSilence+received:Greeting",
-                "air1:received-intent:Greeting",
-                "air1:DetectingSilence+received:Greeting",
-                "ground1:received-intent:Greeting",
-                "ground1:DetectingSilence+received:Greeting",
-                "air2:DetectingSilence"
-            });
+
+            listenerLog.Take(4)
+                .Should()
+                .BeEquivalentTo(new[] {"ground1:Silence", "air1:Silence", "air2:Silence", "air3:Silence"});
+            listenerLog.Skip(4)
+                .Take(4)
+                .Should()
+                .BeEquivalentTo(
+                    new[] {
+                        "air3:ReceivingSingleTransmission",
+                        "air1:ReceivingSingleTransmission",
+                        "ground1:ReceivingSingleTransmission",
+                        "air2:Transmitting",
+                    });
+            listenerLog.Skip(8)
+                .Should()
+                .BeEquivalentTo(
+                    new[] {
+                        "air3:received-intent:Greeting",
+                        "air3:DetectingSilence+received:Greeting",
+                        "air1:received-intent:Greeting",
+                        "air1:DetectingSilence+received:Greeting",
+                        "ground1:received-intent:Greeting",
+                        "ground1:DetectingSilence+received:Greeting",
+                        "air2:DetectingSilence"
+                    });
         }
 
         [Test]
         public void ShouldBeDetectingSilenceAfterCompletedTransmission()
         {
             var setup = new WorldSetup();
-            
+
             var (groundStation1, aether) = setup.AddGroundStation(
                 Frequency.FromKhz(121000), new GeoPoint(40, 12), "ground1");
 
@@ -166,19 +173,19 @@ namespace Atc.World.Tests.Comms
             airStation1.Get().PowerOn();
             setup.World.Get().ProgressBy(TimeSpan.FromSeconds(30));
 
-            var intent = new TestGreetingIntent(setup.WorldContext, 1, from: airStation1, to: groundStation1); 
+            var intent = new TestGreetingIntent(setup.WorldContext, 1, from: airStation1, to: groundStation1);
             var transmission = new RadioTransmissionWave(
                 new UtteranceDescription("en-US", new UtteranceDescription.Part[0], TimeSpan.FromSeconds(5)),
-                VoiceDescription.Default,  
+                VoiceDescription.Default,
                 null);
 
             airStation1.Get().BeginTransmission(transmission);
-            
+
             airStation1.Get().GetStatus().Should().Be(TransceiverStatus.Transmitting);
             groundStation1.Get().GetStatus().Should().Be(TransceiverStatus.ReceivingSingleTransmission);
 
             airStation1.Get().CompleteTransmission(intent);
-            
+
             airStation1.Get().GetStatus().Should().Be(TransceiverStatus.DetectingSilence);
             groundStation1.Get().GetStatus().Should().Be(TransceiverStatus.DetectingSilence);
         }
@@ -187,7 +194,7 @@ namespace Atc.World.Tests.Comms
         public void ShouldBeDetectingSilenceAfterAbortedTransmission()
         {
             var setup = new WorldSetup();
-            
+
             var (groundStation1, aether) = setup.AddGroundStation(
                 Frequency.FromKhz(121000), new GeoPoint(40, 12), "ground1");
 
@@ -200,16 +207,16 @@ namespace Atc.World.Tests.Comms
 
             var transmission = new RadioTransmissionWave(
                 new UtteranceDescription("en-US", new UtteranceDescription.Part[0], TimeSpan.FromSeconds(5)),
-                VoiceDescription.Default,  
+                VoiceDescription.Default,
                 null);
 
             airStation1.Get().BeginTransmission(transmission);
-            
+
             airStation1.Get().GetStatus().Should().Be(TransceiverStatus.Transmitting);
             groundStation1.Get().GetStatus().Should().Be(TransceiverStatus.ReceivingSingleTransmission);
 
             airStation1.Get().AbortTransmission();
-            
+
             airStation1.Get().GetStatus().Should().Be(TransceiverStatus.DetectingSilence);
             groundStation1.Get().GetStatus().Should().Be(TransceiverStatus.DetectingSilence);
         }
@@ -218,7 +225,7 @@ namespace Atc.World.Tests.Comms
         public void ShouldBecomeSilentWithinIntervalAfterEndedTransmission()
         {
             var setup = new WorldSetup();
-            
+
             var (groundStation1, aether) = setup.AddGroundStation(
                 Frequency.FromKhz(121000), new GeoPoint(40, 12), "ground1");
 
@@ -229,17 +236,17 @@ namespace Atc.World.Tests.Comms
             airStation1.Get().PowerOn();
             setup.World.Get().ProgressBy(TimeSpan.FromSeconds(30));
 
-            var intent = new TestGreetingIntent(setup.WorldContext, 1, from: airStation1, to: groundStation1); 
+            var intent = new TestGreetingIntent(setup.WorldContext, 1, from: airStation1, to: groundStation1);
             var transmission = new RadioTransmissionWave(
                 new UtteranceDescription("en-US", new UtteranceDescription.Part[0], TimeSpan.FromSeconds(5)),
-                VoiceDescription.Default,  
+                VoiceDescription.Default,
                 null);
 
             airStation1.Get().BeginTransmission(transmission);
             airStation1.Get().CompleteTransmission(intent);
 
             setup.World.Get().ProgressBy(TimeSpan.FromMinutes(1));
-            
+
             airStation1.Get().GetStatus().Should().Be(TransceiverStatus.Silence);
             groundStation1.Get().GetStatus().Should().Be(TransceiverStatus.Silence);
         }

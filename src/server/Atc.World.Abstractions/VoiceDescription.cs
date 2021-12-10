@@ -1,7 +1,6 @@
-﻿using System.Globalization;
-using Atc.Data.Primitives;
+﻿using Atc.Data.Primitives;
 
-namespace Atc.Speech.Abstractions
+namespace Atc.World.Abstractions
 {
     public record VoiceDescription(
         LanguageCode Language,
