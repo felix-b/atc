@@ -23,18 +23,67 @@ namespace Atc.World.Abstractions
 
         public enum PartType
         {
-            Text = 0,
-            Greeting = 1,
-            Farewell = 2,
-            Data = 3,
-            Instruction = 4,
+            None = 0,
+            Text = 1,
+            Callsign = 2,
+            Instruction = 3,
+            Data = 4,
             Disfluency = 5,
             Correction = 6,
             Punctuation = 7,
-            Affirmation = 8,
-            Negation = 9
         }
 
-        public record Part(PartType Type, string Text);
+        public enum IntonationType
+        {
+            Neutral = 0,
+            Greeting = 1,
+            Farewell = 2,
+            Affirmation = 3,
+            Negation = 4,
+        }
+        
+        public record Part(
+            PartType Type, 
+            string Text, 
+            IntonationType? Intonation = IntonationType.Neutral
+        );
+
+        public static class PartFactory
+        {
+            public static Part TextPart(string contents, IntonationType? intonation = IntonationType.Neutral)
+            {
+                return new Part(PartType.Text, contents, intonation);
+            }
+
+            public static Part CallsignPart(string contents, IntonationType? intonation = IntonationType.Neutral)
+            {
+                return new Part(PartType.Callsign, contents, intonation);
+            }
+
+            public static Part DataPart(string contents, IntonationType? intonation = IntonationType.Neutral)
+            {
+                return new Part(PartType.Data, contents, intonation);
+            }
+
+            public static Part InstructionPart(string contents, IntonationType? intonation = IntonationType.Neutral)
+            {
+                return new Part(PartType.Instruction, contents, intonation);
+            }
+
+            public static Part DisfluencyPart(string contents, IntonationType? intonation = IntonationType.Neutral)
+            {
+                return new Part(PartType.Disfluency, contents, intonation);
+            }
+
+            public static Part CorrectionPart(string contents, IntonationType? intonation = IntonationType.Neutral)
+            {
+                return new Part(PartType.Correction, contents, intonation);
+            }
+
+            public static Part PunctuationPart(string contents, IntonationType? intonation = IntonationType.Neutral)
+            {
+                return new Part(PartType.Punctuation, contents, intonation);
+            }
+        }
     }
 }

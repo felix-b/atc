@@ -83,7 +83,7 @@ namespace Atc.World.LLHZ
             builder.AddConversationState(this, "CONTACT_CLEARANCE", state => state 
                 .Monitor(Frequency.FromKhz(130850)) 
                 .Transmit(() => new GreetingIntent(this))
-                .Receive<GoAheadInstructionIntent>(transitionTo: "REQUEST_STARTUP"));
+                .Receive<GoAheadIntent>(transitionTo: "REQUEST_STARTUP"));
 
             builder.AddConversationState(this, "REQUEST_STARTUP", state => state
                 .Transmit(() => new StartupRequestIntent(

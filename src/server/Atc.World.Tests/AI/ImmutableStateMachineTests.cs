@@ -611,6 +611,7 @@ namespace Atc.World.Tests.AI
                 123,
                 "#1",
                 "#1",
+                new GeoPoint(0,0),
                 null,
                 null,
                 DateTime.UtcNow);
@@ -625,6 +626,7 @@ namespace Atc.World.Tests.AI
                 456,
                 "#2",
                 "#2",
+                new GeoPoint(0,0),
                 null,
                 null,
                 DateTime.UtcNow);
@@ -639,6 +641,7 @@ namespace Atc.World.Tests.AI
                 789,
                 "#3",
                 "#3",
+                new GeoPoint(0,0),
                 null,
                 null,
                 DateTime.UtcNow);

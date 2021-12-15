@@ -13,7 +13,7 @@ namespace Atc.World.Comms.Verbalizers
             {
                 return new UtteranceDescription(Language, new[] {
                     new UtteranceDescription.Part(
-                        UtteranceDescription.PartType.Greeting, 
+                        UtteranceDescription.PartType.Text, 
                         $"This is a test greeting from {intent.Header.OriginatorCallsign}"
                     )
                 });

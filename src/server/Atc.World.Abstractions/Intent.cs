@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Runtime.Serialization;
+using Atc.Data.Primitives;
 using Zero.Loss.Actors;
 
 namespace Atc.World.Abstractions
@@ -13,16 +15,23 @@ namespace Atc.World.Abstractions
         }
 
         public string CallsignCalling => Header.OriginatorCallsign;
+
+        public string CallsignReceivingOrThrow()
+        {
+            return 
+                Header.RecipientCallsign 
+                ?? throw new InvalidIntentException(this, "RecipieneCallsign is required");
+        }
     }
 
     public record IntentHeader(
         WellKnownIntentType Type,
         int CustomCode,
-        //TODO: GeoPoint OriginatorPosition, // for determining priority of handling
         //TODO: IntentCategory Category, // for determining priority of handling
         //TODO: int? PriorityOverride, // for determining priority of handling
         string OriginatorUniqueId,
         string OriginatorCallsign,
+        GeoPoint OriginatorPosition,
         string? RecipientUniqueId,
         string? RecipientCallsign,
         DateTime CreatedAtUtc)
@@ -79,7 +88,7 @@ namespace Atc.World.Abstractions
 
     public record IntentOptions(
         IntentCondition? Condition,
-        IntentOptionFlags Flags)
+        IntentOptionFlags Flags = IntentOptionFlags.None)
     {
         public static readonly IntentOptions Default = new IntentOptions(Condition: null, IntentOptionFlags.None);
     }
@@ -119,5 +128,26 @@ namespace Atc.World.Abstractions
         Before,
         After,
         During
+    }
+
+    public record TerminalInformation(
+        string Icao,                     // Aerodrome ICAO code
+        string Designator,               // letter A-Z
+        Wind Wind,
+        Pressure Qnh,                    
+        string ActiveRunwaysDeparture,   // comma separated
+        string ActiveRunwaysArrival      // comma separated
+        //TODO: add more
+        //TODO: add clouds & visibility
+        //TODO: add NOTAMs
+    );
+
+
+    public class InvalidIntentException : Exception
+    {
+        public InvalidIntentException(Intent intent, string message)
+            : base($"Invalid intent {intent.Header.Type}/{intent.Header.CustomCode} : {message}")
+        {
+        }
     }
 }

@@ -4,7 +4,8 @@
    using System.Linq;
    using Atc.Data;
    using Atc.Data.Primitives;
-using Atc.World.Comms;
+   using Atc.World.Abstractions;
+   using Atc.World.Comms;
 using Zero.Loss.Actors;
 
 namespace Atc.World.LLHZ
@@ -14,7 +15,7 @@ namespace Atc.World.LLHZ
         public const string TypeString = "llhz-airport";
         
         public record LlhzAirportState(
-            LlhzAtis Atis,
+            TerminalInformation Atis,
             ImmutableArray<ActorRef<IStatefulActor>> Children
         );
 
@@ -65,6 +66,8 @@ namespace Atc.World.LLHZ
             DeleteAllActors();
         }
 
+        public TerminalInformation Atis => State.Atis;
+        
         protected override LlhzAirportState Reduce(LlhzAirportState stateBefore, IStateEvent @event)
         {
             switch (@event)
@@ -92,15 +95,15 @@ namespace Atc.World.LLHZ
                 var clrDelRadio = AddGroundStation(
                     Frequency.FromKhz(130850),
                     new GeoPoint(32.179766d, 34.834404d),
-                    "Hertzliya Clearance");
+                    "Hertzlia Clearance");
                 var twrPrimaryRadio = AddGroundStation(
                     Frequency.FromKhz(122200),
                     new GeoPoint(32.179766d, 34.834404d),
-                    "Hertzliya Tower");
+                    "Hertzlia");
                 var twrSecondaryRadio = AddGroundStation(
                     Frequency.FromKhz(129400),
                     new GeoPoint(32.179766d, 34.834404d),
-                    "Hertzliya Tower");
+                    "Hertzlia");
                 var plutoPrimaryRadio = AddGroundStation(
                     Frequency.FromKhz(118400),
                     new GeoPoint(32.179766d, 34.834404d),
@@ -210,8 +213,30 @@ namespace Atc.World.LLHZ
 
         public static LlhzAirportState CreateInitialState(IWorldContext world, LlhzAirportActivationEvent activation)
         {
-            var atis = LlhzAtis.CreateRandom(world.UtcNow());
+            var atis = CreateRandomAtis(world.UtcNow());
             return new LlhzAirportState(atis, ImmutableArray<ActorRef<IStatefulActor>>.Empty);
+        }
+
+        private static TerminalInformation CreateRandomAtis(DateTime utcNow)
+        {
+            var wind = CreateRandomWind();
+            var runway = wind.Direction.HasValue
+                ? (wind.Direction.Value.Max.Degrees <= 40 || wind.Direction.Value.Min.Degrees >= 180 ? "29" : "11")
+                : "29";
+            
+            return new TerminalInformation(
+                Icao: "LLHZ",
+                Designator: "B",
+                Wind: wind,
+                Qnh: Pressure.FromInHgX100(3015 - 40 + utcNow.Millisecond % 40),
+                ActiveRunwaysDeparture: runway,
+                ActiveRunwaysArrival: runway);
+
+            Wind CreateRandomWind()
+            {
+                //TODO
+                return new Wind(Bearing.FromTrueDegrees(290), Speed.FromKnots(10), null);
+            }
         }
     }
 }

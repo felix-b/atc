@@ -37,6 +37,33 @@ namespace Zero.Loss.Actors
             return this;
         }
 
+        public SimpleDependencyContext WithSingleton<T, TImpl>() //TODO: test!
+            where T : class
+            where TImpl : class, T, new()
+        {
+            return WithSingleton<T, TImpl>(ctx => new TImpl());
+        }
+        
+        public SimpleDependencyContext WithSingleton<T, TImpl>(Func<IActorDependencyContext, T> factory) //TODO: test!
+            where T : class
+            where TImpl : class, T
+        {
+            if (!Has<T>())
+            {
+                T? singletonInstance = null;
+                Func<T> singletonGetter = () => {
+                    if (singletonInstance == null)
+                    {
+                        singletonInstance = factory(this);
+                    }
+                    return singletonInstance;
+                };
+                _factoryByType.Add(typeof(T), singletonGetter);
+            }
+            
+            return this;
+        }
+
         T IActorDependencyContext.Resolve<T>() where T : class
         {
             if (_factoryByType.TryGetValue(typeof(T), out var untypedFactory))

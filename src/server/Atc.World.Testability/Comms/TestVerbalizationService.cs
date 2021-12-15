@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using Atc.Data.Primitives;
 using Atc.World.Abstractions;
-using Atc.World.Abstractions;
 using Atc.World.Comms.Verbalizers;
 
 namespace Atc.World.Testability.Comms
@@ -22,8 +21,9 @@ namespace Atc.World.Testability.Comms
                 {
                     return new UtteranceDescription(Language, new[] {
                         new UtteranceDescription.Part(
-                            UtteranceDescription.PartType.Greeting, 
-                            $"This is a test greeting number {greeting.RepeatCount} from {intent.Header.OriginatorCallsign}"
+                            UtteranceDescription.PartType.Text, 
+                            $"This is a test greeting number {greeting.RepeatCount} from {intent.Header.OriginatorCallsign}",
+                            UtteranceDescription.IntonationType.Greeting
                         )
                     }, estimatedDuration: TimeSpan.FromSeconds(5));
                 }

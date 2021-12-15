@@ -46,6 +46,8 @@ namespace Atc.World.LLHZ
             Intent? Transmit
         ) : IStateEvent;
 
+        
+        
         public LlhzDeliveryControllerActor(
             ActivationEvent activation, 
             IStateStore store, 
@@ -214,7 +216,7 @@ namespace Atc.World.LLHZ
                 var goAhead = CreateIntent(
                     aircraft,
                     WellKnownIntentType.GoAheadInstruction,
-                    header => new GoAheadInstructionIntent(header, IntentOptions.Default));
+                    header => new GoAheadIntent(header, IntentOptions.Default));
                 Store.Dispatch(this, new AddFlightStripEvent(
                     flightStrip,
                     ConsumeIncomingIntent: true,
@@ -224,11 +226,24 @@ namespace Atc.World.LLHZ
             void HandleStartupRequest(StartupRequestIntent request)
             {
                 var flightStrip = State.StripBoard[request.CallsignCalling];
-                var vfrClearance = new VfrClearance(null, null, null);
+                var vfrClearance = new VfrClearance(
+                    request.DepartureType, 
+                    request.DestinationIcao, 
+                    InitialHeading: null, 
+                    InitialNavaid: request.DepartureType == DepartureIntentType.ToTrainingZones 
+                        ? "בצרה" 
+                        : null, 
+                    InitialAltitude: request.DepartureType == DepartureIntentType.ToTrainingZones 
+                        ? Altitude.FromFeetMsl(800) 
+                        : null);
                 var approval = CreateIntent(
                     flightStrip.Aircraft,
                     WellKnownIntentType.StartupApproval,
-                    header => new StartupApprovalIntent(header, IntentOptions.Default, vfrClearance));
+                    header => new StartupApprovalIntent(
+                        header, 
+                        IntentOptions.Default, 
+                        State.Airport.Get().Atis,
+                        vfrClearance));
                 Store.Dispatch(this, new UpdateFlightStripEvent(
                     flightStrip with {
                         Lane = LlhzFlightStripLane.StartupApproved
@@ -254,6 +269,7 @@ namespace Atc.World.LLHZ
                 CustomCode: 0,
                 OriginatorUniqueId: Radio.UniqueId,
                 OriginatorCallsign: Radio.Callsign,
+                OriginatorPosition: Radio.Location,
                 RecipientUniqueId: recipient.UniqueId,
                 RecipientCallsign: recipient.Get().Callsign,
                 CreatedAtUtc: World.UtcNow());

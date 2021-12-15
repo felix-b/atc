@@ -83,6 +83,11 @@ namespace Atc.World.Comms
             });
         }
 
+        public virtual GeoPoint GetCurrentPosition()
+        {
+            return Radio.Location;
+        }
+
         public PartyDescription Party { get; }
 
         IntentHeader IPilotRadioOperatingActor.CreateIntentHeader(WellKnownIntentType type, int customCode)
@@ -93,11 +98,12 @@ namespace Atc.World.Comms
             return new IntentHeader(
                 type,
                 customCode,
-                fromStation.UniqueId,
-                fromStation.Callsign,
-                toStation.UniqueId,
-                toStation.Callsign,
-                World.UtcNow());
+                OriginatorUniqueId: fromStation.UniqueId,
+                OriginatorCallsign: fromStation.Callsign,
+                OriginatorPosition: GetCurrentPosition(),                
+                RecipientUniqueId: toStation.UniqueId,
+                RecipientCallsign: toStation.Callsign,
+                CreatedAtUtc: World.UtcNow());
         }
         
         protected override TState Reduce(TState stateBefore, IStateEvent @event)

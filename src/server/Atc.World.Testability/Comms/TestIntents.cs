@@ -1,4 +1,5 @@
 ﻿using System.Security.Cryptography.X509Certificates;
+using Atc.Data.Primitives;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
 using Atc.World.Testability.AI;
@@ -15,6 +16,7 @@ namespace Atc.World.Testability.Comms
                     CustomCode: 0, 
                     OriginatorUniqueId: from.UniqueId,
                     OriginatorCallsign: from.Get().Callsign,
+                    OriginatorPosition: new GeoPoint(32, 34),
                     RecipientUniqueId: to?.UniqueId,
                     RecipientCallsign: to?.Get().Callsign,
                     CreatedAtUtc: world.UtcNow()),
@@ -30,6 +32,7 @@ namespace Atc.World.Testability.Comms
                     CustomCode: 0, 
                     OriginatorUniqueId: fromPartyActor.UniqueId,
                     OriginatorCallsign: ((IHaveParty)fromPartyActor).Party.Callsign,
+                    OriginatorPosition: new GeoPoint(32, 34),
                     RecipientUniqueId: to?.UniqueId,
                     RecipientCallsign: to?.Get().Callsign,
                     CreatedAtUtc: world.UtcNow()),
@@ -52,6 +55,7 @@ namespace Atc.World.Testability.Comms
                     CustomCode: IntentCode, 
                     OriginatorUniqueId: from.UniqueId,
                     OriginatorCallsign: from.Get().Callsign,
+                    OriginatorPosition: new GeoPoint(32, 34),
                     RecipientUniqueId: to?.UniqueId,
                     RecipientCallsign: to?.Get().Callsign,
                     CreatedAtUtc: world.UtcNow()),
@@ -67,6 +71,7 @@ namespace Atc.World.Testability.Comms
                     CustomCode: IntentCode, 
                     OriginatorUniqueId: fromPartyActor.UniqueId,
                     OriginatorCallsign: ((IHaveParty)fromPartyActor).Party.Callsign,
+                    OriginatorPosition: new GeoPoint(32, 34),
                     RecipientUniqueId: to?.UniqueId,
                     RecipientCallsign: to?.Get().Callsign,
                     CreatedAtUtc: world.UtcNow()),
@@ -94,6 +99,7 @@ namespace Atc.World.Testability.Comms
                     CustomCode: IntentCode, 
                     OriginatorUniqueId: from.UniqueId,
                     OriginatorCallsign: from.Get().Callsign,
+                    OriginatorPosition: new GeoPoint(32, 34),
                     RecipientUniqueId: to?.UniqueId,
                     RecipientCallsign: to?.Get().Callsign,
                     CreatedAtUtc: world.UtcNow()),
@@ -109,6 +115,7 @@ namespace Atc.World.Testability.Comms
                     CustomCode: IntentCode, 
                     OriginatorUniqueId: fromPartyActor.UniqueId,
                     OriginatorCallsign: ((IHaveParty)fromPartyActor).Party.Callsign,
+                    OriginatorPosition: new GeoPoint(32, 34),
                     RecipientUniqueId: to?.UniqueId,
                     RecipientCallsign: to?.Get().Callsign,
                     CreatedAtUtc: world.UtcNow()),

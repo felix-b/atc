@@ -23,21 +23,13 @@ namespace Atc.World.Comms
         public readonly ConditionSubjectType? Action;
         public readonly ConditionTimingType? Timing;
     }
-
-    public record Atis (
-        Bearing WindDirection,
-        Speed WindSpeed,
-        Pressure Qnh,
-        string[] ActiveRunwaysDeparture,
-        string[] ActiveRunwaysArrival
-        //TODO: add clouds
-        //TODO: add NOTAMs
-    );
-
+    
     public record VfrClearance(
-        string? Navaid,
-        Bearing? Heading,
-        Altitude? Altitude
+        DepartureIntentType DepartureType,
+        string? DestinationIcao,
+        string? InitialNavaid,
+        Bearing? InitialHeading,
+        Altitude? InitialAltitude
     );
 
     public record GreetingIntent(
@@ -53,7 +45,7 @@ namespace Atc.World.Comms
         }
     }
 
-    public record GoAheadInstructionIntent(
+    public record GoAheadIntent(
         IntentHeader Header,
         IntentOptions Options
     ) : Intent(Header, Options);
@@ -78,6 +70,7 @@ namespace Atc.World.Comms
     public record StartupApprovalIntent(
         IntentHeader Header,
         IntentOptions Options,
+        TerminalInformation? Atis,
         VfrClearance? VfrClearance  
     ) : Intent(Header, Options);
 
@@ -117,5 +110,4 @@ namespace Atc.World.Comms
         {
         }
     }
-
 }

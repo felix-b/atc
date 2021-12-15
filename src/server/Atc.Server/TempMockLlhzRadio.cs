@@ -374,9 +374,9 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
-                    new (UtteranceDescription.PartType.Affirmation, "שלום, "),
-                    new (UtteranceDescription.PartType.Affirmation, "<phoneme alphabet='sapi' ph='h aa m ch eh k k'>המשך</phoneme>."),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Text, "שלום, "),
+                    new (UtteranceDescription.PartType.Instruction, "<phoneme alphabet='sapi' ph='h aa m ch eh k k'>המשך</phoneme>."),
                 }
             );
         }
@@ -384,17 +384,17 @@ namespace Atc.Server
         private UtteranceDescription CreateStartApprovalUtterance()
         {
             var parts = new List<UtteranceDescription.Part> {
-                new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
             };
 
             if (TossADice())
             {
-                parts.Add(new (UtteranceDescription.PartType.Affirmation, "ההתנעה מאושרת"));
+                parts.Add(new (UtteranceDescription.PartType.Instruction, "ההתנעה מאושרת"));
             }
             else
             {
-                parts.Add(new (UtteranceDescription.PartType.Affirmation, "רשאי"));
-                parts.Add(new (UtteranceDescription.PartType.Affirmation, "<phoneme alphabet='sapi' ph='l e a t n i ah'>להתניע</phoneme>"));
+                parts.Add(new (UtteranceDescription.PartType.Instruction, "רשאי"));
+                parts.Add(new (UtteranceDescription.PartType.Instruction, "<phoneme alphabet='sapi' ph='l e a t n i ah'>להתניע</phoneme>"));
             }
             
             parts.AddRange(new UtteranceDescription.Part[] {
@@ -406,7 +406,7 @@ namespace Atc.Server
 
             if (!_isPatternFlight)
             {
-                parts.Add(new(UtteranceDescription.PartType.Farewell, "בצרה 800"));
+                parts.Add(new(UtteranceDescription.PartType.Data, "בצרה 800"));
             }
 
             return new UtteranceDescription(
@@ -420,12 +420,12 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "לאחר התנעה "),
                     new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='h aa v o r'>עבור</phoneme>"),
                     new (UtteranceDescription.PartType.Text, " למגדל"),
                     new (UtteranceDescription.PartType.Data, "אחד-שתיים-שתיים שתיים,"),
-                    new (UtteranceDescription.PartType.Farewell, "להישמע."),
+                    new (UtteranceDescription.PartType.Text, "להישמע.", UtteranceDescription.IntonationType.Farewell),
                 }
             );
         }
@@ -434,14 +434,14 @@ namespace Atc.Server
         {
             UtteranceDescription.Part[] parts = TossADice()
                 ? new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
-                    new (UtteranceDescription.PartType.Affirmation, "רשאי להסיע"),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Instruction, "רשאי להסיע"),
                     new (UtteranceDescription.PartType.Text, "מסלול בשימוש"),
                     new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
                 }
                 : new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
-                    new (UtteranceDescription.PartType.Affirmation, "רשאי להסיע, "),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Instruction, "רשאי להסיע, "),
                     new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
                     new (UtteranceDescription.PartType.Text, "בשימוש."),
                 };
@@ -454,9 +454,9 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Punctuation, ","),
-                    new (UtteranceDescription.PartType.Negation, "<phoneme alphabet='sapi' ph='h aa m t e n'>המתן</phoneme>"),
+                    new (UtteranceDescription.PartType.Instruction, "<phoneme alphabet='sapi' ph='h aa m t e n'>המתן</phoneme>"),
                     new (UtteranceDescription.PartType.Punctuation, "."),
                 }
             );
@@ -467,10 +467,10 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "מסלול"),
                     new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
-                    new (UtteranceDescription.PartType.Affirmation, "תתיישר בלבד"),
+                    new (UtteranceDescription.PartType.Instruction, "תתיישר בלבד"),
                 }
             );
         }
@@ -480,12 +480,12 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Data, "רוח"),
                     new (UtteranceDescription.PartType.Data, SpellWind()),
                     new (UtteranceDescription.PartType.Text, "מסלול"),
                     new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
-                    new (UtteranceDescription.PartType.Affirmation, "<prosody rate='0.8'>" + "רשאי להמריא" + "</prosody>"),
+                    new (UtteranceDescription.PartType.Instruction, "<prosody rate='0.8'>" + "רשאי להמריא" + "</prosody>"),
                 }
             );
         }
@@ -500,7 +500,7 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "מספר"),
                     new (UtteranceDescription.PartType.Data, SpellPhoneticString(number.ToString())),
                     new (UtteranceDescription.PartType.Text, traffic),
@@ -517,12 +517,12 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Data, "רוח"),
                     new (UtteranceDescription.PartType.Data, SpellWind()),
                     new (UtteranceDescription.PartType.Text, "מסלול"),
                     new (UtteranceDescription.PartType.Data, SpellPhoneticString(_currentAtis.ActiveRunway)),
-                    new (UtteranceDescription.PartType.Affirmation, "<prosody rate='0.8'>" + clearanceWording + "</prosody>"),
+                    new (UtteranceDescription.PartType.Instruction, "<prosody rate='0.8'>" + clearanceWording + "</prosody>"),
                 }
             );
         }
@@ -533,18 +533,18 @@ namespace Atc.Server
                 _language,
                 TossADice()
                     ? new UtteranceDescription.Part[] {
-                        new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                        new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                         new (UtteranceDescription.PartType.Text, "אזור"),
                         new (UtteranceDescription.PartType.Data, TrainingZoneNames[zoneIndex]),
                         new (UtteranceDescription.PartType.Text, "עם"),
                         //new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneSquawks[zoneIndex])),
                         new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(TrainingZoneSquawks[zoneIndex])}</prosody>"),
-                        new (UtteranceDescription.PartType.Affirmation, "על"),
-                        new (UtteranceDescription.PartType.Affirmation, "<phoneme alphabet='sapi' ph='h a t r a n s p o o n d e r'>הטרנספונדר</phoneme>"),
+                        new (UtteranceDescription.PartType.Data, "על"),
+                        new (UtteranceDescription.PartType.Data, "<phoneme alphabet='sapi' ph='h a t r a n s p o o n d e r'>הטרנספונדר</phoneme>"),
                         new (UtteranceDescription.PartType.Data, "שמונה מאות לדרור"),
                     }
                     : new UtteranceDescription.Part[] {
-                        new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                        new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                         new (UtteranceDescription.PartType.Text, "אזור"),
                         new (UtteranceDescription.PartType.Data, TrainingZoneNames[zoneIndex]),
                         new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='t r a n s p o o n d e r'>טרנספונדר</phoneme>"),
@@ -559,7 +559,7 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Data, "פלוטו שלום,"),
                     new (UtteranceDescription.PartType.Data, "אלף חמש מאות לצומת השרון"),
                     new (UtteranceDescription.PartType.Text, "הלחץ"),
@@ -573,7 +573,7 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Data, "תעבור לפלוטו על אחד אחד שמונה ארבע"),
                     new (UtteranceDescription.PartType.Text, "להישמע"),
                 }
@@ -586,18 +586,18 @@ namespace Atc.Server
                 _language,
                 TossADice()
                     ? new UtteranceDescription.Part[] {
-                        new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                        new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                         new (UtteranceDescription.PartType.Text, "כנס לאזור"),
                         new (UtteranceDescription.PartType.Data, TrainingZoneNames[zoneIndex]),
                         new (UtteranceDescription.PartType.Text, "עם"),
                         //new (UtteranceDescription.PartType.Data, SpellPhoneticString(zoneSquawks[zoneIndex])),
                         new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(TrainingZoneSquawks[zoneIndex])}</prosody>"),
                         
-                        new (UtteranceDescription.PartType.Affirmation, "על"),
-                        new (UtteranceDescription.PartType.Affirmation, "<phoneme alphabet='sapi' ph='h a t r a n s p o o n d e r'>הטרנספונדר</phoneme>"),
+                        new (UtteranceDescription.PartType.Data, "על"),
+                        new (UtteranceDescription.PartType.Data, "<phoneme alphabet='sapi' ph='h a t r a n s p o o n d e r'>הטרנספונדר</phoneme>"),
                     }
                     : new UtteranceDescription.Part[] {
-                        new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                        new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                         new (UtteranceDescription.PartType.Text, "אזור"),
                         new (UtteranceDescription.PartType.Data, TrainingZoneNames[zoneIndex]),
                         new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='t r a n s p o o n d e r'>טרנספונדר</phoneme>"),
@@ -611,7 +611,7 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "צא לבצרה 1200"),
                 }
             );
@@ -622,7 +622,7 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "צא לצומת השרון בגובה אלפיים"),
                 }
             );
@@ -633,7 +633,7 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "שמור אלפיים לדרור תעבור להרצליה על אחד שתיים שתיים שתיים להישמע"),
                 }
             );
@@ -644,7 +644,7 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "הרצליה שלום, הלחץ"),
                     new (UtteranceDescription.PartType.Data, $"<prosody rate='0.8'>{SpellPhoneticString(_currentAtis.Qnh.ToString())}</prosody>"),
                     new (UtteranceDescription.PartType.Text, "שמור גובה 2000 לבצרה"),
@@ -657,7 +657,7 @@ namespace Atc.Server
             return new UtteranceDescription(
                 _language,
                 new UtteranceDescription.Part[] {
-                    new (UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                    new (UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                     new (UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='h aa m t e n'>המתן</phoneme>"),
                     new (UtteranceDescription.PartType.Text, "באזור"),
                 }
@@ -667,7 +667,7 @@ namespace Atc.Server
         private UtteranceDescription CreateJoinPatternUtterance(int currentAltitudeFeet)
         {
             var parts = new List<UtteranceDescription.Part> {
-                new(UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                new(UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                 currentAltitudeFeet == 1200 
                     ? new(UtteranceDescription.PartType.Instruction, "<phoneme alphabet='sapi' ph='ch m o o r'>שמור</phoneme>")
                     : new(UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='h aa n m eh k k'>הנמך</phoneme>"),
@@ -704,7 +704,7 @@ namespace Atc.Server
         private UtteranceDescription CreateDescendToPatternAltitudeUtterance()
         {
             var parts = new List<UtteranceDescription.Part> {
-                new(UtteranceDescription.PartType.Greeting, SpellPhoneticString(_currentCallsign)),
+                new(UtteranceDescription.PartType.Callsign, SpellPhoneticString(_currentCallsign)),
                 new(UtteranceDescription.PartType.Text, "<phoneme alphabet='sapi' ph='h aa n m eh k k'>הנמך</phoneme>")
             };
             

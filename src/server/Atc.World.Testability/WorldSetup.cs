@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using Atc.Data.Primitives;
 using Atc.Sound;
 using Atc.World.Abstractions;
 using Atc.World.AI;
 using Atc.World.Comms;
 using Atc.World.LLHZ;
+using Atc.World.Testability.AI;
 using Atc.World.Testability.Comms;
 using Zero.Doubt.Logging;
 using Zero.Loss.Actors;
@@ -55,8 +57,8 @@ namespace Atc.World.Testability
             RadioStationActor.RegisterType(Supervisor);
             GroundRadioStationAetherActor.RegisterType(Supervisor);
             AircraftActor.RegisterType(Supervisor);
-            // DummyCycledTransmittingActor.RegisterType(Supervisor);
-            // DummyPingPongActor.RegisterType(Supervisor);
+            DummyCycledTransmittingActor.RegisterType(Supervisor);
+            DummyPingPongActor.RegisterType(Supervisor);
             LlhzAirportActor.RegisterType(Supervisor);
             LlhzDeliveryControllerActor.RegisterType(Supervisor);
             LlhzPilotActor.RegisterType(Supervisor);
@@ -117,12 +119,26 @@ namespace Atc.World.Testability
             return new(station, aether);
         }
 
-        public void RunWorldIterations(TimeSpan iterationInterval, int iterationCount)
+        public void RunWorldFastForward(TimeSpan iterationInterval, int iterationCount)
         {
             for (int iteration = 0 ; iteration < iterationCount ; iteration++)
             {
                 World.Get().ProgressBy(iterationInterval);
             }
+        }
+
+        public void RunWorldRealTime(TimeSpan iterationInterval, int iterationCount)
+        {
+            for (int iteration = 0 ; iteration < iterationCount ; iteration++)
+            {
+                Thread.Sleep(iterationInterval);
+                World.Get().ProgressBy(iterationInterval);
+            }
+        }
+
+        public T ResolveDependency<T>() where T : class
+        {
+            return DependencyContext.Resolve<T>();
         }
 
         public IEnumerable<InspectingLogWriter.LogEntry> GetLogEntries()
@@ -162,7 +178,9 @@ namespace Atc.World.Testability
         public class TestSystemEnvironment : ISystemEnvironment
         {
             private static readonly string _thisAssemblyFolderPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly()!.Location)!;
-
+            private Random? _realRandom = new Random();
+            private Queue<int>? _presetRandomValues = null;
+            
             public string GetInstallRelativePath(string relativePath)
             {
                 return Path.Combine(
@@ -176,11 +194,29 @@ namespace Atc.World.Testability
                     relativePath);
             }
 
+            public int Random(int min, int max)
+            {
+                if (_presetRandomValues != null)
+                {
+                    var nextValue = _presetRandomValues.Dequeue();
+                    var result = nextValue % (max - min) + min;
+                    return result;
+                }
+
+                return _realRandom!.Next(min, max);
+            }
+
             DateTime ISystemEnvironment.UtcNow()
             {
                 return this.UtcNow;
             }
 
+            public void EnqueueRandomValues(params int[] values)
+            {
+                _presetRandomValues = new Queue<int>(values);
+                _realRandom = null;
+            }
+            
             public DateTime UtcNow { get; set; } = DateTime.UtcNow;
         }
     }

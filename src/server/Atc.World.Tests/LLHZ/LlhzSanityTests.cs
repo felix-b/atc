@@ -35,7 +35,7 @@ namespace Atc.World.Tests.LLHZ
                 uniqueId => new LlhzAirportActor.LlhzAirportActivationEvent(uniqueId)
             );
             
-            setup.RunWorldIterations(TimeSpan.FromSeconds(1), 1);
+            setup.RunWorldFastForward(TimeSpan.FromSeconds(1), 1);
 
             llhz.Get().Should().NotBeNull();
             setup.Supervisor.GetAllActorsOfType<LlhzAirportActor>().Count().Should().Be(1);
@@ -59,7 +59,7 @@ namespace Atc.World.Tests.LLHZ
             var pilot = llhz.Get().GetChildrenOfType<LlhzPilotActor>().First().Get();
             var clearanceController = llhz.Get().GetChildrenOfType<LlhzDeliveryControllerActor>().First().Get();
 
-            setup.RunWorldIterations(TimeSpan.FromSeconds(1), 120);
+            setup.RunWorldFastForward(TimeSpan.FromSeconds(1), 120);
 
             var stateTransiitonLog = setup.GetLogEntries()
                 .Where(e => e.Id == "AIRadioOperatingActor.ActorTransitionedState")
@@ -68,7 +68,7 @@ namespace Atc.World.Tests.LLHZ
 
             intentLog.Select(intent => intent.GetType()).Should().BeStrictlyEquivalentTo(
                 typeof(GreetingIntent),
-                typeof(GoAheadInstructionIntent),
+                typeof(GoAheadIntent),
                 typeof(StartupRequestIntent),
                 typeof(StartupApprovalIntent),
                 typeof(StartupApprovalReadbackIntent)

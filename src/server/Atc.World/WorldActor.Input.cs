@@ -45,7 +45,6 @@ namespace Atc.World
         {
             return new TrafficObservableQuery(this, rect);
         }
-
         
         public void ProgressBy(TimeSpan delta)
         {
