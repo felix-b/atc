@@ -121,10 +121,15 @@ namespace Atc.World.Comms
             }
         }
 
-        public void AIEnqueueForTransmission(IRadioOperatingActor speaker, int cookie, out ulong queueTokenId)
+        public void AIEnqueueForTransmission(
+            IRadioOperatingActor speaker,
+            string? toCallsign,
+            int cookie, 
+            out ulong queueTokenId)
         {
             GetAetherOrThrow().AIEnqueueForTransmission(
-                _supervisor.GetRefToActorInstance(speaker), 
+                _supervisor.GetRefToActorInstance(speaker),
+                toCallsign,
                 cookie, 
                 out queueTokenId);
         }
@@ -255,7 +260,7 @@ namespace Atc.World.Comms
             }
             else
             {
-                return GetAetherOrThrow().IsSilentForNewConversation()
+                return GetAetherOrThrow().IsSilentForNextTransmission()
                     ? TransceiverStatus.Silence
                     : TransceiverStatus.DetectingSilence;
             }

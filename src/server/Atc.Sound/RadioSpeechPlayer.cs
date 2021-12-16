@@ -88,7 +88,7 @@ namespace Atc.Sound
                     format,
                     HiLoPassFilter.PassType.Highpass,
                     cutoffFrequency: 1500,
-                    resonance: 1.0f);
+                    resonance: 2.0f);
 
                 _currentSpeech = new SoundBuffer(data, format, looping: false);
                 _currentSpeech.AdjustLengthBy(TimeSpan.FromMilliseconds(-750));

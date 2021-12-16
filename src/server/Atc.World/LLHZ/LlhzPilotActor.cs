@@ -179,7 +179,9 @@ namespace Atc.World.LLHZ
                 activation.UniqueId, 
                 callsign: activation.Aircraft.Get().TailNo, 
                 NatureType.AI, 
-                VoiceDescription.Default, 
+                VoiceDescription.Default with {
+                    Language = "he-IL"
+                }, 
                 GenderType.Male, 
                 AgeType.Senior,
                 firstName: null);

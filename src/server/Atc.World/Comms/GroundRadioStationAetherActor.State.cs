@@ -13,7 +13,9 @@ namespace Atc.World.Comms
             bool IsSilent,
             DateTime SilenceSinceUtc,
             ulong LastTransmissionId,
-            ulong LastTransmissionQueueTokenId
+            ulong LastTransmissionQueueTokenId,
+            string? LastTransmissionOriginatorCallsign,
+            string? LastTransmissionRecipientCallsign
         );
 
         public record ActivationEvent(
@@ -27,8 +29,16 @@ namespace Atc.World.Comms
         public record TransmissionTokenEnqueuedEvent(TransmissionQueueToken Token) : IStateEvent;
         public record TransmissionTokenDequeuedEvent() : IStateEvent;
         public record TransmissionIdTakenEvent(ulong Id) : IStateEvent;
-        public record TransmissionStartedEvent(string StationId) : IStateEvent;
-        public record TransmissionEndedEvent(string StationId, DateTime Utc) : IStateEvent;
+        public record TransmissionStartedEvent(
+            string StationId, 
+            string OriginatorCallsign
+        ) : IStateEvent;
+        public record TransmissionEndedEvent(
+            string StationId, 
+            DateTime Utc,
+            string OriginatorCallsign,
+            string? RecipientCallsign
+        ) : IStateEvent;
 
         protected override AetherState Reduce(AetherState stateBefore, IStateEvent @event)
         {
@@ -65,7 +75,9 @@ namespace Atc.World.Comms
                     return stateBefore with {
                         TransmittingStationIds = transmittingStationIds,
                         IsSilent = transmittingStationIds.IsEmpty,
-                        SilenceSinceUtc = (transmittingStationIds.IsEmpty ? transmissionEnded.Utc : stateBefore.SilenceSinceUtc)
+                        SilenceSinceUtc = (transmittingStationIds.IsEmpty ? transmissionEnded.Utc : stateBefore.SilenceSinceUtc),
+                        LastTransmissionOriginatorCallsign = transmissionEnded.OriginatorCallsign,
+                        LastTransmissionRecipientCallsign = transmissionEnded.RecipientCallsign
                     };
                 default:
                     return stateBefore;
@@ -80,6 +92,8 @@ namespace Atc.World.Comms
                 TransmittingStationIds: ImmutableHashSet<string>.Empty,
                 LastTransmissionId: 0,
                 LastTransmissionQueueTokenId: 0,
+                LastTransmissionOriginatorCallsign: null,
+                LastTransmissionRecipientCallsign: null,
                 IsSilent: true,
                 SilenceSinceUtc: activation.TimetsampUtc);
         }

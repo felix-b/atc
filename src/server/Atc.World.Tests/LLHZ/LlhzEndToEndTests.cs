@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Atc.Data.Primitives;
 using Atc.Sound;
 using Atc.Speech.AzurePlugin;
@@ -7,6 +8,7 @@ using Atc.World.Comms;
 using Atc.World.LLHZ;
 using Atc.World.Testability;
 using NUnit.Framework;
+using Zero.Doubt.Logging;
 
 namespace Atc.World.Tests.LLHZ
 {
@@ -30,14 +32,15 @@ namespace Atc.World.Tests.LLHZ
         [Test]
         public void StartupForPatternFlight()
         {
-            var setup = new WorldSetup();
+            var setup = new WorldSetup(logType: WorldSetup.LogType.BinaryStream);
+            var radioLog = new List<string>();
             
             using var audioContext = new AudioContextScope(setup.ResolveDependency<ISoundSystemLogger>());
             
             setup.DependencyContextBuilder
                 .WithSingleton<ISpeechSynthesisPlugin>(new AzureSpeechSynthesisPlugin())
                 .WithSingleton<IRadioSpeechPlayer>(new RadioSpeechPlayer(setup.Environment))
-                .WithSingleton<IVerbalizationService>(new LlhzVerbalizationService(setup.Environment));
+                .WithSingleton<IVerbalizationService>(new LlhzVerbalizationService(setup.Environment), replace: true);
             
             var llhz = setup.Supervisor.CreateActor<LlhzAirportActor>(
                 uniqueId => new LlhzAirportActor.LlhzAirportActivationEvent(uniqueId)
@@ -46,7 +49,11 @@ namespace Atc.World.Tests.LLHZ
             var airStation1 = setup.AddAirStation(
                 Frequency.FromKhz(130850), 
                 new GeoPoint(32.18d, 34.83d), 
-                Altitude.FromFeetMsl(1000), callsign: "air1");
+                Altitude.FromFeetMsl(1000), 
+                callsign: "air1");
+            airStation1.Get().AddListener((station, status, intent) => {
+                radioLog.Add($"{setup.World.Get().Timestamp.ToString(@"hh\:mm\:ss\.fff")}:{status}:{intent?.GetType()?.Name ?? "no-intent"}");
+            }, out _);
             airStation1.Get().PowerOn();
  
             using var monitor = new RadioStationSoundMonitor(
@@ -58,7 +65,13 @@ namespace Atc.World.Tests.LLHZ
                 airStation1.Get());
 
             setup.RunWorldFastForward(TimeSpan.FromSeconds(1), 57);
-            setup.RunWorldRealTime(TimeSpan.FromSeconds(1), 57);
+            setup.RunWorldRealTime(TimeSpan.FromMilliseconds(100), 570);
+
+            radioLog.ForEach(Console.WriteLine);
+
+            var logRootNode = setup.ReadBinaryLogStream();
+            var logTreeText = BinaryLogStreamTextPrinter.PrintTree(logRootNode);
+            Console.WriteLine(logTreeText);
         }
     }
 }

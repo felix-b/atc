@@ -119,7 +119,7 @@ namespace Atc.World.Comms
         private async Task BeginPlayTransmissionSpeech(RadioStationActor.TransmissionState transmission, CancellationToken cancellation)
         {
             var shouldSynthesizeSpeech = true; //!transmission.Wave.HasSound;
-            var effectiveWaveBytes = await SynthesizeSpeech(transmission, cancellation); 
+            var synthesizeResult = await SynthesizeSpeech(transmission, cancellation); 
                 // shouldSynthesizeSpeech
                 // ? await SynthesizeSpeech(transmission, cancellation)
                 // : transmission.Wave.SoundBytes;
@@ -128,14 +128,19 @@ namespace Atc.World.Comms
             {
                 return;
             }
+
+            var speechDuration = TimeSpan.FromMilliseconds(700);// synthesizeResult.WaveDuration;
+            var aether = _radioStation.Aether?.Get();
+            aether?.OnActualTransmissionDurationAvailable(speechDuration);
             
             await _player.Play(
-                effectiveWaveBytes, 
+                synthesizeResult.Wave, 
+                synthesizeResult.Format,
                 volume: 1.0f, 
                 cancellation);
         }
         
-        private async Task<byte[]> SynthesizeSpeech(RadioStationActor.TransmissionState transmission, CancellationToken cancellation)
+        private async Task<SynthesizeUtteranceWaveResult> SynthesizeSpeech(RadioStationActor.TransmissionState transmission, CancellationToken cancellation)
         {
             if (transmission.Wave.Utterance == null || transmission.Wave.Voice == null)
             {
@@ -152,7 +157,7 @@ namespace Atc.World.Comms
                 //TODO: use cancellation token
                 //TODO: remember AssignedPlatformVoiceId 
                 var result = await _synthesizer.SynthesizeUtteranceWave(transmission.Wave.Utterance, transmission.Wave.Voice!);
-                return result.Wave;
+                return result;
             }
             catch (Exception e)
             {

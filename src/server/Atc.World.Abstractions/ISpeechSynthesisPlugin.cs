@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Atc.World.Abstractions
 {
@@ -8,7 +9,10 @@ namespace Atc.World.Abstractions
     }
 
     public record SynthesizeUtteranceWaveResult(
-        byte[] Wave, 
+        byte[] Wave,
         string? AssignedPlatformVoiceId,
-        SoundFormat Format);
+        SoundFormat Format)
+    {
+        public TimeSpan WaveDuration => Format.GetWaveDuration(Wave.Length);
+    }
 }

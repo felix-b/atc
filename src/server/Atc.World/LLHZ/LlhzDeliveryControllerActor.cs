@@ -298,7 +298,10 @@ namespace Atc.World.LLHZ
                 "#1", 
                 "Herzlia Clearance", 
                 NatureType.AI, 
-                VoiceDescription.Default, 
+                VoiceDescription.Default with {
+                    Language = "he-IL",
+                    Gender = VoiceGender.Female
+                }, 
                 GenderType.Male, 
                 AgeType.Senior, 
                 "Bob");

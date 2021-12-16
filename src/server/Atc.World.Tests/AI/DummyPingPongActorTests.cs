@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Collections.Generic;
 using System.Threading;
 using Atc.Data.Primitives;
 using Atc.World.Testability;
@@ -14,13 +15,18 @@ namespace Atc.World.Tests.AI
     {
         [Test]
         public void CanRunSinglePingPongPair()
-        {            
+        {
+            var radioLog = new List<string>();
             var setup = new WorldSetup();
 
             var groundStation = setup.AddGroundStation(
                 Frequency.FromKhz(118000),
                 new GeoPoint(32, 34),
                 "Ground");  
+            groundStation.Station.Get().AddListener((station, status, intent) => {
+                radioLog.Add($"{setup.WorldContext.UtcNow().TimeOfDay}:{status}:{intent?.GetType()?.Name ?? "no-intent"}");
+            }, out _);
+            groundStation.Station.Get().PowerOn();
             
             var pingAirStation = setup.AddAirStation(
                 Frequency.FromKhz(118000), 
@@ -52,6 +58,8 @@ namespace Atc.World.Tests.AI
                 setup.World.Get().ProgressBy(TimeSpan.FromSeconds(1));
             }
 
+            radioLog.ForEach(Console.WriteLine);
+            
             var actualLog = pingActor.Get().IntentLog.Concat(pongActor.Get().IntentLog).OrderBy(s => s).ToArray();
             var expectedLog = new[] {
                 "10:30:11:ping1->pong1:PING#1", //1sec start + 5sec delay + 5sec utterance

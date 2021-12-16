@@ -20,15 +20,15 @@ namespace Atc.World.Testability
     public class WorldSetup
     {
         private readonly DateTime _worldStartTimeUtc = new DateTime(2021, 10, 15, 10, 30, 0, DateTimeKind.Utc);
+        private MemoryStream? _logBinaryOut = null;
+        private Action? _flushLogBinaryOutputs = null;
         private Func<IEnumerable<InspectingLogWriter.LogEntry>>? _getInspectableLogEntries = null;
 
         public WorldSetup(
             Action<SimpleDependencyContext>? configureDependencyContext = null,
-            bool enableInspectableLogs = false)
+            LogType logType = LogType.Noop)
         {
-            var effectiveLogWriter = enableInspectableLogs
-                ? InspectingLogWriter.Create(LogLevel.Debug, SafeWorldUtcNow, out _getInspectableLogEntries)
-                : LogWriter.Noop;
+            var effectiveLogWriter = CreateLogWriter(logType);
 
             DependencyContextBuilder = new SimpleDependencyContext();
             DependencyContextBuilder.WithSingleton<ISystemEnvironment>(Environment);
@@ -74,6 +74,23 @@ namespace Atc.World.Testability
             Aethers = new();
         }
 
+        private LogWriter CreateLogWriter(LogType type)
+        {
+            switch (type)
+            {
+                case LogType.Inspectable:
+                    return InspectingLogWriter.Create(LogLevel.Debug, SafeWorldUtcNow, out _getInspectableLogEntries);
+                case LogType.BinaryStream:
+                    _logBinaryOut = new MemoryStream();
+                    var logStream = new BinaryLogStream(_logBinaryOut);
+                    var logStreamWriter = (BinaryLogStreamWriter) logStream.CreateWriter();
+                    _flushLogBinaryOutputs = logStreamWriter.Flush;
+                    return new LogWriter(() => LogLevel.Debug, SafeWorldUtcNow, () => logStreamWriter);
+                default:
+                    return LogWriter.Noop;
+            }
+        }
+        
         public void AddIntentListener(Action<Intent> onIntent)
         {
             Store.AddEventListener(ListenToIntents, out _);
@@ -141,7 +158,28 @@ namespace Atc.World.Testability
             return DependencyContext.Resolve<T>();
         }
 
-        public IEnumerable<InspectingLogWriter.LogEntry> GetLogEntries()
+        public MemoryStream GetBinaryLogStream()
+        {
+            return _logBinaryOut 
+                ?? throw new InvalidOperationException("Binary log output was not initialized");
+        }
+
+        public BinaryLogStreamReader.Node ReadBinaryLogStream()
+        {
+            _flushLogBinaryOutputs?.Invoke();
+            
+            var stream = GetBinaryLogStream();
+            stream.Position = 0;
+            
+            var reader = new BinaryLogStreamReader(stream);
+            reader.ReadToEnd();
+            
+            stream.Position = stream.Length;
+
+            return reader.RootNode;
+        }
+        
+        public IEnumerable<InspectingLogWriter.LogEntry> GetInspectableLogEntries()
         {
             if (_getInspectableLogEntries != null)
             {
@@ -169,7 +207,14 @@ namespace Atc.World.Testability
         public IWorldContext WorldContext => World.Get();
         public ICommsLogger CommsLogger { get; }
         public TestSystemEnvironment Environment { get; } = new();
-
+        
+        public enum LogType
+        {
+            Noop = 0,
+            Inspectable = 1,
+            BinaryStream = 2
+        }
+        
         public record GroundStationResult(
             ActorRef<RadioStationActor> Station,
             ActorRef<GroundRadioStationAetherActor> Aethers

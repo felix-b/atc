@@ -26,12 +26,12 @@ namespace Zero.Loss.Actors
             return this;
         }
 
-        public SimpleDependencyContext WithSingleton<T>(T instance) where T : class
+        public SimpleDependencyContext WithSingleton<T>(T instance, bool replace = false) where T : class
         {
-            if (!Has<T>())
+            if (!Has<T>() || replace)
             {
                 Func<T> singletonGetter = () => instance;
-                _factoryByType.Add(typeof(T), singletonGetter);
+                _factoryByType[typeof(T)] = singletonGetter;
             }
             
             return this;

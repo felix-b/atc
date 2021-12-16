@@ -80,9 +80,9 @@ namespace Atc.World.Abstractions
                 return new Part(PartType.Correction, contents, intonation);
             }
 
-            public static Part PunctuationPart(string contents, IntonationType? intonation = IntonationType.Neutral)
+            public static Part PunctuationPart()
             {
-                return new Part(PartType.Punctuation, contents, intonation);
+                return new Part(PartType.Punctuation, string.Empty);
             }
         }
     }

@@ -50,15 +50,17 @@ namespace Atc.Speech.AzurePlugin
                 "xmlns:mstts=\"http://www.w3.org/2001/mstts\" " + 
                 "xmlns:emo=\"http://www.w3.org/2009/10/emotionml\" " + 
                 "version=\"1.0\" " +
-                "xml:lang=\"en-US\" >");
+                "xml:lang=\"he-IL\" >");
             ssml.Append(
                 $"<voice name=\"{platformVoiceId}\">");
 
-            ssml.Append($"<prosody volume='100' rate='1.0' pitch='low'>");
+            ssml.Append($"<prosody volume='100' rate='1.2' pitch='low'>");
 
             foreach (var part in utterance.Parts)
             {
-                ssml.Append(part.Text);
+                ssml.Append(part.Type != UtteranceDescription.PartType.Punctuation 
+                    ? part.Text 
+                    : ",");
                 ssml.Append(' ');
             }
 
@@ -70,10 +72,10 @@ namespace Atc.Speech.AzurePlugin
         }
 
         public static readonly SoundFormat SoundFormat = 
-            new SoundFormat(bitsPerSample: 16, samplesPerSecond: 8000, channelCount: 1);
+            new SoundFormat(bitsPerSample: 16, samplesPerSecond: 16000, channelCount: 1);
         
         public static readonly SpeechSynthesisOutputFormat SynthesisOutputFormat = 
-            SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm;
+            SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm;
         
         private static SpeechConfig CreateSpeechConfig()
         {

@@ -54,7 +54,7 @@ namespace Atc.World.Comms
         public virtual void InitiateTransmission(Intent intent)
         {
             Store.Dispatch(this, new SetPendingIntentEvent(intent));
-            Radio.AIEnqueueForTransmission(this, 0 ,out _);
+            Radio.AIEnqueueForTransmission(this, intent.Header.RecipientCallsign, 0 ,out _);
         }
 
         public virtual void BeginQueuedTransmission(int cookie)

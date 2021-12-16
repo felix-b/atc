@@ -168,7 +168,7 @@ namespace Atc.World.LLHZ
                 id: nextId++,
                 typeIcao,
                 tailNo,
-                callsign: tailNo.Substring(tailNo.Length - 3, 3),
+                callsign: tailNo, //.Substring(tailNo.Length - 3, 3),
                 airlineIcao: null,
                 liveryId: null,
                 modeS: null,

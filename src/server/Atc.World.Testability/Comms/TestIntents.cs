@@ -1,4 +1,5 @@
-﻿using System.Security.Cryptography.X509Certificates;
+﻿using System;
+using System.Security.Cryptography.X509Certificates;
 using Atc.Data.Primitives;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
@@ -7,6 +8,24 @@ using Zero.Loss.Actors;
 
 namespace Atc.World.Testability.Comms
 {
+    public record TestSimplestIntent : Intent
+    {
+        public TestSimplestIntent(DateTime utcNow, ActorRef<RadioStationActor> from, ActorRef<RadioStationActor>? to = null)
+            : base(
+                new IntentHeader(
+                    WellKnownIntentType.Greeting,
+                    CustomCode: 0,
+                    OriginatorUniqueId: from.UniqueId,
+                    OriginatorCallsign: from.Get().Callsign,
+                    OriginatorPosition: new GeoPoint(32, 34),
+                    RecipientUniqueId: to?.UniqueId,
+                    RecipientCallsign: to?.Get().Callsign,
+                    CreatedAtUtc: utcNow),
+                IntentOptions.Default)
+        {
+        }
+    }
+
     public record TestGreetingIntent : Intent
     {
         public TestGreetingIntent(IWorldContext world, int repeatCount, ActorRef<RadioStationActor> from, ActorRef<RadioStationActor>? to = null) 

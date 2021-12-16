@@ -94,8 +94,13 @@ namespace Atc.World.LLHZ
 
                 SpellCallsign(parts, intent.CallsignReceivingOrThrow(), IntonationType.Greeting);
                 SpellCallsign(parts, intent.CallsignCalling, IntonationType.Greeting);
-                SpellGreeting(parts, intent);
-                
+
+                if (TossADice(intent))
+                {
+                    SpellGreeting(parts, intent);
+                }
+
+                parts.Add(PunctuationPart());
                 parts.Add(InstructionPart("המשך", IntonationType.Greeting));
 
                 return parts;
@@ -106,7 +111,7 @@ namespace Atc.World.LLHZ
                 StartupRequestIntent request = (StartupRequestIntent) intent;
                 var parts = new List<UtteranceDescription.Part>();
 
-                SpellCallsign(parts, request.CallsignReceivingOrThrow(), IntonationType.Greeting);
+                SpellCallsign(parts, request.CallsignCalling, IntonationType.Greeting);
                 SpellText(parts, string.Join(" ", new[] {
                     SelectRandom("רשות", "מבקש"),
                     SelectRandom("התנעה", "להתניע"),
@@ -189,9 +194,11 @@ namespace Atc.World.LLHZ
 
             private void SpellCallsign(IList<UtteranceDescription.Part> parts, string callsign, IntonationType intonation)
             {
-                var textToSpell = callsign.Substring(callsign.Length - 3, 3);//TODO: fine-tune
-                var phoneticTextToSpell = PhoneticAlphabet.SpellString(textToSpell);
-                parts.Add(CallsignPart(phoneticTextToSpell, intonation));
+                var isPhonetic = callsign.Any(c => char.IsDigit(c));
+                var text = isPhonetic
+                    ? PhoneticAlphabet.SpellString(callsign.Substring(callsign.Length - 3, 3)) //TODO: fine-tune
+                    : callsign;
+                parts.Add(CallsignPart(text, intonation));
             }
 
             private void SpellAtis(IList<UtteranceDescription.Part> parts, Intent intent, TerminalInformation atis)

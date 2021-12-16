@@ -133,6 +133,11 @@ namespace Zero.Doubt.Logging
             return _currentSpanId;
         }
 
+        public void Flush()
+        {
+            FlushBuffer();
+        }
+
         private RootSpanBuffer GetBuffer()
         {
             if (_buffer == null)

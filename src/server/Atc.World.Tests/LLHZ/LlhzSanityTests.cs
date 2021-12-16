@@ -49,7 +49,7 @@ namespace Atc.World.Tests.LLHZ
         {
             var intentLog = new List<Intent>();
             
-            var setup = new WorldSetup(enableInspectableLogs: true);
+            var setup = new WorldSetup(logType: WorldSetup.LogType.Inspectable);
             setup.AddIntentListener(intentLog.Add);
             
             var llhz = setup.Supervisor.CreateActor<LlhzAirportActor>(
@@ -61,7 +61,7 @@ namespace Atc.World.Tests.LLHZ
 
             setup.RunWorldFastForward(TimeSpan.FromSeconds(1), 120);
 
-            var stateTransiitonLog = setup.GetLogEntries()
+            var stateTransiitonLog = setup.GetInspectableLogEntries()
                 .Where(e => e.Id == "AIRadioOperatingActor.ActorTransitionedState")
                 .Select(e => $"{e.Time} : {e.KeyValuePairs["actorId"]} : {e.KeyValuePairs["oldState"]}->{e.KeyValuePairs["trigger"]}->{e.KeyValuePairs["newState"]}")
                 .ToArray();

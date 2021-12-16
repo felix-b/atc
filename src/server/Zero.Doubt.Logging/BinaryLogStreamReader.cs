@@ -128,11 +128,11 @@ namespace Zero.Doubt.Logging
                         ReadValues(node, LogStreamOpCode.EndMessage);
                         break;
                     case LogStreamOpCode.OpenSpan:
-                        ReadMessage(streamId, isSpan: true, out node);
+                        ReadSpanMessage(streamId, out node);
                         _currentNodeByStreamId[streamId] = node;
                         break;
                     case LogStreamOpCode.BeginOpenSpan:
-                        ReadMessage(streamId, isSpan: true, out node);
+                        ReadSpanMessage(streamId, out node);
                         ReadValues(node, LogStreamOpCode.EndOpenSpan);
                         _currentNodeByStreamId[streamId] = node;
                         break;
@@ -151,6 +151,12 @@ namespace Zero.Doubt.Logging
                         throw CreateInvalidDataException($"unexpected opcode 0x{(byte)opCode:XX}");
                 }
             }
+        }
+
+        private void ReadSpanMessage(int streamId, out Node node)
+        {
+            _reader.ReadInt64(); //spanId
+            ReadMessage(streamId, isSpan: true, out node);
         }
 
         private void ReadMessage(int streamId, bool isSpan, out Node node)

@@ -69,7 +69,11 @@ namespace Atc.World.Comms
             return result;
         }
 
-        public void AIEnqueueForTransmission(ActorRef<IRadioOperatingActor> speaker, int cookie, out ulong tokenId)
+        public void AIEnqueueForTransmission(
+            ActorRef<IRadioOperatingActor> speaker, 
+            string? toCallsign,
+            int cookie, 
+            out ulong tokenId)
         {
             tokenId = State.LastTransmissionQueueTokenId + 1;
             var token = new TransmissionQueueToken(tokenId, speaker, cookie);
@@ -77,9 +81,10 @@ namespace Atc.World.Comms
             _store.Dispatch(this, new TransmissionTokenEnqueuedEvent(token));
             _logger.RegisteredPendingTransmission(tokenId, speaker.UniqueId, cookie);
 
-            if (IsSilentForNewConversation()) //TODO: differentiate a new conversation from continuation of the current one
+            if (IsSilentForNextTransmission(speaker.Get().Party.Callsign, toCallsign)) 
             {
-                _world.Defer($"aether-next-conversation|{UniqueId}", OnSilence);
+                OnSilence();
+                //_world.Defer($"aether-next-conversation|{UniqueId}", OnSilence);
             }
         }
 
@@ -88,9 +93,29 @@ namespace Atc.World.Comms
             return station.Get().IsReachableBy(_groundStation.Get());
         }
 
-        public bool IsSilentForNewConversation()
+        public bool IsSilentForNextTransmission()
         {
-            return State.SilenceSinceUtc + AviationDomain.SilenceDurationBeforeNewConversation < _world.UtcNow();
+            return IsSilentForNextTransmission(fromCallsign: string.Empty, toCallsign: null);
+        }
+
+        public bool IsSilentForNextTransmission(string fromCallsign, string? toCallsign)
+        {
+            if (!State.IsSilent)
+            {
+                return false;
+            }
+
+            if (fromCallsign == State.LastTransmissionOriginatorCallsign)
+            {
+                return true;
+            }
+
+            if (fromCallsign == State.LastTransmissionRecipientCallsign && toCallsign == State.LastTransmissionOriginatorCallsign)
+            {
+                return true;
+            }
+            
+            return (State.SilenceSinceUtc + AviationDomain.SilenceDurationBeforeNewConversation < _world.UtcNow());
         }
         
         public void OnTransmissionStarted(
@@ -109,14 +134,19 @@ namespace Atc.World.Comms
                 }
             }
 
-            _store.Dispatch(this, new TransmissionStartedEvent(station.UniqueId));
+            _store.Dispatch(this, new TransmissionStartedEvent(station.UniqueId, station.Get().Callsign));
         }
 
         public void OnTransmissionAborted(
             ActorRef<RadioStationActor> station, 
             RadioStationActor.TransmissionState transmission)
         {
-            _store.Dispatch(this, new TransmissionEndedEvent(station.UniqueId, _world.UtcNow()));
+            _store.Dispatch(this, new TransmissionEndedEvent(
+                station.UniqueId, 
+                _world.UtcNow(),
+                OriginatorCallsign: station.Get().Callsign,
+                RecipientCallsign: null));
+
             _durationUpdateCallback = null;
             ArmSilenceTrigger();
 
@@ -134,7 +164,11 @@ namespace Atc.World.Comms
             RadioStationActor.TransmissionState transmission, 
             Intent intent)
         {
-            _store.Dispatch(this, new TransmissionEndedEvent(station.UniqueId, _world.UtcNow()));
+            _store.Dispatch(this, new TransmissionEndedEvent(
+                station.UniqueId, 
+                _world.UtcNow(),
+                OriginatorCallsign: intent.Header.OriginatorCallsign,
+                RecipientCallsign: intent.Header.RecipientCallsign));
             _durationUpdateCallback = null;
             ArmSilenceTrigger();
 
@@ -151,6 +185,7 @@ namespace Atc.World.Comms
         {
             if (State.PendingTransmissionTokens.IsEmpty)
             {
+                
                 return;
             }
 
