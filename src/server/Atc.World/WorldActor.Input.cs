@@ -321,9 +321,11 @@ namespace Atc.World
 
             public IDeferHandle EnqueueWorkItem(string description, Func<bool>? predicate, DateTime? deadlineUtc, Action? onPredicateTrue, Action? onTimeout)
             {
+                _logger.EnqueueWorkItem(description, deadlineUtc.HasValue, deadlineUtc.GetValueOrDefault());
+                
                 var workItemId = _nextWorkItemId++;
                 var node = _workItems.AddLast(new WorkItem(workItemId, description, onPredicateTrue, onTimeout, predicate, deadlineUtc));
-                return new DeferredTaskQueueItemHandle(_workItems, node);
+                return new DeferredTaskQueueItemHandle(_workItems, node, _logger);
             }
 
             public void RunToCompletion(DateTime timestampUtc)
@@ -345,6 +347,7 @@ namespace Atc.World
 
             public void RunOnce(DateTime timestampUtc, out int processedItemCount)
             {
+                _logger.StartingRunOnceIteration();
                 processedItemCount = 0;
                 
                 for (var node = _workItems.First ; node != null ; )
@@ -355,21 +358,28 @@ namespace Atc.World
                     
                     if (!workItem.Removed && ShouldRunItem(workItem, out var actionToRun))
                     {
-                        try
-                        {
-                            processedItemCount++;
-                            _workItems.Remove(node);
-                            workItem.Removed = true;
-
-                            actionToRun?.Invoke();
-                        }
-                        catch (Exception e)
-                        {
-                            _logger.DeferredTaskFailed(id: workItem.Id, e);
-                        }
+                        processedItemCount++;
+                        RunWorkItem(workItem, node, actionToRun);
                     }
 
                     node = nextNode;
+                }
+
+                void RunWorkItem(WorkItem workItem, LinkedListNode<WorkItem> node, Action? actionToRun)
+                {
+                    using var logSpan = _logger.ExecutingWorkItem(workItem.Id, workItem.Description);
+                    
+                    try
+                    {
+                        _workItems.Remove(node);
+                        workItem.Removed = true;
+
+                        actionToRun?.Invoke();
+                    }
+                    catch (Exception e)
+                    {
+                        logSpan.Fail(e);
+                    }
                 }
 
                 bool ShouldRunItem(WorkItem item, out Action? actionToRun)
@@ -395,15 +405,19 @@ namespace Atc.World
             {
                 private readonly LinkedList<WorkItem> _list;
                 private readonly LinkedListNode<WorkItem> _node;
+                private readonly ILogger _logger;
 
-                public DeferredTaskQueueItemHandle(LinkedList<WorkItem> list, LinkedListNode<WorkItem> node)
+                public DeferredTaskQueueItemHandle(LinkedList<WorkItem> list, LinkedListNode<WorkItem> node, ILogger logger)
                 {
                     _list = list;
                     _node = node;
+                    _logger = logger;
                 }
 
                 public void UpdateDeadline(DateTime newDeadlineUtc)
                 {
+                    _logger.UpdateWorkItemDeadline(_node.Value.Id, _node.Value.Description, newDeadlineUtc);
+                    
                     _node.Value = _node.Value with {
                         DeadlineUtc = newDeadlineUtc
                     };

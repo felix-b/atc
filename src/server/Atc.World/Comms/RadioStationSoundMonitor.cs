@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Atc.World.Abstractions;
@@ -119,20 +120,33 @@ namespace Atc.World.Comms
         private async Task BeginPlayTransmissionSpeech(RadioStationActor.TransmissionState transmission, CancellationToken cancellation)
         {
             var shouldSynthesizeSpeech = true; //!transmission.Wave.HasSound;
+            var watch = Stopwatch.StartNew();
             var synthesizeResult = await SynthesizeSpeech(transmission, cancellation); 
                 // shouldSynthesizeSpeech
                 // ? await SynthesizeSpeech(transmission, cancellation)
                 // : transmission.Wave.SoundBytes;
-
             if (cancellation.IsCancellationRequested)
             {
                 return;
             }
 
-            var speechDuration = TimeSpan.FromMilliseconds(700);// synthesizeResult.WaveDuration;
-            var aether = _radioStation.Aether?.Get();
-            aether?.OnActualTransmissionDurationAvailable(speechDuration);
-            
+            var synthesisDuration = watch.Elapsed;
+            var speechDuration = TimeSpan.FromMilliseconds(700); // synthesizeResult.WaveDuration;
+
+            using (var logSpan = _logger.SpeechSynthesisCompletion(synthesisDuration, speechDuration))
+            {
+                try
+                {
+                    var aether = _radioStation.Aether?.Get();
+                    aether?.OnActualTransmissionDurationAvailable(speechDuration);
+                }
+                catch (Exception e)
+                {
+                    logSpan.Fail(e);
+                    throw;
+                }
+            }
+
             await _player.Play(
                 synthesizeResult.Wave, 
                 synthesizeResult.Format,
@@ -147,7 +161,7 @@ namespace Atc.World.Comms
                 throw _logger.CannotSynthesizeSpeechNoUttteranceOrVoice(transmission.Id, transmission.TransmittingStationId);
             }
         
-            using var logSpan = _logger.SynthesizingSpeech(
+            _logger.SynthesizingSpeech(
                 transmissionId: transmission.Id, 
                 fromCallsign:_supervisor.GetActorByIdOrThrow<RadioStationActor>(transmission.TransmittingStationId).Get().Callsign, 
                 utterance: transmission.Wave.Utterance!.ToString()!);
@@ -161,7 +175,7 @@ namespace Atc.World.Comms
             }
             catch (Exception e)
             {
-                logSpan.Fail(e);
+                _logger.FailedToSynthesizeSpeech(transmissionId: transmission.Id, e);
                 throw;
             }
         }

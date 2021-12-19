@@ -23,7 +23,11 @@ namespace Atc.World
             void FoundRadioAether(string fromStation, string groundStation, int khz, double lat, double lon, float feet);
             void EndlessLoopInDeferredTaskQueue();
             LogWriter.LogSpan ExecutingDeferredTasks();
+            LogWriter.LogSpan ExecutingWorkItem(ulong id, string description);
             void DeferredTaskFailed(ulong id, Exception error);
+            void StartingRunOnceIteration();
+            void EnqueueWorkItem(string description, bool hasDeadline, DateTime deadlineUtc);
+            void UpdateWorkItemDeadline(ulong id, string description, DateTime newDeadlineUtc);
         }
     }
 }

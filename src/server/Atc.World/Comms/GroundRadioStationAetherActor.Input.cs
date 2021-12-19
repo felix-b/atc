@@ -100,22 +100,35 @@ namespace Atc.World.Comms
 
         public bool IsSilentForNextTransmission(string fromCallsign, string? toCallsign)
         {
-            if (!State.IsSilent)
-            {
-                return false;
-            }
+            var result = Decide();
+            _logger.IsSilentForNextTransmission(
+                @from: fromCallsign,
+                to: toCallsign,
+                lastFrom: State.LastTransmissionOriginatorCallsign,
+                lastTo: State.LastTransmissionRecipientCallsign,
+                silenceSinceUtc: State.SilenceSinceUtc,
+                result);
+            return result;
 
-            if (fromCallsign == State.LastTransmissionOriginatorCallsign)
+            bool Decide()
             {
-                return true;
-            }
+                if (!State.IsSilent)
+                {
+                    return false;
+                }
 
-            if (fromCallsign == State.LastTransmissionRecipientCallsign && toCallsign == State.LastTransmissionOriginatorCallsign)
-            {
-                return true;
+                if (fromCallsign == State.LastTransmissionOriginatorCallsign)
+                {
+                    return true;
+                }
+
+                if (fromCallsign == State.LastTransmissionRecipientCallsign && toCallsign == State.LastTransmissionOriginatorCallsign)
+                {
+                    return true;
+                }
+
+                return (State.SilenceSinceUtc + AviationDomain.SilenceDurationBeforeNewConversation < _world.UtcNow());
             }
-            
-            return (State.SilenceSinceUtc + AviationDomain.SilenceDurationBeforeNewConversation < _world.UtcNow());
         }
         
         public void OnTransmissionStarted(
@@ -183,15 +196,18 @@ namespace Atc.World.Comms
 
         public void OnSilence()
         {
+            using var logSpan = _logger.OnSilenceInAether();
+            
             if (State.PendingTransmissionTokens.IsEmpty)
             {
-                
+                _logger.NoPendingTransmissionsFound();
                 return;
             }
 
             var token = State.PendingTransmissionTokens.Peek();
             _store.Dispatch(this, new TransmissionTokenDequeuedEvent());
             
+            _logger.BeginQueuedTransmission(token.Id, token.Cookie);
             token.Target.Get().BeginQueuedTransmission(token.Cookie);
         }
 

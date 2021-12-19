@@ -13,7 +13,13 @@ namespace Atc.World.Comms
         void RegisteredPendingTransmission(ulong tokenId, string speaker, int cookie);
         LogWriter.LogSpan InvokingListener(string uniqueId, ulong listenerId);
         LogWriter.LogSpan InvokeAllListeners(string uniqueId, WellKnownIntentType? intentType);
-        LogWriter.LogSpan SynthesizingSpeech(ulong transmissionId, string fromCallsign, string utterance);
+        void SynthesizingSpeech(ulong transmissionId, string fromCallsign, string utterance);
         InvalidOperationException CannotSynthesizeSpeechNoUttteranceOrVoice(ulong transmissionId, string stationId);
+        void FailedToSynthesizeSpeech(ulong transmissionId, Exception exception);
+        LogWriter.LogSpan SpeechSynthesisCompletion(TimeSpan synthesisDuration, TimeSpan speechDuration);
+        LogWriter.LogSpan OnSilenceInAether();
+        void NoPendingTransmissionsFound();
+        void BeginQueuedTransmission(ulong tokenId, int tokenCookie);
+        void IsSilentForNextTransmission(string @from, string? to, string? lastFrom, string? lastTo, DateTime silenceSinceUtc, bool result);
     }
 }

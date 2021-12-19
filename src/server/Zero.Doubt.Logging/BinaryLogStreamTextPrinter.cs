@@ -24,11 +24,13 @@ namespace Zero.Doubt.Logging
                 var levelText = GetLevelText(node);
                 var indentText = new string(' ', node.Depth * 3);
                 var spanIcon = node.IsSpan ? '>' : '-';
-                var levelIcon = GetLevelIcon(node.Level); 
+                var levelIcon = GetLevelIcon(node.Level);
 
-                output.AppendLine(
+                output.Append(
                     $"{timeText}|{durationText,-10}|{levelText}|{levelIcon,3}{indentText}{spanIcon,-2}{node.MessageId}");
-
+                AppendValuesText(node);
+                output.AppendLine();
+                
                 foreach (var subNode in node.Nodes)
                 {
                     PrintNode(subNode);
@@ -68,6 +70,24 @@ namespace Zero.Doubt.Logging
                         return "[!]";
                     default:
                         return string.Empty;
+                }
+            }
+
+            void AppendValuesText(BinaryLogStreamReader.Node node)
+            {
+                if (node.Values.Count == 0)
+                {
+                    return;
+                }
+
+                output.Append(" :");
+
+                foreach (var pair in node.Values)
+                {
+                    output.Append(pair.Name);
+                    output.Append(' ');
+                    output.Append(pair.Value);
+                    output.Append("; ");
                 }
             }
         }
