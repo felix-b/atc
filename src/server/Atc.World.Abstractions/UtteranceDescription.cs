@@ -84,6 +84,11 @@ namespace Atc.World.Abstractions
             {
                 return new Part(PartType.Punctuation, string.Empty);
             }
+
+            public static Part FarewellPart(string contents)
+            {
+                return new Part(PartType.Text, contents, IntonationType.Farewell);
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Atc.Data.Control;
 using Atc.Data.Primitives;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
@@ -75,6 +76,8 @@ namespace Atc.World.LLHZ
                 _callbackByIntentType.Add(typeof(StartupRequestIntent), OnRequestStartup);
                 _callbackByIntentType.Add(typeof(StartupApprovalIntent), OnApproveStartup);
                 _callbackByIntentType.Add(typeof(StartupApprovalReadbackIntent), OnReadbackStartupApproval);
+                _callbackByIntentType.Add(typeof(MonitorFrequencyIntent), OnMonitorFrequencyIntent);
+                _callbackByIntentType.Add(typeof(MonitorFrequencyReadbackIntent), OnMonitorFrequencyReadbackIntent);
             }
             
             private IEnumerable<UtteranceDescription.Part> OnGreeting(PartyDescription speaker, Intent intent)
@@ -187,6 +190,53 @@ namespace Atc.World.LLHZ
                 return parts;
             }
 
+            private IEnumerable<UtteranceDescription.Part> OnMonitorFrequencyIntent(PartyDescription speaker, Intent intent)
+            {
+                MonitorFrequencyIntent instruction = (MonitorFrequencyIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                SpellCallsign(parts, intent.CallsignReceivingOrThrow(), IntonationType.Greeting);
+
+                string controllerText = (instruction.ControllerType.HasValue
+                    ? SpellControllerPositionType(instruction.ControllerType.Value)
+                    : instruction.ControllerCallsign) 
+                    ?? throw new ArgumentException(
+                        "OnMonitorFrequencyIntent: either controller position type or callsign must be specified", 
+                        nameof(intent));
+
+                var frequencyText = SpellFrequency(instruction.Frequency);
+
+                if (instruction.Options.Condition != null)
+                {
+                    parts.Add(TextPart(SpellIntentConditionText(instruction.Options.Condition)));
+                }
+                
+                parts.Add(DataPart("עבור ל" + controllerText + " " + "ב" + frequencyText));
+                parts.Add(FarewellPart("להישמע"));
+
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnMonitorFrequencyReadbackIntent(PartyDescription speaker, Intent intent)
+            {
+                MonitorFrequencyReadbackIntent readback = (MonitorFrequencyReadbackIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                string controllerText = (readback.OriginalIntent.ControllerType.HasValue
+                        ? SpellControllerPositionType(readback.OriginalIntent.ControllerType.Value)
+                        : readback.OriginalIntent.ControllerCallsign) 
+                    ?? throw new ArgumentException(
+                        "OnMonitorFrequencyReadbackIntent: either controller position type or callsign must be specified", 
+                        nameof(intent));
+
+                var frequencyText = SpellFrequency(readback.OriginalIntent.Frequency);
+                
+                parts.Add(DataPart(controllerText + " " + "ב" + frequencyText));
+                parts.Add(FarewellPart("להישמע תודה"));
+
+                return parts;
+            }
+
             private void SpellText(IList<UtteranceDescription.Part> parts, string text, IntonationType intonation = IntonationType.Neutral)
             {
                 parts.Add(TextPart(text, intonation));
@@ -216,14 +266,15 @@ namespace Atc.World.LLHZ
                 
                 void AddQnhParts() 
                 {
-                    parts.Add(TextPart("לחץ"));
+                    parts.Add(TextPart("הלחץ"));
                     parts.Add(DataPart(PhoneticAlphabet.SpellString(atis.Qnh.InHgX100.ToString())));
                 }
 
                 void AddRunwayParts()
                 {
-                    parts.Add(TextPart(TossADice(intent, probability: 40) ? "מסלול" : "מסלול בשימוש"));
-                    parts.Add(DataPart(PhoneticAlphabet.SpellString(atis.ActiveRunwaysDeparture)));
+                    //parts.Add(TextPart(TossADice(intent, probability: 40) ? "מסלול" : "מסלול בשימוש"));
+                    parts.Add(TextPart("מסלול בשימוש"));
+                    parts.Add(DataPart(PhoneticAlphabet.SpellString(atis.ActiveRunwaysDepartureCommaSeparated)));
                 }
             }
 
@@ -255,7 +306,7 @@ namespace Atc.World.LLHZ
                     {
                         parts.Add(TextPart(TossADice(intent, probability: 40) ? "מסלול" : "מסלול בשימוש"));
                     }
-                    parts.Add(DataPart(PhoneticAlphabet.SpellString(atis.ActiveRunwaysDeparture)));
+                    parts.Add(DataPart(PhoneticAlphabet.SpellString(atis.ActiveRunwaysDepartureCommaSeparated)));
                 }
             }
 
@@ -291,6 +342,22 @@ namespace Atc.World.LLHZ
                 return ((int) altitude.Feet).ToString();
             }
 
+            private string SpellFrequency(Frequency frequency)
+            {
+                var digitsToSpell = frequency.Khz.ToString().TrimEnd('0');
+                return PhoneticAlphabet.SpellString(digitsToSpell);
+            }
+
+            private string SpellIntentConditionText(IntentCondition condition)
+            {
+                if (condition.SubjectType == ConditionSubjectType.Startup && condition.Timing == ConditionTimingType.After)
+                {
+                    return "לאחר התנעה";
+                }
+
+                throw new NotSupportedException("Specified intent condition is not supported");
+            }
+
             private string GetStartupText(DepartureIntentType departureType)
             {
                 switch (departureType)
@@ -301,6 +368,19 @@ namespace Atc.World.LLHZ
                         return "להקפות";
                     default:
                         throw new NotSupportedException($"'{nameof(DepartureIntentType)}.{departureType}' is not supported");
+                }
+            }
+
+            private string SpellControllerPositionType(ControllerPositionType positionType)
+            {
+                switch (positionType)
+                {
+                    case ControllerPositionType.Local:
+                        return "מגדל";
+                    case ControllerPositionType.ClearanceDelivery:
+                        return "קליראנס";
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(positionType), "SpellControllerPositionType only supports TWR and CLRDEL");
                 }
             }
 

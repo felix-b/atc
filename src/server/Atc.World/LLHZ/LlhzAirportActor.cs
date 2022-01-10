@@ -3,6 +3,7 @@
    using System.Collections.Immutable;
    using System.Linq;
    using Atc.Data;
+   using Atc.Data.Control;
    using Atc.Data.Primitives;
    using Atc.World.Abstractions;
    using Atc.World.Comms;
@@ -114,9 +115,18 @@ namespace Atc.World.LLHZ
                     "Pluto");
 
                 var thisRef = _supervisor.GetRefToActorInstance(this);
-                var clrDelController = _supervisor.CreateActor<LlhzDeliveryControllerActor>(
-                    uniqueId => new LlhzDeliveryControllerActor.ActivationEvent(uniqueId, clrDelRadio, thisRef)
-                );
+                var clrDelController = _supervisor.CreateActor<LlhzControllerActor>(
+                    uniqueId => new LlhzControllerActor.ActivationEvent(
+                        uniqueId, 
+                        ControllerPositionType.ClearanceDelivery, 
+                        clrDelRadio, 
+                        thisRef));
+                var towerController = _supervisor.CreateActor<LlhzControllerActor>(
+                    uniqueId => new LlhzControllerActor.ActivationEvent(
+                        uniqueId, 
+                        ControllerPositionType.Local, 
+                        twrPrimaryRadio, 
+                        thisRef));
 
                 allChildren.AddRange(new ActorRef<IStatefulActor>[] { 
                     clrDelRadio,
@@ -124,7 +134,8 @@ namespace Atc.World.LLHZ
                     twrSecondaryRadio,
                     plutoPrimaryRadio,
                     plutoSecondaryRadio,
-                    clrDelController
+                    clrDelController,
+                    towerController
                 });
             }
 
@@ -223,14 +234,15 @@ namespace Atc.World.LLHZ
             var runway = wind.Direction.HasValue
                 ? (wind.Direction.Value.Max.Degrees <= 40 || wind.Direction.Value.Min.Degrees >= 180 ? "29" : "11")
                 : "29";
+            var activeRunwayList = ImmutableList<string>.Empty.Add(runway);
             
             return new TerminalInformation(
                 Icao: "LLHZ",
                 Designator: "B",
                 Wind: wind,
                 Qnh: Pressure.FromInHgX100(3015 - 40 + utcNow.Millisecond % 40),
-                ActiveRunwaysDeparture: runway,
-                ActiveRunwaysArrival: runway);
+                ActiveRunwaysDeparture: activeRunwayList,
+                ActiveRunwaysArrival: activeRunwayList);
 
             Wind CreateRandomWind()
             {

@@ -1,21 +1,40 @@
+using System;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Atc.World.Abstractions;
+using Just.Utility;
 using Microsoft.CognitiveServices.Speech;
 
 namespace Atc.Speech.AzurePlugin
 {
-    public class AzureSpeechSynthesisPlugin : ISpeechSynthesisPlugin
+    public class AzureSpeechSynthesisPlugin : ISpeechSynthesisPlugin, IDisposable
     {
-        private readonly SpeechConfig _speechConfig = CreateSpeechConfig();
+        private readonly SpeechConfig _speechConfig;
+        private readonly SpeechSynthesizer _synthesizer;
+        private readonly ExclusiveLock _synthesizerLock;
+
+        public AzureSpeechSynthesisPlugin()
+        {
+            _speechConfig = CreateSpeechConfig();
+            _synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig: null);
+            _synthesizerLock = new ExclusiveLock("AzureSpeechSynthesizer");
+        }
         
+        public void Dispose()
+        {
+            _synthesizer.Dispose();
+        }
+
         public async Task<SynthesizeUtteranceWaveResult> SynthesizeUtteranceWave(UtteranceDescription utterance, VoiceDescription voice)
         {
+            using var acquiredLock = _synthesizerLock.Acquire(TimeSpan.FromSeconds(5));
+            
             var platformVoiceId = voice.AssignedPlatformVoiceId ?? FindPlatformVoiceId(voice);
             var ssml = BuildSsml(utterance, voice, platformVoiceId);
             
-            using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig: null);
-            var result = await synthesizer.SpeakSsmlAsync(ssml);
+            //using var synthesizer = new SpeechSynthesizer(_speechConfig, audioConfig: null);
+            var result = await _synthesizer.SpeakSsmlAsync(ssml);
 
             return new SynthesizeUtteranceWaveResult(
                 Wave: result.AudioData, 
@@ -84,5 +103,6 @@ namespace Atc.Speech.AzurePlugin
             config.SetSpeechSynthesisOutputFormat(SynthesisOutputFormat);
             return config;
         }
+
     }
 }

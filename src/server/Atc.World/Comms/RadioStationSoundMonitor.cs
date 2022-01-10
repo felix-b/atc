@@ -131,7 +131,7 @@ namespace Atc.World.Comms
             }
 
             var synthesisDuration = watch.Elapsed;
-            var speechDuration = TimeSpan.FromMilliseconds(700); // synthesizeResult.WaveDuration;
+            var speechDuration = synthesizeResult.WaveDuration; //TimeSpan.FromMilliseconds(700); // 
 
             using (var logSpan = _logger.SpeechSynthesisCompletion(synthesisDuration, speechDuration))
             {

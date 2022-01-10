@@ -3,6 +3,7 @@ using Atc.Data;
 using Atc.Data.Primitives;
 using Atc.Data.Traffic;
 using Atc.Math;
+using Atc.World.Abstractions;
 using Atc.World.Comms;
 using Zero.Loss.Actors;
 using Zero.Serialization.Buffers;
@@ -101,6 +102,7 @@ namespace Atc.World
             var data = new AircraftData {
                 Id = id,
                 Type = worldData.TypeByIcao[typeIcao],
+                TailNo = BufferContext.Current.GetString(tailNo),
                 ModeS = modeS, 
                 Category = category,
                 Operations = operations,

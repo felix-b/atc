@@ -40,7 +40,7 @@ namespace Atc.World.Tests.LLHZ
             llhz.Get().Should().NotBeNull();
             setup.Supervisor.GetAllActorsOfType<LlhzAirportActor>().Count().Should().Be(1);
             setup.Supervisor.GetAllActorsOfType<AircraftActor>().Count().Should().Be(1);
-            setup.Supervisor.GetAllActorsOfType<LlhzDeliveryControllerActor>().Count().Should().Be(1);
+            setup.Supervisor.GetAllActorsOfType<LlhzControllerActor>().Count().Should().Be(1);
             setup.Supervisor.GetAllActorsOfType<LlhzPilotActor>().Count().Should().Be(1);
         }
 
@@ -50,14 +50,16 @@ namespace Atc.World.Tests.LLHZ
             var intentLog = new List<Intent>();
             
             var setup = new WorldSetup(logType: WorldSetup.LogType.Inspectable);
-            setup.AddIntentListener(intentLog.Add);
+            setup.AddIntentListener(intent => {
+                intentLog.Add(intent);
+            });
             
             var llhz = setup.Supervisor.CreateActor<LlhzAirportActor>(
                 uniqueId => new LlhzAirportActor.LlhzAirportActivationEvent(uniqueId)
             );
 
             var pilot = llhz.Get().GetChildrenOfType<LlhzPilotActor>().First().Get();
-            var clearanceController = llhz.Get().GetChildrenOfType<LlhzDeliveryControllerActor>().First().Get();
+            var clearanceController = llhz.Get().GetChildrenOfType<LlhzControllerActor>().First().Get();
 
             setup.RunWorldFastForward(TimeSpan.FromSeconds(1), 120);
 
@@ -71,7 +73,9 @@ namespace Atc.World.Tests.LLHZ
                 typeof(GoAheadIntent),
                 typeof(StartupRequestIntent),
                 typeof(StartupApprovalIntent),
-                typeof(StartupApprovalReadbackIntent)
+                typeof(StartupApprovalReadbackIntent),
+                typeof(MonitorFrequencyIntent),
+                typeof(MonitorFrequencyReadbackIntent)
             );
         }
     }

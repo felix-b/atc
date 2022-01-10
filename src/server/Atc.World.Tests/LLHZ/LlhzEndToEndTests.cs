@@ -7,6 +7,7 @@ using Atc.World.Abstractions;
 using Atc.World.Comms;
 using Atc.World.LLHZ;
 using Atc.World.Testability;
+using FluentAssertions;
 using NUnit.Framework;
 using Zero.Doubt.Logging;
 
@@ -34,6 +35,7 @@ namespace Atc.World.Tests.LLHZ
         {
             var setup = new WorldSetup(logType: WorldSetup.LogType.BinaryStream);
             var radioLog = new List<string>();
+            var intentLog = new List<string>();
             
             using var audioContext = new AudioContextScope(setup.ResolveDependency<ISoundSystemLogger>());
             
@@ -53,6 +55,10 @@ namespace Atc.World.Tests.LLHZ
                 callsign: "air1");
             airStation1.Get().AddListener((station, status, intent) => {
                 radioLog.Add($"{setup.World.Get().Timestamp.ToString(@"hh\:mm\:ss\.fff")}:{status}:{intent?.GetType()?.Name ?? "no-intent"}");
+                if (intent != null)
+                {
+                    intentLog.Add($"{intent.Header.OriginatorCallsign}->{intent.Header.RecipientCallsign}:{intent.GetType().Name}");
+                }
             }, out _);
             airStation1.Get().PowerOn();
  
@@ -67,8 +73,17 @@ namespace Atc.World.Tests.LLHZ
             setup.RunWorldFastForward(TimeSpan.FromSeconds(1), 57);
             setup.RunWorldRealTime(TimeSpan.FromMilliseconds(100), 570);
 
-            radioLog.ForEach(Console.WriteLine);
-
+            intentLog.Should().BeStrictlyEquivalentTo(new[] {
+                $"4XCGK->Hertzlia Clearance:{nameof(GreetingIntent)}",
+                $"Hertzlia Clearance->4XCGK:{nameof(GoAheadIntent)}",
+                $"4XCGK->Hertzlia Clearance:{nameof(StartupRequestIntent)}",
+                $"Hertzlia Clearance->4XCGK:{nameof(StartupApprovalIntent)}",
+                $"4XCGK->Hertzlia Clearance:{nameof(StartupApprovalReadbackIntent)}",
+                $"Hertzlia Clearance->4XCGK:{nameof(MonitorFrequencyIntent)}",
+                $"4XCGK->Hertzlia Clearance:{nameof(MonitorFrequencyReadbackIntent)}",                
+            });
+            
+            intentLog.ForEach(Console.WriteLine);
             var logRootNode = setup.ReadBinaryLogStream();
             var logTreeText = BinaryLogStreamTextPrinter.PrintTree(logRootNode);
             Console.WriteLine(logTreeText);

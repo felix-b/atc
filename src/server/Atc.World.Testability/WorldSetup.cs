@@ -60,7 +60,7 @@ namespace Atc.World.Testability
             DummyCycledTransmittingActor.RegisterType(Supervisor);
             DummyPingPongActor.RegisterType(Supervisor);
             LlhzAirportActor.RegisterType(Supervisor);
-            LlhzDeliveryControllerActor.RegisterType(Supervisor);
+            LlhzControllerActor.RegisterType(Supervisor);
             LlhzPilotActor.RegisterType(Supervisor);
 
             World = Supervisor.CreateActor<WorldActor>(id => {

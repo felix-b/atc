@@ -13,7 +13,6 @@ namespace Atc.World.Comms
 
     public interface IPilotRadioOperatingActor : IRadioOperatingActor
     {
-        IntentHeader CreateIntentHeader(WellKnownIntentType type, int customCode = 0);
-        GeoPoint GetCurrentPosition();
+        IntentHeader CreatePilotToAtcIntentHeader(WellKnownIntentType type, int customCode = 0);
     }
 }

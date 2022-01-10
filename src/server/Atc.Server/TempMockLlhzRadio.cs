@@ -28,6 +28,7 @@ namespace Atc.Server
         private Atis _currentAtis;
         private string _currentCallsign;
         private bool _isPatternFlight = false;
+        private int _windBearingDegreesBaseline;
         private Random _random = new Random(DateTime.Now.TimeOfDay.Milliseconds);
         private CancellationTokenSource? _workflowCancellation;
         private TaskCompletionSource? _pilotTransmissionReceived;
@@ -55,7 +56,7 @@ namespace Atc.Server
             _workflowCancellationRequested = new TaskCompletionSource();
             _workflowCancellation = new CancellationTokenSource();
 
-            _currentCallsign = LoadCallSignOrDefault("CGK", out _isPatternFlight);
+            _currentCallsign = LoadCallSignOrDefault("CGK", out _isPatternFlight, out _windBearingDegreesBaseline);
             _currentAtis = CreateRandomAtis();
             _currentWorkflow = SafeRunCommunicationWorkflow(_workflowCancellation.Token);
 
@@ -92,7 +93,7 @@ namespace Atc.Server
 
         public string CurrentCallsign => _currentCallsign;
 
-        private string LoadCallSignOrDefault(string defaultCallsign, out bool isPatternFlight)
+        private string LoadCallSignOrDefault(string defaultCallsign, out bool isPatternFlight, out int windBearingDegreesBaseline)
         {
             try
             {
@@ -100,7 +101,13 @@ namespace Atc.Server
                 {
                     var lines = File.ReadAllLines(CallSignFilePath);
                     var callsign = lines[0].Trim();
-                    isPatternFlight = lines.Length > 1 && lines[1].Trim() == "pattern";  
+                    if (lines.Length < 2 || !Int32.TryParse(lines[1], out windBearingDegreesBaseline))
+                    {
+                        windBearingDegreesBaseline = 290;
+                    }
+                    isPatternFlight = lines.Length > 2 && lines[2].Trim() == "pattern";
+
+                    
                     var result = string.IsNullOrWhiteSpace(callsign) ? defaultCallsign : callsign;
                     Console.WriteLine($"Read callsign.txt success: CALLSIGN[{result}] PATTERN[{isPatternFlight}]");
                     return result;
@@ -111,6 +118,7 @@ namespace Atc.Server
                 Console.WriteLine($"ERROR! failed to read callsign.txt: {e.Message}");
             }
 
+            windBearingDegreesBaseline = 290;
             isPatternFlight = false;
             return defaultCallsign;
         }
@@ -354,12 +362,13 @@ namespace Atc.Server
         {
             char info = (char)_random.Next('A', 'Z' + 1);
             int windSpeedKt = _random.Next(11);
-            int windBearing = _random.Next(360) + 1;
+            int windBearing = _windBearingDegreesBaseline + _random.Next(60) - 30;// + 240;//  _random.Next(40) + 90; //_random.Next(360) + 1;
             int qnh = _random.Next(2980, 3005);
 
-            var activeRunway = windSpeedKt > 5
-                ? (windBearing >= 195 || windBearing <= 25 ? "29" : "11")
-                : "29";//(_random.Next(33) > 27 ? "11" : "29");
+            var activeRunway = (windBearing >= 195 || windBearing <= 25 ? "29" : "11");
+            // var activeRunway = windSpeedKt > 5
+            //     ? (windBearing >= 195 || windBearing <= 25 ? "29" : "11")
+            //     : "29";//(_random.Next(33) > 27 ? "11" : "29");
 
             return new Atis(
                 Info: $"{info}",

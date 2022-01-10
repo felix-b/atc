@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Immutable;
+using System.Linq;
 using System.Runtime.Serialization;
 using Atc.Data.Primitives;
 using Zero.Loss.Actors;
@@ -53,9 +55,9 @@ namespace Atc.World.Abstractions
         StartupRequest = 0x030,
         StartupApproval = 0x031,
         StartupApprovalReadback = 0x032,
-        TaxiRequest = 0x040,
-        TaxiClearance = 0x041,
-        TaxiClearanceReadback = 0x042,
+        DepartureTaxiRequest = 0x040,
+        DepartureTaxiClearance = 0x041,
+        DepartureTaxiClearanceReadback = 0x042,
         HoldShortRunwayReport = 0x050,
         CrossRunwayInstruction = 0x051,
         CrossRunwayInstructionReadback = 0x052,
@@ -71,8 +73,9 @@ namespace Atc.World.Abstractions
         DirectToNavaidClearanceReadback = 0x081,
         JoinPatternInstruction = 0x090,
         JoinPatternInstructionReadback = 0x091,
-        LandingNumberAssignment = 0x0A0,
-        LandingNumberAssignmentReadback = 0x0A1,
+        DownwindPositionReport = 0x092,
+        LandingSequenceAssignment = 0x0A0,
+        LandingSequenceAssignmentReadback = 0x0A1,
         EnterTrainingZoneInstruction = 0x0B1,
         EnterTrainingZoneInstructionReadback = 0x0B2,
         LeaveTrainingZoneRequest = 0x0C0,
@@ -81,9 +84,23 @@ namespace Atc.World.Abstractions
         FinalApproachReport = 0x0D0,
         LandingClearance = 0x0D1,
         LandingClearanceReadback = 0x0D2,
+        ContinueApproachInstruction = 0x0D3,
+        ContinueApproachInstructionReadback = 0x0D4,
+        GoAroundInstruction = 0x0D5,
+        GoAroundInstructionInstructionReadback = 0x0D6,
         MonitorFrequencyInstruction = 0x0E0,
         MonitorFrequencyInstructionReadback = 0x0E1,
         //TBD.............
+    }
+
+    public class WellKnownIntentAttribute : Attribute
+    {
+        public WellKnownIntentAttribute(WellKnownIntentType intentType)
+        {
+            IntentType = intentType;
+        }
+
+        public WellKnownIntentType IntentType { get; init; }
     }
 
     public record IntentOptions(
@@ -94,10 +111,16 @@ namespace Atc.World.Abstractions
     }
 
     public record IntentCondition(
+        // Type of subject/action the condition relates to
         ConditionSubjectType SubjectType,
+        // Time relation to subject/action (before/after/when)    
         ConditionTimingType Timing,
+        // If a subject is represented by an actor (such as aircraft, vehicle, controller)
         ActorRef<IStatefulActor>? Subject = null,
+        // SubjectInterval and SubjectTime are mutually exclusive
+        // SubjectInterval: a time interval that defines the time relation
         TimeSpan? SubjectInterval = null,
+        // SubjectTime: a specific time that defines the time relation
         DateTime? SubjectTime = null
     );
 
@@ -105,21 +128,32 @@ namespace Atc.World.Abstractions
     public enum IntentOptionFlags
     {
         None = 0x00,
-        HasGreeting = 0x01,
-        HasFarewell = 0x02
+        HasGreeting = 0x01,    // e.g., good morning
+        HasFarewell = 0x02,    // e.g., have a good one
+        Expedite    = 0x04,    // e.g., without delay or immediate
     }
 
     public enum ConditionSubjectType
     {
+        // before/after startup
         Startup,
+        // when ready to taxi 
         ReadyToTaxi,
+        // before/after takeoff
         Takeoff,
+        // before/after landing 
         Land,
+        // before/after vacating runway
         Vacate,
+        // before/after parking
         Park,
+        // before/after another aircraft
         Aircraft,
+        // before/after a vehicle
         Vehicle,
+        // such as "X minutes ago" (before) or "in X minutes" (after)
         TimeInterval,
+        // such as "no later than X" (before) or "not earlier than X" (after)
         Time
     }
 
@@ -127,20 +161,23 @@ namespace Atc.World.Abstractions
     {
         Before,
         After,
-        During
+        When
     }
 
     public record TerminalInformation(
-        string Icao,                     // Aerodrome ICAO code
-        string Designator,               // letter A-Z
+        string Icao, // Aerodrome ICAO code
+        string Designator, // letter A-Z
         Wind Wind,
-        Pressure Qnh,                    
-        string ActiveRunwaysDeparture,   // comma separated
-        string ActiveRunwaysArrival      // comma separated
+        Pressure Qnh,
+        ImmutableList<string> ActiveRunwaysDeparture, 
+        ImmutableList<string> ActiveRunwaysArrival 
         //TODO: add more
         //TODO: add clouds & visibility
         //TODO: add NOTAMs
-    );
+    ) {
+        public string ActiveRunwaysDepartureCommaSeparated => string.Join(", ", ActiveRunwaysDeparture);
+        public string ActiveRunwaysArrivalCommaSeparated => string.Join(", ", ActiveRunwaysArrival);
+   }
 
 
     public class InvalidIntentException : Exception

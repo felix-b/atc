@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Immutable;
+using Atc.Data.Control;
 using Atc.Data.Primitives;
 using Atc.World.Abstractions;
 using Atc.World.AI;
@@ -83,14 +84,9 @@ namespace Atc.World.Comms
             });
         }
 
-        public virtual GeoPoint GetCurrentPosition()
-        {
-            return Radio.Location;
-        }
-
         public PartyDescription Party { get; }
 
-        IntentHeader IPilotRadioOperatingActor.CreateIntentHeader(WellKnownIntentType type, int customCode)
+        public IntentHeader CreatePilotToAtcIntentHeader(WellKnownIntentType type, int customCode = 0)
         {
             var fromStation = State.Radio.Get();
             var toStation = fromStation.Aether!.Value.Get().GroundStation.Get();
@@ -100,7 +96,7 @@ namespace Atc.World.Comms
                 customCode,
                 OriginatorUniqueId: fromStation.UniqueId,
                 OriginatorCallsign: fromStation.Callsign,
-                OriginatorPosition: GetCurrentPosition(),                
+                OriginatorPosition: Radio.Location,                
                 RecipientUniqueId: toStation.UniqueId,
                 RecipientCallsign: toStation.Callsign,
                 CreatedAtUtc: World.UtcNow());

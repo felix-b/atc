@@ -10,8 +10,8 @@ namespace Atc.Speech.AzurePlugin
         
         public static SpeechConfig SubscriptionFromEnvironment()
         {
-            var subscriptionKey = "f2d847ff725c467a854350823aa1021c"; //Environment.GetEnvironmentVariable(SubscriptionKeyVariableName);
-            var region = "westeurope"; //Environment.GetEnvironmentVariable(RegionVariableName);
+            var subscriptionKey = Environment.GetEnvironmentVariable(SubscriptionKeyVariableName);
+            var region = Environment.GetEnvironmentVariable(RegionVariableName);
 
             if (string.IsNullOrWhiteSpace(subscriptionKey) || string.IsNullOrWhiteSpace(region))
             {
