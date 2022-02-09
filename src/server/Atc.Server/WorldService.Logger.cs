@@ -18,6 +18,7 @@ namespace Atc.Server
             void TrafficQueryObserverCompleted(long connectionId, int updated, int added, int removed);
             void TrafficQueryObserverCreated(long connectionId, string registrationKey, double minLat, double minLon, double maxLat, double maxLon);
             void TrafficQueryObserverCanceled(long connectionId, string registrationKey);
+            void TunedUserRadioMonitor(int frequencyKhz);
         }
     }
 }

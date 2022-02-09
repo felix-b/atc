@@ -38,7 +38,7 @@ namespace Atc.World.Comms
         ) : IActivationStateEvent<RadioStationActor>;
 
         public record SetOwnerAircraftEvent(
-            ActorRef<AircraftActor> Aircraft
+            ActorRef<Traffic.AircraftActor> Aircraft
         ) : IStateEvent;
         
         public record PoweredOnEvent() : IStateEvent;

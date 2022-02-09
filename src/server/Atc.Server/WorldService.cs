@@ -5,23 +5,35 @@ using System.Security;
 using Atc.Data.Primitives;
 using Atc.World.Abstractions;
 using Atc.World;
+using Atc.World.LLHZ;
 using AtcProto;
 using ProtoBuf.WellKnownTypes;
 using Zero.Latency.Servers;
+using Zero.Loss.Actors;
+using AircraftActor = Atc.World.Traffic.AircraftActor;
 
 namespace Atc.Server
 {
     public partial class WorldService
     {
+        private readonly ISupervisorActor _supervisor;
         private readonly WorldActor _world;
         private readonly ILogger _logger;
-        private readonly TempMockLlhzRadio _tempMockRadio;//TODO: temporary; remove
+        //private readonly TempMockLlhzRadio _tempMockRadio;//TODO: temporary; remove
+        private readonly UserRadioMonitor _userRadio;
 
-        public WorldService(WorldActor world, ILogger logger, TempMockLlhzRadio tempMockRadio)
+        public WorldService(
+            ISupervisorActor supervisor, 
+            WorldActor world, 
+            ILogger logger, 
+            //TempMockLlhzRadio tempMockRadio, 
+            UserRadioMonitor userRadio)
         {
+            _supervisor = supervisor;
             _world = world;
             _logger = logger;
-            _tempMockRadio = tempMockRadio;
+            _userRadio = userRadio;
+            //_tempMockRadio = tempMockRadio;
         }
 
         [PayloadCase(ClientToServer.PayloadOneofCase.connect)]
@@ -117,18 +129,22 @@ namespace Atc.Server
         public void UserAcquireAircraft(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
         {
             var request = message.user_acquire_aircraft;
-            _tempMockRadio.ResetFlight();
+            //_tempMockRadio.ResetFlight();
+            
+            var airport = _supervisor.GetAllActorsOfType<LlhzAirportActor>().Single().Get();
+            var aircraft = airport.GetAircraftByCallsign("4XCGK").Get();
+            var info = airport.Information;
             
             //TODO - implement the logic
             connection.FireMessage(new ServerToClient {
                 reply_user_acquire_aircraft = new ServerToClient.ReplyUserAcquireAircraft {
-                    AircraftId = request.AircraftId,
                     Success = true,
-                    Callsign = _tempMockRadio.CurrentCallsign,
+                    AircraftId = aircraft.Id,
+                    Callsign = aircraft.TailNo,
                     Weather = new WeatherMessage {
-                        QnhHpa = _tempMockRadio.CurrentAtis.Qnh,
-                        WindSpeedKt = _tempMockRadio.CurrentAtis.WindSpeedKt,
-                        WindTrueBearingDegrees = _tempMockRadio.CurrentAtis.WindBearing
+                        QnhHpa = (int)info.Qnh.Hpa,
+                        WindSpeedKt = (int)info.Wind.Speed.GetValueOrDefault(Speed.FromKnots(0)).Max.Knots,
+                        WindTrueBearingDegrees = (int)info.Wind.Direction.GetValueOrDefault(Bearing.FromTrueDegrees(0)).Max.Degrees
                     }  
                 }
             });
@@ -137,7 +153,13 @@ namespace Atc.Server
         [PayloadCase(ClientToServer.PayloadOneofCase.user_update_aircraft_situation)]
         public void UserUpdateAircraftSituation(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
         {
-            //TODO - implement the logic
+            var update = message.user_update_aircraft_situation;
+            var com1Khz = update.Situation.MonitoringFrequencyKhzs.FirstOrDefault();
+            
+            _userRadio.TuneTo(Frequency.FromKhz(com1Khz));
+            _logger.TunedUserRadioMonitor(frequencyKhz: com1Khz);
+            
+            //TODO implement more updates
         }
 
         [PayloadCase(ClientToServer.PayloadOneofCase.user_release_aircraft)]
@@ -150,18 +172,18 @@ namespace Atc.Server
         [PayloadCase(ClientToServer.PayloadOneofCase.user_ptt_pressed)]
         public void UserPttPressed(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
         {
-            Console.WriteLine("WorldService::UserPttPressed");
-            var request = message.user_ptt_pressed;
-            _tempMockRadio.PttPushed((int)request.FrequencyKhz);
+            //Console.WriteLine("WorldService::UserPttPressed");
+            //var request = message.user_ptt_pressed;
+            //_tempMockRadio.PttPushed((int)request.FrequencyKhz);
         }
 
         //TODO: temporary; remove
         [PayloadCase(ClientToServer.PayloadOneofCase.user_ptt_released)]
         public void UserPttReleased(IDeferredConnectionContext<ServerToClient> connection, ClientToServer message)
         {
-            Console.WriteLine("WorldService::UserPttReleased");
-            var request = message.user_ptt_released;
-            _tempMockRadio.PttReleased((int)request.FrequencyKhz);
+            //Console.WriteLine("WorldService::UserPttReleased");
+            //var request = message.user_ptt_released;
+            //_tempMockRadio.PttReleased((int)request.FrequencyKhz);
         }
 
         private void ValidateAuthentication(IDeferredConnectionContext<ServerToClient> connection)
@@ -250,16 +272,18 @@ namespace Atc.Server
         
         private static AircraftMessage.Situation CreateSituationMessage(AircraftActor aircraft)
         {
+            var situation = aircraft.GetCurrentSituation(forceRefresh: false);
+            
             return new AircraftMessage.Situation() {
                 Location = new() {
-                    Lat = aircraft.Location.Lat,
-                    Lon = aircraft.Location.Lon
+                    Lat = situation.Location.Lat,
+                    Lon = situation.Location.Lon
                 },
-                AltitudeFeetMsl = aircraft.Altitude.Feet,
-                Heading = aircraft.Heading.Degrees,
-                GroundSpeedKt = aircraft.GroundSpeed.Knots,
-                Pitch = aircraft.Pitch.Degrees,
-                Roll = aircraft.Roll.Degrees,
+                AltitudeFeetMsl = situation.Altitude.Feet,
+                Heading = situation.Heading.Degrees,
+                GroundSpeedKt = situation.GroundSpeed.Knots,
+                Pitch = situation.Pitch.Degrees,
+                Roll = situation.Roll.Degrees,
                 //TODO: add more
             };
         }

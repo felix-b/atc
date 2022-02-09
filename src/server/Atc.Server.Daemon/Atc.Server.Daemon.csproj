@@ -13,6 +13,7 @@
       <ProjectReference Include="..\Atc.Data.Sources\Atc.Data.Sources.csproj" />
       <ProjectReference Include="..\Atc.Data\Atc.Data.csproj" />
       <ProjectReference Include="..\Atc.Server\Atc.Server.csproj" />
+      <ProjectReference Include="..\Atc.Speech.AzurePlugin\Atc.Speech.AzurePlugin.csproj" />
       <ProjectReference Include="..\Atc.Speech.WinLocalPlugin\Atc.Speech.WinLocalPlugin.csproj" />
       <ProjectReference Include="..\Atc.World.Abstractions\Atc.World.Abstractions.csproj" />
       <ProjectReference Include="..\Just.Cli\Just.Cli.csproj" />

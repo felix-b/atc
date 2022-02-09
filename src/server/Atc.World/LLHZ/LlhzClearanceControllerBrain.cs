@@ -37,6 +37,9 @@ namespace Atc.World.LLHZ
                 case StartupApprovalReadbackIntent approvalReadback:
                     HandleStartupApprovalReadback(approvalReadback);
                     break;
+                case MonitorFrequencyReadbackIntent monitorReadback:
+                    HandleMonitorTowerFrequencyReadback(monitorReadback);
+                    break;
             }
 
             void HandleGreeting(GreetingIntent greeting)
@@ -45,7 +48,8 @@ namespace Atc.World.LLHZ
                 var flightStrip = new LlhzFlightStrip(
                     DepartureIntentType.Unspecified,
                     aircraft,
-                    LlhzFlightStripLane.Unspecified);
+                    LlhzFlightStripLane.Unspecified,
+                    LaneSinceUtc: state.UtcNow);
                 var goAhead = output.CreateIntent(
                     aircraft,
                     WellKnownIntentType.GoAheadInstruction,
@@ -77,11 +81,13 @@ namespace Atc.World.LLHZ
                     header => new StartupApprovalIntent(
                         header, 
                         IntentOptions.Default, 
-                        state.Airport.Atis,
+                        state.Airport.Information,
                         vfrClearance));
                 
                 output.UpdateFlightStrip(flightStrip with {
-                    Lane = LlhzFlightStripLane.StartupApproved
+                    Lane = LlhzFlightStripLane.StartupApproved,
+                    LaneSinceUtc = state.UtcNow,
+                    DepartureType = request.DepartureType,
                 });
                 output.Transmit(approval);
             }
@@ -94,15 +100,27 @@ namespace Atc.World.LLHZ
                     WellKnownIntentType.MonitorFrequencyInstruction,
                     header => new MonitorFrequencyIntent(
                         header, 
-                        new IntentOptions(new IntentCondition(ConditionSubjectType.Startup, ConditionTimingType.After)),
+                        new IntentOptions(
+                            new IntentCondition(ConditionSubjectType.Startup, ConditionTimingType.After), 
+                            IntentOptionFlags.HasFarewell),
                         Frequency.FromKhz(122200),//TODO: get this from the airport? 
                         ControllerPositionType.Local,
                         ControllerCallsign: null));
 
-                output.UpdateFlightStrip(flightStrip with {
-                    Lane = LlhzFlightStripLane.StartupApproved
-                });
+                var updatedFlightStrip =flightStrip with {
+                    Lane = LlhzFlightStripLane.StartupApproved,
+                    LaneSinceUtc = state.UtcNow,
+                }; 
+                
+                output.UpdateFlightStrip(updatedFlightStrip);
+                output.HandoffFlightStrip(updatedFlightStrip, _towerController);
                 output.Transmit(instruction);
+            }
+
+            void HandleMonitorTowerFrequencyReadback(MonitorFrequencyReadbackIntent readback)
+            {
+                var flightStrip = state.StripBoard[readback.CallsignCalling];
+                output.RemoveFlightStrip(flightStrip);
             }
         }
 

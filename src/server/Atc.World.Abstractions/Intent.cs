@@ -50,7 +50,8 @@ namespace Atc.World.Abstractions
         Custom = 0xFFFFFF,
         RadioCheckRequest = 0x010,
         RadioCheckReply = 0x011,
-        Greeting = 0x020,
+        Greeting = 0x012,
+        Farewell = 0x013,
         GoAheadInstruction = 0x021,
         StartupRequest = 0x030,
         StartupApproval = 0x031,
@@ -74,6 +75,8 @@ namespace Atc.World.Abstractions
         JoinPatternInstruction = 0x090,
         JoinPatternInstructionReadback = 0x091,
         DownwindPositionReport = 0x092,
+        RemainingCircuitCountReport = 0x093,
+        RemainingCircuitCountReadback = 0x094,
         LandingSequenceAssignment = 0x0A0,
         LandingSequenceAssignmentReadback = 0x0A1,
         EnterTrainingZoneInstruction = 0x0B1,
@@ -104,8 +107,9 @@ namespace Atc.World.Abstractions
     }
 
     public record IntentOptions(
-        IntentCondition? Condition,
-        IntentOptionFlags Flags = IntentOptionFlags.None)
+        IntentCondition? Condition = null,
+        IntentOptionFlags Flags = IntentOptionFlags.None,
+        TrafficAdvisory? Traffic = null)
     {
         public static readonly IntentOptions Default = new IntentOptions(Condition: null, IntentOptionFlags.None);
     }
@@ -130,7 +134,8 @@ namespace Atc.World.Abstractions
         None = 0x00,
         HasGreeting = 0x01,    // e.g., good morning
         HasFarewell = 0x02,    // e.g., have a good one
-        Expedite    = 0x04,    // e.g., without delay or immediate
+        HasThanks   = 0x04,    
+        Expedite    = 0x08,    // e.g., without delay or immediate
     }
 
     public enum ConditionSubjectType
@@ -177,9 +182,47 @@ namespace Atc.World.Abstractions
     ) {
         public string ActiveRunwaysDepartureCommaSeparated => string.Join(", ", ActiveRunwaysDeparture);
         public string ActiveRunwaysArrivalCommaSeparated => string.Join(", ", ActiveRunwaysArrival);
-   }
+    }
 
+    public record TrafficAdvisory(
+        TrafficAdvisoryLocation Location,
+        string? Type = null,
+        Bearing? Heading = null,
+        Speed? Speed = null,
+        Altitude? Altitude = null,
+        bool RequestTrafficInSightReport = false
+    );
 
+    public record TrafficAdvisoryLocation(
+        Bearing? RelativeHeading = null,
+        TrafficAdvisoryLocationOrdering? RelativeOrdering = null,
+        TrafficAdvisoryLocationPattern? Pattern = null,
+        TrafficAdvisoryLocationRefinement? Refinement = null
+    );
+    
+    public enum TrafficAdvisoryLocationOrdering
+    {
+        InFront,   
+        Behind    
+    }
+
+    public enum TrafficAdvisoryLocationPattern
+    {
+        Upwind,
+        Crosswind,
+        Downwind,
+        Base,
+        Final,
+    }
+
+    public enum TrafficAdvisoryLocationRefinement
+    {
+        None,
+        BeginningOf,
+        MiddleOf,
+        EndOf
+    }
+    
     public class InvalidIntentException : Exception
     {
         public InvalidIntentException(Intent intent, string message)

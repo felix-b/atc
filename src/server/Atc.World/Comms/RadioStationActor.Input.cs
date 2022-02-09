@@ -125,7 +125,7 @@ namespace Atc.World.Comms
             IRadioOperatingActor speaker,
             string? toCallsign,
             int cookie, 
-            out ulong queueTokenId)
+            out ulong? queueTokenId)
         {
             GetAetherOrThrow().AIEnqueueForTransmission(
                 _supervisor.GetRefToActorInstance(speaker),

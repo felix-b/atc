@@ -56,7 +56,7 @@ namespace Atc.World.Testability
             WorldActor.RegisterType(Supervisor);
             RadioStationActor.RegisterType(Supervisor);
             GroundRadioStationAetherActor.RegisterType(Supervisor);
-            AircraftActor.RegisterType(Supervisor);
+            Traffic.AircraftActor.RegisterType(Supervisor);
             DummyCycledTransmittingActor.RegisterType(Supervisor);
             DummyPingPongActor.RegisterType(Supervisor);
             LlhzAirportActor.RegisterType(Supervisor);

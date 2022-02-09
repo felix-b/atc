@@ -26,7 +26,7 @@
     public enum AltitudeType
     {
         Msl,
-        Agl
+        Agl,
     }
 
     public enum SpeedUnit

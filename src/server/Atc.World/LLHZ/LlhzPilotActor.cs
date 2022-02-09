@@ -7,6 +7,7 @@ using Atc.World.Abstractions;
 using Atc.World.Abstractions;
 using Atc.World.AI;
 using Atc.World.Comms;
+using Atc.World.Traffic.Maneuvers;
 using Zero.Loss.Actors;
 
 namespace Atc.World.LLHZ
@@ -20,15 +21,21 @@ namespace Atc.World.LLHZ
             ActorRef<RadioStationActor> Radio,
             Intent? PendingTransmissionIntent,
             ImmutableStateMachine StateMachine, 
-            ActorRef<AircraftActor> Aircraft,
-            DepartureIntentType DepartureType
+            ActorRef<Traffic.AircraftActor> Aircraft,
+            DepartureIntentType DepartureType,
+            int RemainingCircuitCount,
+            GeoPoint InitialTaxiwayPoint
         ) : AIRadioOperatorState(Radio, PendingTransmissionIntent, StateMachine);
-
+        
         public record ActivationEvent(
             string UniqueId,
-            ActorRef<AircraftActor> Aircraft,
-            DepartureIntentType DepartureType
+            ActorRef<Traffic.AircraftActor> Aircraft,
+            DepartureIntentType DepartureType,
+            int? CircuitCount,
+            GeoPoint InitialTaxiwayPoint
         ) : RadioOperatorActivationEvent(UniqueId, Aircraft.Get().Com1Radio), IActivationStateEvent<LlhzPilotActor>;
+
+        public record DecrementRemainingCircuitCountEvent : IStateEvent;
 
         public LlhzPilotActor(
             ActivationEvent activation, 
@@ -54,6 +61,21 @@ namespace Atc.World.LLHZ
         protected override ImmutableStateMachine CreateStateMachine()
         {
             return CreatePatternFlightWorkflow();
+        }
+
+        protected override PilotState Reduce(PilotState stateBefore, IStateEvent @event)
+        {
+            switch (@event)
+            {
+                case DecrementRemainingCircuitCountEvent:
+                    return stateBefore with {
+                        RemainingCircuitCount = stateBefore.RemainingCircuitCount > 0 
+                            ? stateBefore.RemainingCircuitCount - 1
+                            : 0
+                    };
+                default:
+                    return base.Reduce(stateBefore, @event);
+            }
         }
 
         private ImmutableStateMachine CreateWorkflow()
@@ -108,7 +130,7 @@ namespace Atc.World.LLHZ
             );
 
             builder.AddState("START_UP", state => state
-                .OnTimeout(TimeSpan.FromMinutes(1), transitionTo: "DEPARTURE_REQUEST_TAXI")
+                .OnTimeout(TimeSpan.FromSeconds(10), transitionTo: "DEPARTURE_REQUEST_TAXI")
             );
             
             builder.AddConversationState(this, "DEPARTURE_REQUEST_TAXI", state => state
@@ -126,13 +148,15 @@ namespace Atc.World.LLHZ
             );
             
             builder.AddState("DEPARTURE_TAXI", state => state
-                .OnTimeout(TimeSpan.FromMinutes(30), transitionTo: "BEFORE_TAKEOFF_RUNUP")
+                .OnEnter(machine => BeginDepartureTaxi())
+                .OnTrigger("DEPARTURE_TAXI_REACHED_HOLD_PT", transitionTo: "BEFORE_TAKEOFF_RUNUP")
+                //.OnTimeout(TimeSpan.FromSeconds(3), transitionTo: "BEFORE_TAKEOFF_RUNUP")
             );
             builder.AddState("BEFORE_TAKEOFF_RUNUP", state => state
-                .OnTimeout(TimeSpan.FromSeconds(30), transitionTo: "BEFORE_TAKEOFF_CHECKLIST")
+                .OnTimeout(TimeSpan.FromSeconds(3), transitionTo: "BEFORE_TAKEOFF_CHECKLIST")
             );
             builder.AddState("BEFORE_TAKEOFF_CHECKLIST", state => state
-                .OnTimeout(TimeSpan.FromSeconds(30), transitionTo: "REPORT_READY_FOR_DEPARTURE")
+                .OnTimeout(TimeSpan.FromSeconds(4), transitionTo: "REPORT_READY_FOR_DEPARTURE")
             );
 
             builder.AddConversationState(this, "REPORT_READY_FOR_DEPARTURE", state => state
@@ -166,11 +190,13 @@ namespace Atc.World.LLHZ
             );
 
             builder.AddState("TAKEOFF", state => state
-                .OnTimeout(TimeSpan.FromMinutes(30), transitionTo: "REPORT_DOWNWIND")
+                .OnTimeout(TimeSpan.FromSeconds(10), transitionTo: "REPORT_DOWNWIND")
             );
 
             builder.AddConversationState(this, "REPORT_DOWNWIND", state => state
-                .Transmit(() => new DepartureTaxiRequestIntent(
+                // .OnEnter(machine => {
+                // })
+                .Transmit(() => new ReportDownwindIntent(
                     CreatePilotToAtcIntentHeader(WellKnownIntentType.DownwindPositionReport), 
                     IntentOptions.Default))
                 .Receive<LandingSequenceAssignmentIntent>(
@@ -179,11 +205,29 @@ namespace Atc.World.LLHZ
                         CreatePilotToAtcIntentHeader(WellKnownIntentType.LandingSequenceAssignmentReadback), 
                         IntentOptions.Default,
                         OriginalIntent: GetMemorizedIntent<LandingSequenceAssignmentIntent>()),
-                    transitionTo: "PROCEED_TO_FINAL")
+                    transitionTo: "IF_REPORT_REMAINING_CIRCUIT_COUNT")
             );
 
+            builder.AddState("IF_REPORT_REMAINING_CIRCUIT_COUNT", state => state.OnEnter(machine => {
+                var nextStateName = State.RemainingCircuitCount == 2 
+                    ? "REPORT_REMAINING_CIRCUIT_COUNT" 
+                    : "PROCEED_TO_FINAL"; 
+                Store.Dispatch(this, new DecrementRemainingCircuitCountEvent());
+                machine.TransitionTo(nextStateName);
+            }));
+
+            builder.AddConversationState(this, "REPORT_REMAINING_CIRCUIT_COUNT", state => state
+                .Transmit(() => new ReportRemainingCircuitCountIntent(
+                    CreatePilotToAtcIntentHeader(WellKnownIntentType.RemainingCircuitCountReport), 
+                    IntentOptions.Default,
+                    RemainingCircuitCount: State.RemainingCircuitCount))
+                .Receive<ReadbackRemainingCircuitCountIntent>(
+                    memorizeIntent: false,
+                    transitionTo: "PROCEED_TO_FINAL")
+            );
+            
             builder.AddState("PROCEED_TO_FINAL", state => state
-                .OnTimeout(TimeSpan.FromMinutes(50), transitionTo: "REPORT_DOWNWIND")
+                .OnTimeout(TimeSpan.FromSeconds(10), transitionTo: "REPORT_FINAL")
             );
 
             builder.AddConversationState(this, "REPORT_FINAL", state => state
@@ -197,7 +241,7 @@ namespace Atc.World.LLHZ
                         CreatePilotToAtcIntentHeader(WellKnownIntentType.LandingClearanceReadback), 
                         IntentOptions.Default,
                         OriginalIntent: GetMemorizedIntent<LandingClearanceIntent>()),
-                    transitionTo: "LAND")
+                    transitionTo: "LAND_OR_TOUCH_AND_GO")
                 .Receive<ContinueApproachIntent>(
                     memorizeIntent: false,
                     readback: () => new ContinueApproachReadbackIntent(
@@ -213,19 +257,62 @@ namespace Atc.World.LLHZ
                     transitionTo: "GO_AROUND")
             );
 
+            builder.AddState("LAND_OR_TOUCH_AND_GO", state => state.OnEnter(machine => {
+                machine.TransitionTo(State.RemainingCircuitCount < 1
+                    ? "LAND"
+                    : "TOUCH_AND_GO");
+            }));
+
             builder.AddState("LAND", state => state
-                .OnTimeout(TimeSpan.FromMinutes(40), transitionTo: "END_OF_FLIGHT")
+                .OnTimeout(TimeSpan.FromSeconds(10), transitionTo: "END_OF_FLIGHT")
             );
 
+            builder.AddState("TOUCH_AND_GO", state => state
+                .OnTimeout(TimeSpan.FromSeconds(10), transitionTo: "REPORT_DOWNWIND")
+            );
+            
             builder.AddState("GO_AROUND", state => state
-                .OnTimeout(TimeSpan.FromMinutes(40), transitionTo: "REPORT_DOWNWIND")
+                .OnTimeout(TimeSpan.FromSeconds(10), transitionTo: "REPORT_DOWNWIND")
             );
 
-            builder.AddState("END_OF_FLIGHT", state => {});
+            builder.AddConversationState(this, "END_OF_FLIGHT", state => state
+                .Transmit(() => new FarewellIntent(
+                    CreatePilotToAtcIntentHeader(WellKnownIntentType.Farewell), 
+                    new IntentOptions(Flags: IntentOptionFlags.HasThanks)))
+            );
 
             return builder.Build();
         }
-        
+
+        private void BeginDepartureTaxi()
+        {
+            var info = State.StateMachine.GetMemorizedIntent<StartupApprovalIntent>().Information!;
+            var is29 = info.ActiveRunwaysDeparture[0] == "29";
+            var taxi = new ManeuverBuilder(
+                "departure-taxi", 
+                State.Aircraft.Get().GetCurrentSituation().Location, 
+                World.UtcNow());
+            taxi.MoveTo("pull-out", State.InitialTaxiwayPoint, Speed.FromKnots(5));
+
+            var holdPoint = is29
+                ? new GeoPoint(32.181513, 34.829653)  // S
+                : new GeoPoint(32.181468, 34.829773); // hold east to P  
+            
+            taxi.MoveTo("pull-out", State.InitialTaxiwayPoint, Speed.FromKnots(3));
+            taxi.MoveTo("taxi-to-hold-pt", holdPoint, Speed.FromKnots(5));
+
+            var reachHoldingPointUtc = taxi.FinishUtc;
+            
+            taxi.Wait("hold-short", TimeSpan.FromDays(1));
+            
+            var maneuver = taxi.GetManeuver();
+            State.Aircraft.Get().ReplaceManeuver(maneuver);
+            World.DeferUntil(
+                "end-of-departure-taxi", 
+                reachHoldingPointUtc,
+                () => State.StateMachine.ReceiveTrigger("DEPARTURE_TAXI_REACHED_HOLD_PT"));
+        }
+
         private T GetMemorizedIntent<T>() where T : Intent
         {
             return State.StateMachine.GetMemorizedIntent<T>();
@@ -271,7 +358,9 @@ namespace Atc.World.LLHZ
                 null,
                 ImmutableStateMachine.Empty,
                 activation.Aircraft,
-                activation.DepartureType);
+                activation.DepartureType,
+                RemainingCircuitCount: activation.CircuitCount ?? 0,
+                InitialTaxiwayPoint: activation.InitialTaxiwayPoint);
         }
     }
 }

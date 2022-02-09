@@ -160,7 +160,7 @@ namespace Atc.World.AI
                     }
                 }
 
-                if (transition == null && trigger.Intent == null)
+                if (transition == null)// && trigger.Intent == null)
                 {
                     return machineBefore;
                 }
@@ -176,7 +176,7 @@ namespace Atc.World.AI
                     previousStateName: machineBefore.State.Name,
                     lastReceivedIntent: trigger.Intent,
                     memorizedIntentByType: transition?.MemorizeIntent == true 
-                        ? machineBefore.MemorizedIntentByType.Add(trigger.Intent!.GetType(), trigger.Intent!)
+                        ? machineBefore.MemorizedIntentByType.SetItem(trigger.Intent!.GetType(), trigger.Intent!)
                         : machineBefore.MemorizedIntentByType,
                     machineBefore._dispatchEvent,
                     machineBefore._scheduleDelay);

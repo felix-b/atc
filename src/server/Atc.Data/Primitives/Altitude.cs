@@ -35,6 +35,8 @@ namespace Atc.Data.Primitives
         public AltitudeUnit Unit => _unit;
         public AltitudeType Type => _type;
 
+        public bool IsGround => Ground.Equals(this);
+
         public float Feet => GetValueInUnit(AltitudeUnit.Feet); 
 
         public float Meters => GetValueInUnit(AltitudeUnit.Meter);
@@ -86,6 +88,8 @@ namespace Atc.Data.Primitives
                 [AltitudeUnit.FlightLevel] = 1,
             },
         };
+
+        public static readonly Altitude Ground = new Altitude(0.0f, AltitudeUnit.Feet, AltitudeType.Agl); 
 
         public static Altitude FromFeetMsl(float value)
         {

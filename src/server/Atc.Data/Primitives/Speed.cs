@@ -32,5 +32,10 @@ namespace Atc.Data.Primitives
         {
             return new Speed(value, SpeedUnit.Kt);
         }
+
+        public static Speed FromFpm(float value)
+        {
+            return new Speed(value, SpeedUnit.Fpm);
+        }
     }
 }

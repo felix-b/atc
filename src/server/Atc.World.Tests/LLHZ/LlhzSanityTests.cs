@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Atc.Data.Control;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
 using Atc.World.LLHZ;
 using Atc.World.Testability;
 using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Routing;
 using NUnit.Framework;
 
 namespace Atc.World.Tests.LLHZ
@@ -32,30 +34,33 @@ namespace Atc.World.Tests.LLHZ
         {
             var setup = new WorldSetup();
             var llhz = setup.Supervisor.CreateActor<LlhzAirportActor>(
-                uniqueId => new LlhzAirportActor.LlhzAirportActivationEvent(uniqueId)
+                uniqueId => new LlhzAirportActor.LlhzAirportActivationEvent(uniqueId, AircraftCount: 1)
             );
             
             setup.RunWorldFastForward(TimeSpan.FromSeconds(1), 1);
 
             llhz.Get().Should().NotBeNull();
             setup.Supervisor.GetAllActorsOfType<LlhzAirportActor>().Count().Should().Be(1);
-            setup.Supervisor.GetAllActorsOfType<AircraftActor>().Count().Should().Be(1);
-            setup.Supervisor.GetAllActorsOfType<LlhzControllerActor>().Count().Should().Be(1);
+            setup.Supervisor.GetAllActorsOfType<Traffic.AircraftActor>().Count().Should().Be(1);
+            setup.Supervisor.GetAllActorsOfType<LlhzControllerActor>().Count().Should().Be(2);
             setup.Supervisor.GetAllActorsOfType<LlhzPilotActor>().Count().Should().Be(1);
         }
 
         [Test]
         public void CanStartupForPatternFlight()
         {
-            var intentLog = new List<Intent>();
+            var clearanceIntentLog = new List<Intent>();
             
-            var setup = new WorldSetup(logType: WorldSetup.LogType.Inspectable);
+            WorldSetup setup = new(logType: WorldSetup.LogType.Inspectable);
             setup.AddIntentListener(intent => {
-                intentLog.Add(intent);
+                if (IsClearanceDelivery(intent.CallsignCalling) || IsClearanceDelivery(intent.CallsignReceivingOrThrow()))
+                {
+                    clearanceIntentLog.Add(intent);
+                }
             });
             
             var llhz = setup.Supervisor.CreateActor<LlhzAirportActor>(
-                uniqueId => new LlhzAirportActor.LlhzAirportActivationEvent(uniqueId)
+                uniqueId => new LlhzAirportActor.LlhzAirportActivationEvent(uniqueId, AircraftCount: 1)
             );
 
             var pilot = llhz.Get().GetChildrenOfType<LlhzPilotActor>().First().Get();
@@ -68,7 +73,7 @@ namespace Atc.World.Tests.LLHZ
                 .Select(e => $"{e.Time} : {e.KeyValuePairs["actorId"]} : {e.KeyValuePairs["oldState"]}->{e.KeyValuePairs["trigger"]}->{e.KeyValuePairs["newState"]}")
                 .ToArray();
 
-            intentLog.Select(intent => intent.GetType()).Should().BeStrictlyEquivalentTo(
+            clearanceIntentLog.Select(intent => intent.GetType()).Should().BeStrictlyEquivalentTo(
                 typeof(GreetingIntent),
                 typeof(GoAheadIntent),
                 typeof(StartupRequestIntent),
@@ -77,6 +82,11 @@ namespace Atc.World.Tests.LLHZ
                 typeof(MonitorFrequencyIntent),
                 typeof(MonitorFrequencyReadbackIntent)
             );
+
+            bool IsClearanceDelivery(string callsign)
+            {
+                return (callsign == "Hertzlia Clearance");
+            }
         }
     }
 }

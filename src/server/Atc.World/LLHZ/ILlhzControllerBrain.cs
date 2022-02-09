@@ -31,6 +31,6 @@ namespace Atc.World.LLHZ
         void UpdateFlightStrip(LlhzFlightStrip flightStrip);
         void HandoffFlightStrip(LlhzFlightStrip flightStrip, ActorRef<LlhzControllerActor> toController);
         void RemoveFlightStrip(LlhzFlightStrip flightStrip);
-        T CreateIntent<T>(ActorRef<AircraftActor> recipient, WellKnownIntentType type, Func<IntentHeader, T> factory) where T : Intent;
+        T CreateIntent<T>(ActorRef<Traffic.AircraftActor> recipient, WellKnownIntentType type, Func<IntentHeader, T> factory) where T : Intent;
     }
 }

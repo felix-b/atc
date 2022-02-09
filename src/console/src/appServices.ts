@@ -10,6 +10,7 @@ export interface WorldServiceClient {
     onOpen: (listener: StatusListener) => void;
     onMessage: (payloadType: IncomingPayloadType, listener: MessageListener) => RemoveMessageListener;
     sendMessage: (message: DeepPartial<ClientToServer>) => void;
+    tuneRadio: (khz: number) => void;
 }
 
 export type IncomingPayloadType = keyof Omit<

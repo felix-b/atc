@@ -4,7 +4,7 @@ namespace Atc.World.Abstractions
 {
     public record VoiceDescription(
         LanguageCode Language,
-        VoiceGender Gender,
+        GenderType Gender,
         VoiceType Type,
         VoiceRate Rate,
         VoiceLinkQuality Quality,
@@ -13,18 +13,12 @@ namespace Atc.World.Abstractions
     {
         public static readonly VoiceDescription Default = new VoiceDescription(
             Language: "en-US",
-            VoiceGender.Male,
+            GenderType.Male,
             VoiceType.Bass,
             VoiceRate.Medium,
             VoiceLinkQuality.Good,
             Volume: 1.0f,
             AssignedPlatformVoiceId: null);
-    }
-
-    public enum VoiceGender
-    {
-        Male,
-        Female
     }
 
     public enum VoiceType

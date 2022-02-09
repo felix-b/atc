@@ -5,11 +5,12 @@ using Atc.Data.Traffic;
 using Atc.Math;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
+using Microsoft.AspNetCore.Http;
 using Zero.Loss.Actors;
 using Zero.Serialization.Buffers;
 using Zero.Serialization.Buffers.Impl;
 
-namespace Atc.World
+namespace Atc.World.Traffic
 {
     public partial class AircraftActor : StatefulActor<AircraftActor.AircraftState>
     {
@@ -21,7 +22,7 @@ namespace Atc.World
         public AircraftActor(
             IWorldContext world, 
             IStateStore store,
-            ActivationEvent activation)
+            AircraftActor.ActivationEvent activation)
             : base(TypeString, activation.UniqueId, activation.InitialState)
         {
             _world = world;
@@ -30,14 +31,14 @@ namespace Atc.World
 
         public void ProgressBy(TimeSpan delta)
         {
-            var groundDistance = Distance.FromNauticalMiles(State.GroundSpeed.Knots * delta.TotalHours);
-            GeoMath.CalculateGreatCircleDestination(
-                State.Location,
-                State.Track,
-                groundDistance,
-                out var newLocation);
-
-            _store.Dispatch(this, new MovedEvent(newLocation));
+            // var groundDistance = Distance.FromNauticalMiles(State.GroundSpeed.Knots * delta.TotalHours);
+            // GeoMath.CalculateGreatCircleDestination(
+            //     State.Location,
+            //     State.Track,
+            //     groundDistance,
+            //     out var newLocation);
+            //
+            // _store.Dispatch(this, new AircraftActor.MovedEvent(newLocation));
         }
 
         public void PowerAvionicsOn(Frequency com1Frequency)
@@ -59,23 +60,46 @@ namespace Atc.World
             com1Radio.TuneTo(frequency);
         }
 
+        public AircraftSituation GetCurrentSituation(bool forceRefresh = false)
+        {
+            var utcNow = _world.UtcNow();
+            var isLastKnownSituationStale = (
+                utcNow.Subtract(State.LastKnownSituation.Utc) >= AviationFacts.ControllerRadarRefreshRate ||
+                State.LastFetchedSituationVersion != State.LastKnownSituationVersion
+            );
+
+            if (isLastKnownSituationStale || forceRefresh)
+            {
+                var newSituation = State.CurrentManeuver.GetAircraftSituation(utcNow);
+                _store.Dispatch(this, new UpdateLastKnownSituationEvent(newSituation));
+            }
+
+            return State.LastKnownSituation;
+        }
+
+        public void ReplaceManeuver(Maneuver newManeuver)
+        {
+            _store.Dispatch(this, new ReplaceManeuverEvent(newManeuver));
+        }
+
         public int StateVersion => State.Version;
         public uint Id => State.Data.Id;
         public string TailNo => State.Data.TailNo;
         public string TypeIcao => State.Data.Type.Get().Icao;
         public ZRef<AirlineData>? AirlineData => State.Data.Airline;
         public ZRef<AircraftTypeData> TypeData => State.Data.Type;
-        public Altitude Altitude => State.Altitude;
-        public GeoPoint Location => State.Location;
-        public Bearing Heading => State.Heading;
-        public Speed GroundSpeed => State.GroundSpeed;
-        public Angle Pitch => State.Pitch;
-        public Angle Roll => State.Roll;
+        public Altitude Altitude => State.LastKnownSituation.Altitude;
+        public GeoPoint Location => State.LastKnownSituation.Location;
+        public Bearing Heading => State.LastKnownSituation.Heading;
+        public Speed GroundSpeed => State.LastKnownSituation.GroundSpeed;
+        public Angle Pitch => State.LastKnownSituation.Pitch;
+        public Angle Roll => State.LastKnownSituation.Roll;
         public ActorRef<RadioStationActor> Com1Radio => State.Com1Radio;
         public string Callsign => State.Callsign;
         
         public static ActorRef<AircraftActor> SpawnNewAircraft(
             ISupervisorActor supervisor,
+            IWorldContext world,
             uint id,
             string typeIcao,
             string tailNo,
@@ -85,13 +109,7 @@ namespace Atc.World
             uint? modeS,
             AircraftCategories category,
             OperationTypes operations,
-            GeoPoint location,
-            Altitude altitude,
-            Bearing heading,
-            Bearing? track = null,
-            Speed? groundSpeed = null,
-            Angle? pitch = null,
-            Angle? roll = null)
+            Maneuver maneuver)
         {
             var context = BufferContext.Current;
             ref var worldData = ref context.GetWorldData();
@@ -102,7 +120,9 @@ namespace Atc.World
             var data = new AircraftData {
                 Id = id,
                 Type = worldData.TypeByIcao[typeIcao],
-                TailNo = BufferContext.Current.GetString(tailNo),
+                TailNo = BufferContext.Current.TryGetString(tailNo, out var tailNoStringRef)
+                    ? tailNoStringRef
+                    : new ZStringRef(ZRef<StringRecord>.Null),
                 ModeS = modeS, 
                 Category = category,
                 Operations = operations,
@@ -112,29 +132,27 @@ namespace Atc.World
                 LiveryId = liveryIdRef
             };
 
+            var situation = maneuver.GetAircraftSituation(world.UtcNow());
             var com1Radio = RadioStationActor.Create(
                 supervisor,
-                location,
-                altitude,
+                situation.Location,
+                situation.Altitude,
                 Frequency.FromKhz(0),
                 name: $"{tailNo}/COM1",
                 effectiveCallsign);
 
-            var initialState = new AircraftState(
+            var initialState = new AircraftActor.AircraftState(
                 Version: 1,
                 Data: data,
-                Location: location,
-                Altitude: altitude,
-                Pitch: pitch ?? Angle.FromDegrees(0),
-                Roll: roll ?? Angle.FromDegrees(0),
-                Heading: heading,
-                Track: track ?? heading,
-                GroundSpeed: groundSpeed ?? Speed.FromKnots(0),
+                LastKnownSituation: situation,
+                LastKnownSituationVersion: 1,
+                LastFetchedSituationVersion: 0, 
                 Com1Radio: com1Radio,
-                Callsign: effectiveCallsign
+                Callsign: effectiveCallsign,
+                CurrentManeuver: maneuver
             );
 
-            var actor = supervisor.CreateActor(uniqueId => new ActivationEvent(
+            var actor = supervisor.CreateActor(uniqueId => new AircraftActor.ActivationEvent(
                 uniqueId,
                 initialState
             ));
@@ -144,43 +162,36 @@ namespace Atc.World
         
         public static ActorRef<AircraftActor> LoadAircraftFromCache(
             ISupervisorActor supervisor,
+            IWorldContext world,
             ZRef<AircraftData> dataRef,
-            GeoPoint location,
-            Altitude altitude,
-            Bearing heading,
-            Bearing? track = null,
-            Speed? groundSpeed = null,
-            Angle? pitch = null,
-            Angle? roll = null,
+            Maneuver currentManeuver,
             string? callsign = null)
         {
             ref var data = ref dataRef.Get();
             var tailNo = data.TailNo;
             var effectiveCallsign = callsign ?? tailNo.Value; 
 
+            var situation = currentManeuver.GetAircraftSituation(world.UtcNow());
             var com1Radio = RadioStationActor.Create(
                 supervisor,
-                location,
-                altitude,
+                situation.Location,
+                situation.Altitude,
                 Frequency.FromKhz(0),
                 name: $"{tailNo.Value}/COM1",
                 effectiveCallsign);
 
-            var initialState = new AircraftState(
+            var initialState = new AircraftActor.AircraftState(
                 Version: 1,
                 Data: data,
-                Location: location,
-                Altitude: altitude,
-                Pitch: pitch ?? Angle.FromDegrees(0),
-                Roll: roll ?? Angle.FromDegrees(0),
-                Heading: heading,
-                Track: track ?? heading,
-                GroundSpeed: groundSpeed ?? Speed.FromKnots(0),
+                LastKnownSituation: situation,
+                LastKnownSituationVersion: 1,
+                LastFetchedSituationVersion: 0, 
                 Com1Radio: com1Radio,
-                Callsign: effectiveCallsign
+                Callsign: effectiveCallsign,
+                CurrentManeuver: currentManeuver
             );
             
-            var actor = supervisor.CreateActor(uniqueId => new ActivationEvent(
+            var actor = supervisor.CreateActor(uniqueId => new AircraftActor.ActivationEvent(
                 uniqueId,
                 initialState
             ));
@@ -190,7 +201,7 @@ namespace Atc.World
         
         public static void RegisterType(ISupervisorActorInit supervisor)
         {
-            supervisor.RegisterActorType<AircraftActor,  ActivationEvent>(
+            supervisor.RegisterActorType<AircraftActor,  AircraftActor.ActivationEvent>(
                 TypeString,
                 (activation, dependencies) => new AircraftActor(
                     dependencies.Resolve<IWorldContext>(), 

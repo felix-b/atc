@@ -1,4 +1,6 @@
-﻿namespace Atc.Data.Primitives
+﻿using System;
+
+namespace Atc.Data.Primitives
 {
     public readonly struct Bearing
     {
@@ -19,6 +21,24 @@
         public static Bearing FromTrueDegrees(float degrees)
         {
             return new Bearing(Angle.FromDegrees(degrees), BearingType.True);
+        }
+
+        public static float NormalizeDegrees(float value)
+        {
+            var result = Math.Abs(value) > 720
+                ? Math.IEEERemainder(value, 360)
+                : value;
+            
+            while (result >= 360.0f)
+            {
+                result -= 360.0f;
+            }
+            while (result < 0.0f)
+            {
+                result += 360.0f;
+            }
+
+            return (float)result;
         }
     }
 }

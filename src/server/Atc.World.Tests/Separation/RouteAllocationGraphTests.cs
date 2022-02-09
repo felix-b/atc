@@ -498,9 +498,9 @@ namespace Atc.World.Tests.Separation
             allocationList[3].UntilUtc.Should().Be(time0 + TimeSpan.FromMinutes(18));
         }
 
-        private ActorRef<AircraftActor> MakeAircraftRef(string uniqueId)
+        private ActorRef<Traffic.AircraftActor> MakeAircraftRef(string uniqueId)
         {
-            return new ActorRef<AircraftActor>(Mock.Of<IInternalSupervisorActor>(), uniqueId);
+            return new ActorRef<Traffic.AircraftActor>(Mock.Of<IInternalSupervisorActor>(), uniqueId);
         }
     }
 }

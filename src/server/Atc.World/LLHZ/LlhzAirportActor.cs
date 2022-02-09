@@ -7,7 +7,8 @@
    using Atc.Data.Primitives;
    using Atc.World.Abstractions;
    using Atc.World.Comms;
-using Zero.Loss.Actors;
+   using Atc.World.Traffic.Maneuvers;
+   using Zero.Loss.Actors;
 
 namespace Atc.World.LLHZ
 {
@@ -16,12 +17,13 @@ namespace Atc.World.LLHZ
         public const string TypeString = "llhz-airport";
         
         public record LlhzAirportState(
-            TerminalInformation Atis,
+            TerminalInformation Information,
             ImmutableArray<ActorRef<IStatefulActor>> Children
         );
 
         public record LlhzAirportActivationEvent(
-            string UniqueId
+            string UniqueId,
+            int AircraftCount
         ) : IActivationStateEvent<LlhzAirportActor>;
 
         public record AddChildrenEvent(
@@ -31,6 +33,7 @@ namespace Atc.World.LLHZ
         private readonly ISupervisorActor _supervisor;
         private readonly IWorldContext _world;
         private readonly IStateStore _store;
+        private readonly int _aircraftCount;
 
         public LlhzAirportActor(
             ISupervisorActor supervisor, 
@@ -42,6 +45,7 @@ namespace Atc.World.LLHZ
             _store = store;
             _supervisor = supervisor;
             _world = world;
+            _aircraftCount = activation.AircraftCount;
         }
 
         public IEnumerable<ActorRef<T>> GetChildrenOfType<T>() where T : class, IStatefulActor
@@ -52,9 +56,9 @@ namespace Atc.World.LLHZ
                 .Select(actor => _supervisor.GetRefToActorInstance<T>((T) actor));
         }
 
-        public ActorRef<AircraftActor> GetAircraftByCallsign(string callsign)
+        public ActorRef<Traffic.AircraftActor> GetAircraftByCallsign(string callsign)
         {
-            return GetChildrenOfType<AircraftActor>().First(aircraft => aircraft.Get().Callsign == callsign);
+            return GetChildrenOfType<Traffic.AircraftActor>().First(aircraft => aircraft.Get().Callsign == callsign);
         }
         
         void IStartableActor.Start()
@@ -67,7 +71,7 @@ namespace Atc.World.LLHZ
             DeleteAllActors();
         }
 
-        public TerminalInformation Atis => State.Atis;
+        public TerminalInformation Information => State.Information;
         
         protected override LlhzAirportState Reduce(LlhzAirportState stateBefore, IStateEvent @event)
         {
@@ -142,8 +146,27 @@ namespace Atc.World.LLHZ
             void CreateTraffic()
             {
                 uint nextAircraftId = 1;
-                var aircraft1 = AddAircraft(ref nextAircraftId, "C172", "4XCGK", allChildren);
-                StartNewAIFlight(aircraft1, DepartureIntentType.ToStayInPattern, allChildren);
+                
+                for (
+                    int i = 0 ; 
+                    i < _aircraftCount && i < LlhzFacts.AircraftList.Count && i < LlhzFacts.ParkingStands.Count ; 
+                    i++)
+                {
+                    var aircraftItem = LlhzFacts.AircraftList[i];
+                    var parkingStandItem = LlhzFacts.ParkingStands[i];
+                    var aircraftActor = AddAircraft(
+                        ref nextAircraftId,
+                        aircraftItem.TypeIcao, 
+                        aircraftItem.TailNo, 
+                        parkingStandItem, 
+                        allChildren);
+                    StartNewAIFlight(
+                        allChildren, 
+                        aircraftActor,
+                        parkingStandItem,
+                        DepartureIntentType.ToStayInPattern, 
+                        circuitCount: 4);
+                }
             }
         }
 
@@ -168,28 +191,43 @@ namespace Atc.World.LLHZ
             return station;
         }
 
-        private ActorRef<AircraftActor> AddAircraft(
+        private ActorRef<Traffic.AircraftActor> AddAircraft(
             ref uint nextId, 
             string typeIcao, 
             string tailNo, 
-            List<ActorRef<IStatefulActor>> destination)
+            LlhzFacts.ParkingStandItem parkingStand,
+            List<ActorRef<IStatefulActor>> output)
         {
-            var aircraft = AircraftActor.SpawnNewAircraft(
-                _supervisor,
-                id: nextId++,
+            var maneuver = ParkedColdAndDarkManeuver.Create(
+                startUtc: _world.UtcNow(),
+                finishUtc: DateTime.MaxValue,
+                location: parkingStand.Location,
+                heading: parkingStand.Heading);
+
+            var aircraft = _world.SpawnNewAircraft(
                 typeIcao,
                 tailNo,
-                callsign: tailNo, //.Substring(tailNo.Length - 3, 3),
+                callsign: tailNo,
                 airlineIcao: null,
-                liveryId: null,
-                modeS: null,
                 AircraftCategories.Prop,
                 OperationTypes.GA,
-                new GeoPoint(32.179766d, 34.834404d),
-                Altitude.FromFeetAgl(0),
-                heading: Bearing.FromTrueDegrees(15));
+                maneuver);
             
-            destination.AddRange(new ActorRef<IStatefulActor>[] {
+            // var aircraft = Traffic.AircraftActor.SpawnNewAircraft(
+            //     _supervisor,
+            //     _world,
+            //     id: nextId++,
+            //     typeIcao,
+            //     tailNo,
+            //     callsign: tailNo, //.Substring(tailNo.Length - 3, 3),
+            //     airlineIcao: null,
+            //     liveryId: null,
+            //     modeS: null,
+            //     AircraftCategories.Prop,
+            //     OperationTypes.GA,
+            //     maneuver);
+            
+            output.AddRange(new ActorRef<IStatefulActor>[] {
                 aircraft, 
                 aircraft.Get().Com1Radio //TODO: make actors remove their children in Dispose()?
             });
@@ -198,14 +236,22 @@ namespace Atc.World.LLHZ
         }
 
         private ActorRef<LlhzPilotActor> StartNewAIFlight(
-            ActorRef<AircraftActor> aircraft, 
+            List<ActorRef<IStatefulActor>> output,
+            ActorRef<Traffic.AircraftActor> aircraft,
+            LlhzFacts.ParkingStandItem parkingStand, 
             DepartureIntentType departureType,
-            List<ActorRef<IStatefulActor>> destination)
+            int? circuitCount = null,
+            string? destinationIcao = null)
         {
             var pilot = _supervisor.CreateActor<LlhzPilotActor>(
-                uniqueId => new LlhzPilotActor.ActivationEvent(uniqueId, aircraft, departureType)
+                uniqueId => new LlhzPilotActor.ActivationEvent(
+                    uniqueId, 
+                    aircraft, 
+                    departureType, 
+                    circuitCount, 
+                    parkingStand.InitialTaxiwayPoint)
             );
-            destination.Add(pilot);            
+            output.Add(pilot);            
             return pilot;
         }
         

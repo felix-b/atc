@@ -22,7 +22,7 @@ namespace Atc.World.LLHZ
         ) : IActivationStateEvent<LlhzAirspaceActor>;
 
         public record AllocateRouteEvent(
-            ActorRef<AircraftActor> Owner,
+            ActorRef<Traffic.AircraftActor> Owner,
             DateTime StartAtUtc,
             WaypointAllocationRequest[] Waypoints
         ) : IStateEvent;
@@ -44,7 +44,7 @@ namespace Atc.World.LLHZ
             _store = store;
         }
 
-        public IReadOnlyList<RouteAllocationGraph.Allocation> AllocatePatternRoute(ActorRef<AircraftActor> aircraft, DateTime utc)
+        public IReadOnlyList<RouteAllocationGraph.Allocation> AllocatePatternRoute(ActorRef<Traffic.AircraftActor> aircraft, DateTime utc)
         {
             var request = new AllocateRouteEvent(aircraft, utc, new [] {
                 new WaypointAllocationRequest("v_RWY29", TimeSpan.FromSeconds(30)),
@@ -95,8 +95,32 @@ namespace Atc.World.LLHZ
             var builder = new RouteAllocationGraph.Builder();
 
             builder
-                .Vertex("v_RWY29", new GeoPoint(32.179256, 34.838035), Altitude.FromFeetMsl(110))
-                .Vertex("v_RWY11", new GeoPoint(32.181418, 34.830673), Altitude.FromFeetMsl(90))
+                .Vertex("v_APRE_G1", new GeoPoint(32.179577, 34.835215), Altitude.Ground)
+                .Vertex("v_APRE_G2", new GeoPoint(32.179537, 34.835333), Altitude.Ground)
+                .Vertex("v_APRE_G3", new GeoPoint(32.179359, 34.835982), Altitude.Ground)
+                .Vertex("v_APRE_G4", new GeoPoint(32.179321, 34.836097), Altitude.Ground)
+                .Vertex("v_APRE_G1_TWYK", new GeoPoint(32.179748, 34.835282), Altitude.Ground)
+                .Vertex("v_APRE_G2_TWYK", new GeoPoint(32.179707, 34.835397), Altitude.Ground)
+                .Vertex("v_APRE_G3_TWYK", new GeoPoint(32.179521, 34.836025), Altitude.Ground)
+                .Vertex("v_APRE_G4_TWYK", new GeoPoint(32.179491, 34.836154), Altitude.Ground)
+                .Vertex("v_TWYK_S", new GeoPoint(32.178742, 34.838477), Altitude.Ground)
+                .Vertex("v_TWYK_K5", new GeoPoint(32.178847, 34.838172), Altitude.Ground)
+                .Vertex("v_TWYK_K4", new GeoPoint(32.179528, 34.835912), Altitude.Ground)
+                .Vertex("v_TWYK_K3", new GeoPoint(32.180305, 34.833281), Altitude.Ground)
+                .Vertex("v_TWYK_K2", new GeoPoint(32.181101, 34.830603), Altitude.Ground)
+                .Vertex("v_TWYK_HLD11_EAST", new GeoPoint(32.181468, 34.829773), Altitude.Ground)
+                .Vertex("v_TWYK_S", new GeoPoint(32.181513, 34.829653), Altitude.Ground)
+                .Vertex("v_TWYK_HLD11_WEST", new GeoPoint(32.181539, 34.829559), Altitude.Ground);
+            
+            builder
+                .Vertex("v_RWY1129_S", new GeoPoint(32.179059, 34.838709), Altitude.Ground)
+                .Vertex("v_RWY1129_K5", new GeoPoint(32.179157, 34.838341), Altitude.Ground)
+                .Vertex("v_RWY1129_K4", new GeoPoint(32.179830, 34.836027), Altitude.Ground)
+                .Vertex("v_RWY1129_K3", new GeoPoint(32.180628, 34.833377), Altitude.Ground)
+                .Vertex("v_RWY1129_K2", new GeoPoint(32.181403, 34.830735), Altitude.Ground)
+                .Vertex("v_RWY1129_P", new GeoPoint(32.181708, 34.829728), Altitude.Ground)
+                .Vertex("v_RWY29", new GeoPoint(32.179256, 34.838035), Altitude.Ground)
+                .Vertex("v_RWY11", new GeoPoint(32.181418, 34.830673), Altitude.Ground)
                 .Vertex("v_R29UW", new GeoPoint(32.183481, 34.824624), Altitude.FromFeetMsl(400))
                 .Vertex("v_R29DW", new GeoPoint(32.193079, 34.828169), Altitude.FromFeetMsl(800))
                 .Vertex("v_R29B", new GeoPoint(32.187821, 34.854620), Altitude.FromFeetMsl(800))

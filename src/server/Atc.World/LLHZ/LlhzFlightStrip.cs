@@ -1,12 +1,16 @@
-﻿using Atc.World.Comms;
+﻿using System;
+using Atc.World.Comms;
 using Zero.Loss.Actors;
 
 namespace Atc.World.LLHZ
 {
     public record LlhzFlightStrip(
         DepartureIntentType DepartureType,
-        ActorRef<AircraftActor> Aircraft,
-        LlhzFlightStripLane Lane)
+        ActorRef<Traffic.AircraftActor> Aircraft,
+        LlhzFlightStripLane Lane,
+        DateTime LaneSinceUtc,
+        int? RemainingCircuitCount = null,
+        ActorRef<LlhzControllerActor>? HandedOffBy = null)
     {
         public string Callsign => Aircraft.Get().Callsign;
     }
@@ -24,6 +28,7 @@ namespace Atc.World.LLHZ
         ClearedForTakeoff,
         ReportedDownwind,
         ReportedFinal,
+        ClearedForTouchAndGo,
         ClearedToLand,
         GoingAround,
     }

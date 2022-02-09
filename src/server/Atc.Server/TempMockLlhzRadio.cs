@@ -342,7 +342,7 @@ namespace Atc.Server
 
             var voice = new VoiceDescription(
                 utterance.Language, 
-                VoiceGender.Male, 
+                GenderType.Male, 
                 VoiceType.Bass, 
                 VoiceRate.Medium, 
                 VoiceLinkQuality.Medium, 

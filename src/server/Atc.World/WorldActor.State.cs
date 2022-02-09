@@ -12,7 +12,7 @@ namespace Atc.World
             DateTime StartedAtUtc,
             TimeSpan Timestamp,
             ulong TickCount,
-            ImmutableDictionary<string, ActorRef<AircraftActor>> AircraftById,
+            ImmutableDictionary<string, ActorRef<Traffic.AircraftActor>> AircraftById,
             ImmutableDictionary<int, ImmutableArray<ActorRef<GroundRadioStationAetherActor>>> RadioAetherByKhz
         );
 
@@ -27,11 +27,11 @@ namespace Atc.World
         ) : IStateEvent;
 
         public record AircraftAddedEvent(
-            ActorRef<AircraftActor> Aircraft            
+            ActorRef<Traffic.AircraftActor> Aircraft            
         ) : IStateEvent;
 
         public record AircraftRemovedEvent(
-            ActorRef<AircraftActor> Aircraft            
+            ActorRef<Traffic.AircraftActor> Aircraft            
         ) : IStateEvent;
 
         public record GroundRadioStationAddedEvent(
@@ -119,7 +119,7 @@ namespace Atc.World
                 StartedAtUtc: activation.StartedAtUtc,
                 Timestamp: TimeSpan.Zero,
                 TickCount: 0,
-                AircraftById: ImmutableDictionary<string, ActorRef<AircraftActor>>.Empty,
+                AircraftById: ImmutableDictionary<string, ActorRef<Traffic.AircraftActor>>.Empty,
                 RadioAetherByKhz: ImmutableDictionary<int, ImmutableArray<ActorRef<GroundRadioStationAetherActor>>>.Empty
             );
         }

@@ -72,12 +72,27 @@ namespace Atc.World.LLHZ
             private void BuildIntentCallbackMap()
             {
                 _callbackByIntentType.Add(typeof(GreetingIntent), OnGreeting);
+                _callbackByIntentType.Add(typeof(LandingClearanceReadbackIntent), OnLandingClearanceReadbackIntent);
                 _callbackByIntentType.Add(typeof(GoAheadIntent), OnGoAhead);
                 _callbackByIntentType.Add(typeof(StartupRequestIntent), OnRequestStartup);
                 _callbackByIntentType.Add(typeof(StartupApprovalIntent), OnApproveStartup);
                 _callbackByIntentType.Add(typeof(StartupApprovalReadbackIntent), OnReadbackStartupApproval);
                 _callbackByIntentType.Add(typeof(MonitorFrequencyIntent), OnMonitorFrequencyIntent);
                 _callbackByIntentType.Add(typeof(MonitorFrequencyReadbackIntent), OnMonitorFrequencyReadbackIntent);
+                _callbackByIntentType.Add(typeof(DepartureTaxiRequestIntent), OnDepartureTaxiRequestIntent);
+                _callbackByIntentType.Add(typeof(DepartureTaxiClearanceIntent), OnDepartureTaxiClearanceIntent);
+                _callbackByIntentType.Add(typeof(DepartureTaxiClearanceReadbackIntent), OnDepartureTaxiClearanceReadbackIntent);
+                _callbackByIntentType.Add(typeof(ReportReadyForDepartureIntent), OnReportReadyForDepartureIntent);
+                _callbackByIntentType.Add(typeof(TakeoffClearanceIntent), OnTakeoffClearanceIntent);
+                _callbackByIntentType.Add(typeof(TakeoffClearanceReadbackIntent), OnTakeoffClearanceReadbackIntent);
+                _callbackByIntentType.Add(typeof(ReportDownwindIntent), OnReportDownwindIntent);
+                _callbackByIntentType.Add(typeof(LandingSequenceAssignmentIntent), OnLandingSequenceAssignmentIntent);
+                _callbackByIntentType.Add(typeof(LandingSequenceAssignmentReadbackIntent), OnLandingSequenceAssignmentReadbackIntent);
+                _callbackByIntentType.Add(typeof(FinalApproachReportIntent), OnReportFinalApproachIntent);
+                _callbackByIntentType.Add(typeof(LandingClearanceIntent), OnLandingClearanceIntent);
+                _callbackByIntentType.Add(typeof(FarewellIntent), OnFarewell);
+                _callbackByIntentType.Add(typeof(ReportRemainingCircuitCountIntent), OnReportRemainingCircuitCountIntent);
+                _callbackByIntentType.Add(typeof(ReadbackRemainingCircuitCountIntent), OnReadbackRemainingCircuitCountIntent);
             }
             
             private IEnumerable<UtteranceDescription.Part> OnGreeting(PartyDescription speaker, Intent intent)
@@ -91,6 +106,26 @@ namespace Atc.World.LLHZ
                 return parts;
             }
 
+            private IEnumerable<UtteranceDescription.Part> OnFarewell(PartyDescription speaker, Intent intent)
+            {
+                var parts = new List<UtteranceDescription.Part>();
+                var isThanks = (intent.Options.Flags & IntentOptionFlags.HasThanks) != 0;
+
+                if (isThanks)
+                {
+                    SpellCallsign(parts, intent.CallsignCalling, IntonationType.Farewell);
+                    parts.Add(TextPart("תודה רבה"));
+                }
+                else
+                {
+                    parts.Add(TextPart(TossADice(intent)
+                        ? "bye" + " " + "יום טוב"
+                        : "בבקשה יום טוב"));
+                }
+
+                return parts;
+            } 
+            
             private IEnumerable<UtteranceDescription.Part> OnGoAhead(PartyDescription speaker, Intent intent)
             {
                 var parts = new List<UtteranceDescription.Part>();
@@ -147,7 +182,7 @@ namespace Atc.World.LLHZ
                     }));
                 }
                 
-                SpellAtis(parts, approval, approval.Atis!);
+                SpellTerminalInfo(parts, approval, approval.Information!);
 
                 if (approval.VfrClearance!.InitialNavaid != null && approval.VfrClearance!.InitialAltitude != null)
                 {
@@ -175,7 +210,7 @@ namespace Atc.World.LLHZ
                     SpellText(parts, "רשאי להתניע");
                 }
                 
-                SpellAtisReadback(parts, readback, approval.Atis!);
+                SpellTerminalInfoReadback(parts, readback, approval.Information!);
 
                 if (approval.VfrClearance!.InitialNavaid != null && approval.VfrClearance!.InitialAltitude != null)
                 {
@@ -237,21 +272,326 @@ namespace Atc.World.LLHZ
                 return parts;
             }
 
+            private IEnumerable<UtteranceDescription.Part> OnDepartureTaxiRequestIntent(PartyDescription speaker, Intent intent)
+            {
+                DepartureTaxiRequestIntent request = (DepartureTaxiRequestIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                if (request.ParkingStand != null)
+                {
+                    SpellCallsign(parts, intent.CallsignReceivingOrThrow(), IntonationType.Greeting);
+                    SpellGreeting(parts, intent);
+                    SpellCallsign(parts, intent.CallsignCalling, IntonationType.Greeting);
+                    parts.Add(DataPart("ב" + PhoneticAlphabet.SpellString(request.ParkingStand)));
+                }
+                else
+                {
+                    var heads = TossADice(request);
+                    SpellCallsign(parts, intent.CallsignReceivingOrThrow(), IntonationType.Greeting);
+                    if (heads)
+                    {
+                        SpellGreeting(parts, intent);
+                    }
+                    SpellCallsign(parts, intent.CallsignCalling, IntonationType.Greeting);
+                    if (!heads)
+                    {
+                        SpellGreeting(parts, intent);
+                    }
+                }
+
+                parts.Add(TossADice(intent) 
+                    ? TextPart("מוכן להסיעה")
+                    : TextPart("רשות הסעה"));
+
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnDepartureTaxiClearanceIntent(PartyDescription speaker, Intent intent)
+            {
+                DepartureTaxiClearanceIntent clearance = (DepartureTaxiClearanceIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                SpellCallsign(parts, intent.CallsignReceivingOrThrow(), IntonationType.Greeting);
+                
+                if (clearance.HoldingPoint != null)
+                { 
+                    parts.Add(DataPart("תסיע ל" + clearance.HoldingPoint));
+                }
+                else
+                {
+                    parts.Add(
+                        TossADice(intent)
+                        ? TextPart("רשאי להסיע")
+                        : TextPart("תסיע"));
+                }
+                
+                parts.Add(
+                    TossADice(intent) 
+                    ? DataPart(SpellRunway(clearance.ActiveRunway) + " " + "בשימוש")
+                    : DataPart("מסלול בשימוש" + " " + SpellRunway(clearance.ActiveRunway)));
+
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnDepartureTaxiClearanceReadbackIntent(PartyDescription speaker, Intent intent)
+            {
+                DepartureTaxiClearanceReadbackIntent readback = (DepartureTaxiClearanceReadbackIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+                var clearance = readback.OriginalIntent;
+                
+                if (clearance.HoldingPoint != null)
+                { 
+                    parts.Add(DataPart("מסיע ל" + clearance.HoldingPoint));
+                    parts.Add(TossADice(intent)
+                        ? DataPart(SpellRunway(clearance.ActiveRunway) + " " + "בשימוש")
+                        : DataPart("מסלול בשימוש" + " " + SpellRunway(clearance.ActiveRunway)));
+                }
+                else
+                {
+                    parts.Add(TossADice(intent)
+                        ? TextPart("רשאי להסיע")
+                        : TextPart("מסיע"));
+
+                    parts.Add(DataPart(SpellRunway(clearance.ActiveRunway)));
+                }
+                
+                SpellCallsign(parts, intent.CallsignCalling, IntonationType.Farewell);
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnReportReadyForDepartureIntent(PartyDescription speaker, Intent intent)
+            {
+                ReportReadyForDepartureIntent report = (ReportReadyForDepartureIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                SpellCallsign(parts, intent.CallsignCalling, IntonationType.Greeting);
+                parts.Add(TossADice(intent)
+                    ? TextPart("מוכן לעזיבה")
+                    : TextPart("מוכן להתיישר"));
+                
+                return parts;
+            }
+            
+            private IEnumerable<UtteranceDescription.Part> OnTakeoffClearanceIntent(PartyDescription speaker, Intent intent)
+            {
+                TakeoffClearanceIntent clearance = (TakeoffClearanceIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                SpellCallsign(parts, intent.CallsignReceivingOrThrow(), IntonationType.Greeting);
+                parts.Add(DataPart(SpellWind(clearance.Wind)));
+                parts.Add(TossADice(clearance)
+                    ? DataPart("מסלול" + " " + SpellRunway(clearance.Runway))
+                    : DataPart(SpellRunway(clearance.Runway)));
+
+                parts.Add(InstructionPart("רשאי להמריא"));
+                
+                if ((clearance.Options.Flags & IntentOptionFlags.Expedite) != 0)
+                {
+                    parts.Add(TossADice(clearance)
+                        ? InstructionPart("המראה מיידית")
+                        : InstructionPart("ללא עיכוב"));
+                }
+
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnTakeoffClearanceReadbackIntent(PartyDescription speaker, Intent intent)
+            {
+                TakeoffClearanceReadbackIntent readback = (TakeoffClearanceReadbackIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+                var runwayPart = DataPart(SpellRunway(readback.OriginalIntent.Runway)); 
+                var heads = TossADice(readback);
+
+                if (heads)
+                {
+                    parts.Add(runwayPart);
+                }
+
+                parts.Add(InstructionPart("רשאי להמריא"));
+                
+                if ((readback.OriginalIntent.Options.Flags & IntentOptionFlags.Expedite) != 0)
+                {
+                    parts.Add(TossADice(readback)
+                        ? InstructionPart("המראה מיידית")
+                        : InstructionPart("ללא עיכוב"));
+                }
+
+                if (!heads)
+                {
+                    parts.Add(runwayPart);
+                }
+
+                SpellCallsign(parts, intent.CallsignCalling, IntonationType.Farewell);
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnReportDownwindIntent(PartyDescription speaker, Intent intent)
+            {
+                ReportDownwindIntent report = (ReportDownwindIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                SpellCallsign(parts, report.CallsignCalling, IntonationType.Greeting);
+                parts.Add(TextPart("עם הרוח"));
+                
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnLandingSequenceAssignmentIntent(PartyDescription speaker, Intent intent)
+            {
+                LandingSequenceAssignmentIntent assignment = (LandingSequenceAssignmentIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                SpellCallsign(parts, intent.CallsignReceivingOrThrow(), IntonationType.Greeting);
+                parts.Add(DataPart(
+                    "מספר" + " " + 
+                    PhoneticAlphabet.SpellString(assignment.LandingSequenceNumber.ToString())));
+                
+                if (assignment.Options.Traffic != null)
+                {
+                    SpellTraffic(parts, assignment, assignment.Options.Traffic);
+                }
+                
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnLandingSequenceAssignmentReadbackIntent(PartyDescription speaker, Intent intent)
+            {
+                LandingSequenceAssignmentReadbackIntent readback = (LandingSequenceAssignmentReadbackIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                parts.Add(DataPart(
+                    (TossADice(readback) ? "מספר" + " " : "") + 
+                    PhoneticAlphabet.SpellString(readback.OriginalIntent.LandingSequenceNumber.ToString())));
+                
+                SpellCallsign(parts, intent.CallsignCalling, IntonationType.Farewell);
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnReportFinalApproachIntent(PartyDescription speaker, Intent intent)
+            {
+                FinalApproachReportIntent report = (FinalApproachReportIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                SpellCallsign(parts, report.CallsignCalling, IntonationType.Greeting);
+
+                parts.Add(TossADice(report)
+                    ? TextPart("final")
+                    : TextPart("final" + " " + SpellRunway(report.Runway)));
+                
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnLandingClearanceIntent(PartyDescription speaker, Intent intent)
+            {
+                LandingClearanceIntent clearance = (LandingClearanceIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+
+                SpellCallsign(parts, intent.CallsignReceivingOrThrow(), IntonationType.Greeting);
+                parts.Add(DataPart(SpellWind(clearance.Wind)));
+                parts.Add(TossADice(clearance)
+                    ? DataPart("מסלול" + " " + SpellRunway(clearance.Runway))
+                    : DataPart(SpellRunway(clearance.Runway)));
+
+                var landingTypeText = clearance.LandingType == LandingType.FullStop
+                    ? "לנחות"
+                    : (TossADice(clearance) ? "לגעת" : "touch and go");
+                parts.Add(InstructionPart("רשאי" + " " + landingTypeText));
+
+                return parts;
+            }
+
+            private IEnumerable<UtteranceDescription.Part> OnLandingClearanceReadbackIntent(PartyDescription speaker, Intent intent)
+            {
+                LandingClearanceReadbackIntent readback = (LandingClearanceReadbackIntent) intent;
+                var parts = new List<UtteranceDescription.Part>();
+                var landingTypeText = readback.OriginalIntent.LandingType == LandingType.FullStop
+                    ? "לנחות"
+                    : (TossADice(readback.OriginalIntent) ? "לגעת" : "touch and go");
+                var heads = TossADice(readback);
+
+                if (heads)
+                {
+                    parts.Add(DataPart(SpellRunway(readback.OriginalIntent.Runway)));
+                }
+
+                if (TossADice(readback, probability: 30))
+                {
+                    parts.Add(InstructionPart("רשאי"));
+                    parts.Add(PunctuationPart());
+                }
+                else
+                {
+                    parts.Add(InstructionPart("רשאי" + " " + landingTypeText));
+                    if (TossADice(readback, probability: 60))
+                    {
+                        parts.Add(DataPart(SpellRunway(readback.OriginalIntent.Runway)));
+                    }
+                }
+
+                SpellCallsign(parts, intent.CallsignCalling, IntonationType.Farewell);
+
+                return parts;
+            }
+            
+            private IEnumerable<UtteranceDescription.Part> OnReportRemainingCircuitCountIntent(PartyDescription speaker, Intent intent)
+            {
+                var parts = new List<UtteranceDescription.Part>();
+
+                SpellCallsign(parts, intent.CallsignCalling, IntonationType.Greeting);
+
+                parts.Add(DataPart(TossADice(intent)
+                    ? "שתיים לסיום"
+                    : "אלה יהיו שתי הקפות אחרונות"
+                ));
+
+                return parts;
+            }
+            
+            private IEnumerable<UtteranceDescription.Part> OnReadbackRemainingCircuitCountIntent(PartyDescription speaker, Intent intent)
+            {
+                var parts = new List<UtteranceDescription.Part>();
+                var heads = TossADice(intent);
+
+                if (heads)
+                {
+                    SpellCallsign(parts, intent.CallsignReceivingOrThrow(), IntonationType.Greeting);
+                }
+
+                parts.Add(DataPart(TossADice2(intent)
+                    ? "שתיים לסיום"
+                    : "שתי הקפות אחרונות"
+                ));
+
+                if (!heads)
+                {
+                    SpellCallsign(parts, intent.CallsignReceivingOrThrow(), IntonationType.Greeting, useForPreposition: true);
+                }
+                
+                return parts;
+            }
+            
             private void SpellText(IList<UtteranceDescription.Part> parts, string text, IntonationType intonation = IntonationType.Neutral)
             {
                 parts.Add(TextPart(text, intonation));
             }
 
-            private void SpellCallsign(IList<UtteranceDescription.Part> parts, string callsign, IntonationType intonation)
+            private void SpellCallsign(
+                IList<UtteranceDescription.Part> parts, 
+                string callsign, 
+                IntonationType intonation, 
+                bool useForPreposition = false)
             {
                 var isPhonetic = callsign.Any(c => char.IsDigit(c));
                 var text = isPhonetic
                     ? PhoneticAlphabet.SpellString(callsign.Substring(callsign.Length - 3, 3)) //TODO: fine-tune
                     : callsign;
-                parts.Add(CallsignPart(text, intonation));
+                var preposition = useForPreposition
+                    ? "ל"
+                    : string.Empty;
+                parts.Add(CallsignPart(preposition + text, intonation));
             }
 
-            private void SpellAtis(IList<UtteranceDescription.Part> parts, Intent intent, TerminalInformation atis)
+            private void SpellTerminalInfo(IList<UtteranceDescription.Part> parts, Intent intent, TerminalInformation info)
             {
                 if (TossADice(intent))
                 {
@@ -267,18 +607,18 @@ namespace Atc.World.LLHZ
                 void AddQnhParts() 
                 {
                     parts.Add(TextPart("הלחץ"));
-                    parts.Add(DataPart(PhoneticAlphabet.SpellString(atis.Qnh.InHgX100.ToString())));
+                    parts.Add(DataPart(PhoneticAlphabet.SpellString(info.Qnh.InHgX100.ToString())));
                 }
 
                 void AddRunwayParts()
                 {
                     //parts.Add(TextPart(TossADice(intent, probability: 40) ? "מסלול" : "מסלול בשימוש"));
                     parts.Add(TextPart("מסלול בשימוש"));
-                    parts.Add(DataPart(PhoneticAlphabet.SpellString(atis.ActiveRunwaysDepartureCommaSeparated)));
+                    parts.Add(DataPart(PhoneticAlphabet.SpellString(info.ActiveRunwaysDepartureCommaSeparated)));
                 }
             }
 
-            private void SpellAtisReadback(IList<UtteranceDescription.Part> parts, Intent intent, TerminalInformation atis)
+            private void SpellTerminalInfoReadback(IList<UtteranceDescription.Part> parts, Intent intent, TerminalInformation info)
             {
                 if (TossADice(intent))
                 {
@@ -297,7 +637,7 @@ namespace Atc.World.LLHZ
                     {
                         parts.Add(TextPart("לחץ"));
                     }
-                    parts.Add(DataPart(PhoneticAlphabet.SpellString(atis.Qnh.InHgX100.ToString())));
+                    parts.Add(DataPart(PhoneticAlphabet.SpellString(info.Qnh.InHgX100.ToString())));
                 }
 
                 void AddRunwayParts()
@@ -306,10 +646,10 @@ namespace Atc.World.LLHZ
                     {
                         parts.Add(TextPart(TossADice(intent, probability: 40) ? "מסלול" : "מסלול בשימוש"));
                     }
-                    parts.Add(DataPart(PhoneticAlphabet.SpellString(atis.ActiveRunwaysDepartureCommaSeparated)));
+                    parts.Add(DataPart(PhoneticAlphabet.SpellString(info.ActiveRunwaysDepartureCommaSeparated)));
                 }
             }
-
+            
             private void SpellGreeting(IList<UtteranceDescription.Part> parts, Intent intent)
             {
                 parts.Add(TextPart(GetGreetingText(), IntonationType.Greeting));
@@ -348,6 +688,91 @@ namespace Atc.World.LLHZ
                 return PhoneticAlphabet.SpellString(digitsToSpell);
             }
 
+            private string SpellWind(Wind wind)
+            {
+                if (wind.Speed == null || wind.Speed.Value.Max.Knots <= 3)
+                {
+                    return "רוח קלה";
+                }
+
+                var text = new StringBuilder();
+                text.Append("רוח");
+                text.Append(' ');
+                text.Append(GetDirectionText());
+                text.Append(' ');
+                text.Append(GetSpeedText());
+
+                var gustsText = GetGustsText();
+                if (gustsText != null)
+                {
+                    text.Append(' ');
+                    text.Append(gustsText);
+                }
+
+                return text.ToString(); 
+
+                
+                string GetDirectionText()
+                {
+                    if (wind.Direction == null)
+                    {
+                        return "משתנית";
+                    }
+
+                    var toDegrees = PhoneticAlphabet.SpellString(wind.Direction.Value.Max.Degrees.RoundToInt32().ToString()); 
+                    
+                    if (wind.Direction.Value.IsRange)
+                    {
+                        var fromDegrees = PhoneticAlphabet.SpellString(wind.Direction.Value.Min.Degrees.RoundToInt32().ToString());
+                        return fromDegrees  + " " + "עד" + " " + toDegrees;
+                    }
+
+                    return toDegrees;
+                }
+
+                string SpellKnots(Speed speed)
+                {
+                    var intValue = speed.Knots.RoundToInt32();
+                    switch (intValue)
+                    {
+                        case 1:
+                            return "אחד קשר";
+                        case 2:
+                            return "שני קשרים";
+                        default:
+                            return PhoneticAlphabet.SpellString(intValue.ToString(), useMasculineDigits: true) + " " + "קשרים";
+                    }
+                }
+                
+                string GetSpeedText()
+                {
+                    if (wind.Speed.Value.IsRange)
+                    {
+                        return
+                            SpellKnots(wind.Speed.Value.Min) + 
+                            " " + "עד" + " " +
+                            SpellKnots(wind.Speed.Value.Max);
+                    }
+
+                    return SpellKnots(wind.Speed.Value.Max);
+                }
+
+                string? GetGustsText()
+                {
+                    if (wind.Gust == null)
+                    {
+                        return null;
+                    }
+                    
+                    return "משובים עד" + " " + SpellKnots(wind.Gust.Value);
+                }
+            }
+
+            private string SpellRunway(string name)
+            {
+                return PhoneticAlphabet.SpellString(name);
+            }
+
             private string SpellIntentConditionText(IntentCondition condition)
             {
                 if (condition.SubjectType == ConditionSubjectType.Startup && condition.Timing == ConditionTimingType.After)
@@ -356,6 +781,50 @@ namespace Atc.World.LLHZ
                 }
 
                 throw new NotSupportedException("Specified intent condition is not supported");
+            }
+
+            private void SpellTraffic(IList<UtteranceDescription.Part> parts, Intent intent, TrafficAdvisory traffic)
+            {
+                if (traffic != null && 
+                    traffic.Location.Pattern.HasValue && 
+                    traffic.Location.RelativeOrdering == TrafficAdvisoryLocationOrdering.InFront)
+                {
+                    parts.Add(DataPart("לפניך" + " " + "ב" + GetPatternLocationText()));
+                }
+
+                string GetPatternLocationText()
+                {
+                    var patternEdgeText = GetPatternEdgeText();
+                    if (traffic.Location.Refinement != null && traffic.Location.Refinement != TrafficAdvisoryLocationRefinement.None)
+                    {
+                        switch (traffic.Location.Refinement.Value)
+                        {
+                            case TrafficAdvisoryLocationRefinement.BeginningOf:
+                                return "תחילת " + patternEdgeText;
+                            case TrafficAdvisoryLocationRefinement.MiddleOf:
+                                return "אמצע " + patternEdgeText;
+                            case TrafficAdvisoryLocationRefinement.EndOf:
+                                return (traffic.Location.Pattern.Value == TrafficAdvisoryLocationPattern.Final
+                                    ? "פאינל קצר"
+                                    : "סוף " + patternEdgeText);
+                        }
+                    }
+
+                    return patternEdgeText;
+                }
+
+                string GetPatternEdgeText()
+                {
+                    switch (traffic.Location.Pattern.Value)
+                    {
+                        case TrafficAdvisoryLocationPattern.Upwind: return "צלע מתה";
+                        case TrafficAdvisoryLocationPattern.Crosswind: return "צולבת";
+                        case TrafficAdvisoryLocationPattern.Downwind: return "עם הרוח";
+                        case TrafficAdvisoryLocationPattern.Base: return "בסיס";
+                        case TrafficAdvisoryLocationPattern.Final: return "פאינל";
+                        default: return string.Empty;
+                    }
+                }
             }
 
             private string GetStartupText(DepartureIntentType departureType)
@@ -400,11 +869,17 @@ namespace Atc.World.LLHZ
                 var dice = (intent.Header.CreatedAtUtc.Millisecond % 100); 
                 return (dice < probability);
             }
+
+            private bool TossADice2(Intent intent, int probability = 50)
+            {
+                var dice = (intent.Header.OriginatorCallsign.GetHashCode() % 100); 
+                return (dice < probability);
+            }
         }
 
         public static class PhoneticAlphabet
         {
-            private static readonly string[] _digits = {
+            private static readonly string[] __digitsFeminine = {
                 "אפס",
                 "אחד",
                 "שתיים",
@@ -417,7 +892,48 @@ namespace Atc.World.LLHZ
                 "תשע",
             };
             
-            private static readonly string[] _letters = {
+            private static readonly string[] __digitsMasculine = {
+                "אפס",
+                "אחד",
+                "שניים",
+                "שלושה",
+                "ארבעה",
+                "חמישה",
+                "שישה",
+                "שבעה",
+                "שמונה",
+                "תשעה",
+            };
+
+            private static readonly string[] __letters = {
+                "אלפא",
+                "בראבו",
+                "צ'ארלי",
+                "דלתה",
+                "Echo",
+                "פוקסטרוט",
+                "גולף",
+                "Hotel",
+                "אינדיה",
+                "ג'ולייט",
+                "קילו",
+                "לימה",
+                "מאיק",
+                "נובמבר",
+                "אוסקאר",
+                "פאפא",
+                "קובק",
+                "רומאו",
+                "סיירה",
+                "טאנגו",
+                "יוניפורם",
+                "ויקטור",
+                "וויסקי",
+                "אקסראי",
+                "יאנקי",
+                "Zulu",
+
+                /*
                 "אלפא",
                 "בראבו",
                 "צ'ארלי",
@@ -444,9 +960,10 @@ namespace Atc.World.LLHZ
                 "אקסראי",
                 "יאנקי",
                 "זולו",
+                */
             };
             
-            public static string SpellString(string s)
+            public static string SpellString(string s, bool useMasculineDigits = false)
             {
                 var builder = new StringBuilder();
 
@@ -467,12 +984,13 @@ namespace Atc.World.LLHZ
                     if (c >= '0' && c <= '9')
                     {
                         var digitIndex = c - '0';
-                        builder.Append(_digits[digitIndex]);
+                        var digitText = useMasculineDigits ? __digitsMasculine[digitIndex] : __digitsFeminine[digitIndex]; 
+                        builder.Append(digitText);
                     }
                     else if (c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z')
                     {
                         var letterIndex = char.ToUpper(c) - 'A';
-                        builder.Append(_letters[letterIndex]);
+                        builder.Append(__letters[letterIndex]);
                     }
                     else
                     {

@@ -34,13 +34,6 @@ namespace Atc.World.Comms
         Altitude? InitialAltitude
     );
 
-    public record DepartureTaxiClearance(
-        string ActiveRunway,
-        string? HoldingPoint,
-        ImmutableList<string> TaxiPath,
-        ImmutableList<string> HoldShortRunways
-    );
-
     [WellKnownIntent(WellKnownIntentType.Greeting)]
     public record GreetingIntent(
         IntentHeader Header,
@@ -55,6 +48,20 @@ namespace Atc.World.Comms
         }
     }
 
+    [WellKnownIntent(WellKnownIntentType.Farewell)]
+    public record FarewellIntent(
+        IntentHeader Header,
+        IntentOptions Options
+    ) : Intent(Header, Options)
+    {
+        public FarewellIntent(IPilotRadioOperatingActor pilot)
+            : this(
+                pilot.CreatePilotToAtcIntentHeader(WellKnownIntentType.Farewell), 
+                new IntentOptions(Condition: null, IntentOptionFlags.HasGreeting))
+        {
+        }
+    }
+    
     [WellKnownIntent(WellKnownIntentType.GoAheadInstruction)]
     public record GoAheadIntent(
         IntentHeader Header,
@@ -83,7 +90,7 @@ namespace Atc.World.Comms
     public record StartupApprovalIntent(
         IntentHeader Header,
         IntentOptions Options,
-        TerminalInformation? Atis,
+        TerminalInformation? Information,
         VfrClearance? VfrClearance  
     ) : Intent(Header, Options);
 
@@ -132,7 +139,7 @@ namespace Atc.World.Comms
     public record DepartureTaxiRequestIntent(
         IntentHeader Header,
         IntentOptions Options,
-        string? ParkingStandName = null,
+        string? ParkingStand = null,
         string? AtisDesignator = null,
         Pressure? Qnh = null
     ) : Intent(Header, Options);
@@ -142,8 +149,10 @@ namespace Atc.World.Comms
         IntentHeader Header,
         IntentOptions Options,
         DepartureTaxiRequestIntent OriginalRequest,
-        bool Cleared,
-        DepartureTaxiClearance? Clearance
+        string ActiveRunway,
+        string? HoldingPoint,
+        ImmutableList<string> TaxiPath,
+        ImmutableList<string> HoldShortRunways
     )  : Intent(Header, Options);
 
     [WellKnownIntent(WellKnownIntentType.DepartureTaxiClearanceReadback)]
@@ -213,6 +222,20 @@ namespace Atc.World.Comms
     public record ReportDownwindIntent(
         IntentHeader Header,
         IntentOptions Options
+    )  : Intent(Header, Options);
+
+    [WellKnownIntent(WellKnownIntentType.RemainingCircuitCountReport)]
+    public record ReportRemainingCircuitCountIntent(
+        IntentHeader Header,
+        IntentOptions Options,
+        int RemainingCircuitCount
+    )  : Intent(Header, Options);
+
+    [WellKnownIntent(WellKnownIntentType.RemainingCircuitCountReadback)]
+    public record ReadbackRemainingCircuitCountIntent(
+        IntentHeader Header,
+        IntentOptions Options,
+        ReportRemainingCircuitCountIntent OriginalIntent
     )  : Intent(Header, Options);
 
     [WellKnownIntent(WellKnownIntentType.LandingSequenceAssignment)]

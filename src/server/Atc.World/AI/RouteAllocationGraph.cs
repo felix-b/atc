@@ -28,7 +28,7 @@ namespace Atc.World.AI
         }
 
         public RouteAllocationGraph WithWaypointAllocation(
-            ActorRef<AircraftActor> owner, 
+            ActorRef<Traffic.AircraftActor> owner, 
             string name, 
             DateTime fromUtc, 
             TimeSpan duration, 
@@ -38,7 +38,7 @@ namespace Atc.World.AI
         }
 
         public RouteAllocationGraph WithWaypointAllocation(
-            ActorRef<AircraftActor> owner, 
+            ActorRef<Traffic.AircraftActor> owner, 
             string name, 
             Allocation previous, 
             TimeSpan duration, 
@@ -48,7 +48,7 @@ namespace Atc.World.AI
         }
 
         public RouteAllocationGraph WithWaypointAllocation(
-            ActorRef<AircraftActor> owner, 
+            ActorRef<Traffic.AircraftActor> owner, 
             string waypointName, 
             DateTime fromUtc, 
             DateTime untilUtc,
@@ -89,7 +89,7 @@ namespace Atc.World.AI
         }
 
         public RouteAllocationGraph WithRouteAllocation(
-            ActorRef<AircraftActor> owner, 
+            ActorRef<Traffic.AircraftActor> owner, 
             DateTime utc, 
             (string name, TimeSpan duration)[] waypoints, 
             out IReadOnlyList<Allocation> allocations)
@@ -204,7 +204,7 @@ namespace Atc.World.AI
         }
 
         public record Allocation (
-            ActorRef<AircraftActor> Owner,
+            ActorRef<Traffic.AircraftActor> Owner,
             string WaypointName,
             DateTime FromUtc,
             DateTime UntilUtc) : IComparable<Allocation>

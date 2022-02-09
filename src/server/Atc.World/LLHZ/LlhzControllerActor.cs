@@ -54,12 +54,19 @@ namespace Atc.World.LLHZ
             ActorRef<LlhzControllerActor> ToController
         );
 
+        public record AcceptFlightStripHandOffEvent(
+            LlhzFlightStrip FlightStrip,
+            ActorRef<LlhzControllerActor> FromController
+        ) : IStateEvent;
+
         private readonly ILlhzControllerBrain _brain;
-        
+        private readonly ISupervisorActor _supervisor;
+
         public LlhzControllerActor(
             ActivationEvent activation, 
             ILlhzControllerBrain brain,
             IStateStore store, 
+            ISupervisorActor supervisor,
             IWorldContext world,
             AIRadioOperatingActor.ILogger logger,
             IVerbalizationService verbalizationService) 
@@ -69,15 +76,17 @@ namespace Atc.World.LLHZ
                 verbalizationService, 
                 world,
                 logger,
-                CreateParty(), 
+                CreateParty(activation), 
                 activation, 
                 CreateInitialState(activation))
         {
             _brain = brain;
+            _supervisor = supervisor;
             
             World.Defer($"power-on-radio|{UniqueId}", () => {
+                InitializeBrain();
                 State.Radio.Get().PowerOn();
-                State.Radio.Get().TuneTo(Frequency.FromKhz(130850));
+                //State.Radio.Get().TuneTo(Frequency.FromKhz(130850));
             });
         }
 
@@ -85,7 +94,7 @@ namespace Atc.World.LLHZ
         {
             return State.ControllerPosition;
         }
-
+        
         protected override ImmutableStateMachine CreateStateMachine()
         {
             var builder = new ImmutableStateMachine.Builder(
@@ -122,6 +131,8 @@ namespace Atc.World.LLHZ
                     };
                 case ApplyBrainOutputEvent outputEvent:
                     return HandleApplyBrainOutputEvent(outputEvent);
+                case AcceptFlightStripHandOffEvent handoff:
+                    return HandleAcceptFlightStripHandOffEvent(handoff);
                 default:
                     return HandleBaseEvent();
             }
@@ -170,21 +181,34 @@ namespace Atc.World.LLHZ
                             strip => strip.Callsign));
                 }
 
-                if (outputEvent.HandedOffFlightStrips != null)
-                {
-                    nextStripBoard = nextStripBoard.RemoveRange(
-                        outputEvent.HandedOffFlightStrips.Select(
-                            handoff => handoff.FlightStrip.Callsign));
-                }
-                
                 return stateBefore with {
                     StripBoard = nextStripBoard,
                     IncomingIntents = nextIncomingIntents,
                     OutgoingIntents = nextOutgoingIntents
                 };
             }
+
+            ControllerState HandleAcceptFlightStripHandOffEvent(AcceptFlightStripHandOffEvent handoffEvent)
+            {
+                var flightStrip = handoffEvent.FlightStrip with {
+                    HandedOffBy = handoffEvent.FromController
+                }; 
+                
+                var nextStripBoard = stateBefore.StripBoard.Add(flightStrip.Callsign, flightStrip);
+                
+                return stateBefore with {
+                    StripBoard = nextStripBoard,
+                };
+            }
         }
 
+        private void AcceptHandoff(LlhzFlightStrip flightStrip, ActorRef<LlhzControllerActor> fromController)
+        {
+            Store.Dispatch(this, new AcceptFlightStripHandOffEvent(
+                flightStrip, 
+                fromController));
+        }
+        
         private Intent GetIntentToTransmitNextOrThrow()
         {
             if (State.OutgoingIntents.IsEmpty)
@@ -197,15 +221,26 @@ namespace Atc.World.LLHZ
             Store.Dispatch(this, new DequeueOutgoingIntent());
             return intent;
         }
+
+        private LlhzControllerBrainContext CreateBrainContext()
+        {
+            return new(
+                State.ControllerPosition,
+                State.StripBoard,
+                State.Radio,
+                State.Airport,
+                World);
+        }
+        
+        private void InitializeBrain()
+        {
+            var brainContext = CreateBrainContext();
+            _brain.Initialize(brainContext.AsState);
+        }
         
         private void Think(IStateMachineContext context)
         {
-            LlhzControllerBrainContext brainContext = new(
-                State.ControllerPosition, 
-                State.StripBoard, 
-                State.Radio, 
-                State.Airport, 
-                World);
+            var brainContext = CreateBrainContext();
 
             ObserveSituation();
             HandleIncomingIntents();
@@ -217,7 +252,7 @@ namespace Atc.World.LLHZ
                 if (brainContext.HasOutputs())
                 {
                     var observationOutputEvent = brainContext.TakeOutputEventAndClear(consumedIncomingIntent: false);
-                    Store.Dispatch(this, observationOutputEvent);
+                    ApplyBrainOutput(observationOutputEvent);
                 }
             }
 
@@ -226,11 +261,11 @@ namespace Atc.World.LLHZ
                 while (!State.IncomingIntents.IsEmpty)
                 {
                     var nextIncomingIntent = State.IncomingIntents.Peek();
-                
+
                     _brain.HandleIncomingTransmission(nextIncomingIntent, brainContext.AsState, brainContext.AsActions);
                     // always dispatch output event because at least we have to dequeue the consumed intent
                     var intentOutputEvent = brainContext.TakeOutputEventAndClear(consumedIncomingIntent: true);
-                    Store.Dispatch(this, intentOutputEvent);
+                    ApplyBrainOutput(intentOutputEvent);
                 }
             }
 
@@ -245,6 +280,19 @@ namespace Atc.World.LLHZ
                     State.StateMachine.TransitionTo("SLEEP", resetLastReceivedIntent: true);
                 }
             }
+
+            void ApplyBrainOutput(ApplyBrainOutputEvent outputEvent)
+            {
+                Store.Dispatch(this, outputEvent);
+
+                if (outputEvent.HandedOffFlightStrips != null)
+                {
+                    foreach (var handoff in outputEvent.HandedOffFlightStrips)
+                    {
+                        handoff.ToController.Get().AcceptHandoff(handoff.FlightStrip, _supervisor.GetRefToActorInstance(this));
+                    }
+                }
+            }
         }
 
         public static void RegisterType(ISupervisorActorInit supervisor)
@@ -255,6 +303,7 @@ namespace Atc.World.LLHZ
                     activation,
                     CreateBrain(activation.PositionType),
                     dependencies.Resolve<IStateStore>(),
+                    dependencies.Resolve<ISupervisorActor>(),
                     dependencies.Resolve<IWorldContext>(), 
                     dependencies.Resolve<AIRadioOperatingActor.ILogger>(),
                     dependencies.Resolve<IVerbalizationService>() 
@@ -275,17 +324,21 @@ namespace Atc.World.LLHZ
             }
         }
 
-        private static PartyDescription CreateParty()
+        private static PartyDescription CreateParty(ActivationEvent activation)
         {
+            var gender = activation.PositionType == ControllerPositionType.Local
+                ? GenderType.Female
+                : GenderType.Male;
+            
             return new PersonDescription(
                 "#1", 
-                "Hertzlia Clearance", 
+                activation.Radio.Get().Callsign, 
                 NatureType.AI, 
                 VoiceDescription.Default with {
                     Language = "he-IL",
-                    Gender = VoiceGender.Female
+                    Gender = gender
                 }, 
-                GenderType.Male, 
+                gender,
                 AgeType.Senior, 
                 "Bob");
         }
@@ -296,7 +349,9 @@ namespace Atc.World.LLHZ
                 Radio: activation.Radio, 
                 PendingTransmissionIntent: null,
                 StateMachine: ImmutableStateMachine.Empty,
-                ControllerPosition: new ControllerPositionData(),
+                ControllerPosition: new ControllerPositionData() {
+                    Type = activation.PositionType
+                },
                 Airport: activation.Airport,
                 StripBoard: ImmutableDictionary<string, LlhzFlightStrip>.Empty,
                 IncomingIntents: ImmutableQueue<Intent>.Empty, 

@@ -49,11 +49,11 @@ namespace Atc.Speech.AzurePlugin
             switch (voice.Language.Code)
             {
                 case "he-IL":
-                    return voice.Gender == VoiceGender.Male 
+                    return voice.Gender == GenderType.Male 
                         ? "he-IL-AvriNeural" 
                         : "he-IL-HilaNeural";
                 default:
-                    return voice.Gender == VoiceGender.Male 
+                    return voice.Gender == GenderType.Male 
                         ? "en-US-GuyNeural" 
                         : "en-US-JennyNeural";
             }

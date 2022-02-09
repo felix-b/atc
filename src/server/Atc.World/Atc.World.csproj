@@ -22,4 +22,8 @@
         <PackageReference Include="protobuf-net" Version="3.0.101" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Control" />
+    </ItemGroup>
+
 </Project>

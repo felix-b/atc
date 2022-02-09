@@ -19,7 +19,8 @@ namespace Atc.World.Comms
         LogWriter.LogSpan SpeechSynthesisCompletion(TimeSpan synthesisDuration, TimeSpan speechDuration);
         LogWriter.LogSpan OnSilenceInAether();
         void NoPendingTransmissionsFound();
-        void BeginQueuedTransmission(ulong tokenId, int tokenCookie);
+        void BeginImmediateTransmission(string target, int cookie);
+        void BeginQueuedTransmission(ulong tokenId, int tokenCookie, string target);
         void IsSilentForNextTransmission(string @from, string? to, string? lastFrom, string? lastTo, DateTime silenceSinceUtc, bool result);
     }
 }

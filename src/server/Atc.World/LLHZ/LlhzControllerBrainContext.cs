@@ -71,7 +71,7 @@ namespace Atc.World.LLHZ
             SafeAddItem(ref _removedFlightStrips, flightStrip);
         }
 
-        T ILlhzControllerBrainActions.CreateIntent<T>(ActorRef<AircraftActor> recipient, WellKnownIntentType type, Func<IntentHeader, T> factory)
+        T ILlhzControllerBrainActions.CreateIntent<T>(ActorRef<Traffic.AircraftActor> recipient, WellKnownIntentType type, Func<IntentHeader, T> factory)
         {
             var radioInstance = _radio.Get();
             var header = new IntentHeader(

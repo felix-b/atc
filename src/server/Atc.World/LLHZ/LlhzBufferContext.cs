@@ -16,6 +16,7 @@ namespace Atc.World.LLHZ
             BufferContextScope.UseStaticScope();
             _bufferScope = AtcBufferContext.CreateEmpty(out _bufferContext);
             LoadTypes();
+            LoadTailNumbers();
         }
         
         public void Dispose()
@@ -39,7 +40,7 @@ namespace Atc.World.LLHZ
                 context.AllocateRecord(new AircraftTypeData() {
                     Icao = context.AllocateString("C172"),
                     Name = context.AllocateString("Cessna 172"),
-                    Callsign = context.AllocateString("4XCGK"),
+                    Callsign = context.AllocateString("Cessna"),
                     Category = AircraftCategories.Prop,
                     Operations = OperationTypes.GA,
                     FlightModel = dummyFlightModelRef,
@@ -51,12 +52,22 @@ namespace Atc.World.LLHZ
                 context.AllocateRecord(new AircraftTypeData() {
                     Icao = context.AllocateString("C152"),
                     Name = context.AllocateString("Cessna 152"),
-                    Callsign = context.AllocateString("4XCSN"),
+                    Callsign = context.AllocateString("Cessna"),
                     Category = AircraftCategories.Prop,
                     Operations = OperationTypes.GA,
                     FlightModel = dummyFlightModelRef,
                 })
             );
+        }
+
+        private void LoadTailNumbers()
+        {
+            var context = _bufferContext!;
+
+            for (int i = 0; i < LlhzFacts.AircraftList.Count; i++)
+            {
+                context.AllocateString(LlhzFacts.AircraftList[i].TailNo);
+            }
         }
     }
 }

@@ -58,6 +58,7 @@ export function createWorldServiceClient(): WorldServiceClient {
         onOpen: addOpenStatusListener,
         onMessage: addMessageListener,
         sendMessage,
+        tuneRadio,
     }
 
     function addOpenStatusListener(listener: StatusListener) {
@@ -139,5 +140,35 @@ export function createWorldServiceClient(): WorldServiceClient {
                 return prop as OutgoingPayloadType;
             }
         }
+    }
+
+    function tuneRadio(khz: number) {
+        const situation = {
+            "altitudeFeetMsl":0,
+            "isOnGround":false,
+            "heading":20,
+            "groundSpeedKt":0,
+            "pitch":0,
+            "roll":0,
+            "flapRatio":0,
+            "spoilerRatio":0,
+            "gearRatio":0,
+            "noseWheelAngle":0,
+            "landingLights":false,
+            "taxiLights":false,
+            "strobeLights":false,
+            "monitoringFrequencyKhz":[khz],
+            "transmittingFrequencyKhz":0,
+            "squawk":"",
+            "modeC":false,
+            "modeS":false,
+            "location":{"lat":32.179537,"lon":34.835333}
+        };
+        sendMessage({ 
+            userUpdateAircraftSituation: { 
+                aircraftId: 1, 
+                situation,
+            }
+        });
     }
 };

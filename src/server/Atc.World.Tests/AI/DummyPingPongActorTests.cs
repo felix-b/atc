@@ -62,15 +62,18 @@ namespace Atc.World.Tests.AI
             
             var actualLog = pingActor.Get().IntentLog.Concat(pongActor.Get().IntentLog).OrderBy(s => s).ToArray();
             var expectedLog = new[] {
-                "10:30:11:ping1->pong1:PING#1", //1sec start + 5sec delay + 5sec utterance
-                "10:30:19:pong1->ping1:PONG#1", //3sec silence + 5sec utterance
-                "10:30:29:ping1->pong1:PING#2",
-                "10:30:37:pong1->ping1:PONG#2",
-                "10:30:47:ping1->pong1:PING#3",
-                "10:30:55:pong1->ping1:PONG#3"
+                "10:30:11:ping1->pong1:PING#1",
+                "10:30:16:pong1->ping1:PONG#1",
+                "10:30:26:ping1->pong1:PING#2",
+                "10:30:31:pong1->ping1:PONG#2",
+                "10:30:41:ping1->pong1:PING#3",
+                "10:30:46:pong1->ping1:PONG#3",
+                "10:30:56:ping1->pong1:PING#4",
             };
 
             actualLog.Should().BeStrictlyEquivalentTo(expectedLog);
         }
     }
 }
+
+

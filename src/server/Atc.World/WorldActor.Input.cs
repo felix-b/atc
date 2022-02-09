@@ -6,6 +6,7 @@ using Atc.Data.Primitives;
 using Atc.Data.Traffic;
 using Atc.World.Abstractions;
 using Atc.World.Comms;
+using Atc.World.Traffic;
 using Microsoft.AspNetCore.Http;
 using Zero.Latency.Servers;
 using Zero.Loss.Actors;
@@ -42,7 +43,7 @@ namespace Atc.World
             InitializeMockWorldObjects();
         }
 
-        public IObservableQuery<AircraftActor> QueryTraffic(in GeoRect rect)
+        public IObservableQuery<Traffic.AircraftActor> QueryTraffic(in GeoRect rect)
         {
             return new TrafficObservableQuery(this, rect);
         }
@@ -68,13 +69,13 @@ namespace Atc.World
             //    - existing subscriptions are run against the ChangeSet and the observers are invoked as necessary 
             // 4.
 
-            foreach (var aircraft in State.AircraftById.Values)
-            {
-                using (_logger.ProgressByAircraft(aircraft.UniqueId))
-                {
-                    aircraft.Get().ProgressBy(delta);
-                }
-            }
+            // foreach (var aircraft in State.AircraftById.Values)
+            // {
+            //     using (_logger.ProgressByAircraft(aircraft.UniqueId))
+            //     {
+            //         aircraft.Get().ProgressBy(delta);
+            //     }
+            // }
 
             ExecuteDeferredTasks();
         }
@@ -125,27 +126,32 @@ namespace Atc.World
             return null;
         }
 
+        public ActorRef<AircraftActor> GetAircraftByActorId(string uniqueId)
+        {
+            if (State.AircraftById.TryGetValue(uniqueId, out var actor))
+            {
+                return actor;
+            }
+
+            throw new KeyNotFoundException($"Aircraft actor '{uniqueId}' could not be found.");
+        }
+
         //TODO: fix this
         [NotEventSourced]
         private uint _nextAircraftId = 1;
         
-        public ActorRef<AircraftActor> SpawnNewAircraft(
+        public ActorRef<Traffic.AircraftActor> SpawnNewAircraft(
             string typeIcao,
             string tailNo,
             string? callsign,
             string? airlineIcao,
             AircraftCategories category,
             OperationTypes operations,
-            GeoPoint location,
-            Altitude altitude,
-            Bearing heading,
-            Bearing? track = null,
-            Speed? groundSpeed = null,
-            Angle? pitch = null,
-            Angle? roll = null)
+            Maneuver maneuver)
         {
-            var aircraft = AircraftActor.SpawnNewAircraft(
+            var aircraft = Traffic.AircraftActor.SpawnNewAircraft(
                 _supervisor,
+                this,
                 _nextAircraftId++,
                 typeIcao,
                 tailNo,
@@ -155,13 +161,7 @@ namespace Atc.World
                 modeS: null,
                 category,
                 operations,
-                location,
-                altitude,
-                heading,
-                track,
-                groundSpeed,
-                pitch, 
-                roll);
+                maneuver);
             
             _store.Dispatch(this, new AircraftAddedEvent(aircraft));
             return aircraft;

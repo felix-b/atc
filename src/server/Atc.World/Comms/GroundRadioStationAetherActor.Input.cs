@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Immutable;
+using System.Linq;
 using Atc.World.Abstractions;
 using Zero.Loss.Actors;
 
@@ -73,18 +74,23 @@ namespace Atc.World.Comms
             ActorRef<IRadioOperatingActor> speaker, 
             string? toCallsign,
             int cookie, 
-            out ulong tokenId)
+            out ulong? tokenId)
         {
-            tokenId = State.LastTransmissionQueueTokenId + 1;
-            var token = new TransmissionQueueToken(tokenId, speaker, cookie);
-
-            _store.Dispatch(this, new TransmissionTokenEnqueuedEvent(token));
-            _logger.RegisteredPendingTransmission(tokenId, speaker.UniqueId, cookie);
 
             if (IsSilentForNextTransmission(speaker.Get().Party.Callsign, toCallsign)) 
             {
-                OnSilence();
+                _logger.BeginImmediateTransmission(speaker.UniqueId, cookie);
+                tokenId = null;
+                speaker.Get().BeginQueuedTransmission(cookie);
                 //_world.Defer($"aether-next-conversation|{UniqueId}", OnSilence);
+            }
+            else
+            {
+                tokenId = State.LastTransmissionQueueTokenId + 1;
+                var token = new TransmissionQueueToken(tokenId.Value, speaker, cookie);
+
+                _store.Dispatch(this, new TransmissionTokenEnqueuedEvent(token));
+                _logger.RegisteredPendingTransmission(tokenId.Value, speaker.UniqueId, cookie);
             }
         }
 
@@ -127,7 +133,7 @@ namespace Atc.World.Comms
                     return true;
                 }
 
-                return (State.SilenceSinceUtc + AviationDomain.SilenceDurationBeforeNewConversation < _world.UtcNow());
+                return (State.SilenceSinceUtc + AviationFacts.SilenceDurationBeforeNewConversation < _world.UtcNow());
             }
         }
         
@@ -207,7 +213,7 @@ namespace Atc.World.Comms
             var token = State.PendingTransmissionTokens.Peek();
             _store.Dispatch(this, new TransmissionTokenDequeuedEvent());
             
-            _logger.BeginQueuedTransmission(token.Id, token.Cookie);
+            _logger.BeginQueuedTransmission(token.Id, token.Cookie, token.Target.UniqueId);
             token.Target.Get().BeginQueuedTransmission(token.Cookie);
         }
 
@@ -231,7 +237,7 @@ namespace Atc.World.Comms
             _silenceTrigger?.Cancel();
             _silenceTrigger = _world.DeferBy(
                 $"aether-silence-detected|{UniqueId}",
-                AviationDomain.SilenceDurationBeforeNewConversation, 
+                AviationFacts.SilenceDurationBeforeNewConversation, 
                 OnSilence);
         }
 
