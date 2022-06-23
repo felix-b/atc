@@ -1,2 +1,0 @@
-The files in this directory are provided by OpenFlights.
-See the licensing terms here : https://openflights.org/data.html#license

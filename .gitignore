@@ -1,6 +1,5 @@
-build/
-build-lin/
-build-mac/
-build-win/
-cmake-build-debug/
-build-debug/
+.idea/
+*.sln.DotSettings.user
+bin/
+obj/
+Generated/
