@@ -15,7 +15,9 @@ public interface ISilo
     ISiloTimeTravel TimeTravel { get; }
     
     ISiloTelemetry Telemetry { get; }
-    
+
+    ISiloEnvironment Environment { get; }
+
     public static ISilo Create(
         string siloId,
         SiloConfigurationBuilder configuration,
@@ -32,7 +34,7 @@ public interface ISiloGrains
     GrainRef<T> CreateGrain<T>(ActivationEventFactory<IGrainActivationEvent<T>> activationEventFactory)
         where T : class, IGrain;
 
-    void DeleteGrain<T>(GrainRef<T> grain)
+    void DeleteGrain<T>(GrainRef<T> grainRef)
         where T : class, IGrain;
 
     bool TryGetGrainById<T>(string grainId, out GrainRef<T>? grainRef)
@@ -77,20 +79,19 @@ public interface ISiloEventDispatch
 
 public interface ISiloTaskQueue
 {
-    
 }
 
 public interface ISiloTimeTravel
 {
-    ISiloSnapshot TakeSnapshot();
-    void RestoreSnapshot(ISiloSnapshot snapshot);
-    void ReplayEvents(IEnumerable<IGrainEvent> events);
+    SiloSnapshot TakeSnapshot();
+    void RestoreSnapshot(SiloSnapshot snapshot);
+    void ReplayEvents(IEnumerable<GrainEventEnvelope> envelopes);
 }
 
-public interface ISiloSnapshot
-{
-    ulong NextEventSequenceNo { get; }
-}
+public record SiloSnapshot(
+    ulong NextDispatchSequenceNo,
+    object OpaqueData
+);
 
 public interface ISiloDependencyBuilder
 {

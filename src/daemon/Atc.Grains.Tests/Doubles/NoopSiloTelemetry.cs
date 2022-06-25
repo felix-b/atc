@@ -1,4 +1,4 @@
-namespace Atc.Grains.Tests.Samples;
+namespace Atc.Grains.Tests.Doubles;
 
 public class NoopSiloTelemetry : ISiloTelemetry
 {

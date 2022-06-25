@@ -2,15 +2,23 @@ namespace Atc.Grains.Impl;
 
 public class EventDispatch : ISiloEventDispatch
 {
-    private readonly ISilo _silo;
+    private readonly string _siloId;
     private readonly ISiloEventStreamWriter _eventWriter;
+    private readonly ISiloTelemetry _telemetry;
+    private readonly ISiloEnvironment _environment;
     private ulong _nextSequenceNo = 1;
     private bool _dispatching = false;
-    
-    public EventDispatch(ISilo silo, ISiloEventStreamWriter eventWriter, ISiloTelemetry telemetry)
+
+    public EventDispatch(
+        string siloId, 
+        ISiloEventStreamWriter eventWriter, 
+        ISiloTelemetry telemetry, 
+        ISiloEnvironment environment)
     {
-        _silo = silo;
+        _siloId = siloId;
         _eventWriter = eventWriter;
+        _telemetry = telemetry;
+        _environment = environment;
     }
 
     public async Task Dispatch(IGrain target, IGrainEvent @event)
@@ -21,7 +29,8 @@ public class EventDispatch : ISiloEventDispatch
         }
 
         var sequenceNo = _nextSequenceNo++;
-        await _eventWriter.WriteGrainEvent(_silo, target, sequenceNo, @event);
+        var envelope = CreateEventEnvelope(target, @event, sequenceNo);
+        await _eventWriter.WriteGrainEvent(envelope);
 
         //using var logSpan = _logger.Dispatch(sequenceNo, target.UniqueId, @event.GetType().Name, @event.ToString());
         _dispatching = true;
@@ -50,4 +59,9 @@ public class EventDispatch : ISiloEventDispatch
     }
 
     public ulong NextSequenceNo => _nextSequenceNo;
+
+    private GrainEventEnvelope CreateEventEnvelope(IGrain grain, IGrainEvent @event, ulong sequenceNo)
+    {
+        return new GrainEventEnvelope(_siloId, grain.GrainId, sequenceNo, _environment.UtcNow, @event);
+    }
 }

@@ -2,5 +2,13 @@ namespace Atc.Grains;
 
 public interface ISiloEventStreamWriter
 {
-    Task WriteGrainEvent(ISilo targetSilo, IGrain targetGrain, ulong sequenceNo, IGrainEvent @event);
+    Task WriteGrainEvent(GrainEventEnvelope envelope);
 }
+
+public record GrainEventEnvelope(
+    string TargetSiloId,
+    string TargetGrainId,
+    ulong SequenceNo,
+    DateTime Utc,
+    IGrainEvent Event
+);

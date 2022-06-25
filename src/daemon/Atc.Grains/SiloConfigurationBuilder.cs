@@ -8,12 +8,14 @@ public class SiloConfigurationBuilder
 
     public SiloConfigurationBuilder(
         ISiloTelemetry telemetry, 
-        ISiloEventStreamWriter eventStreamWriter, 
-        ISiloDependencyBuilder dependencyBuilder)
+        ISiloEventStreamWriter eventWriter, 
+        ISiloDependencyBuilder dependencyBuilder,
+        ISiloEnvironment environment)
     {
         Telemetry = telemetry;
-        EventStreamWriter = eventStreamWriter;
+        EventWriter = eventWriter;
         DependencyBuilder = dependencyBuilder;
+        Environment = environment;
     }
 
     public void RegisterGrainType<TGrain, TActivationEvent>(
@@ -29,8 +31,9 @@ public class SiloConfigurationBuilder
     public IReadOnlyCollection<GrainTypeRegistration> GrainTypeRegistrations => _grainRegistrationByType.Values;
 
     public ISiloTelemetry Telemetry { get; }
-    public ISiloEventStreamWriter EventStreamWriter { get; }
+    public ISiloEventStreamWriter EventWriter { get; }
     public ISiloDependencyBuilder DependencyBuilder { get; }
+    public ISiloEnvironment Environment { get; }
 }
 
 public abstract record GrainTypeRegistration(

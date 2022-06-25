@@ -21,8 +21,10 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
     }
 
     public record GrainEntry(
+        string GrainId,
+        string GrainType,
         IGrainActivationEvent ActivationEvent,
-        ulong SequenceNo
+        ulong ActivationEventSequenceNo
     );
     
     public record DeactivateGrainEvent(
@@ -72,9 +74,20 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         return new GrainRef<T>(this, grain.GrainId);
     }
 
-    public void DeleteGrain<T>(GrainRef<T> grain) where T : class, IGrain
+    public void DeleteGrain<T>(GrainRef<T> grainRef) where T : class, IGrain
     {
-        throw new NotImplementedException();
+        if (!_grainInstanceById.TryGetValue(grainRef.GrainId, out var grainInstance))
+        {
+            throw new GrainNotFoundException($"Grain '{grainRef.GrainId}' not found");
+        }
+
+        if (!(grainInstance is T))
+        {
+            throw new GrainTypeMismatchException(
+                $"Expected grain '{grainRef.GrainId}' to be '{typeof(T).Name}', but found '{grainInstance.GetType().Name}'");
+        }
+            
+        Dispatch(new DeactivateGrainEvent(grainRef.GrainId));    
     }
 
     public bool TryGetGrainById<T>(string grainId, out GrainRef<T>? grainRef) where T : class, IGrain
@@ -115,19 +128,125 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         return new GrainRef<T>(this, grainInstance.GrainId);
     }
 
-    public ISiloSnapshot TakeSnapshot()
+    public SiloSnapshot TakeSnapshot()
     {
-        throw new NotImplementedException();
+        var grainSnapshots = _grainInstanceById.Values
+            .Select(TakeGrainSnapshot)
+            .ToImmutableList();
+
+        var opaqueData = new SiloSnapshotOpaqueData(
+            NextDispatchSequenceNo: _dispatch.NextSequenceNo,
+            Grains: grainSnapshots,
+            LastInstanceIdPerTypeString: State.LastInstanceIdPerTypeString);
+
+        return new SiloSnapshot(
+            NextDispatchSequenceNo: opaqueData.NextDispatchSequenceNo,
+            OpaqueData: opaqueData);
+        
+        GrainSnapshotOpaqueData TakeGrainSnapshot(IGrain grain)
+        {
+            var entry = State.GrainEntryById[grain.GrainId];
+            var snapshot = new GrainSnapshotOpaqueData(
+                GrainType: grain.GrainType,
+                GrainId: grain.GrainId,
+                ActivationEvent: entry.ActivationEvent,
+                ActivationEventSequenceNo: entry.ActivationEventSequenceNo,
+                State: grain.GetState());
+            return snapshot;
+        }
     }
 
-    public void RestoreSnapshot(ISiloSnapshot snapshot)
+    public void RestoreSnapshot(SiloSnapshot snapshot)
     {
-        throw new NotImplementedException();
+        var siloOpaqueData = (SiloSnapshotOpaqueData) snapshot.OpaqueData;
+        
+        RemoveExtraGrains();
+        CreateOrUpdateGrains();
+
+        var rebuiltState = RebuildState();
+        ((IGrain)this).SetState(rebuiltState);
+        
+        void CreateOrUpdateGrains()
+        {
+            foreach (var grainSnapshot in siloOpaqueData.Grains)
+            {
+                var instance = GetOrCreateGrainInstance(grainSnapshot, out var createdNew);
+                if (createdNew)
+                {
+                    _grainInstanceById.Add(instance.GrainId, instance);
+                }
+
+                instance.SetState(grainSnapshot.State);
+            }
+        }
+
+        IGrain GetOrCreateGrainInstance(GrainSnapshotOpaqueData grainSnapshot, out bool createdNew)
+        {
+            if (_grainInstanceById.TryGetValue(grainSnapshot.GrainId, out var existingGrain))
+            {
+                createdNew = false;
+                return existingGrain;
+            }
+
+            var newInstance = InstantiateGrain(grainSnapshot.ActivationEvent, out var typeString);
+            if (typeString != grainSnapshot.GrainType)
+            {
+                throw new GrainTypeMismatchException(
+                    $"Expected grain type '{grainSnapshot.GrainType}', but found '{typeString}'.");
+            }
+
+            createdNew = true;
+            return newInstance;
+        }
+        
+        GrainState RebuildState()
+        {
+            var rebuiltEntryById = siloOpaqueData.Grains
+                .Select(g => new GrainEntry(
+                    GrainId: g.GrainId,
+                    GrainType: g.GrainType,
+                    ActivationEvent: g.ActivationEvent,
+                    ActivationEventSequenceNo: g.ActivationEventSequenceNo))
+                .ToImmutableDictionary(g => g.GrainId);
+            
+            return new GrainState(
+                GrainEntryById: rebuiltEntryById,
+                LastInstanceIdPerTypeString: siloOpaqueData.LastInstanceIdPerTypeString
+            );
+        }
+        
+        void RemoveExtraGrains()
+        {
+            var extraGrainIds = new HashSet<string>(_grainInstanceById.Keys);
+            extraGrainIds.ExceptWith(siloOpaqueData.Grains.Select(g => g.GrainId));
+
+            foreach (var id in extraGrainIds)
+            {
+                var grain = _grainInstanceById[id];
+                DisposeGrain(grain);
+                _grainInstanceById.Remove(id);
+            }
+        }
     }
 
-    public void ReplayEvents(IEnumerable<IGrainEvent> events)
+    public void ReplayEvents(IEnumerable<GrainEventEnvelope> envelopes)
     {
-        throw new NotImplementedException();
+        foreach (var envelope in envelopes)
+        {
+            if (envelope.SequenceNo != _dispatch.NextSequenceNo)
+            {
+                throw new EventOutOfSequenceException(
+                    $"Expected event sequence no. to be {_dispatch.NextSequenceNo}, but got #{envelope.SequenceNo}");
+            }
+                
+            if (!_grainInstanceById.TryGetValue(envelope.TargetGrainId, out var targetGrain))
+            {
+                throw new GrainNotFoundException(
+                    $"Cannot replay event #{envelope.SequenceNo} because target grain '{envelope.TargetGrainId}' not found");
+            }
+                
+            _dispatch.Dispatch(targetGrain, envelope.Event);
+        }
     }
 
     protected override GrainState Reduce(GrainState stateBefore, IGrainEvent @event)
@@ -145,7 +264,11 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
                 return stateBefore with {
                     GrainEntryById = stateBefore.GrainEntryById.Add(
                         activation.GrainId, 
-                        new GrainEntry(activation, _dispatch.NextSequenceNo)),
+                        new GrainEntry(
+                            GrainId: newGrain.GrainId,
+                            GrainType: newGrain.GrainType,
+                            ActivationEvent: activation, 
+                            ActivationEventSequenceNo: _dispatch.NextSequenceNo)),
                     LastInstanceIdPerTypeString = stateBefore.LastInstanceIdPerTypeString.SetItem(typeString, lastInstanceId + 1),
                 };
             case DeactivateGrainEvent deactivation:

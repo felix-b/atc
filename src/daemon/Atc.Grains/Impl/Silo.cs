@@ -13,7 +13,8 @@ public class Silo : ISilo
     {
         SiloId = siloId;
         Telemetry = configuration.Telemetry;
-        Dispatch = new EventDispatch(this, configuration.EventStreamWriter, configuration.Telemetry);
+        Environment = configuration.Environment;
+        Dispatch = new EventDispatch(siloId, configuration.EventWriter, configuration.Telemetry, configuration.Environment);
         TaskQueue = new TaskQueue(configuration.Telemetry);
 
         _superGrain = new SuperGrain(
@@ -39,4 +40,5 @@ public class Silo : ISilo
     public ISiloTaskQueue TaskQueue { get; }
     public ISiloTimeTravel TimeTravel => _superGrain;
     public ISiloTelemetry Telemetry { get; }
+    public ISiloEnvironment Environment { get; }
 }

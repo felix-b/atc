@@ -13,6 +13,10 @@ public class SampleGrainTwo : AbstractGrain<SampleGrainTwo.GrainState>
         decimal Value
     ) : IGrainActivationEvent<SampleGrainTwo>;
 
+    public record ChangeValueEvent(
+        decimal NewValue
+    ) : IGrainEvent;
+
     public SampleGrainTwo(
         string grainId, 
         ISiloEventDispatch dispatch, 
@@ -21,11 +25,24 @@ public class SampleGrainTwo : AbstractGrain<SampleGrainTwo.GrainState>
     {
     }
 
+    public void ChangeValue(decimal newValue)
+    {
+        Dispatch(new ChangeValueEvent(newValue));
+    }
+
     public decimal Value => State.Value;
 
     protected override GrainState Reduce(GrainState stateBefore, IGrainEvent @event)
     {
-        return stateBefore;
+        switch (@event)
+        {
+            case ChangeValueEvent changeValue:
+                return stateBefore with {
+                    Value = changeValue.NewValue
+                };
+            default:
+                return stateBefore;
+        }
     }
 
     public static void RegisterGrainType(SiloConfigurationBuilder config)

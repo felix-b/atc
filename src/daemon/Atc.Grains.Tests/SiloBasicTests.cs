@@ -1,3 +1,4 @@
+using Atc.Grains.Tests.Doubles;
 using Atc.Grains.Tests.Samples;
 using FluentAssertions;
 using NUnit.Framework;
@@ -14,7 +15,7 @@ public class SiloBasicTests
     [Test]
     public void CanCreateGrain()
     {
-        var silo = TestSilo.Create("test1");
+        var silo = TestDoubles.CreateConfiguredSilo("test1");
 
         var grainRef = silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
@@ -28,7 +29,7 @@ public class SiloBasicTests
     [Test]
     public void CanGetCreatedGrainObject()
     {
-        var silo = TestSilo.Create("test1");
+        var silo = TestDoubles.CreateConfiguredSilo("test1");
 
         var grainRef = silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
@@ -46,7 +47,7 @@ public class SiloBasicTests
     [Test]
     public void CanMakeUniqueGrainIds()
     {
-        var silo = TestSilo.Create("test1");
+        var silo = TestDoubles.CreateConfiguredSilo("test1");
 
         var one1 = silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
@@ -72,7 +73,7 @@ public class SiloBasicTests
     [Test]
     public void CanGetGrainObjectsOfMultipleTypes()
     {
-        var silo = TestSilo.Create("test1");
+        var silo = TestDoubles.CreateConfiguredSilo("test1");
 
         var oneRef1 = silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
@@ -106,7 +107,7 @@ public class SiloBasicTests
     public void CanDispatchGrainActivationEvents()
     {
         var eventWriter = new TestEventStreamWriter();
-        var silo = TestSilo.Create("test1", eventWriter: eventWriter);
+        var silo = TestDoubles.CreateConfiguredSilo("test1", eventWriter: eventWriter);
 
         silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
@@ -125,16 +126,16 @@ public class SiloBasicTests
 
         eventWriter.Events.Count.Should().Be(4);
 
-        eventWriter.Events[0].Should()
+        eventWriter.Events[0].Event.Should()
             .BeOfType<SampleGrainOne.GrainActivationEvent>()
             .Which.GrainId.Should().Be("SampleGrainOne/#1");
-        eventWriter.Events[1].Should()
+        eventWriter.Events[1].Event.Should()
             .BeOfType<SampleGrainTwo.GrainActivationEvent>()
             .Which.GrainId.Should().Be("SampleGrainTwo/#1");
-        eventWriter.Events[2].Should()
+        eventWriter.Events[2].Event.Should()
             .BeOfType<SampleGrainOne.GrainActivationEvent>()
             .Which.GrainId.Should().Be("SampleGrainOne/#2");
-        eventWriter.Events[3].Should()
+        eventWriter.Events[3].Event.Should()
             .BeOfType<SampleGrainTwo.GrainActivationEvent>()
             .Which.GrainId.Should().Be("SampleGrainTwo/#2");
     }
@@ -143,7 +144,7 @@ public class SiloBasicTests
     public void CanDispatchGrainEvent()
     {
         var eventWriter = new TestEventStreamWriter();
-        var silo = TestSilo.Create("test1", eventWriter: eventWriter);
+        var silo = TestDoubles.CreateConfiguredSilo("test1", eventWriter: eventWriter);
         var one1Ref = silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
             Num: 123,
@@ -155,7 +156,7 @@ public class SiloBasicTests
 
         one1Ref.Get().Str.Should().Be("CHANGED");
         eventWriter.Events.Count.Should().Be(2);
-        eventWriter.Events[1].Should()
+        eventWriter.Events[1].Event.Should()
             .BeOfType<SampleGrainOne.ChangeStrEvent>()
             .Which.NewStr.Should().Be("CHANGED");
     }
@@ -163,7 +164,7 @@ public class SiloBasicTests
     [Test]
     public void CanGetGrainById()
     {
-        var silo = TestSilo.Create("test1");
+        var silo = TestDoubles.CreateConfiguredSilo("test1");
 
         silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
@@ -189,7 +190,7 @@ public class SiloBasicTests
     [Test]
     public void GetGrainById_MultipleTimes_ReturnSameInstance()
     {
-        var silo = TestSilo.Create("test1");
+        var silo = TestDoubles.CreateConfiguredSilo("test1");
 
         silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
@@ -214,7 +215,7 @@ public class SiloBasicTests
     [Test]
     public void CanGetGrainObjectById()
     {
-        var silo = TestSilo.Create("test1");
+        var silo = TestDoubles.CreateConfiguredSilo("test1");
 
         silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
@@ -235,5 +236,72 @@ public class SiloBasicTests
         one1.GrainId.Should().Be("SampleGrainOne/#1");
         one2.GrainId.Should().Be("SampleGrainOne/#2");
         two1.GrainId.Should().Be("SampleGrainTwo/#1");
+    }
+
+    [Test]
+    public void GetGrainByIdOrThrow_NotFound_Throw()
+    {
+        var silo = TestDoubles.CreateConfiguredSilo("test1");
+
+        silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
+            grainId,
+            Num: 123,
+            Str: "ABC"));
+        silo.Grains.CreateGrain(grainId => new SampleGrainTwo.GrainActivationEvent(
+            grainId,
+            Value: 123.45m));
+
+        Assert.Throws<GrainNotFoundException>(() => {
+            silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>("SampleGrainOne/#ZZZ");
+        });
+    }
+
+    [Test]
+    public void CanDeleteGrain()
+    {
+        var silo = TestDoubles.CreateConfiguredSilo("test1");
+
+        silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
+            grainId,
+            Num: 123,
+            Str: "ABC"));
+        var two1Ref = silo.Grains.CreateGrain(grainId => new SampleGrainTwo.GrainActivationEvent(
+            grainId,
+            Value: 123.45m));
+        silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
+            grainId,
+            Num: 456,
+            Str: "DEF"));
+        silo.Grains.CreateGrain(grainId => new SampleGrainTwo.GrainActivationEvent(
+            grainId,
+            Value: 678.90m));
+
+        silo.Grains.TryGetGrainById<SampleGrainTwo>("SampleGrainTwo/#1", out _).Should().BeTrue();
+        GetGrainIdsOfType<SampleGrainOne>().Should().BeEquivalentTo(new[] {
+            "SampleGrainOne/#1",
+            "SampleGrainOne/#2",
+        });
+        GetGrainIdsOfType<SampleGrainTwo>().Should().BeEquivalentTo(new[] {
+            "SampleGrainTwo/#1",
+            "SampleGrainTwo/#2",
+        });
+
+        silo.Grains.DeleteGrain(two1Ref);
+
+        silo.Grains.TryGetGrainById<SampleGrainTwo>("SampleGrainTwo/#1", out _).Should().BeFalse();
+        GetGrainIdsOfType<SampleGrainOne>().Should().BeEquivalentTo(new[] {
+            "SampleGrainOne/#1",
+            "SampleGrainOne/#2",
+        });
+        GetGrainIdsOfType<SampleGrainTwo>().Should().BeEquivalentTo(new[] {
+            "SampleGrainTwo/#2",
+        });
+        
+        string[] GetGrainIdsOfType<T>() where T : class, IGrain
+        {
+            return silo.Grains.GetAllGrainsOfType<T>()
+                .Select(g => g.GrainId)
+                .ToArray();
+        }
     }
 }
