@@ -44,9 +44,9 @@ public abstract record GrainTypeRegistration(
 
 public record GrainTypeRegistration<TGrain, TActivationEvent>(
     string GrainTypeString,
-    Type GrainClrType,
-    Type ActivationEventClrType,
-    GrainTypedFactory<TGrain, TActivationEvent> TypedFactory,
+    // Type GrainClrType,
+    // Type ActivationEventClrType,
+    // GrainTypedFactory<TGrain, TActivationEvent> TypedFactory,
     GrainNonTypedFactory NonTypedFactory) 
     : GrainTypeRegistration(GrainTypeString, typeof(TGrain), typeof(TActivationEvent), NonTypedFactory)
     where TGrain : class, IGrain
@@ -55,9 +55,9 @@ public record GrainTypeRegistration<TGrain, TActivationEvent>(
     public GrainTypeRegistration(string grainTypeString, GrainTypedFactory<TGrain, TActivationEvent> typedFactory)
         : this(
             grainTypeString, 
-            GrainClrType: typeof(TGrain), 
-            ActivationEventClrType: typeof(TActivationEvent), 
-            TypedFactory: typedFactory,
+            // GrainClrType: typeof(TGrain), 
+            // ActivationEventClrType: typeof(TActivationEvent), 
+            // TypedFactory: typedFactory,
             NonTypedFactory: CreateNonTypedFactory(typedFactory))
     {
     }

@@ -24,4 +24,14 @@ public static class TestDoubles
             });
         return silo;
     }
+    
+    public static class GrainIds
+    {
+        public const string One1 = $"{nameof(SampleGrainOne)}/#1";
+        public const string One2 = $"{nameof(SampleGrainOne)}/#2";
+        public const string One3 = $"{nameof(SampleGrainOne)}/#3";
+        public const string Two1 = $"{nameof(SampleGrainTwo)}/#1";
+        public const string Two2 = $"{nameof(SampleGrainTwo)}/#2";
+        public const string Two3 = $"{nameof(SampleGrainTwo)}/#3";
+    }
 }

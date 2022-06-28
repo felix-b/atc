@@ -1,2 +1,0 @@
-namespace Atc.Grains.Impl;
-

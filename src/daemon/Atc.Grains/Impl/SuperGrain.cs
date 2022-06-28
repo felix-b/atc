@@ -4,7 +4,7 @@ namespace Atc.Grains.Impl;
 
 public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISiloTimeTravel
 {
-    public static readonly string TypeString = "SUPERGRAIN";
+    public static readonly string TypeString = "$$SUPER";
 
     [NotEventSourced]
     private readonly Dictionary<string, IGrain> _grainInstanceById = new();
@@ -43,7 +43,7 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         Func<ISiloDependencyContext> getDependencyContext,
         IReadOnlyCollection<GrainTypeRegistration> grainTypeRegistrations) 
         : base(
-            grainId: "#SUPER", 
+            grainId: $"{TypeString}/#1", 
             grainType: TypeString, 
             dispatch, 
             initialState: GrainState.CreateInitial())
@@ -90,9 +90,9 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         Dispatch(new DeactivateGrainEvent(grainRef.GrainId));    
     }
 
-    public bool TryGetGrainById<T>(string grainId, out GrainRef<T>? grainRef) where T : class, IGrain
+    public bool TryGetRefById<T>(string grainId, out GrainRef<T>? grainRef) where T : class, IGrain
     {
-        if (TryGetGrainObjectById<T>(grainId, out var grainInstance))
+        if (TryGetInstanceById<T>(grainId, out var grainInstance))
         {
             grainRef = new GrainRef<T>(this, grainInstance!.GrainId);
             return true;
@@ -102,7 +102,7 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         return false;
     }
 
-    public bool TryGetGrainObjectById<T>(string grainId, out T? grainInstance) where T : class, IGrain
+    public bool TryGetInstanceById<T>(string grainId, out T? grainInstance) where T : class, IGrain
     {
         var result = _grainInstanceById.TryGetValue(grainId, out var nonTypedInstance);
         if (result && nonTypedInstance is T typedInstance)
@@ -163,6 +163,8 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         RemoveExtraGrains();
         CreateOrUpdateGrains();
 
+        //TODO: reset dispatch.NextSequenceNo?
+        
         var rebuiltState = RebuildState();
         ((IGrain)this).SetState(rebuiltState);
         
@@ -307,7 +309,7 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
             {
                 disposable.Dispose();
             }
-            catch (Exception e)
+            catch //(Exception e)
             {
                 //TODO: log error
             }

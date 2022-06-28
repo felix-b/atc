@@ -1,3 +1,5 @@
+using System.Security.AccessControl;
+
 namespace Atc.Grains.Tests.Samples;
 
 public class SampleGrainOne : AbstractGrain<SampleGrainOne.GrainState>
@@ -19,6 +21,16 @@ public class SampleGrainOne : AbstractGrain<SampleGrainOne.GrainState>
         string NewStr
     ) : IGrainEvent;
 
+    public record ChangeNumEvent(
+        int NewNum
+    ) : IGrainEvent;
+
+    public record MultiplyNumWorkItem(
+        int Times
+    ) : IGrainWorkItem;
+
+    public record DuplicateStrWorkItem() : IGrainWorkItem;
+
     public SampleGrainOne(
         string grainId, 
         ISiloEventDispatch dispatch, 
@@ -27,13 +39,38 @@ public class SampleGrainOne : AbstractGrain<SampleGrainOne.GrainState>
     {
     }
 
-    public void ChangeStr(string newStr)
+    public Task ChangeStr(string newStr)
     {
-        Dispatch(new ChangeStrEvent(newStr));
+        return Dispatch(new ChangeStrEvent(newStr));
+    }
+
+    public GrainWorkItemHandle RequestMultiplyNum(int times)
+    {
+        return Defer(new MultiplyNumWorkItem(times));
+    }
+
+    public GrainWorkItemHandle DeferredDuplicateStr(DateTime atUtc)
+    {
+        return Defer(new DuplicateStrWorkItem(), notEarlierThanUtc: atUtc);
     }
 
     public int Num => State.Num;
     public string Str => State.Str;
+
+    protected override async Task<bool> ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
+    {
+        switch (workItem)
+        {
+            case MultiplyNumWorkItem multiplyNum:
+                await Dispatch(new ChangeNumEvent(NewNum: State.Num * multiplyNum.Times));
+                return true;
+            case DuplicateStrWorkItem duplicateStr:
+                await Dispatch(new ChangeStrEvent(NewStr: $"{State.Str}|{State.Str}"));
+                return true;
+            default:
+                return await base.ExecuteWorkItem(workItem, timedOut);
+        }
+    }
 
     protected override GrainState Reduce(GrainState stateBefore, IGrainEvent @event)
     {
@@ -43,11 +80,15 @@ public class SampleGrainOne : AbstractGrain<SampleGrainOne.GrainState>
                 return stateBefore with {
                     Str = changeStr.NewStr
                 };
+            case ChangeNumEvent changeNum:
+                return stateBefore with {
+                    Num = changeNum.NewNum
+                };
             default:
                 return stateBefore;
         }
     }
-
+    
     public static void RegisterGrainType(SiloConfigurationBuilder config)
     {
         config.RegisterGrainType<SampleGrainOne, GrainActivationEvent>(

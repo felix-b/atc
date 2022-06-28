@@ -20,7 +20,12 @@ public abstract class AbstractGrain<TStateRecord> : IGrain
     
     protected abstract TStateRecord Reduce(TStateRecord stateBefore, IGrainEvent @event);
 
-    protected virtual Task<bool> ExecuteWorkItem(IGrainWorkItem workItem)
+    protected virtual Task<bool> ShouldExecuteWorkItem(IGrainWorkItem workItem)
+    {
+        return Task.FromResult(false);
+    }
+
+    protected virtual Task<bool> ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {
         return Task.FromResult(false);
     }
@@ -35,8 +40,22 @@ public abstract class AbstractGrain<TStateRecord> : IGrain
         return _dispatch.Dispatch(this, @event);
     }
 
+    protected GrainWorkItemHandle Defer(
+        IGrainWorkItem workItem,
+        DateTime? notEarlierThanUtc = null,
+        DateTime? notLaterThanUtc = null,
+        bool withPredicate = false)
+    {
+        return _dispatch.TaskQueue.Defer(
+            this, 
+            workItem, 
+            notEarlierThanUtc: notEarlierThanUtc,
+            notLaterThanUtc: notLaterThanUtc,
+            withPredicate: withPredicate);
+    }
+
     protected TStateRecord State => _state;
-    
+
     object IGrain.GetState()
     {
         return _state!;
@@ -57,8 +76,13 @@ public abstract class AbstractGrain<TStateRecord> : IGrain
         ObserveChanges((TStateRecord)oldState, (TStateRecord)newState);
     }
 
-    Task<bool> IGrain.ExecuteWorkItem(IGrainWorkItem workItem)
+    Task<bool> IGrain.ShouldExecuteWorkItem(IGrainWorkItem workItem)
     {
-        return ExecuteWorkItem(workItem);
+        return ShouldExecuteWorkItem(workItem);
+    }
+
+    Task<bool> IGrain.ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
+    {
+        return ExecuteWorkItem(workItem, timedOut);
     }
 }

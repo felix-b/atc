@@ -11,5 +11,4 @@ public interface IGrainActivationEvent : IGrainEvent
 
 public interface IGrainActivationEvent<TGrain> : IGrainActivationEvent where TGrain : class, IGrain
 {
-    string GrainId { get; }
 }

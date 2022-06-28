@@ -2,5 +2,11 @@ namespace Atc.Grains.Tests.Doubles;
 
 public class TestSiloEnvironment : ISiloEnvironment
 {
-    public DateTime UtcNow => DateTime.UtcNow;
+    private DateTime? _presetUtcNow = null;
+
+    public DateTime UtcNow
+    {
+        get => _presetUtcNow ?? DateTime.UtcNow;
+        set => _presetUtcNow = value;
+    }
 }

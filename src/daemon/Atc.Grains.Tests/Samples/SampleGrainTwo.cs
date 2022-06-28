@@ -17,6 +17,8 @@ public class SampleGrainTwo : AbstractGrain<SampleGrainTwo.GrainState>
         decimal NewValue
     ) : IGrainEvent;
 
+    public record DivideValueBy10WorkItem() : IGrainWorkItem;
+
     public SampleGrainTwo(
         string grainId, 
         ISiloEventDispatch dispatch, 
@@ -25,9 +27,17 @@ public class SampleGrainTwo : AbstractGrain<SampleGrainTwo.GrainState>
     {
     }
 
-    public void ChangeValue(decimal newValue)
+    public Task ChangeValue(decimal newValue)
     {
-        Dispatch(new ChangeValueEvent(newValue));
+        return Dispatch(new ChangeValueEvent(newValue));
+    }
+
+    public void ArmDivideBy10WhenGreaterThan100(DateTime? notLaterThanUtc = null)
+    {
+        Defer(
+            new DivideValueBy10WorkItem(), 
+            withPredicate: true, 
+            notLaterThanUtc: notLaterThanUtc);
     }
 
     public decimal Value => State.Value;
@@ -42,6 +52,30 @@ public class SampleGrainTwo : AbstractGrain<SampleGrainTwo.GrainState>
                 };
             default:
                 return stateBefore;
+        }
+    }
+
+    protected override async Task<bool> ShouldExecuteWorkItem(IGrainWorkItem workItem)
+    {
+        switch (workItem)
+        {
+            case DivideValueBy10WorkItem:
+                return State.Value >= 100.0m;
+            default:
+                return await base.ShouldExecuteWorkItem(workItem);
+        }
+    }
+
+    protected override async Task<bool> ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
+    {
+        switch (workItem)
+        {
+            case DivideValueBy10WorkItem:
+                var newValue = timedOut ? -1.0m : State.Value / 10.0m;
+                await Dispatch(new ChangeValueEvent(newValue));
+                return true;
+            default:
+                return await base.ExecuteWorkItem(workItem, timedOut);
         }
     }
 

@@ -17,6 +17,10 @@ public interface ISilo
     ISiloTelemetry Telemetry { get; }
 
     ISiloEnvironment Environment { get; }
+    
+    DateTime NextWorkItemAtUtc { get; }
+
+    Task ExecuteReadyWorkItems();
 
     public static ISilo Create(
         string siloId,
@@ -37,10 +41,10 @@ public interface ISiloGrains
     void DeleteGrain<T>(GrainRef<T> grainRef)
         where T : class, IGrain;
 
-    bool TryGetGrainById<T>(string grainId, out GrainRef<T>? grainRef)
+    bool TryGetRefById<T>(string grainId, out GrainRef<T>? grainRef)
         where T : class, IGrain;
 
-    bool TryGetGrainObjectById<T>(string grainId, out T? grainInstance)
+    bool TryGetInstanceById<T>(string grainId, out T? grainInstance)
         where T : class, IGrain;
 
     IEnumerable<GrainRef<T>> GetAllGrainsOfType<T>()
@@ -49,10 +53,10 @@ public interface ISiloGrains
     GrainRef<T> GetRefToGrainInstance<T>(T grainInstance)
         where T : class, IGrain;
         
-    public GrainRef<T> GetGrainByIdOrThrow<T>(string grainId)
+    public GrainRef<T> GetRefById<T>(string grainId)
         where T : class, IGrain
     {
-        if (TryGetGrainById<T>(grainId, out var actor))
+        if (TryGetRefById<T>(grainId, out var actor))
         {
             return actor!.Value;
         }
@@ -60,9 +64,9 @@ public interface ISiloGrains
         throw new GrainNotFoundException($"Grain '{grainId}' could not be found");
     }
     
-    public T GetGrainObjectByIdOrThrow<T>(string grainId) where T : class, IGrain
+    public T GetInstanceById<T>(string grainId) where T : class, IGrain
     {
-        if (TryGetGrainObjectById<T>(grainId, out var grain))
+        if (TryGetInstanceById<T>(grainId, out var grain))
         {
             return grain!;
         }
@@ -75,10 +79,29 @@ public interface ISiloEventDispatch
 {
     Task Dispatch(IGrain target, IGrainEvent @event);
     ulong NextSequenceNo { get; }
+    ISiloTaskQueue TaskQueue { get; }
 }
 
 public interface ISiloTaskQueue
 {
+    GrainWorkItemHandle Defer(
+        IGrain target,
+        IGrainWorkItem workItem,
+        DateTime? notEarlierThanUtc = null,
+        DateTime? notLaterThanUtc = null,
+        bool withPredicate = false);
+
+    void CancelWorkItem(GrainWorkItemHandle handle);
+}
+
+public struct GrainWorkItemHandle
+{
+    public readonly ulong Id;
+
+    public GrainWorkItemHandle(ulong id)
+    {
+        Id = id;
+    }
 }
 
 public interface ISiloTimeTravel

@@ -108,7 +108,8 @@ public class SiloBasicTests
     {
         var eventWriter = new TestEventStreamWriter();
         var silo = TestDoubles.CreateConfiguredSilo("test1", eventWriter: eventWriter);
-
+        var initialEventCount = eventWriter.Events.Count;        
+        
         silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
             Num: 123,
@@ -124,18 +125,18 @@ public class SiloBasicTests
             grainId,
             Value: 678.90m));
 
-        eventWriter.Events.Count.Should().Be(4);
+        eventWriter.Events.Count.Should().Be(initialEventCount + 4);
 
-        eventWriter.Events[0].Event.Should()
+        eventWriter.Events[initialEventCount + 0].Event.Should()
             .BeOfType<SampleGrainOne.GrainActivationEvent>()
             .Which.GrainId.Should().Be("SampleGrainOne/#1");
-        eventWriter.Events[1].Event.Should()
+        eventWriter.Events[initialEventCount + 1].Event.Should()
             .BeOfType<SampleGrainTwo.GrainActivationEvent>()
             .Which.GrainId.Should().Be("SampleGrainTwo/#1");
-        eventWriter.Events[2].Event.Should()
+        eventWriter.Events[initialEventCount + 2].Event.Should()
             .BeOfType<SampleGrainOne.GrainActivationEvent>()
             .Which.GrainId.Should().Be("SampleGrainOne/#2");
-        eventWriter.Events[3].Event.Should()
+        eventWriter.Events[initialEventCount + 3].Event.Should()
             .BeOfType<SampleGrainTwo.GrainActivationEvent>()
             .Which.GrainId.Should().Be("SampleGrainTwo/#2");
     }
@@ -145,18 +146,19 @@ public class SiloBasicTests
     {
         var eventWriter = new TestEventStreamWriter();
         var silo = TestDoubles.CreateConfiguredSilo("test1", eventWriter: eventWriter);
+        var initialEventCount = eventWriter.Events.Count;
         var one1Ref = silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
             grainId,
             Num: 123,
             Str: "ORIGINAL"));
         one1Ref.Get().Str.Should().Be("ORIGINAL");
-        eventWriter.Events.Count.Should().Be(1);
+        eventWriter.Events.Count.Should().Be(initialEventCount + 1);
 
         one1Ref.Get().ChangeStr("CHANGED");
 
         one1Ref.Get().Str.Should().Be("CHANGED");
-        eventWriter.Events.Count.Should().Be(2);
-        eventWriter.Events[1].Event.Should()
+        eventWriter.Events.Count.Should().Be(initialEventCount + 2);
+        eventWriter.Events[initialEventCount + 1].Event.Should()
             .BeOfType<SampleGrainOne.ChangeStrEvent>()
             .Which.NewStr.Should().Be("CHANGED");
     }
@@ -178,9 +180,9 @@ public class SiloBasicTests
             Num: 456,
             Str: "DEF"));
 
-        var one1Ref = silo.Grains.GetGrainByIdOrThrow<SampleGrainOne>("SampleGrainOne/#1");
-        var one2Ref = silo.Grains.GetGrainByIdOrThrow<SampleGrainOne>("SampleGrainOne/#2");
-        var two1Ref = silo.Grains.GetGrainByIdOrThrow<SampleGrainTwo>("SampleGrainTwo/#1");
+        var one1Ref = silo.Grains.GetRefById<SampleGrainOne>("SampleGrainOne/#1");
+        var one2Ref = silo.Grains.GetRefById<SampleGrainOne>("SampleGrainOne/#2");
+        var two1Ref = silo.Grains.GetRefById<SampleGrainTwo>("SampleGrainTwo/#1");
 
         one1Ref.Get().GrainId.Should().Be("SampleGrainOne/#1");
         one2Ref.Get().GrainId.Should().Be("SampleGrainOne/#2");
@@ -201,8 +203,8 @@ public class SiloBasicTests
             Num: 456,
             Str: "DEF"));
 
-        var one2Ref1 = silo.Grains.GetGrainByIdOrThrow<SampleGrainOne>("SampleGrainOne/#2");
-        var one2Ref2 = silo.Grains.GetGrainByIdOrThrow<SampleGrainOne>("SampleGrainOne/#2");
+        var one2Ref1 = silo.Grains.GetRefById<SampleGrainOne>("SampleGrainOne/#2");
+        var one2Ref2 = silo.Grains.GetRefById<SampleGrainOne>("SampleGrainOne/#2");
 
         var obj1 = one2Ref1.Get();
         var obj2 = one2Ref1.Get();
@@ -229,9 +231,9 @@ public class SiloBasicTests
             Num: 456,
             Str: "DEF"));
 
-        var one1 = silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>("SampleGrainOne/#1");
-        var one2 = silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>("SampleGrainOne/#2");
-        var two1 = silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainTwo>("SampleGrainTwo/#1");
+        var one1 = silo.Grains.GetInstanceById<SampleGrainOne>("SampleGrainOne/#1");
+        var one2 = silo.Grains.GetInstanceById<SampleGrainOne>("SampleGrainOne/#2");
+        var two1 = silo.Grains.GetInstanceById<SampleGrainTwo>("SampleGrainTwo/#1");
 
         one1.GrainId.Should().Be("SampleGrainOne/#1");
         one2.GrainId.Should().Be("SampleGrainOne/#2");
@@ -252,7 +254,7 @@ public class SiloBasicTests
             Value: 123.45m));
 
         Assert.Throws<GrainNotFoundException>(() => {
-            silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>("SampleGrainOne/#ZZZ");
+            silo.Grains.GetInstanceById<SampleGrainOne>("SampleGrainOne/#ZZZ");
         });
     }
 
@@ -276,7 +278,7 @@ public class SiloBasicTests
             grainId,
             Value: 678.90m));
 
-        silo.Grains.TryGetGrainById<SampleGrainTwo>("SampleGrainTwo/#1", out _).Should().BeTrue();
+        silo.Grains.TryGetRefById<SampleGrainTwo>("SampleGrainTwo/#1", out _).Should().BeTrue();
         GetGrainIdsOfType<SampleGrainOne>().Should().BeEquivalentTo(new[] {
             "SampleGrainOne/#1",
             "SampleGrainOne/#2",
@@ -288,7 +290,7 @@ public class SiloBasicTests
 
         silo.Grains.DeleteGrain(two1Ref);
 
-        silo.Grains.TryGetGrainById<SampleGrainTwo>("SampleGrainTwo/#1", out _).Should().BeFalse();
+        silo.Grains.TryGetRefById<SampleGrainTwo>("SampleGrainTwo/#1", out _).Should().BeFalse();
         GetGrainIdsOfType<SampleGrainOne>().Should().BeEquivalentTo(new[] {
             "SampleGrainOne/#1",
             "SampleGrainOne/#2",

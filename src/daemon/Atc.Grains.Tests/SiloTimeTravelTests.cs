@@ -2,6 +2,7 @@ using Atc.Grains.Tests.Doubles;
 using Atc.Grains.Tests.Samples;
 using FluentAssertions;
 using NUnit.Framework;
+using static Atc.Grains.Tests.Doubles.TestDoubles;
 
 namespace Atc.Grains.Tests;
 
@@ -58,10 +59,10 @@ public class SiloTimeTravelTests
         silo2.Grains.GetAllGrainsOfType<SampleGrainOne>().Count().Should().Be(2);
         silo2.Grains.GetAllGrainsOfType<SampleGrainTwo>().Count().Should().Be(2);
 
-        var one1Ref = silo2.Grains.GetGrainByIdOrThrow<SampleGrainOne>(GrainIds.One1); 
-        var one2Ref = silo2.Grains.GetGrainByIdOrThrow<SampleGrainOne>(GrainIds.One2); 
-        var two1Ref = silo2.Grains.GetGrainByIdOrThrow<SampleGrainTwo>(GrainIds.Two1); 
-        var two2Ref = silo2.Grains.GetGrainByIdOrThrow<SampleGrainTwo>(GrainIds.Two2);
+        var one1Ref = silo2.Grains.GetRefById<SampleGrainOne>(GrainIds.One1); 
+        var one2Ref = silo2.Grains.GetRefById<SampleGrainOne>(GrainIds.One2); 
+        var two1Ref = silo2.Grains.GetRefById<SampleGrainTwo>(GrainIds.Two1); 
+        var two2Ref = silo2.Grains.GetRefById<SampleGrainTwo>(GrainIds.Two2);
 
         one1Ref.Get().Str.Should().Be("one1-v2");
         one2Ref.Get().Str.Should().Be("one2-v2");
@@ -116,8 +117,8 @@ public class SiloTimeTravelTests
 
         var snapshot = silo.TimeTravel.TakeSnapshot();
 
-        silo.Grains.DeleteGrain(silo.Grains.GetGrainByIdOrThrow<SampleGrainOne>(GrainIds.One1));
-        silo.Grains.DeleteGrain(silo.Grains.GetGrainByIdOrThrow<SampleGrainTwo>(GrainIds.Two1));
+        silo.Grains.DeleteGrain(silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1));
+        silo.Grains.DeleteGrain(silo.Grains.GetRefById<SampleGrainTwo>(GrainIds.Two1));
 
         silo.Grains.GetAllGrainsOfType<SampleGrainOne>().Count().Should().Be(1);
         silo.Grains.GetAllGrainsOfType<SampleGrainTwo>().Count().Should().Be(1);
@@ -139,8 +140,8 @@ public class SiloTimeTravelTests
             GrainIds.Two1, GrainIds.Two2
         });
 
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>(GrainIds.One1).Str.Should().Be("one1-v2");
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(5001.20m);
+        silo.Grains.GetInstanceById<SampleGrainOne>(GrainIds.One1).Str.Should().Be("one1-v2");
+        silo.Grains.GetInstanceById<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(5001.20m);
     }
 
     [Test]
@@ -151,25 +152,25 @@ public class SiloTimeTravelTests
         PopulateGrains(silo);
         RunGrainEvents(silo, startStep:0, count: 4);
 
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>(GrainIds.One1).Str.Should().Be("one1-v1");
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(5001.10m);
+        silo.Grains.GetInstanceById<SampleGrainOne>(GrainIds.One1).Str.Should().Be("one1-v1");
+        silo.Grains.GetInstanceById<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(5001.10m);
         var snapshot1 = silo.TimeTravel.TakeSnapshot();
 
         RunGrainEvents(silo, startStep:4, count: 4);
 
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>(GrainIds.One1).Str.Should().Be("one1-v2");
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(5001.20m);
+        silo.Grains.GetInstanceById<SampleGrainOne>(GrainIds.One1).Str.Should().Be("one1-v2");
+        silo.Grains.GetInstanceById<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(5001.20m);
         var snapshot2 = silo.TimeTravel.TakeSnapshot();
 
         silo.TimeTravel.RestoreSnapshot(snapshot1);
 
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>(GrainIds.One1).Str.Should().Be("one1-v1");
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(5001.10m);
+        silo.Grains.GetInstanceById<SampleGrainOne>(GrainIds.One1).Str.Should().Be("one1-v1");
+        silo.Grains.GetInstanceById<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(5001.10m);
 
         silo.TimeTravel.RestoreSnapshot(snapshot2);
 
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>(GrainIds.One1).Str.Should().Be("one1-v2");
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(5001.20m);
+        silo.Grains.GetInstanceById<SampleGrainOne>(GrainIds.One1).Str.Should().Be("one1-v2");
+        silo.Grains.GetInstanceById<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(5001.20m);
     }
 
     [Test]
@@ -193,10 +194,10 @@ public class SiloTimeTravelTests
         silo.TimeTravel.ReplayEvents(envelopesToReplay);
         
         silo.Dispatch.NextSequenceNo.Should().Be(sequenceNo + 8);
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>(GrainIds.One1).Str.Should().Be("ONE1-R2");
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainOne>(GrainIds.One2).Str.Should().Be("ONE2-R2");
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(11111.11m);
-        silo.Grains.GetGrainObjectByIdOrThrow<SampleGrainTwo>(GrainIds.Two2).Value.Should().Be(22222.22m);
+        silo.Grains.GetInstanceById<SampleGrainOne>(GrainIds.One1).Str.Should().Be("ONE1-R2");
+        silo.Grains.GetInstanceById<SampleGrainOne>(GrainIds.One2).Str.Should().Be("ONE2-R2");
+        silo.Grains.GetInstanceById<SampleGrainTwo>(GrainIds.Two1).Value.Should().Be(11111.11m);
+        silo.Grains.GetInstanceById<SampleGrainTwo>(GrainIds.Two2).Value.Should().Be(22222.22m);
     }
 
     [Test]
@@ -204,7 +205,7 @@ public class SiloTimeTravelTests
     {
         var silo = TestDoubles.CreateConfiguredSilo("time-travel");
         PopulateGrains(silo);
-        var one1Ref = silo.Grains.GetGrainByIdOrThrow<SampleGrainOne>(GrainIds.One1);
+        var one1Ref = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
         
         RunGrainEvents(silo, startStep:0, count: 4);
 
@@ -245,10 +246,10 @@ public class SiloTimeTravelTests
     
     void RunGrainEvents(ISilo silo, int startStep, int count)
     {
-        var one1Ref = silo.Grains.GetGrainByIdOrThrow<SampleGrainOne>(GrainIds.One1); 
-        var one2Ref = silo.Grains.GetGrainByIdOrThrow<SampleGrainOne>(GrainIds.One2); 
-        var two1Ref = silo.Grains.GetGrainByIdOrThrow<SampleGrainTwo>(GrainIds.Two1); 
-        var two2Ref = silo.Grains.GetGrainByIdOrThrow<SampleGrainTwo>(GrainIds.Two2);
+        var one1Ref = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1); 
+        var one2Ref = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One2); 
+        var two1Ref = silo.Grains.GetRefById<SampleGrainTwo>(GrainIds.Two1); 
+        var two2Ref = silo.Grains.GetRefById<SampleGrainTwo>(GrainIds.Two2);
 
         var steps = new Action[] {
             () => one1Ref.Get().ChangeStr("one1-v1"),
@@ -272,15 +273,5 @@ public class SiloTimeTravelTests
         return silo.Grains.GetAllGrainsOfType<T>()
             .Select(g => g.GrainId)
             .ToArray();
-    }
-
-    private static class GrainIds
-    {
-        public const string One1 = $"{nameof(SampleGrainOne)}/#1";
-        public const string One2 = $"{nameof(SampleGrainOne)}/#2";
-        public const string One3 = $"{nameof(SampleGrainOne)}/#3";
-        public const string Two1 = $"{nameof(SampleGrainTwo)}/#1";
-        public const string Two2 = $"{nameof(SampleGrainTwo)}/#2";
-        public const string Two3 = $"{nameof(SampleGrainTwo)}/#3";
     }
 }

@@ -32,7 +32,7 @@ public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>>
         return GrainId;
     }
 
-    public T Get() => _grains.GetGrainObjectByIdOrThrow<T>(_grainId);
+    public T Get() => _grains.GetInstanceById<T>(_grainId);
     public string GrainId => _grainId;
     public bool CanGet => _grains != null;
 

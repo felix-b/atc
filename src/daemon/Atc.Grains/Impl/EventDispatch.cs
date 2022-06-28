@@ -6,6 +6,7 @@ public class EventDispatch : ISiloEventDispatch
     private readonly ISiloEventStreamWriter _eventWriter;
     private readonly ISiloTelemetry _telemetry;
     private readonly ISiloEnvironment _environment;
+    private readonly Func<ISiloTaskQueue> _getTaskQueue;
     private ulong _nextSequenceNo = 1;
     private bool _dispatching = false;
 
@@ -13,12 +14,14 @@ public class EventDispatch : ISiloEventDispatch
         string siloId, 
         ISiloEventStreamWriter eventWriter, 
         ISiloTelemetry telemetry, 
-        ISiloEnvironment environment)
+        ISiloEnvironment environment,
+        Func<ISiloTaskQueue> getTaskQueue)
     {
         _siloId = siloId;
         _eventWriter = eventWriter;
         _telemetry = telemetry;
         _environment = environment;
+        _getTaskQueue = getTaskQueue;
     }
 
     public async Task Dispatch(IGrain target, IGrainEvent @event)
@@ -48,7 +51,7 @@ public class EventDispatch : ISiloEventDispatch
                 target.ObserveChanges(state0, state1);
             }
         }
-        catch (Exception e)
+        catch //(Exception e)
         {
             //logSpan.Fail(e);
         }
@@ -60,6 +63,8 @@ public class EventDispatch : ISiloEventDispatch
 
     public ulong NextSequenceNo => _nextSequenceNo;
 
+    public ISiloTaskQueue TaskQueue => _getTaskQueue();
+    
     private GrainEventEnvelope CreateEventEnvelope(IGrain grain, IGrainEvent @event, ulong sequenceNo)
     {
         return new GrainEventEnvelope(_siloId, grain.GrainId, sequenceNo, _environment.UtcNow, @event);
