@@ -13,4 +13,8 @@
       </PackageReference>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Atc.Telemetry\Atc.Telemetry.csproj" />
+    </ItemGroup>
+
 </Project>

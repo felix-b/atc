@@ -2,7 +2,15 @@ using System.Security.AccessControl;
 
 namespace Atc.Grains.Tests.Samples;
 
-public class SampleGrainOne : AbstractGrain<SampleGrainOne.GrainState>
+public interface ISampleGrainOne : IGrainId
+{
+    void ChangeStr(string newStr);
+    GrainWorkItemHandle RequestMultiplyNum(int times);
+    int Num { get; }
+    string Str { get; }
+}
+
+public class SampleGrainOne : AbstractGrain<SampleGrainOne.GrainState>, ISampleGrainOne
 {
     public static readonly string TypeString = nameof(SampleGrainOne);
 

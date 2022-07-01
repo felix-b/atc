@@ -36,25 +36,25 @@ public interface ISilo
 public interface ISiloGrains
 {
     GrainRef<T> CreateGrain<T>(ActivationEventFactory<IGrainActivationEvent<T>> activationEventFactory)
-        where T : class, IGrain;
+        where T : class, IGrainId;
 
     void DeleteGrain<T>(GrainRef<T> grainRef)
-        where T : class, IGrain;
+        where T : class, IGrainId;
 
     bool TryGetRefById<T>(string grainId, out GrainRef<T>? grainRef)
-        where T : class, IGrain;
+        where T : class, IGrainId;
 
     bool TryGetInstanceById<T>(string grainId, out T? grainInstance)
-        where T : class, IGrain;
+        where T : class, IGrainId;
 
     IEnumerable<GrainRef<T>> GetAllGrainsOfType<T>()
-        where T : class, IGrain;
+        where T : class, IGrainId;
         
     GrainRef<T> GetRefToGrainInstance<T>(T grainInstance)
-        where T : class, IGrain;
+        where T : class, IGrainId;
         
     public GrainRef<T> GetRefById<T>(string grainId)
-        where T : class, IGrain
+        where T : class, IGrainId
     {
         if (TryGetRefById<T>(grainId, out var actor))
         {
@@ -64,7 +64,7 @@ public interface ISiloGrains
         throw new GrainNotFoundException($"Grain '{grainId}' could not be found");
     }
     
-    public T GetInstanceById<T>(string grainId) where T : class, IGrain
+    public T GetInstanceById<T>(string grainId) where T : class, IGrainId
     {
         if (TryGetInstanceById<T>(grainId, out var grain))
         {

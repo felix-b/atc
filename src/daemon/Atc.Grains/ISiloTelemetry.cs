@@ -1,6 +1,8 @@
+using Atc.Telemetry;
+
 namespace Atc.Grains;
 
-public class ISiloTelemetry
+public interface ISiloTelemetry : ITelemetry
 {
     
 }

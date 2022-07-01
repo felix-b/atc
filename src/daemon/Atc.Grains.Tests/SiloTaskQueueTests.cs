@@ -1,9 +1,8 @@
 using Atc.Grains.Impl;
-using Atc.Grains.Tests.Doubles;
 using Atc.Grains.Tests.Samples;
 using FluentAssertions;
 using NUnit.Framework;
-using static Atc.Grains.Tests.Doubles.TestDoubles;
+using static Atc.Grains.Tests.Samples.SampleSilo;
 
 namespace Atc.Grains.Tests;
 
@@ -56,7 +55,7 @@ public class SiloTaskQueueTests
     [Test]
     public void CanExecuteWorkItem()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue");
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure);
         PopulateGrains(silo);
 
         var grainRef = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
@@ -74,7 +73,7 @@ public class SiloTaskQueueTests
     [Test]
     public void WorkItemIsExecutedOnlyOnce()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue");
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure);
         PopulateGrains(silo);
 
         var grainRef = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
@@ -94,7 +93,7 @@ public class SiloTaskQueueTests
     [Test]
     public void CanExecuteAllReadyWorkItems()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue");
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure);
         PopulateGrains(silo);
 
         var grainRef = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
@@ -116,7 +115,7 @@ public class SiloTaskQueueTests
     [Test]
     public void CanExecuteWorkItemsForMultipleGrains()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue");
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure);
         PopulateGrains(silo);
 
         var grainRef1 = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
@@ -142,8 +141,8 @@ public class SiloTaskQueueTests
     [Test]
     public void CanExecuteWorkItemNotEarlierThan()
     {
-        var environment = new TestSiloEnvironment();
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue", environment: environment);
+        var environment = new SiloTestDoubles.TestEnvironment();
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure, environment: environment);
         PopulateGrains(silo);
 
         var grainRef = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
@@ -166,7 +165,7 @@ public class SiloTaskQueueTests
     [Test]
     public void CanExecuteWorkItemWhenPredicateIsTrue()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue");
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure);
         PopulateGrains(silo);
 
         var grainRef = silo.Grains.GetRefById<SampleGrainTwo>(GrainIds.Two1);
@@ -189,11 +188,11 @@ public class SiloTaskQueueTests
     {
         var startUtc = new DateTime(2022, 10, 10, 8, 30, 0, DateTimeKind.Utc);
         var deadlineUtc = startUtc.AddMinutes(10);
-        var environment = new TestSiloEnvironment {
+        var environment = new SiloTestDoubles.TestEnvironment {
             UtcNow = startUtc
         };
 
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue", environment: environment);
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure, environment: environment);
         PopulateGrains(silo);
 
         var grainRef = silo.Grains.GetRefById<SampleGrainTwo>(GrainIds.Two1);
@@ -215,10 +214,10 @@ public class SiloTaskQueueTests
     public void NextWorkItemUtc_ItemHasNoConstraints_ReturnUtcNow() 
     {
         var startUtc = new DateTime(2022, 10, 10, 8, 30, 0, DateTimeKind.Utc);
-        var environment = new TestSiloEnvironment {
+        var environment = new SiloTestDoubles.TestEnvironment {
             UtcNow = startUtc
         };
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue", environment: environment);
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure, environment: environment);
         PopulateGrains(silo);
         var grainRef = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
 
@@ -233,10 +232,10 @@ public class SiloTaskQueueTests
     public void NextWorkItemUtc_ItemHasNotEarlierThan_ReturnNotEarlierThan() 
     {
         var startUtc = new DateTime(2022, 10, 10, 8, 30, 0, DateTimeKind.Utc);
-        var environment = new TestSiloEnvironment {
+        var environment = new SiloTestDoubles.TestEnvironment {
             UtcNow = startUtc
         };
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue", environment: environment);
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure, environment: environment);
         PopulateGrains(silo);
         var grainRef = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
 
@@ -250,10 +249,10 @@ public class SiloTaskQueueTests
     public void NextWorkItemUtc_ItemHasNotLaterThan_ReturnUtcNow() 
     {
         var startUtc = new DateTime(2022, 10, 10, 8, 30, 0, DateTimeKind.Utc);
-        var environment = new TestSiloEnvironment {
+        var environment = new SiloTestDoubles.TestEnvironment {
             UtcNow = startUtc
         };
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue", environment: environment);
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure, environment: environment);
         PopulateGrains(silo);
         var grainRef = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
 
@@ -268,10 +267,10 @@ public class SiloTaskQueueTests
     public void NextWorkItemUtc_ItemHasNotEarlierThanAndPredicate_ReturnNotEarlierThan() 
     {
         var startUtc = new DateTime(2022, 10, 10, 8, 30, 0, DateTimeKind.Utc);
-        var environment = new TestSiloEnvironment {
+        var environment = new SiloTestDoubles.TestEnvironment {
             UtcNow = startUtc
         };
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue", environment: environment);
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure, environment: environment);
         PopulateGrains(silo);
         var grainRef = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
 
@@ -286,10 +285,10 @@ public class SiloTaskQueueTests
     public void NextWorkItemUtc_ItemHasNotLaterThanAndPredicate_ReturnUtcNow() 
     {
         var startUtc = new DateTime(2022, 10, 10, 8, 30, 0, DateTimeKind.Utc);
-        var environment = new TestSiloEnvironment {
+        var environment = new SiloTestDoubles.TestEnvironment {
             UtcNow = startUtc
         };
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue", environment: environment);
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure, environment: environment);
         PopulateGrains(silo);
         var grainRef = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
 
@@ -303,10 +302,10 @@ public class SiloTaskQueueTests
     public void CanCancelWorkItem() 
     {
         var startUtc = new DateTime(2022, 10, 10, 8, 30, 0, DateTimeKind.Utc);
-        var environment = new TestSiloEnvironment {
+        var environment = new SiloTestDoubles.TestEnvironment {
             UtcNow = startUtc
         };
-        var silo = TestDoubles.CreateConfiguredSilo("test-task-queue", environment: environment);
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure, environment: environment);
         PopulateGrains(silo);
 
         var grainRef1 = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);

@@ -1,8 +1,7 @@
-using Atc.Grains.Tests.Doubles;
 using Atc.Grains.Tests.Samples;
 using FluentAssertions;
 using NUnit.Framework;
-using static Atc.Grains.Tests.Doubles.TestDoubles;
+using static Atc.Grains.Tests.Samples.SampleSilo;
 
 namespace Atc.Grains.Tests;
 
@@ -12,7 +11,7 @@ public class SiloTimeTravelTests
     [Test]
     public void CanTakeSnapshot()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("time-travel");
+        var silo = SiloTestDoubles.CreateSilo("time-travel", SampleSilo.Configure);
         
         PopulateGrains(silo);
         RunGrainEvents(silo, startStep: 0, count: 4);
@@ -28,7 +27,7 @@ public class SiloTimeTravelTests
     [Test]
     public void CanRevertToEmptySnapshot()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("time-travel");
+        var silo = SiloTestDoubles.CreateSilo("time-travel", SampleSilo.Configure);
         var snapshot = silo.TimeTravel.TakeSnapshot();
 
         PopulateGrains(silo);
@@ -46,11 +45,11 @@ public class SiloTimeTravelTests
     [Test]
     public void CanRestoreSnapshotIntoNewSilo()
     {
-        var silo1 = TestDoubles.CreateConfiguredSilo("time-travel");
+        var silo1 = SiloTestDoubles.CreateSilo("time-travel", SampleSilo.Configure);
         PopulateGrains(silo1);
         RunGrainEvents(silo1, startStep: 0, count: 8);
         var snapshot = silo1.TimeTravel.TakeSnapshot();
-        var silo2 = TestDoubles.CreateConfiguredSilo("time-travel");
+        var silo2 = SiloTestDoubles.CreateSilo("time-travel", SampleSilo.Configure);
         silo2.Grains.GetAllGrainsOfType<SampleGrainOne>().Count().Should().Be(0);
         silo2.Grains.GetAllGrainsOfType<SampleGrainTwo>().Count().Should().Be(0);
 
@@ -73,7 +72,7 @@ public class SiloTimeTravelTests
     [Test]
     public void CanRemoveExtraGrainsOnRestore()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("time-travel");
+        var silo = SiloTestDoubles.CreateSilo("time-travel", SampleSilo.Configure);
 
         PopulateGrains(silo);
         var snapshot = silo.TimeTravel.TakeSnapshot();
@@ -110,7 +109,7 @@ public class SiloTimeTravelTests
     [Test]
     public void CanRecreateDeletedGrainsOnRestore()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("time-travel");
+        var silo = SiloTestDoubles.CreateSilo("time-travel", SampleSilo.Configure);
 
         PopulateGrains(silo);
         RunGrainEvents(silo, startStep:0, count: 8);
@@ -147,7 +146,7 @@ public class SiloTimeTravelTests
     [Test]
     public void CanResetGrainStateToSnapshotOnRestore()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("time-travel");
+        var silo = SiloTestDoubles.CreateSilo("time-travel", SampleSilo.Configure);
 
         PopulateGrains(silo);
         RunGrainEvents(silo, startStep:0, count: 4);
@@ -176,7 +175,7 @@ public class SiloTimeTravelTests
     [Test]
     public void CanReplayEvents()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("time-travel");
+        var silo = SiloTestDoubles.CreateSilo("time-travel", SampleSilo.Configure);
         PopulateGrains(silo);
         RunGrainEvents(silo, startStep:0, count: 8);
         var sequenceNo = silo.Dispatch.NextSequenceNo;
@@ -203,7 +202,7 @@ public class SiloTimeTravelTests
     [Test]
     public void GrainRefSurviveRestoreOfSnapshots()
     {
-        var silo = TestDoubles.CreateConfiguredSilo("time-travel");
+        var silo = SiloTestDoubles.CreateSilo("time-travel", SampleSilo.Configure);
         PopulateGrains(silo);
         var one1Ref = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
         

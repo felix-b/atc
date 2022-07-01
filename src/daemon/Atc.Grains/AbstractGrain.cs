@@ -56,6 +56,8 @@ public abstract class AbstractGrain<TStateRecord> : IGrain
 
     protected TStateRecord State => _state;
 
+    internal ISiloEventDispatch GetDispatch() => _dispatch;
+
     object IGrain.GetState()
     {
         return _state!;

@@ -55,7 +55,7 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         _getDependencyContext = getDependencyContext;
     }
 
-    public GrainRef<T> CreateGrain<T>(ActivationEventFactory<IGrainActivationEvent<T>> activationEventFactory) where T : class, IGrain
+    public GrainRef<T> CreateGrain<T>(ActivationEventFactory<IGrainActivationEvent<T>> activationEventFactory) where T : class, IGrainId
     {
         if (!_registrationByGrainType.TryGetValue(typeof(T), out var registration))
         {
@@ -74,7 +74,7 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         return new GrainRef<T>(this, grain.GrainId);
     }
 
-    public void DeleteGrain<T>(GrainRef<T> grainRef) where T : class, IGrain
+    public void DeleteGrain<T>(GrainRef<T> grainRef) where T : class, IGrainId
     {
         if (!_grainInstanceById.TryGetValue(grainRef.GrainId, out var grainInstance))
         {
@@ -90,7 +90,7 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         Dispatch(new DeactivateGrainEvent(grainRef.GrainId));    
     }
 
-    public bool TryGetRefById<T>(string grainId, out GrainRef<T>? grainRef) where T : class, IGrain
+    public bool TryGetRefById<T>(string grainId, out GrainRef<T>? grainRef) where T : class, IGrainId
     {
         if (TryGetInstanceById<T>(grainId, out var grainInstance))
         {
@@ -102,7 +102,7 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         return false;
     }
 
-    public bool TryGetInstanceById<T>(string grainId, out T? grainInstance) where T : class, IGrain
+    public bool TryGetInstanceById<T>(string grainId, out T? grainInstance) where T : class, IGrainId
     {
         var result = _grainInstanceById.TryGetValue(grainId, out var nonTypedInstance);
         if (result && nonTypedInstance is T typedInstance)
@@ -115,15 +115,15 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         return false;
     }
 
-    public IEnumerable<GrainRef<T>> GetAllGrainsOfType<T>() where T : class, IGrain
+    public IEnumerable<GrainRef<T>> GetAllGrainsOfType<T>() where T : class, IGrainId
     {
         return _grainInstanceById
             .Values
-            .OfType<T>()
+            .Where(grain => grain is T)
             .Select(grain => new GrainRef<T>(this, grain.GrainId));    
     }
 
-    public GrainRef<T> GetRefToGrainInstance<T>(T grainInstance) where T : class, IGrain
+    public GrainRef<T> GetRefToGrainInstance<T>(T grainInstance) where T : class, IGrainId
     {
         return new GrainRef<T>(this, grainInstance.GrainId);
     }
@@ -323,7 +323,7 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
             : 1;
     }
 
-    private T TakeLastCreatedGrainOrThrow<T>() where T : class, IGrain
+    private T TakeLastCreatedGrainOrThrow<T>() where T : class, IGrainId
     {
         var grain = 
             _lastCreatedGrain as T 

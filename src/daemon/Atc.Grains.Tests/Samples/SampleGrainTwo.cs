@@ -1,6 +1,13 @@
 namespace Atc.Grains.Tests.Samples;
 
-public class SampleGrainTwo : AbstractGrain<SampleGrainTwo.GrainState>
+public interface ISampleGrainTwo : IGrainId
+{
+    void ChangeValue(decimal newValue);
+    void ArmDivideBy10WhenGreaterThan100(DateTime? notLaterThanUtc = null);
+    decimal Value { get; }
+}
+
+public class SampleGrainTwo : AbstractGrain<SampleGrainTwo.GrainState>, ISampleGrainTwo
 {
     public static readonly string TypeString = nameof(SampleGrainTwo);
 

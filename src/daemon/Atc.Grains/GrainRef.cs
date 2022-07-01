@@ -1,7 +1,7 @@
 namespace Atc.Grains;
 
 public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>> 
-    where T : class, IGrain
+    where T : class, IGrainId
 {
     private readonly ISiloGrains _grains;
     private readonly string _grainId;

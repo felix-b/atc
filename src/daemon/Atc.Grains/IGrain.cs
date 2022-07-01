@@ -1,9 +1,13 @@
 namespace Atc.Grains;
 
-public interface IGrain
+public interface IGrainId
 {
     string GrainId { get; }
     string GrainType { get; }
+}
+
+public interface IGrain : IGrainId
+{
     object GetState();
     void SetState(object state);
     object Reduce(object state, IGrainEvent @event);

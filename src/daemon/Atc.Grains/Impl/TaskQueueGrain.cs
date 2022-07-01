@@ -140,6 +140,8 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
 
     public DateTime NextWorkItemAtUtc => State.FirstWorkItemUtc;
 
+    public IEnumerable<IGrainWorkItem> WorkItems => State.Entries.Select(e => e.WorkItem);
+
     protected override GrainState Reduce(GrainState stateBefore, IGrainEvent @event)
     {
         ImmutableSortedSet<WorkItemEntry> newEntries;
