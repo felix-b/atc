@@ -53,13 +53,9 @@ public class EndpointEndToEndTests
                 });
 
                 await client.WaitForIncomingEnvelope(e => e.query_counter_reply != null, 1000);
-                
-                Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} - ALL MESSAGES EXCHANGED, shutting down client and server.");
             }
 
-            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} - BEFORE STOP ENDPOINT.");
             await endpoint.StopAsync(TimeSpan.FromSeconds(3));
-            Console.WriteLine($"{DateTime.Now:HH:mm:ss.fff} - AFTER STOP ENDPOINT.");
         }
 
         serverTelemetry.PrintAllToConsole();
@@ -68,7 +64,56 @@ public class EndpointEndToEndTests
         serverTelemetry.VerifyNoErrorsNoWarningsOr(Assert.Fail);
         clientTelemetry.VerifyNoErrorsNoWarningsOr(Assert.Fail);
     }
-    
+
+    [Test]
+    public async Task CanDropClientsGracefullyOnShutdown()
+    {
+        TestEndpointTelemetry serverTelemetry;
+        TestClientChannelTelemetry clientTelemetry;
+
+        WebSocketEndpoint? endpoint = null;
+        TestClientOne? client = null;
+
+        try
+        {
+            endpoint = CreateSampleServiceOneEndpoint(out _, out serverTelemetry);
+            await endpoint.StartAsync();
+
+            client = CreateSampleServiceOneClient(out clientTelemetry);
+            await client.SendEnvelope(new Sample1ClientToServer {
+                hello_request = new Sample1ClientToServer.HelloRequest {
+                    Name = "ABC",
+                    InitialCounterValue = 123
+                }
+            });
+            
+            await client.WaitForIncomingEnvelope(e => e.greeting_reply != null, 1000);
+        }
+        finally
+        {
+            try
+            {
+                if (endpoint != null)
+                {
+                    await endpoint.DisposeAsync();
+                }
+            }
+            finally
+            {
+                if (client != null)
+                {
+                    await client.DisposeAsync();
+                }
+            }
+        }
+
+        serverTelemetry.PrintAllToConsole();
+        clientTelemetry.PrintAllToConsole();
+
+        serverTelemetry.VerifyNoErrorsNoWarningsOr(Assert.Fail);
+        clientTelemetry.VerifyNoErrorsNoWarningsOr(Assert.Fail);
+    }
+
     private WebSocketEndpoint CreateSampleServiceOneEndpoint(
         out IServiceTaskSynchronizer taskSynchronizer,
         out TestEndpointTelemetry telemetry)

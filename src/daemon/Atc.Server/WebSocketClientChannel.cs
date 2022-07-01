@@ -104,6 +104,14 @@ public class WebSocketClientChannel : IAsyncDisposable
             var (bytesReceived, status) = await ReadOneMessage(incomingMessageBuffer);
             if (bytesReceived < 0 || status != SocketReceiveStatus.MessageReceived)
             {
+                if (status == SocketReceiveStatus.SocketClosing && _webSocket.State != WebSocketState.Closed)
+                {
+                    _telemetry.DebugClientReplyingSocketCloseHandshake();
+                    await _webSocket.CloseOutputAsync(
+                        WebSocketCloseStatus.NormalClosure, 
+                        "Server closed session", 
+                        CancellationToken.None);
+                }
                 return status;
             }
 

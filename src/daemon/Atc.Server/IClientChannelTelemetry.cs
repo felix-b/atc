@@ -18,5 +18,6 @@ public interface IClientChannelTelemetry : ITelemetry
     void DebugClientJoiningReceiveLoop();
     ITraceSpan SpanClientSocketDisposing();
     void InfoClientSocketDisconnected();
+    void DebugClientReplyingSocketCloseHandshake();
 }
 

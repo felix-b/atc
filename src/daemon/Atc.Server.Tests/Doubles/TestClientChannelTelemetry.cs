@@ -69,4 +69,9 @@ public class TestClientChannelTelemetry : TelemetryTestDoubleBase, IClientChanne
     {
         ReportInfo($"ClientSocketDisconnected");
     }
+
+    void IClientChannelTelemetry.DebugClientReplyingSocketCloseHandshake()
+    {
+        ReportDebug($"ClientReplyingSocketCloseHandshake");
+    }
 }

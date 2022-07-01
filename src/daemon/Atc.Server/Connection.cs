@@ -56,7 +56,7 @@ public class Connection : IAsyncDisposable, IConnectionContext
             if (_socket.State == WebSocketState.Open)
             {
                 _telemetry.DebugConnectionInitiatingSocketCloseHandshake(connectionId: _id);
-                await _socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Session over", CancellationToken.None);
+                await _socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "Session over", CancellationToken.None);
             }
 
             if (_receiveLoopTask != null)
@@ -162,11 +162,10 @@ public class Connection : IAsyncDisposable, IConnectionContext
             receiveStatus = await RunLoop();
             _telemetry.DebugConnectionReceiveLoopCompleted(connectionId: _id, receiveStatus);
 
-            if (receiveStatus == SocketReceiveStatus.SocketClosing)
+            if (receiveStatus == SocketReceiveStatus.SocketClosing && _socket.State != WebSocketState.Closed)
             {
                 _telemetry.DebugConnectionSocketReplyingCloseHandshake(connectionId: _id, socketState: _socket.State);
-
-                var closeStatus = WebSocketCloseStatus.NormalClosure; 
+                var closeStatus = WebSocketCloseStatus.NormalClosure;
                 await _socket.CloseOutputAsync(closeStatus, closeStatus.ToString(), CancellationToken.None);
             }
 
