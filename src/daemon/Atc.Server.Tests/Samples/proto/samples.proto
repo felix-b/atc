@@ -1,0 +1,35 @@
+﻿syntax = "proto3";
+package atc_server_samples_proto;
+
+message Sample1ClientToServer {
+  
+  message HelloRequest {
+    string name = 1;
+    int32 initial_counter_value = 2;
+  }
+  
+  message QueryCounterRequest {
+  }
+  
+  message GoodbyeRequest {
+  }
+
+  oneof payload {
+    HelloRequest hello_request = 101;
+    QueryCounterRequest query_counter_request = 102;
+    GoodbyeRequest goodbye_request = 103;
+  }
+}
+
+message Sample1ServerToClient {
+  message GreetingReply {
+    string greeting = 1;
+  }
+  message QueryCounterReply {
+    int32 counter_value = 1;
+  }
+  oneof payload {
+    GreetingReply greeting_reply = 201;
+    QueryCounterReply query_counter_reply = 202;
+  }
+}
