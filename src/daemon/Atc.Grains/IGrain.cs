@@ -8,8 +8,8 @@ public interface IGrain
     void SetState(object state);
     object Reduce(object state, IGrainEvent @event);
     void ObserveChanges(object oldState, object newState);
-    Task<bool> ShouldExecuteWorkItem(IGrainWorkItem workItem);
-    Task<bool> ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut);
+    bool ShouldExecuteWorkItem(IGrainWorkItem workItem);
+    bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut);
 }
 
 public interface IStartableGrain : IGrain

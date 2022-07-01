@@ -2,7 +2,7 @@ namespace Atc.Grains;
 
 public interface ISiloEventStreamWriter
 {
-    Task WriteGrainEvent(GrainEventEnvelope envelope);
+    void FireGrainEvent(GrainEventEnvelope envelope);
 }
 
 public record GrainEventEnvelope(

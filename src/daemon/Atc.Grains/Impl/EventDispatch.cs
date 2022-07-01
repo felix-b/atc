@@ -24,7 +24,7 @@ public class EventDispatch : ISiloEventDispatch
         _getTaskQueue = getTaskQueue;
     }
 
-    public async Task Dispatch(IGrain target, IGrainEvent @event)
+    public void Dispatch(IGrain target, IGrainEvent @event)
     {
         if (_dispatching)
         {
@@ -33,7 +33,7 @@ public class EventDispatch : ISiloEventDispatch
 
         var sequenceNo = _nextSequenceNo++;
         var envelope = CreateEventEnvelope(target, @event, sequenceNo);
-        await _eventWriter.WriteGrainEvent(envelope);
+        _eventWriter.FireGrainEvent(envelope);
 
         //using var logSpan = _logger.Dispatch(sequenceNo, target.UniqueId, @event.GetType().Name, @event.ToString());
         _dispatching = true;

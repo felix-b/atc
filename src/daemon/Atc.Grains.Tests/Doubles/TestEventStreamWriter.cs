@@ -6,9 +6,8 @@ public class TestEventStreamWriter : ISiloEventStreamWriter
 {
     public ImmutableList<GrainEventEnvelope> Events { get; private set; } = ImmutableList<GrainEventEnvelope>.Empty;
 
-    public Task WriteGrainEvent(GrainEventEnvelope envelope)
+    public void FireGrainEvent(GrainEventEnvelope envelope)
     {
         Events = Events.Add(envelope);
-        return Task.CompletedTask;
     }
 }

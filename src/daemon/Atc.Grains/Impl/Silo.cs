@@ -45,9 +45,9 @@ public class Silo : ISilo
             .Get(); 
     }
 
-    public Task ExecuteReadyWorkItems()
+    public void ExecuteReadyWorkItems()
     {
-        return _taskQueueGrain.ExecuteReadyWorkItems();
+        _taskQueueGrain.ExecuteReadyWorkItems();
     }
 
     public string SiloId { get; }

@@ -20,7 +20,7 @@ public interface ISilo
     
     DateTime NextWorkItemAtUtc { get; }
 
-    Task ExecuteReadyWorkItems();
+    void ExecuteReadyWorkItems();
 
     public static ISilo Create(
         string siloId,
@@ -77,7 +77,7 @@ public interface ISiloGrains
 
 public interface ISiloEventDispatch
 {
-    Task Dispatch(IGrain target, IGrainEvent @event);
+    void Dispatch(IGrain target, IGrainEvent @event);
     ulong NextSequenceNo { get; }
     ISiloTaskQueue TaskQueue { get; }
 }

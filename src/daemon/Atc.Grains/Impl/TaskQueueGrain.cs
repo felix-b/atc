@@ -93,17 +93,17 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
         Dispatch(new RemoveWorkItemEntryEvent(_environment.UtcNow, handle.Id));
     }
 
-    public async Task ExecuteReadyWorkItems()
+    public void ExecuteReadyWorkItems()
     {
         var utcNow = _environment.UtcNow;
         var readyWorkItemQuery = GetReadyWorkItemQuery();
 
         foreach (var entry in readyWorkItemQuery)
         {
-            var (shouldExecute, timedOut) = await ShouldExecuteEntry(entry);
+            var (shouldExecute, timedOut) = ShouldExecuteEntry(entry);
             if (shouldExecute)
             {
-                await ExecuteEntry(entry, timedOut);
+                ExecuteEntry(entry, timedOut);
             }
         }
 
@@ -115,13 +115,13 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
                 e.NotLaterThanUtc <= utcNow);
         }
 
-        async Task ExecuteEntry(WorkItemEntry entry, bool timedOut)
+        void ExecuteEntry(WorkItemEntry entry, bool timedOut)
         {
             //TODO: create telemetry span
             try
             {
-                await Dispatch(new RemoveWorkItemEntryEvent(_environment.UtcNow, entry.Id));
-                await entry.TargetRef.Get().ExecuteWorkItem(entry.WorkItem, timedOut);
+                Dispatch(new RemoveWorkItemEntryEvent(_environment.UtcNow, entry.Id));
+                entry.TargetRef.Get().ExecuteWorkItem(entry.WorkItem, timedOut);
             }
             catch //(Exception e)
             {
@@ -129,9 +129,9 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
             }
         }
 
-        async Task<(bool shouldExecute, bool timedOut)> ShouldExecuteEntry(WorkItemEntry entry)
+        (bool shouldExecute, bool timedOut) ShouldExecuteEntry(WorkItemEntry entry)
         {
-            var predicateResult = !entry.HasPredicate || await EvaluatePredicate(entry);
+            var predicateResult = !entry.HasPredicate || EvaluatePredicate(entry);
             var timedOut = !predicateResult && entry.NotLaterThanUtc <= utcNow;
             var shouldExecute = predicateResult || timedOut;
             return (shouldExecute, timedOut);
@@ -165,7 +165,7 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
         }
     }
 
-    private Task<bool> EvaluatePredicate(WorkItemEntry entry)
+    private bool EvaluatePredicate(WorkItemEntry entry)
     {
         //TODO: telemetry create span
         try
@@ -177,7 +177,7 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
             //TODO: telemetry log error
         }
 
-        return Task.FromResult(false);
+        return false;
     }
 
     public static void RegisterGrainType(SiloConfigurationBuilder config)

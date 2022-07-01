@@ -39,9 +39,9 @@ public class SampleGrainOne : AbstractGrain<SampleGrainOne.GrainState>
     {
     }
 
-    public Task ChangeStr(string newStr)
+    public void ChangeStr(string newStr)
     {
-        return Dispatch(new ChangeStrEvent(newStr));
+        Dispatch(new ChangeStrEvent(newStr));
     }
 
     public GrainWorkItemHandle RequestMultiplyNum(int times)
@@ -57,18 +57,18 @@ public class SampleGrainOne : AbstractGrain<SampleGrainOne.GrainState>
     public int Num => State.Num;
     public string Str => State.Str;
 
-    protected override async Task<bool> ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
+    protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {
         switch (workItem)
         {
             case MultiplyNumWorkItem multiplyNum:
-                await Dispatch(new ChangeNumEvent(NewNum: State.Num * multiplyNum.Times));
+                Dispatch(new ChangeNumEvent(NewNum: State.Num * multiplyNum.Times));
                 return true;
             case DuplicateStrWorkItem duplicateStr:
-                await Dispatch(new ChangeStrEvent(NewStr: $"{State.Str}|{State.Str}"));
+                Dispatch(new ChangeStrEvent(NewStr: $"{State.Str}|{State.Str}"));
                 return true;
             default:
-                return await base.ExecuteWorkItem(workItem, timedOut);
+                return base.ExecuteWorkItem(workItem, timedOut);
         }
     }
 
