@@ -12,6 +12,11 @@ public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>>
         _grainId = grainId;
     }
 
+    public GrainRef<S> As<S>() where S : class, IGrainId
+    {
+        return new GrainRef<S>(_grains, _grainId);
+    }
+    
     public bool Equals(GrainRef<T> other)
     {
         return _grainId == other._grainId;
@@ -31,7 +36,7 @@ public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>>
     {
         return GrainId;
     }
-
+    
     public T Get() => _grains.GetInstanceById<T>(_grainId);
     public string GrainId => _grainId;
     public bool CanGet => _grains != null;

@@ -1,0 +1,105 @@
+﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/@KeyIndexDefined">True</s:Boolean>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Applicability/=File/@EntryIndexedValue">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/CustomProperties/=Extension/@EntryIndexedValue">cs</s:String>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/CustomProperties/=FileName/@EntryIndexedValue">NewGrain</s:String>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/CustomProperties/=ValidateFileName/@EntryIndexedValue">True</s:String>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Description/@EntryValue">ATC &amp;Grain</s:String>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Reformat/@EntryValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/ShortenQualifiedReferences/@EntryValue">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Text/@EntryValue">using Atc.Grains;
+
+namespace $NAMESPACE$;
+
+public interface I$CLASS$ : IGrainId
+{
+    //TODO
+}
+
+public class $CLASS$ : AbstractGrain&lt;$CLASS$.GrainState&gt;, I$CLASS$
+{
+    public static readonly string TypeString = nameof($CLASS$);
+
+    public record GrainState(
+        //TODO
+    );
+
+    public record GrainActivationEvent(
+        string GrainId
+        //TODO
+    ) : IGrainActivationEvent&lt;$CLASS$&gt;;
+
+    public record SampleEvent(
+        //TODO
+    ) : IGrainEvent;
+
+    public record SampleWorkItem(
+        //TODO
+    ) : IGrainWorkItem;
+
+    public $CLASS$(
+        ISiloEventDispatch dispatch, 
+        GrainActivationEvent activation) : 
+        base(
+            grainId: activation.GrainId, 
+            grainType: TypeString, 
+            dispatch: dispatch, 
+            initialState: CreateInitialState(activation))
+    {
+    }
+
+    protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
+    {
+        switch (workItem)
+        {
+            default:
+                return base.ExecuteWorkItem(workItem, timedOut);
+        }
+    }
+
+    protected override GrainState Reduce(GrainState stateBefore, IGrainEvent @event)
+    {
+        switch (@event)
+        {
+            default:
+                return stateBefore;
+        }
+    }
+    
+    public static void RegisterGrainType(SiloConfigurationBuilder config)
+    {
+        config.RegisterGrainType&lt;$CLASS$, GrainActivationEvent&gt;(
+            TypeString, 
+            (activation, context) =&gt; new $CLASS$(
+                dispatch: context.Resolve&lt;ISiloEventDispatch&gt;(),
+                activation: activation
+            ));
+    }
+    
+    private static GrainState CreateInitialState(GrainActivationEvent activation)
+    {
+        return new GrainState(
+            //TODO
+        );
+    }
+}
+</s:String>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/UITag/@EntryValue">Class/Interface</s:String>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Field/=CLASS/@KeyIndexDefined">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Field/=CLASS/Expression/@EntryValue">getAlphaNumericFileNameWithoutExtension()</s:String>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Field/=CLASS/InitialRange/@EntryValue">-1</s:Int64>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Field/=CLASS/Order/@EntryValue">1</s:Int64>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Field/=NAMESPACE/@KeyIndexDefined">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Field/=NAMESPACE/Expression/@EntryValue">fileDefaultNamespace()</s:String>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Field/=NAMESPACE/InitialRange/@EntryValue">-1</s:Int64>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Field/=NAMESPACE/Order/@EntryValue">0</s:Int64>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Scope/=E8F0594528C33E45BBFEC6CFE851095D/@KeyIndexDefined">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/Template/=52E1F9820CAB97438BF7A95D7C85B582/Scope/=E8F0594528C33E45BBFEC6CFE851095D/Type/@EntryValue">InCSharpProjectFile</s:String>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/QuickList/=F0CA621CDF5AB24282D8CDC11C520997/@KeyIndexDefined">True</s:Boolean>
+	<s:Boolean x:Key="/Default/PatternsAndTemplates/LiveTemplates/QuickList/=F0CA621CDF5AB24282D8CDC11C520997/Entry/=52E1F9820CAB97438BF7A95D7C85B582/@KeyIndexDefined">True</s:Boolean>
+	<s:String x:Key="/Default/PatternsAndTemplates/LiveTemplates/QuickList/=F0CA621CDF5AB24282D8CDC11C520997/Entry/=52E1F9820CAB97438BF7A95D7C85B582/EntryName/@EntryValue">&lt;No Name&gt;</s:String>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/QuickList/=F0CA621CDF5AB24282D8CDC11C520997/Entry/=52E1F9820CAB97438BF7A95D7C85B582/Position/@EntryValue">10</s:Int64>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/QuickList/=F0CA621CDF5AB24282D8CDC11C520997/Entry/=2CBD6971A7955044AD2624B84FB49E38/Position/@EntryValue">9</s:Int64>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/QuickList/=F0CA621CDF5AB24282D8CDC11C520997/Entry/=567DCF4B487C244A9F6BB46E4E9F3B84/Position/@EntryValue">6</s:Int64>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/QuickList/=F0CA621CDF5AB24282D8CDC11C520997/Entry/=7F2A1BE8D0078241A9AE7802038BAD3C/Position/@EntryValue">7</s:Int64>
+	<s:Int64 x:Key="/Default/PatternsAndTemplates/LiveTemplates/QuickList/=F0CA621CDF5AB24282D8CDC11C520997/Entry/=C4795E57DDEC1C4F97BBC8C7173EBBCA/Position/@EntryValue">8</s:Int64></wpf:ResourceDictionary>

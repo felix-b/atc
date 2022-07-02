@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Folder Include="Airports" />
+      <Folder Include="Control" />
+      <Folder Include="Airspaces" />
+      <Folder Include="Traffic" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Atc.Grains\Atc.Grains.csproj" />
+      <ProjectReference Include="..\Atc.Maths\Atc.Maths.csproj" />
+      <ProjectReference Include="..\Atc.World.Contracts\Atc.World.Contracts.csproj" />
+    </ItemGroup>
+
+</Project>

@@ -1,0 +1,76 @@
+using Atc.Grains;
+
+namespace $NAMESPACE$;
+
+public interface I$CLASS$ : IGrainId
+{
+    //TODO
+}
+
+public class $CLASS$ : AbstractGrain<$CLASS$.GrainState>, I$CLASS$
+{
+    public static readonly string TypeString = nameof($CLASS$);
+
+    public record GrainState(
+        //TODO
+    );
+
+    public record GrainActivationEvent(
+        string GrainId
+        //TODO
+    ) : IGrainActivationEvent<$CLASS$>;
+
+    public record SampleEvent(
+        //TODO
+    ) : IGrainEvent;
+
+    public record SampleWorkItem(
+        //TODO
+    ) : IGrainWorkItem;
+
+    public $CLASS$(
+        ISiloEventDispatch dispatch, 
+        GrainActivationEvent activation) : 
+        base(
+            grainId: activation.GrainId, 
+            grainType: TypeString, 
+            dispatch: dispatch, 
+            initialState: CreateInitialState(activation))
+    {
+    }
+
+    protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
+    {
+        switch (workItem)
+        {
+            default:
+                return base.ExecuteWorkItem(workItem, timedOut);
+        }
+    }
+
+    protected override GrainState Reduce(GrainState stateBefore, IGrainEvent @event)
+    {
+        switch (@event)
+        {
+            default:
+                return stateBefore;
+        }
+    }
+    
+    public static void RegisterGrainType(SiloConfigurationBuilder config)
+    {
+        config.RegisterGrainType<$CLASS$, GrainActivationEvent>(
+            TypeString, 
+            (activation, context) => new $CLASS$(
+                dispatch: context.Resolve<ISiloEventDispatch>(),
+                activation: activation
+            ));
+    }
+    
+    private static GrainState CreateInitialState(GrainActivationEvent activation)
+    {
+        return new GrainState(
+            //TODO
+        );
+    }
+}

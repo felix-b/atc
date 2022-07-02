@@ -19,7 +19,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Maths", "Atc.Maths\Atc.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Maths.Tests", "Atc.Maths.Tests\Atc.Maths.Tests.csproj", "{1AEFFCA7-B580-4009-B51B-D0CEBF39E8CF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.World.Abstractions", "Atc.World.Abstractions\Atc.World.Abstractions.csproj", "{BCD7EB61-8E42-4487-85B1-1C32958A7E30}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.World.Contracts", "Atc.World.Contracts\Atc.World.Contracts.csproj", "{BCD7EB61-8E42-4487-85B1-1C32958A7E30}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.World", "Atc.World\Atc.World.csproj", "{7F5AE4EE-334C-40A6-81F6-EB751E8EE7DA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.World.Tests", "Atc.World.Tests\Atc.World.Tests.csproj", "{D44CFBBD-DE48-478E-9AE2-652E7317D0F2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -66,5 +70,13 @@ Global
 		{BCD7EB61-8E42-4487-85B1-1C32958A7E30}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BCD7EB61-8E42-4487-85B1-1C32958A7E30}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BCD7EB61-8E42-4487-85B1-1C32958A7E30}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F5AE4EE-334C-40A6-81F6-EB751E8EE7DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F5AE4EE-334C-40A6-81F6-EB751E8EE7DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F5AE4EE-334C-40A6-81F6-EB751E8EE7DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F5AE4EE-334C-40A6-81F6-EB751E8EE7DA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D44CFBBD-DE48-478E-9AE2-652E7317D0F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D44CFBBD-DE48-478E-9AE2-652E7317D0F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D44CFBBD-DE48-478E-9AE2-652E7317D0F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D44CFBBD-DE48-478E-9AE2-652E7317D0F2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
