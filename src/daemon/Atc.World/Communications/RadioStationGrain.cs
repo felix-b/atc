@@ -6,7 +6,7 @@ namespace Atc.World.Communications;
 
 public interface IRadioStationGrain : IGrainId
 {
-    void InitGroundMedium(GrainRef<IGroundStationRadioMediumGrain> medium);
+    void AttachGroundStationMedium(GrainRef<IGroundStationRadioMediumGrain> medium);
     void TuneMobileStation(GeoPoint position, Altitude altitude, Frequency frequency);
 
     void AddListener(GrainRef<IRadioStationListener> listener, RadioStationListenerMask mask);
@@ -16,20 +16,20 @@ public interface IRadioStationGrain : IGrainId
     void CompleteTransmission(IntentDescription intent, bool keepPttPressed = false);
     void AbortTransmission();
 
-    void NotifyTransmissionStarted(
+    void BeginReceiveTransmission(
         TransmissionDescription transmission, 
-        ConversationToken conversationToken,
+        ConversationToken? conversationToken,
         GrainRef<IRadioStationGrain> stationTransmitting);
 
-    void NotifyTransmissionCompleted(
+    void EndReceiveCompletedTransmission(
         TransmissionDescription transmission, 
-        ConversationToken conversationToken,
+        ConversationToken? conversationToken,
         GrainRef<IRadioStationGrain> stationTransmitting,
         IntentDescription intent);
 
-    void NotifyTransmissionAborted(
+    void EndReceiveAbortedTransmission(
         TransmissionDescription transmission, 
-        ConversationToken conversationToken,
+        ConversationToken? conversationToken,
         GrainRef<IRadioStationGrain> stationTransmitting);
     
     RadioStationType StationType { get; }
@@ -47,10 +47,31 @@ public enum RadioStationType
 
 public interface IRadioStationListener : IGrainId
 {
-    void TransceiverStateChanged(
-        GrainRef<IRadioStationGrain> station, 
-        TransceiverState oldState, 
-        TransceiverState newState);
+    // void TransceiverStateChanged(
+    //     // notifying station
+    //     GrainRef<IRadioStationGrain> stationTransmitting,
+    //     // previous state
+    //     TransceiverState oldState,
+    //     // new current state
+    //     TransceiverState newState,
+    //     // passed when switching from transmitting state, after completing a transmission 
+    //     IntentDescription? transmittedIntent);
+
+    void NotifyTransmissionStarted(
+        GrainRef<IRadioStationGrain> stationTransmitting,
+        TransmissionDescription transmission,
+        ConversationToken? conversationToken);
+
+    void NotifyTransmissionCompleted(
+        GrainRef<IRadioStationGrain> stationTransmitting,
+        TransmissionDescription transmission, 
+        ConversationToken? conversationToken,
+        IntentDescription transmittedIntent);
+
+    void NotifyTransmissionAborted(
+        GrainRef<IRadioStationGrain> stationTransmitting,
+        TransmissionDescription transmission, 
+        ConversationToken? conversationToken);
 }
 
 [Flags]
@@ -58,7 +79,7 @@ public enum RadioStationListenerMask
 {
     Transmitter = 0x01,
     Receiver = 0x02,
-    Transceiver = Transmitter | Receiver
+    Transceiver = Transmitter | Receiver,
 }
 
 public class RadioStationGrain : 
@@ -95,7 +116,7 @@ public class RadioStationGrain :
     {
     }
 
-    public void InitGroundMedium(GrainRef<IGroundStationRadioMediumGrain> medium)
+    public void AttachGroundStationMedium(GrainRef<IGroundStationRadioMediumGrain> medium)
     {
         throw new NotImplementedException();
     }
@@ -130,19 +151,26 @@ public class RadioStationGrain :
         throw new NotImplementedException();
     }
 
-    public void NotifyTransmissionStarted(TransmissionDescription transmission, ConversationToken conversationToken,
+    public void BeginReceiveTransmission(
+        TransmissionDescription transmission, 
+        ConversationToken? conversationToken,
         GrainRef<IRadioStationGrain> stationTransmitting)
     {
         throw new NotImplementedException();
     }
 
-    public void NotifyTransmissionCompleted(TransmissionDescription transmission, ConversationToken conversationToken,
-        GrainRef<IRadioStationGrain> stationTransmitting, IntentDescription intent)
+    public void EndReceiveCompletedTransmission(
+        TransmissionDescription transmission, 
+        ConversationToken? conversationToken,
+        GrainRef<IRadioStationGrain> stationTransmitting, 
+        IntentDescription intent)
     {
         throw new NotImplementedException();
     }
 
-    public void NotifyTransmissionAborted(TransmissionDescription transmission, ConversationToken conversationToken,
+    public void EndReceiveAbortedTransmission(
+        TransmissionDescription transmission, 
+        ConversationToken? conversationToken,
         GrainRef<IRadioStationGrain> stationTransmitting)
     {
         throw new NotImplementedException();

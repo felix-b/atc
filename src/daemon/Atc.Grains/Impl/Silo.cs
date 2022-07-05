@@ -16,11 +16,10 @@ public class Silo : ISilo
         Telemetry = configuration.Telemetry;
         Environment = configuration.Environment;
         Dispatch = new EventDispatch(
-            siloId, 
+            silo: this, 
             configuration.EventWriter, 
             configuration.Telemetry, 
-            configuration.Environment,
-            getTaskQueue: () => _taskQueueGrain!);
+            configuration.Environment);
 
         TaskQueueGrain.RegisterGrainType(configuration);
         _superGrain = new SuperGrain(

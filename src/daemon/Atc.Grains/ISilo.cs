@@ -79,7 +79,7 @@ public interface ISiloEventDispatch
 {
     void Dispatch(IGrain target, IGrainEvent @event);
     ulong NextSequenceNo { get; }
-    ISiloTaskQueue TaskQueue { get; }
+    ISilo Silo { get; }
 }
 
 public interface ISiloTaskQueue

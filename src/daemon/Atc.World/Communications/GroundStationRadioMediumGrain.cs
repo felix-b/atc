@@ -7,6 +7,8 @@ namespace Atc.World.Communications;
 
 public interface IGroundStationRadioMediumGrain : IGrainId
 {
+    void InitGroundStation(GrainRef<IRadioStationGrain> groundStation);
+    
     void AddMobileStation(GrainRef<IRadioStationGrain> station);
     void RemoveMobileStation(GrainRef<IRadioStationGrain> station);
     void HasLineOfSightTo(GeoPoint position, Altitude altitude);
@@ -59,45 +61,14 @@ public enum TransmitNowAction
     None
 }
 
-public record ConversationToken(
-    ulong Id,
-    AirGroundPriority Priority
-);
-
 public class GroundStationRadioMediumGrain : 
     AbstractGrain<GroundStationRadioMediumGrain.GrainState>,
-    IGroundStationRadioMediumGrain
+    IGroundStationRadioMediumGrain,
+    IRadioStationListener
 {
     public static readonly string TypeString = nameof(GroundStationRadioMediumGrain);
 
-    public record GrainState(
-        GrainRef<IRadioStationGrain> GroundStation,
-        ImmutableDictionary<string, GrainRef<IRadioStationGrain>> MobileStationById,
-        ImmutableSortedSet<PendingTransmissionQueueEntry> PendingTransmissionQueue,
-        ImmutableHashSet<ConversationToken> ConversationsInProgress,
-        ImmutableHashSet<string> TransmittingStationIds,
-        bool IsSilent,
-        DateTime SilenceSinceUtc
-    );
-
-    public record PendingTransmissionQueueEntry(
-        ConversationToken Token,
-        GrainRef<IAIRadioOperatorGrain> Operator
-    );
-
-    public record GrainActivationEvent(
-        string GrainId,
-        GrainRef<IRadioStationGrain> GroundStation
-    ) : IGrainActivationEvent<GroundStationRadioMediumGrain>;
-
-    public record SampleEvent(
-        //TODO
-    ) : IGrainEvent;
-
-    public record SampleWorkItem(
-        //TODO
-    ) : IGrainWorkItem;
-
+    [NotEventSourced]
     private readonly ISiloEnvironment _environment;
 
     public GroundStationRadioMediumGrain(
@@ -108,19 +79,63 @@ public class GroundStationRadioMediumGrain :
             grainId: activation.GrainId,
             grainType: TypeString,
             dispatch: dispatch,
-            initialState: CreateInitialState(activation, environment.UtcNow))
+            initialState: CreateInitialState(groundStation: default, environment.UtcNow))
     {
         _environment = environment;
     }
 
+    public void InitGroundStation(GrainRef<IRadioStationGrain> groundStation)
+    {
+        Dispatch(new InitGroundStationEvent(groundStation));
+
+        groundStation.Get().AddListener(
+            GetRefToSelfAs<IRadioStationListener>(), 
+            RadioStationListenerMask.Transmitter);
+    }
+
     public void AddMobileStation(GrainRef<IRadioStationGrain> station)
     {
-        throw new NotImplementedException();
+        Dispatch(new AddMobileStationEvent(station));
+        station.Get().AddListener(
+            GetRefToSelfAs<IRadioStationListener>(), 
+            RadioStationListenerMask.Transmitter);
+        NotifyCurrentTransmissionsStarted();
+
+        void NotifyCurrentTransmissionsStarted()
+        {
+            foreach (var entry in State.InProgressTransmissionByStationId.Values)
+            {
+                station.Get().BeginReceiveTransmission(
+                    transmission: entry.Transmission,
+                    conversationToken: entry.ConversationToken,
+                    stationTransmitting: entry.StationTransmitting);
+            }
+        }
     }
 
     public void RemoveMobileStation(GrainRef<IRadioStationGrain> station)
     {
-        throw new NotImplementedException();
+        NotifyCurrentTransmissionsAborted();
+        Dispatch(new RemoveMobileStationEvent(station));
+        station.Get().RemoveListener(GetRefToSelfAs<IRadioStationListener>());
+
+        void NotifyCurrentTransmissionsAborted()
+        {
+            foreach (var entry in State.InProgressTransmissionByStationId.Values)
+            {
+                if (entry.StationTransmitting == station)
+                {
+                    station.Get().AbortTransmission();
+                }
+                else
+                {
+                    station.Get().EndReceiveAbortedTransmission(
+                        transmission: entry.Transmission,
+                        conversationToken: entry.ConversationToken,
+                        stationTransmitting: entry.StationTransmitting);
+                }
+            }
+        }
     }
 
     public void HasLineOfSightTo(GeoPoint position, Altitude altitude)
@@ -133,7 +148,12 @@ public class GroundStationRadioMediumGrain :
         ConversationToken? conversationToken = null,
         AirGroundPriority? priority = null)
     {
-        throw new NotImplementedException();
+        var token = 
+            conversationToken 
+            ?? new ConversationToken(State.NextConversationTokenId, priority ?? AirGroundPriority.None);
+        var entry = new PendingTransmissionQueueEntry(token, aiOperator);
+        Dispatch(new EnqueuePendingTransmissionEvent(entry));
+        return token;
     }
 
     public void CancelPendingConversation(ConversationToken token)
@@ -141,9 +161,78 @@ public class GroundStationRadioMediumGrain :
         throw new NotImplementedException();
     }
 
+    public void NotifyTransmissionStarted(
+        GrainRef<IRadioStationGrain> stationTransmitting, 
+        TransmissionDescription transmission,
+        ConversationToken? conversationToken)
+    {
+        Dispatch(new TransmissionStartedEvent(
+            StationTransmitting: stationTransmitting,
+            Transmission: transmission, 
+            ConversationToken: conversationToken
+        ));
+
+        foreach (var station in GetAllStations(except: stationTransmitting))
+        {
+            station.Get().BeginReceiveTransmission(transmission, conversationToken, stationTransmitting);
+        }
+    }
+
+    public void NotifyTransmissionCompleted(
+        GrainRef<IRadioStationGrain> stationTransmitting, 
+        TransmissionDescription transmission,
+        ConversationToken? conversationToken, 
+        IntentDescription transmittedIntent)
+    {
+        // check before dispatching TransmissionEndedEvent, as the event may reset the flag
+        var transmissionWasInterfered = State.TransmissionWasInterfered; 
+
+        Dispatch(new TransmissionEndedEvent(
+            StationTransmitting: stationTransmitting,
+            Transmission: transmission, 
+            ConversationToken: conversationToken,
+            ConversationConcluded: transmittedIntent.ConcludesConversation && !transmissionWasInterfered,
+            Utc: _environment.UtcNow
+        ));
+
+        foreach (var station in GetAllStations(except: stationTransmitting))
+        {
+            if (!transmissionWasInterfered)
+            {
+                station.Get().EndReceiveCompletedTransmission(transmission, conversationToken, stationTransmitting, transmittedIntent);
+            }
+            else
+            {
+                station.Get().EndReceiveAbortedTransmission(transmission, conversationToken, stationTransmitting);
+            }
+        }
+    }
+
+    public void NotifyTransmissionAborted(
+        GrainRef<IRadioStationGrain> stationTransmitting, 
+        TransmissionDescription transmission,
+        ConversationToken? conversationToken)
+    {
+        Dispatch(new TransmissionEndedEvent(
+            StationTransmitting: stationTransmitting,
+            Transmission: transmission, 
+            ConversationToken: conversationToken,
+            ConversationConcluded: true,
+            Utc: _environment.UtcNow
+        ));
+
+        foreach (var station in GetAllStations(except: stationTransmitting))
+        {
+            station.Get().EndReceiveAbortedTransmission(
+                transmission, 
+                conversationToken, 
+                stationTransmitting);
+        }
+    }
+
     public GrainRef<IRadioStationGrain> GroundStation => State.GroundStation;
-    public GroundLocation AntennaLocation { get; }
-    public Frequency Frequency { get; }
+    public GroundLocation AntennaLocation => GroundStation.Get().GroundLocation.GetValueOrDefault();
+    public Frequency Frequency => GroundStation.Get().TunedFrequency;
 
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {
@@ -158,9 +247,71 @@ public class GroundStationRadioMediumGrain :
     {
         switch (@event)
         {
+            case InitGroundStationEvent initGround:
+                return CreateInitialState(initGround.GroundStation, _environment.UtcNow);
+            case AddMobileStationEvent addMobile:
+                return stateBefore with {
+                    MobileStationById = stateBefore.MobileStationById.Add(addMobile.MobileStation.GrainId, addMobile.MobileStation) 
+                };
+            case RemoveMobileStationEvent removeMobile:
+                return stateBefore with {
+                    MobileStationById = stateBefore.MobileStationById.Remove(removeMobile.MobileStation.GrainId) 
+                };
+            case EnqueuePendingTransmissionEvent enqueueTx:
+                return stateBefore with {
+                    PendingTransmissionQueue = stateBefore.PendingTransmissionQueue.Add(enqueueTx.Entry),
+                    NextConversationTokenId = stateBefore.NextConversationTokenId + 1
+                };
+            case TransmissionStartedEvent txStarted:
+                var pendingEntry = TryFindTransmissionQueueEntry(stateBefore, txStarted.ConversationToken);
+                return stateBefore with {
+                    IsSilent = false,
+                    TransmissionWasInterfered = 
+                        stateBefore.TransmissionWasInterfered || 
+                        !stateBefore.InProgressTransmissionByStationId.IsEmpty, 
+                    InProgressTransmissionByStationId = stateBefore.InProgressTransmissionByStationId.Add(
+                        txStarted.StationTransmitting.GrainId,
+                        new InProgressTransmissionEntry(
+                            txStarted.StationTransmitting,
+                            txStarted.ConversationToken!,
+                            txStarted.Transmission)),
+                    PendingTransmissionQueue = pendingEntry != null
+                        ? stateBefore.PendingTransmissionQueue.Remove(pendingEntry)
+                        : stateBefore.PendingTransmissionQueue,
+                    ConversationsInProgress = stateBefore.ConversationsInProgress.Add(txStarted.ConversationToken!) 
+                };
+            case TransmissionEndedEvent txEnded:
+                var newTransmittingStationIds = 
+                    stateBefore.InProgressTransmissionByStationId.Remove(txEnded.StationTransmitting.GrainId); 
+                return stateBefore with {
+                    IsSilent = newTransmittingStationIds.IsEmpty,
+                    TransmissionWasInterfered = 
+                        stateBefore.TransmissionWasInterfered && 
+                        !newTransmittingStationIds.IsEmpty,
+                    InProgressTransmissionByStationId = newTransmittingStationIds,
+                    ConversationsInProgress = txEnded.ConversationConcluded 
+                        ? stateBefore.ConversationsInProgress.Remove(txEnded.ConversationToken!)
+                        : stateBefore.ConversationsInProgress,
+                    SilenceSinceUtc = txEnded.Utc,
+                };
             default:
                 return stateBefore;
         }
+
+        static PendingTransmissionQueueEntry? TryFindTransmissionQueueEntry(GrainState state, ConversationToken? token)
+        {
+            return token != null
+                ? state.PendingTransmissionQueue.FirstOrDefault(e => e.Token.Id == token.Id)
+                : null;
+        }
+    }
+
+    private IEnumerable<GrainRef<IRadioStationGrain>> GetAllStations(GrainRef<IRadioStationGrain>? except = null)
+    {
+        var result = State.MobileStationById.Values.Append(State.GroundStation);
+        return except == null
+            ? result
+            : result.Where(s => s != except.Value);
     }
 
     public static void RegisterGrainType(SiloConfigurationBuilder config)
@@ -174,14 +325,16 @@ public class GroundStationRadioMediumGrain :
             ));
     }
 
-    private static GrainState CreateInitialState(GrainActivationEvent activation, DateTime utcNow)
+    private static GrainState CreateInitialState(GrainRef<IRadioStationGrain> groundStation, DateTime utcNow)
     {
         return new GrainState(
-            GroundStation: activation.GroundStation,
+            GroundStation: groundStation,
             MobileStationById: ImmutableDictionary<string, GrainRef<IRadioStationGrain>>.Empty,
             PendingTransmissionQueue: ImmutableSortedSet<PendingTransmissionQueueEntry>.Empty,
             ConversationsInProgress: ImmutableHashSet<ConversationToken>.Empty,
-            TransmittingStationIds: ImmutableHashSet<string>.Empty,
+            InProgressTransmissionByStationId: ImmutableDictionary<string, InProgressTransmissionEntry>.Empty, 
+            TransmissionWasInterfered: false,
+            NextConversationTokenId: 1,
             IsSilent: true,
             SilenceSinceUtc: utcNow);
     }
@@ -196,4 +349,86 @@ public class GroundStationRadioMediumGrain :
     // (1) ground station? no delay
     // (2) transmission related to an in-progress conversation? no delay
     // (3) delay according to AirGroundPriority
+    public record GrainState(
+        GrainRef<IRadioStationGrain> GroundStation,
+        ImmutableDictionary<string, GrainRef<IRadioStationGrain>> MobileStationById,
+        ImmutableSortedSet<PendingTransmissionQueueEntry> PendingTransmissionQueue,
+        ImmutableHashSet<ConversationToken> ConversationsInProgress,
+        ImmutableDictionary<string, InProgressTransmissionEntry> InProgressTransmissionByStationId,
+        bool TransmissionWasInterfered,
+        ulong NextConversationTokenId,
+        bool IsSilent,
+        DateTime SilenceSinceUtc
+    );
+
+    public record PendingTransmissionQueueEntry(
+        ConversationToken Token,
+        GrainRef<IAIRadioOperatorGrain> Operator
+    ) : IComparable<PendingTransmissionQueueEntry>, IComparable
+    {
+        public int CompareTo(PendingTransmissionQueueEntry? other)
+        {
+            if (ReferenceEquals(null, other))
+            {
+                return 1;
+            }
+
+            return this.Token.Id.CompareTo(other.Token.Id);//TODO
+        }
+
+        public int CompareTo(object? obj)
+        {
+            if (ReferenceEquals(null, obj)) return 1;
+            if (ReferenceEquals(this, obj)) return 0;
+            return obj is PendingTransmissionQueueEntry other 
+                ? CompareTo(other) 
+                : throw new ArgumentException($"Object must be of type {nameof(PendingTransmissionQueueEntry)}");
+        }
+    }
+
+    public record InProgressTransmissionEntry(
+        GrainRef<IRadioStationGrain> StationTransmitting,
+        ConversationToken? ConversationToken,
+        TransmissionDescription Transmission
+    );
+
+    public record GrainActivationEvent(
+        string GrainId
+    ) : IGrainActivationEvent<GroundStationRadioMediumGrain>;
+
+    // should be dispatched as part of initialization
+    // re-initializes the entire state
+    public record InitGroundStationEvent(
+        GrainRef<IRadioStationGrain> GroundStation
+    ) : IGrainEvent;
+
+    public record AddMobileStationEvent(
+        GrainRef<IRadioStationGrain> MobileStation
+    ) : IGrainEvent;
+
+    public record RemoveMobileStationEvent(
+        GrainRef<IRadioStationGrain> MobileStation
+    ) : IGrainEvent;
+
+    public record EnqueuePendingTransmissionEvent(
+        PendingTransmissionQueueEntry Entry
+    ) : IGrainEvent;
+
+    public record TransmissionStartedEvent(
+        GrainRef<IRadioStationGrain> StationTransmitting,
+        TransmissionDescription Transmission,
+        ConversationToken? ConversationToken
+    ) : IGrainEvent;
+
+    public record TransmissionEndedEvent(
+        GrainRef<IRadioStationGrain> StationTransmitting,
+        TransmissionDescription Transmission,
+        ConversationToken? ConversationToken,
+        bool ConversationConcluded,
+        DateTime Utc
+    ) : IGrainEvent;
+
+    public record SampleWorkItem(
+        //TODO
+    ) : IGrainWorkItem;
 }

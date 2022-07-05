@@ -1,4 +1,6 @@
-﻿namespace Atc.Grains;
+﻿using Atc.Grains.Impl;
+
+namespace Atc.Grains;
 
 public abstract class AbstractGrain<TStateRecord> : IGrain 
     where TStateRecord : class // use C# record types
@@ -46,7 +48,7 @@ public abstract class AbstractGrain<TStateRecord> : IGrain
         DateTime? notLaterThanUtc = null,
         bool withPredicate = false)
     {
-        return _dispatch.TaskQueue.Defer(
+        return _dispatch.Silo.TaskQueue.Defer(
             this, 
             workItem, 
             notEarlierThanUtc: notEarlierThanUtc,
@@ -54,8 +56,14 @@ public abstract class AbstractGrain<TStateRecord> : IGrain
             withPredicate: withPredicate);
     }
 
-    protected TStateRecord State => _state;
+    protected GrainRef<T> GetRefToSelfAs<T>() where T : class, IGrainId
+    {
+        var abstractRef = _dispatch.Silo.Grains.GetRefToGrainInstance(this);
+        return abstractRef.As<T>();
+    }
 
+    protected TStateRecord State => _state;
+    
     internal ISiloEventDispatch GetDispatch() => _dispatch;
 
     object IGrain.GetState()

@@ -25,4 +25,9 @@ public readonly struct GroundLocation
     {
         return HashCode.Combine(Position, Elevation);
     }
+
+    public static GroundLocation Create(double lat, double lon, float elevationFeetMsl)
+    {
+        return new GroundLocation(new GeoPoint(lat, lon), Altitude.FromFeetMsl(elevationFeetMsl));
+    }
 }

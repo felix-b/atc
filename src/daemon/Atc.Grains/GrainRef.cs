@@ -14,6 +14,12 @@ public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>>
 
     public GrainRef<S> As<S>() where S : class, IGrainId
     {
+        if (CanGet)
+        {
+            // validate type compatibility
+            var unused = (S)(object)Get();
+        }
+
         return new GrainRef<S>(_grains, _grainId);
     }
     
@@ -36,8 +42,17 @@ public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>>
     {
         return GrainId;
     }
-    
-    public T Get() => _grains.GetInstanceById<T>(_grainId);
+
+    public T Get()
+    {
+        if (_grains == null)
+        {
+            throw new InvalidOperationException("GrainRef was not initialized with a reference");
+        }
+
+        return _grains.GetInstanceById<T>(_grainId);
+    }
+
     public string GrainId => _grainId;
     public bool CanGet => _grains != null;
 
@@ -59,5 +74,6 @@ public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>>
 
 public interface IAnyGrainRef
 {
+    GrainRef<S> As<S>() where S : class, IGrainId;
     string GrainId { get; }
 }
