@@ -32,6 +32,12 @@ public static class SiloTestDoubles
         return (TState)((IGrain)grain).GetState();
     }
 
+    public static void SetGrainState<TState>(AbstractGrain<TState> grain, TState state) 
+        where TState : class
+    {
+        ((IGrain)grain).SetState(state);
+    }
+
     public static TState DispatchGrainEvent<TState>(AbstractGrain<TState> grain, IGrainEvent @event) 
         where TState : class
     {

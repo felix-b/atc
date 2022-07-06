@@ -39,12 +39,6 @@ public interface IRadioStationGrain : IGrainId
     GrainRef<IGroundStationRadioMediumGrain>? Medium { get; }
 }
 
-public enum RadioStationType
-{
-    Ground,
-    Mobile
-}
-
 public interface IRadioStationListener : IGrainId
 {
     // void TransceiverStateChanged(

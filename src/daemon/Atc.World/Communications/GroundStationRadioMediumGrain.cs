@@ -25,8 +25,11 @@ public interface IGroundStationRadioMediumGrain : IGrainId
         AirGroundPriority? priority = null);
 
     // Remove registration previously created with EnqueueAIOperatorForTransmission
-    void CancelPendingConversation(ConversationToken token);
-        
+    void CancelPendingTransmission(ConversationToken token);
+
+    // Start next transmission if pending and possible
+    void CheckPendingTransmissions();
+    
     GrainRef<IRadioStationGrain> GroundStation { get; }
     GroundLocation AntennaLocation { get; }
     Frequency Frequency { get; }
@@ -79,7 +82,7 @@ public class GroundStationRadioMediumGrain :
             grainId: activation.GrainId,
             grainType: TypeString,
             dispatch: dispatch,
-            initialState: CreateInitialState(groundStation: default, environment.UtcNow))
+            initialState: CreateInitialState(ownerGrain: null, groundStation: default, environment.UtcNow))
     {
         _environment = environment;
     }
@@ -148,17 +151,48 @@ public class GroundStationRadioMediumGrain :
         ConversationToken? conversationToken = null,
         AirGroundPriority? priority = null)
     {
-        var token = 
-            conversationToken 
-            ?? new ConversationToken(State.NextConversationTokenId, priority ?? AirGroundPriority.None);
-        var entry = new PendingTransmissionQueueEntry(token, aiOperator);
+        var effectiveToken = conversationToken == null
+            ? new ConversationToken(State.NextConversationTokenId, priority ?? AirGroundPriority.None)
+            : priority == null
+                ? conversationToken 
+                : new ConversationToken(conversationToken.Id, priority.Value);
+
+        var entry = new PendingTransmissionQueueEntry(effectiveToken, aiOperator);
         Dispatch(new EnqueuePendingTransmissionEvent(entry));
-        return token;
+        return effectiveToken;
     }
 
-    public void CancelPendingConversation(ConversationToken token)
+    public void CancelPendingTransmission(ConversationToken token)
     {
-        throw new NotImplementedException();
+        Dispatch(new RemovePendingTransmissionEvent(token));
+    }
+    
+    public void CheckPendingTransmissions()
+    {
+        var utcNow = _environment.UtcNow;
+        
+        while (State.IsSilent && !State.PendingTransmissionQueue.IsEmpty)
+        {
+            var entryToTalk = State.PendingTransmissionQueue.First();
+            var requiredSilence = GetRequiredSilenceBeforeTransmission(entryToTalk.Token);
+            if (State.SilenceSinceUtc.Add(requiredSilence) > utcNow)
+            {
+                return;
+            }
+            
+            var response = entryToTalk.Operator.Get().BeginTransmitNow(entryToTalk.Token);
+
+            switch (response.ActionTaken)
+            {
+                case TransmitNowAction.ContinueConversation:
+                    return;
+                case TransmitNowAction.StartNewConversation:
+                    return;
+                case TransmitNowAction.None:
+                    Dispatch(new RemovePendingTransmissionEvent(entryToTalk.Token));
+                    break;
+            }
+        }
     }
 
     public void NotifyTransmissionStarted(
@@ -245,10 +279,12 @@ public class GroundStationRadioMediumGrain :
 
     protected override GrainState Reduce(GrainState stateBefore, IGrainEvent @event)
     {
+        PendingTransmissionQueueEntry? pendingEntry;
+        
         switch (@event)
         {
             case InitGroundStationEvent initGround:
-                return CreateInitialState(initGround.GroundStation, _environment.UtcNow);
+                return CreateInitialState(ownerGrain: this, initGround.GroundStation, _environment.UtcNow);
             case AddMobileStationEvent addMobile:
                 return stateBefore with {
                     MobileStationById = stateBefore.MobileStationById.Add(addMobile.MobileStation.GrainId, addMobile.MobileStation) 
@@ -257,13 +293,24 @@ public class GroundStationRadioMediumGrain :
                 return stateBefore with {
                     MobileStationById = stateBefore.MobileStationById.Remove(removeMobile.MobileStation.GrainId) 
                 };
-            case EnqueuePendingTransmissionEvent enqueueTx:
-                return stateBefore with {
-                    PendingTransmissionQueue = stateBefore.PendingTransmissionQueue.Add(enqueueTx.Entry),
+            case EnqueuePendingTransmissionEvent enqueuePending:
+                pendingEntry = TryFindTransmissionQueueEntry(stateBefore, enqueuePending.Entry.Token);
+                var stateAfter = stateBefore with {
+                    PendingTransmissionQueue = pendingEntry != null 
+                        ? stateBefore.PendingTransmissionQueue.Remove(pendingEntry).Add(enqueuePending.Entry)
+                        : stateBefore.PendingTransmissionQueue.Add(enqueuePending.Entry), 
                     NextConversationTokenId = stateBefore.NextConversationTokenId + 1
                 };
+                return stateAfter;
+            case RemovePendingTransmissionEvent removePending:
+                pendingEntry = TryFindTransmissionQueueEntry(stateBefore, removePending.ConversationToken);
+                return pendingEntry == null
+                    ? stateBefore
+                    : stateBefore with {
+                        PendingTransmissionQueue = stateBefore.PendingTransmissionQueue.Remove(pendingEntry)
+                    };
             case TransmissionStartedEvent txStarted:
-                var pendingEntry = TryFindTransmissionQueueEntry(stateBefore, txStarted.ConversationToken);
+                pendingEntry = TryFindTransmissionQueueEntry(stateBefore, txStarted.ConversationToken);
                 return stateBefore with {
                     IsSilent = false,
                     TransmissionWasInterfered = 
@@ -314,6 +361,17 @@ public class GroundStationRadioMediumGrain :
             : result.Where(s => s != except.Value);
     }
 
+    private TimeSpan GetRequiredSilenceBeforeTransmission(ConversationToken token)
+    {
+        switch (token.Priority)
+        {
+            case AirGroundPriority.Urgency:
+                return TimeSpan.Zero; 
+            default:
+                return TimeSpan.FromSeconds(3);
+        }
+    }
+
     public static void RegisterGrainType(SiloConfigurationBuilder config)
     {
         config.RegisterGrainType<GroundStationRadioMediumGrain, GrainActivationEvent>(
@@ -325,20 +383,27 @@ public class GroundStationRadioMediumGrain :
             ));
     }
 
-    private static GrainState CreateInitialState(GrainRef<IRadioStationGrain> groundStation, DateTime utcNow)
+    private static GrainState CreateInitialState(
+        GroundStationRadioMediumGrain? ownerGrain,
+        GrainRef<IRadioStationGrain> groundStation, 
+        DateTime utcNow)
     {
+        var pendingTransmissionComparer = ownerGrain != null
+            ? new PendingTransmissionQueueEntryComparer(ownerGrain)
+            : null;
+        
         return new GrainState(
             GroundStation: groundStation,
             MobileStationById: ImmutableDictionary<string, GrainRef<IRadioStationGrain>>.Empty,
-            PendingTransmissionQueue: ImmutableSortedSet<PendingTransmissionQueueEntry>.Empty,
-            ConversationsInProgress: ImmutableHashSet<ConversationToken>.Empty,
+            PendingTransmissionQueue: ImmutableSortedSet.Create<PendingTransmissionQueueEntry>(pendingTransmissionComparer),
+            ConversationsInProgress: ImmutableHashSet.Create<ConversationToken>(ConversationTokenEqualityComparer.Instance),
             InProgressTransmissionByStationId: ImmutableDictionary<string, InProgressTransmissionEntry>.Empty, 
             TransmissionWasInterfered: false,
             NextConversationTokenId: 1,
             IsSilent: true,
             SilenceSinceUtc: utcNow);
     }
-    
+
     //------- Pending transmission queue priority order ---------
     // (1) Ground station? goes first
     // (2) Transmission related to an in-progress conversation? goes first
@@ -349,6 +414,7 @@ public class GroundStationRadioMediumGrain :
     // (1) ground station? no delay
     // (2) transmission related to an in-progress conversation? no delay
     // (3) delay according to AirGroundPriority
+
     public record GrainState(
         GrainRef<IRadioStationGrain> GroundStation,
         ImmutableDictionary<string, GrainRef<IRadioStationGrain>> MobileStationById,
@@ -364,25 +430,56 @@ public class GroundStationRadioMediumGrain :
     public record PendingTransmissionQueueEntry(
         ConversationToken Token,
         GrainRef<IAIRadioOperatorGrain> Operator
-    ) : IComparable<PendingTransmissionQueueEntry>, IComparable
-    {
-        public int CompareTo(PendingTransmissionQueueEntry? other)
-        {
-            if (ReferenceEquals(null, other))
-            {
-                return 1;
-            }
+    );
 
-            return this.Token.Id.CompareTo(other.Token.Id);//TODO
+    public class ConversationTokenEqualityComparer : IEqualityComparer<ConversationToken>
+    {
+        public bool Equals(ConversationToken? x, ConversationToken? y)
+        {
+            if (ReferenceEquals(x, y)) return true;
+            if (ReferenceEquals(x, null)) return false;
+            if (ReferenceEquals(y, null)) return false;
+            return x.Id == y.Id;
         }
 
-        public int CompareTo(object? obj)
+        public int GetHashCode(ConversationToken obj)
         {
-            if (ReferenceEquals(null, obj)) return 1;
-            if (ReferenceEquals(this, obj)) return 0;
-            return obj is PendingTransmissionQueueEntry other 
-                ? CompareTo(other) 
-                : throw new ArgumentException($"Object must be of type {nameof(PendingTransmissionQueueEntry)}");
+            return obj.Id.GetHashCode();
+        }
+
+        public static readonly ConversationTokenEqualityComparer Instance = new ConversationTokenEqualityComparer();
+    }
+
+    public class PendingTransmissionQueueEntryComparer : IComparer<PendingTransmissionQueueEntry>
+    {
+        private readonly GroundStationRadioMediumGrain _ownerGrain;
+
+        public PendingTransmissionQueueEntryComparer(GroundStationRadioMediumGrain ownerGrain)
+        {
+            _ownerGrain = ownerGrain;
+        }
+
+        public int Compare(PendingTransmissionQueueEntry? x, PendingTransmissionQueueEntry? y)
+        {
+            if (ReferenceEquals(x, y)) return 0;
+            if (ReferenceEquals(null, y)) return 1;
+            if (ReferenceEquals(null, x)) return -1;
+
+            var ownerState = _ownerGrain.State;
+            var xInProgress = ownerState.ConversationsInProgress.Contains(x.Token);
+            var yInProgress = ownerState.ConversationsInProgress.Contains(y.Token);
+            if (xInProgress != yInProgress)
+            {
+                return -xInProgress.CompareTo(yInProgress);
+            }
+            
+            var byPriority = x.Token.Priority.CompareTo(y.Token.Priority);
+            if (byPriority != 0)
+            {
+                return byPriority;
+            }
+
+            return x.Token.Id.CompareTo(y.Token.Id);
         }
     }
 
@@ -412,6 +509,10 @@ public class GroundStationRadioMediumGrain :
 
     public record EnqueuePendingTransmissionEvent(
         PendingTransmissionQueueEntry Entry
+    ) : IGrainEvent;
+
+    public record RemovePendingTransmissionEvent(
+        ConversationToken ConversationToken
     ) : IGrainEvent;
 
     public record TransmissionStartedEvent(

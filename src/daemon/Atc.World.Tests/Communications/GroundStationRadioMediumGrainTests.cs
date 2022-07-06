@@ -1,8 +1,10 @@
+using System.Collections.Immutable;
 using Atc.Grains;
 using Atc.Maths;
 using Atc.World.Communications;
 using Atc.World.Contracts.Communications;
 using FluentAssertions;
+using FluentAssertions.Equivalency;
 using Moq;
 using NUnit.Framework;
 
@@ -257,6 +259,64 @@ public class GroundStationRadioMediumGrainTests
             It.IsAny<ConversationToken?>(),
             It.IsAny<GrainRef<IRadioStationGrain>>()
         ), Times.Never);
+    }
+
+    // Given: MS#1 and MS#2 tuned;
+    //        MS#1 registered for transmission;
+    //        silence;
+    //  When: MS#1 begins to transmit
+    //  Then: state: contains transmission and transmitting station id
+    //        state: conversation moved from pending to in-progress
+    //        notify: NotifyTransmissionStarted invoked on MS#2, GS; 
+    [Test]
+    public void CanHandleBeginOfTransmissionThatContinuesInProgressConversation()
+    {
+        //-- given
+        
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 2, 
+            out var ground,
+            out var mobiles);
+
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
+
+        var transmission1 = new TransmissionDescription();
+        mediumGrain.Get().NotifyTransmissionStarted(
+            stationTransmitting: mobiles[0].Station.Grain,
+            transmission: transmission1,
+            conversationToken: conversationToken1);
+        mediumGrain.Get().NotifyTransmissionCompleted(
+            stationTransmitting: mobiles[0].Station.Grain,
+            transmission: transmission1,
+            conversationToken: conversationToken1,
+            new IntentDescription(ConcludesConversation: false));
+
+        //-- when
+
+        var conversationToken1B = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Operator.Grain,
+            conversationToken: conversationToken1);
+
+        var transmission2 = new TransmissionDescription();
+        mediumGrain.Get().NotifyTransmissionStarted(
+            stationTransmitting: mobiles[0].Station.Grain,
+            transmission: transmission2,
+            conversationToken: conversationToken1);
+        
+        //-- then
+
+        conversationToken1B.Should().BeSameAs(conversationToken1);
+        
+        var state = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+
+        state.ConversationsInProgress.Should().BeEquivalentTo(new[] { conversationToken1 });
+        state.PendingTransmissionQueue.Should().BeEmpty();
+        state.InProgressTransmissionByStationId.Keys.Should().BeEquivalentTo(new[] {
+            mobiles[0].Station.Grain.GrainId
+        });
+        state.IsSilent.Should().BeFalse();
     }
 
     // Given: MS#1 and MS#2 tuned;
@@ -975,77 +1035,448 @@ public class GroundStationRadioMediumGrainTests
         ), Times.Once);
     }
 
+    // Given: MS#1 and MS#2 tuned;
+    //        MS#1 enqueued for transmission
+    //        MS#2 enqueued for transmission
+    //  When: MS#1 cancels pending transmission
+    //  Then: state: pending transmission is removed from the qeueu
+    [Test]
+    public void CanOrderPendingTransmissionsByPriority()
+    {
+        //-- given
+        
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 3, 
+            out var ground,
+            out var mobiles);
+
+        //-- when
+
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Operator.Grain,
+            priority: AirGroundPriority.FlightRegularity);
+        
+        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[1].Operator.Grain,
+            priority: AirGroundPriority.Distress);
+
+        var conversationToken3 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[2].Operator.Grain,
+            priority: AirGroundPriority.FlightSafetyNormal);
+
+        //-- then
+
+        var state = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        state.PendingTransmissionQueue.Select(entry => entry.Token).Should().BeEquivalentTo(
+            new[] {
+                conversationToken2,
+                conversationToken3,
+                conversationToken1
+            }, 
+            config: options => options.WithStrictOrdering()
+        );
+    }
+
+    // Given: MS#1 and MS#2 tuned;
+    //        MS#1 enqueued for transmission
+    //        MS#2 enqueued for transmission
+    //  When: MS#1 cancels pending transmission
+    //  Then: state: pending transmission is removed from the queue
+    [Test]
+    public void CanCancelPendingTransmission()
+    {
+        //-- given
+        
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 2, 
+            out var ground,
+            out var mobiles);
+
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
+        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Operator.Grain);
+
+        //-- when
+
+        mediumGrain.Get().CancelPendingTransmission(conversationToken1);
+        
+        //-- then
+
+        var state = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        state.PendingTransmissionQueue.Select(entry => entry.Token).Should().BeEquivalentTo(new[] {
+            conversationToken2
+        });
+    }
+
+    // Given: MS#1 and MS#2 tuned;
+    //        MS#1 enqueued for transmission (non-top-priority)
+    //        MS#2 enqueued for transmission (top priority)
+    //        MS#3 enqueued for transmission (non-top-priority)
+    //  When: CheckPendingTransmissions
+    //  Then: state: all pending transmissions retained
+    //        MS#2's operator BeginTransmitNow invoked
+    [Test]
+    public void CanNotifyOperatorToBeginTransmitNow()
+    {
+        //-- given
+        
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 3, 
+            out var ground,
+            out var mobiles);
+
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Operator.Grain,
+            priority: AirGroundPriority.Meteorology);
+        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[1].Operator.Grain,
+            priority: AirGroundPriority.Urgency);
+        var conversationToken3 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[2].Operator.Grain,
+            priority: AirGroundPriority.FlightSafetyNormal);
+
+        //-- when
+
+        mobiles[1].Operator.Mock.Setup(
+            x => x.BeginTransmitNow(conversationToken2)
+        ).Returns(new BeginTransmitNowResponse(TransmitNowAction.ContinueConversation));
+        
+        mediumGrain.Get().CheckPendingTransmissions();
+        
+        //-- then
+
+        mobiles[1].Operator.Mock.Verify(
+            x => x.BeginTransmitNow(conversationToken2),
+            Times.Once);
+        mobiles[0].Operator.Mock.Verify(
+            x => x.BeginTransmitNow(It.IsAny<ConversationToken>()),
+            Times.Never);
+        mobiles[2].Operator.Mock.Verify(
+            x => x.BeginTransmitNow(It.IsAny<ConversationToken>()),
+            Times.Never);
+        
+        var state = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        state.PendingTransmissionQueue.Select(entry => entry.Token).Should().BeEquivalentTo(new[] {
+            conversationToken1,
+            conversationToken2,
+            conversationToken3
+        });
+    }
+
     //--- pending transmission priority queue ---
-    
+
     //-(1) Ground station? goes first
     // Given: pending order: (1) MS1/C1, (2) MS2/C2; 
     //        in-progress conversations: C1  
     //  When: GS/C3 enqueued
     //  Then: pending order: (1) GS/C3, (2) MS1/C1, (3) MS2/C3 
+    [Test]
+    public void CanPrioritizeGroundStationFirst()
+    {
+        //-- given
+        
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 2, 
+            out var ground,
+            out var mobiles);
+
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Operator.Grain,
+            priority: AirGroundPriority.Urgency);
+        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[1].Operator.Grain,
+            priority: AirGroundPriority.FlightSafetyHigh);
+
+        //-- when
+
+        var conversationToken3 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            ground.Operator.Grain,
+            priority: AirGroundPriority.Meteorology);
+        
+        //-- then
+
+        var state = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        state.PendingTransmissionQueue.Select(entry => entry.Token).Should().BeEquivalentTo(new[] {
+            conversationToken3,
+            conversationToken1,
+            conversationToken2
+        });
+    }
     
     //-(2) Transmission related to an in-progress conversation? goes first
     // Given: pending order: (1) MS1/C1, (2) MS2/C2; 
     //        in-progress conversations: C3  
     //  When: MS3/C3 enqueued
     //  Then: pending order: (1) MS3/C3, (2) MS1/C1, (3) MS2/C3 
-    
-    //-(3) Compare AirGroundPriority
-    // Given: pending order: (1) MS1/C1, (2) MS2/C2; 
-    //        in-progress conversations: C1  
-    //        C1=Urgency, C2=FlightSafetyNormal  
-    //  When: MS3/C3 enqueued, C3=DirectionFinding
-    //  Then: pending order: (1) MS1/C1, (2) MS3/C3, (3) MS2/C2 
-    
-    //-(4) Compare Ids (chronological order)
-    // Given: pending order: (1) MS1/C1, (2) MS2/C2; 
-    //        in-progress conversations: C1  
-    //        C1=FlightSafetyNormal, C2=FlightSafetyNormal  
-    //  When: MS3/C3 enqueued, C3=FlightSafetyNormal
-    //  Then: pending order: (1) MS1/C1, (2) MS2/C2, (3) MS3/C3 
+    [Test]
+    public void CanPrioritizeTransmissionRelatedToConversationInProgress()
+    {
+        //-- given
+        
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 3, 
+            out var ground,
+            out var mobiles);
 
+        var conversationToken1 = new ConversationToken(1, AirGroundPriority.FlightSafetyHigh);
+        var conversationToken2 = new ConversationToken(2, AirGroundPriority.FlightSafetyHigh);
+        var conversationToken3 = new ConversationToken(3, AirGroundPriority.FlightRegularity);
+        
+        var mediumState = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        SiloTestDoubles.SetGrainState(mediumGrain.Get(), mediumState with {
+            ConversationsInProgress = mediumState.ConversationsInProgress
+                .Add(conversationToken3),
+            PendingTransmissionQueue = mediumState.PendingTransmissionQueue
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken1, mobiles[0].Operator.Grain))
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken2, mobiles[1].Operator.Grain))
+        });
+
+        //-- when
+
+        mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[2].Operator.Grain,
+            conversationToken3,
+            AirGroundPriority.FlightRegularity);
+        
+        //-- then
+
+        var state = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        state.PendingTransmissionQueue.Select(entry => entry.Token).Should().BeEquivalentTo(new[] {
+            conversationToken3, // first because conversationToken3 is in progress
+            conversationToken1,
+            conversationToken2
+        }, options => options.WithStrictOrdering());
+    }
+    
     //-(5) No duplicate entries
     // Given: pending order: (1) MS1/C1, (2) MS2/C2; 
     //        in-progress conversations: C1  
     //        C1=FlightSafetyNormal, C2=FlightSafetyNormal  
     //  When: MS2/C2=FlightSafetyNormal enqueued
     //  Then: pending order: (1) MS1/C1, (2) MS2/C2 
+    [Test]
+    public void PendingTransmissionsCollectionHasNoDuplicates()
+    {
+        //-- given
+        
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 2, 
+            out var ground,
+            out var mobiles);
+
+        var conversationToken1 = new ConversationToken(1, AirGroundPriority.FlightSafetyNormal);
+        var conversationToken2 = new ConversationToken(2, AirGroundPriority.FlightSafetyNormal);
+        
+        var mediumState = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        SiloTestDoubles.SetGrainState(mediumGrain.Get(), mediumState with {
+            ConversationsInProgress = mediumState.ConversationsInProgress
+                .Add(conversationToken1),
+            PendingTransmissionQueue = mediumState.PendingTransmissionQueue
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken1, mobiles[0].Operator.Grain))
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken2, mobiles[1].Operator.Grain))
+        });
+
+        //-- when
+
+        mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[1].Operator.Grain,
+            conversationToken2,
+            AirGroundPriority.FlightSafetyNormal);
+        
+        //-- then
+
+        var state = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        state.PendingTransmissionQueue.Select(entry => entry.Token).Should().BeEquivalentTo(new[] {
+            conversationToken1,
+            conversationToken2
+        });
+    }
 
     //-(6) Update priority of conversation
     // Given: pending order: (1) MS1/C1, (2) MS2/C2; 
     //        in-progress conversations: C0  
     //        C1=FlightSafetyNormal, C2=FlightSafetyNormal  
-    //  When: MS2/C2=FlightSafetyHigh enqueued
-    //  Then: pending order: (1) MS2/C2=FlightSafetyHigh, (2) MS1/C1=FlightSafetyNormal 
-
-    //--- state reduction for BeginTransmitNow ---
-    
-    //-(1) new in-progress conversation: remove from pending queue and add to in-progress
-    // Given: pending order: (1) MS1/C1, MS2/C2 
-    //        in-progress conversations: none  
-    //  When: ready to transmit  
-    //  Then: invoke BeginTransmitNow on waiting station operator;
-    //        remove MS1/C1 from pending queue;
-    //        add C1 to in-progress conversations
+    //  When: MS2/C2=Urgency enqueued
+    //  Then: pending order: (1) MS2/C2=Urgency, (2) MS1/C1=FlightSafetyNormal 
+    [Test]
+    public void CanUpdatePendingConversationPriority()
+    {
+        //-- given
         
-    //-(2) continue in-progress conversation: no duplicates in in-progress
-    // Given: pending order: (1) MS1/C1, MS2/C2 
-    //        in-progress conversations: C1  
-    //  When: ready to transmit  
-    //  Then: invoke BeginTransmitNow on waiting station operator;
-    //        remove MS1/C1 from pending queue;
-    //        in-progress conversations unchanged: C1
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 2, 
+            out var ground,
+            out var mobiles);
+
+        var conversationToken1 = new ConversationToken(1, AirGroundPriority.FlightSafetyNormal);
+        var conversationToken2 = new ConversationToken(2, AirGroundPriority.FlightSafetyNormal);
+        
+        var mediumState = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        SiloTestDoubles.SetGrainState(mediumGrain.Get(), mediumState with {
+            PendingTransmissionQueue = mediumState.PendingTransmissionQueue
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken1, mobiles[0].Operator.Grain))
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken2, mobiles[1].Operator.Grain))
+        });
+
+        //-- when
+
+        mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[1].Operator.Grain,
+            conversationToken2,
+            AirGroundPriority.Urgency);
+        
+        //-- then
+
+        var state = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        var pendingEntries = state.PendingTransmissionQueue.ToArray();
+
+        pendingEntries.Length.Should().Be(2);
+        pendingEntries[0].Token.Id.Should().Be(2);
+        pendingEntries[0].Token.Priority.Should().Be(AirGroundPriority.Urgency);
+        pendingEntries[1].Token.Id.Should().Be(1);
+        pendingEntries[1].Token.Priority.Should().Be(AirGroundPriority.FlightSafetyNormal);
+    }
 
     //------- Silence duration rules ---------
     
-    // Given: pending order: (1) MS1/C1, (2) MS2/C2; 
+    // Given: long silence (10 sec)
+    //        pending order: (1) MS#1/C1 
     //        in-progress conversations: none  
-    //  When: determining delay before transmission
-    //  Then: delay 0 before MS1/C1
+    //  When: CheckPendingTransmissions
+    //  Then: MS#1's operator BeginTransmitNow invoked with C1
+    [Test]
+    public void LongSilenceNewConversation_CheckPendingTransmissions_BeginTransmitNow()
+    {
+        //-- given
 
-    // Given: pending order: (1) MS1/C1, (2) MS2/C2; 
+        var environment = new SiloTestDoubles.TestEnvironment {
+            UtcNow = new DateTime(2022, 10, 10, 8, 30, 0)
+        };
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest, environment: environment);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 2, 
+            out var ground,
+            out var mobiles);
+
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Operator.Grain,
+            priority: AirGroundPriority.FlightSafetyNormal);
+        
+        mobiles[0].Operator.Mock.Setup(
+            x => x.BeginTransmitNow(conversationToken1)
+        ).Returns(new BeginTransmitNowResponse(TransmitNowAction.ContinueConversation));
+
+        environment.UtcNow = environment.UtcNow.AddSeconds(10);
+
+        //-- when
+
+        mediumGrain.Get().CheckPendingTransmissions();
+        
+        //-- then
+
+        mobiles[0].Operator.Mock.Verify(
+            x => x.BeginTransmitNow(conversationToken1), 
+            Times.Once);        
+    }
+
+    // Given: short silence (100ms)
+    //        pending transmissions: (1) MS#1/C1 
+    //        in-progress conversations: none  
+    //  When: CheckPendingTransmissions
+    //  Then: do nothing
+    [Test]
+    public void ShortSilenceNewConversation_CheckPendingTransmissions_DoNothing()
+    {
+        //-- given
+
+        var environment = new SiloTestDoubles.TestEnvironment {
+            UtcNow = new DateTime(2022, 10, 10, 8, 30, 0)
+        };
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest, environment: environment);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 2, 
+            out var ground,
+            out var mobiles);
+
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Operator.Grain,
+            priority: AirGroundPriority.FlightSafetyNormal);
+        
+        environment.UtcNow = environment.UtcNow.AddMilliseconds(100);
+
+        //-- when
+
+        mediumGrain.Get().CheckPendingTransmissions();
+        
+        //-- then
+
+        mobiles[0].Operator.Mock.Verify(
+            x => x.BeginTransmitNow(conversationToken1), 
+            Times.Never);        
+    }
+
+    // Given: short silence (100ms)
+    //        pending transmissions: (1) MS#1/C1 
     //        in-progress conversations: C1  
-    //  When: determining delay before transmission
-    //  Then: delay 0 before MS1/C1
+    //  When: CheckPendingTransmissions
+    //  Then: MS#1's operator BeginTransmitNow invoked with C1
+    [Test, Ignore("Not implemented")]
+    public void ShortSilenceSameConversation_CheckPendingTransmissions_BeginTransmitNow()
+    {
+        //-- given
+
+        var environment = new SiloTestDoubles.TestEnvironment {
+            UtcNow = new DateTime(2022, 10, 10, 8, 30, 0)
+        };
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest, environment: environment);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 2, 
+            out var ground,
+            out var mobiles);
+
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Operator.Grain,
+            priority: AirGroundPriority.FlightSafetyNormal);
+        
+        var mediumState = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+        SiloTestDoubles.SetGrainState(mediumGrain.Get(), mediumState with {
+            ConversationsInProgress = mediumState.ConversationsInProgress.Add(conversationToken1)
+        });
+
+        var conversationToken1B = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Operator.Grain,
+            conversationToken: conversationToken1);
+        
+        environment.UtcNow = environment.UtcNow.AddMilliseconds(100);
+
+        //-- when
+
+        mediumGrain.Get().CheckPendingTransmissions();
+        
+        //-- then
+
+        mobiles[0].Operator.Mock.Verify(
+            x => x.BeginTransmitNow(conversationToken1), 
+            Times.Once);        
+
+        conversationToken1B.Should().BeSameAs(conversationToken1);
+    }
 
     // Given: pending order: (1) MS1/C1, (2) MS2/C2; 
     //        in-progress conversations: C3  
