@@ -2,7 +2,7 @@ namespace Atc.World.Contracts.Communications;
 
 public enum AirGroundPriority
 {
-    None = 0,
+    GroundToAir = 0,
     
     // MAYDAY
     Distress = 1, 
@@ -20,5 +20,33 @@ public enum AirGroundPriority
     
     Meteorology = 7,
 
-    FlightRegularity = 8
+    FlightRegularity = 8,
+}
+
+public static class AirGroundPriorityExtensions
+{
+    public static TimeSpan RequiredSilenceBeforeNewConversation(this AirGroundPriority value)
+    {
+        switch (value)
+        {
+            case AirGroundPriority.GroundToAir:
+                return TimeSpan.Zero; 
+            case AirGroundPriority.Distress:
+            case AirGroundPriority.Urgency:
+                return TimeSpan.Zero; 
+            case AirGroundPriority.DirectionFinding:
+            case AirGroundPriority.FlightSafetyHighest:
+                return TimeSpan.FromMilliseconds(500); 
+            case AirGroundPriority.FlightSafetyHigh:
+                return TimeSpan.FromMilliseconds(750); 
+            case AirGroundPriority.FlightSafetyNormal:
+                return TimeSpan.FromMilliseconds(1000); 
+            case AirGroundPriority.Meteorology:
+                return TimeSpan.FromMilliseconds(1500); 
+            case AirGroundPriority.FlightRegularity:
+                return TimeSpan.FromMilliseconds(2000); 
+            default:
+                return TimeSpan.FromSeconds(3);
+        }
+    }
 }

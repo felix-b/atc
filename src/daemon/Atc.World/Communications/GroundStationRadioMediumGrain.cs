@@ -42,7 +42,7 @@ public interface IAIRadioOperatorGrain : IGrainId
     // At this moment the AI operator can either start transmitting
     // by invoking associated IRadioStationGrain.BeginTransmission,
     // or give up the transmission. The returned response must match the action taken.
-    // If ActionTaken == None is returned, he AI operator is removed from the queue,
+    // If ActionTaken == None is returned, the AI operator is removed from the queue,
     // and it has to call EnqueueAIOperatorForTransmission again.
     BeginTransmitNowResponse BeginTransmitNow(ConversationToken conversationToken);
 }
@@ -152,7 +152,7 @@ public class GroundStationRadioMediumGrain :
         AirGroundPriority? priority = null)
     {
         var effectiveToken = conversationToken == null
-            ? new ConversationToken(State.NextConversationTokenId, priority ?? AirGroundPriority.None)
+            ? new ConversationToken(State.NextConversationTokenId, priority ?? AirGroundPriority.FlightSafetyNormal)
             : priority == null
                 ? conversationToken 
                 : new ConversationToken(conversationToken.Id, priority.Value);
@@ -161,7 +161,7 @@ public class GroundStationRadioMediumGrain :
         Dispatch(new EnqueuePendingTransmissionEvent(entry));
         return effectiveToken;
     }
-
+    
     public void CancelPendingTransmission(ConversationToken token)
     {
         Dispatch(new RemovePendingTransmissionEvent(token));
@@ -187,9 +187,11 @@ public class GroundStationRadioMediumGrain :
                 case TransmitNowAction.ContinueConversation:
                     return;
                 case TransmitNowAction.StartNewConversation:
-                    return;
+                    throw new NotImplementedException("Support for TransmitNowAction.StartNewConversation was not implemented.");
                 case TransmitNowAction.None:
-                    Dispatch(new RemovePendingTransmissionEvent(entryToTalk.Token));
+                    Dispatch(new RemovePendingTransmissionEvent(
+                        entryToTalk.Token,
+                        AlsoRemoveInProgressConversation: true));
                     break;
             }
         }
@@ -290,6 +292,7 @@ public class GroundStationRadioMediumGrain :
                     MobileStationById = stateBefore.MobileStationById.Add(addMobile.MobileStation.GrainId, addMobile.MobileStation) 
                 };
             case RemoveMobileStationEvent removeMobile:
+                //TODO: remove pending 
                 return stateBefore with {
                     MobileStationById = stateBefore.MobileStationById.Remove(removeMobile.MobileStation.GrainId) 
                 };
@@ -307,7 +310,10 @@ public class GroundStationRadioMediumGrain :
                 return pendingEntry == null
                     ? stateBefore
                     : stateBefore with {
-                        PendingTransmissionQueue = stateBefore.PendingTransmissionQueue.Remove(pendingEntry)
+                        PendingTransmissionQueue = stateBefore.PendingTransmissionQueue.Remove(pendingEntry),
+                        ConversationsInProgress = removePending.AlsoRemoveInProgressConversation
+                            ? stateBefore.ConversationsInProgress.Remove(removePending.ConversationToken)
+                            : stateBefore.ConversationsInProgress
                     };
             case TransmissionStartedEvent txStarted:
                 pendingEntry = TryFindTransmissionQueueEntry(stateBefore, txStarted.ConversationToken);
@@ -325,7 +331,9 @@ public class GroundStationRadioMediumGrain :
                     PendingTransmissionQueue = pendingEntry != null
                         ? stateBefore.PendingTransmissionQueue.Remove(pendingEntry)
                         : stateBefore.PendingTransmissionQueue,
-                    ConversationsInProgress = stateBefore.ConversationsInProgress.Add(txStarted.ConversationToken!) 
+                    ConversationsInProgress = txStarted.ConversationToken != null
+                        ? stateBefore.ConversationsInProgress.Add(txStarted.ConversationToken)
+                        : stateBefore.ConversationsInProgress
                 };
             case TransmissionEndedEvent txEnded:
                 var newTransmittingStationIds = 
@@ -363,13 +371,9 @@ public class GroundStationRadioMediumGrain :
 
     private TimeSpan GetRequiredSilenceBeforeTransmission(ConversationToken token)
     {
-        switch (token.Priority)
-        {
-            case AirGroundPriority.Urgency:
-                return TimeSpan.Zero; 
-            default:
-                return TimeSpan.FromSeconds(3);
-        }
+        return State.ConversationsInProgress.Contains(token)
+            ? TimeSpan.Zero
+            : token.Priority.RequiredSilenceBeforeNewConversation();
     }
 
     public static void RegisterGrainType(SiloConfigurationBuilder config)
@@ -512,7 +516,8 @@ public class GroundStationRadioMediumGrain :
     ) : IGrainEvent;
 
     public record RemovePendingTransmissionEvent(
-        ConversationToken ConversationToken
+        ConversationToken ConversationToken,
+        bool AlsoRemoveInProgressConversation = false
     ) : IGrainEvent;
 
     public record TransmissionStartedEvent(
