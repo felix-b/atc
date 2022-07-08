@@ -43,4 +43,9 @@ public readonly struct GeoPoint : IComparable<GeoPoint>
     {
         return left.CompareTo(right) >= 0;
     }
+
+    public static GeoPoint LatLon(double lat, double lon)
+    {
+        return new GeoPoint(lat, lon);
+    }
 }

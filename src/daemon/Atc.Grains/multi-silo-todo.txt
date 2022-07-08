@@ -1,0 +1,11 @@
+(1) Compare grain refs by silos:
+    -> Include SiloId in GrainId
+(2) Allow interaction between grains across silos
+    -> Add SuperSilo to manage a map of silos
+    -> Add SiloId parameter to grain lookup functions of ISiloGrains
+    -> Create proxy for remote grains (return from ISiloGrains lookups)
+(3) Minimize grains references to Silo or its services 
+    -> Inject single ISilo into AbstractGrain instead of separate sub-services 
+(4) Enable migration ("teleportation") of a grain graph into a different silo
+    -> Serialize grains in the graph and materialize in another silo
+    -> Translate grain refs during teleportation 

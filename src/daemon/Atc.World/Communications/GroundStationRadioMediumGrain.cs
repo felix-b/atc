@@ -5,7 +5,7 @@ using Atc.World.Contracts.Communications;
 
 namespace Atc.World.Communications;
 
-public interface IGroundStationRadioMediumGrain : IGrainId
+public interface IGroundStationRadioMediumGrain : IGrainId, IRadioStationListener
 {
     void InitGroundStation(GrainRef<IRadioStationGrain> groundStation);
     
@@ -31,7 +31,7 @@ public interface IGroundStationRadioMediumGrain : IGrainId
     void CheckPendingTransmissions();
     
     GrainRef<IRadioStationGrain> GroundStation { get; }
-    GroundLocation AntennaLocation { get; }
+    Location AntennaLocation { get; }
     Frequency Frequency { get; }
 }
 
@@ -267,8 +267,8 @@ public class GroundStationRadioMediumGrain :
     }
 
     public GrainRef<IRadioStationGrain> GroundStation => State.GroundStation;
-    public GroundLocation AntennaLocation => GroundStation.Get().GroundLocation.GetValueOrDefault();
-    public Frequency Frequency => GroundStation.Get().TunedFrequency;
+    public Location AntennaLocation => GroundStation.Get().Location;
+    public Frequency Frequency => GroundStation.Get().Frequency;
 
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {

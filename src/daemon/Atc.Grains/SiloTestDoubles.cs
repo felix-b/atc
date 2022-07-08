@@ -81,7 +81,12 @@ public static class SiloTestDoubles
         var superGrainMock = new MockSuperGrainForGrainRef(instance);
         return new GrainRef<T>(superGrainMock, instance.GrainId);
     }
-    
+
+    public static void InjectGrainMockToSilo(IGrain grainMock, ISilo injectTo)
+    {
+        ((SuperGrain)injectTo.Grains).InjectGrainInstance(grainMock);
+    }
+
     public class TestEventStreamWriter : ISiloEventStreamWriter
     {
         public ImmutableList<GrainEventEnvelope> Events { get; private set; } = ImmutableList<GrainEventEnvelope>.Empty;

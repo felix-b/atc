@@ -37,7 +37,7 @@ public class GroundStationRadioMediumGrainTests
         var mediumGrain = silo.Grains.CreateGrain<GroundStationRadioMediumGrain>(grainId => 
             new GroundStationRadioMediumGrain.GrainActivationEvent(grainId)
         );
-        var groundStationLocation = GroundLocation.Create(30, 30, 100); 
+        var groundStationLocation = Location.Create(30, 30, 100); 
         var groundStation = MockGroundStation(
             frequency: Frequency.FromKhz(123000),
             location: groundStationLocation);
@@ -1703,13 +1703,13 @@ public class GroundStationRadioMediumGrainTests
 
     private MockedGrain<IRadioStationGrain> MockGroundStation(
         Frequency frequency = default,
-        GroundLocation location = default)
+        Location location = default)
     {
         var radioStation = TestUtility.MockGrain<IRadioStationGrain>();
 
         radioStation.Mock.SetupGet(x => x.StationType).Returns(RadioStationType.Ground);
-        radioStation.Mock.SetupGet(x => x.GroundLocation).Returns(location);
-        radioStation.Mock.SetupGet(x => x.TunedFrequency).Returns(frequency);
+        radioStation.Mock.SetupGet(x => x.Location).Returns(location);
+        radioStation.Mock.SetupGet(x => x.Frequency).Returns(frequency);
 
         return radioStation;
     }
@@ -1719,8 +1719,8 @@ public class GroundStationRadioMediumGrainTests
         var radioStation = TestUtility.MockGrain<IRadioStationGrain>();
 
         radioStation.Mock.SetupGet(x => x.StationType).Returns(RadioStationType.Mobile);
-        radioStation.Mock.SetupGet(x => x.GroundLocation).Returns((GroundLocation?)null);
-        radioStation.Mock.SetupGet(x => x.TunedFrequency).Returns(frequency);
+        radioStation.Mock.SetupGet(x => x.Location).Returns(default(Location));
+        radioStation.Mock.SetupGet(x => x.Frequency).Returns(frequency);
 
         return radioStation;
     }

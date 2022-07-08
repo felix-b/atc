@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Atc.Grains;
 using Atc.Maths;
 using Atc.World.Contracts.Communications;
@@ -6,8 +7,10 @@ namespace Atc.World.Communications;
 
 public interface IRadioStationGrain : IGrainId
 {
-    void AttachGroundStationMedium(GrainRef<IGroundStationRadioMediumGrain> medium);
-    void TuneMobileStation(GeoPoint position, Altitude altitude, Frequency frequency);
+    void TurnOnMobileStation(Location location, Frequency selectedFrequency);
+    void TurnOffMobileStation();
+    void TuneMobileStation(Location location, Frequency selectedFrequency);
+    void TurnOnGroundStation(Location groundLocation, Frequency fixedFrequency);
 
     void AddListener(GrainRef<IRadioStationListener> listener, RadioStationListenerMask mask);
     void RemoveListener(GrainRef<IRadioStationListener> listener);
@@ -33,10 +36,10 @@ public interface IRadioStationGrain : IGrainId
         GrainRef<IRadioStationGrain> stationTransmitting);
     
     RadioStationType StationType { get; }
-    GroundLocation? GroundLocation { get; }
-    
-    Frequency TunedFrequency { get; }
-    GrainRef<IGroundStationRadioMediumGrain>? Medium { get; }
+    Location Location { get; }
+    Frequency Frequency { get; }
+    GrainRef<IGroundStationRadioMediumGrain>? GroundStationMedium { get; }
+    ITransceiverState TransceiverState { get; }
 }
 
 public interface IRadioStationListener : IGrainId
@@ -82,47 +85,71 @@ public class RadioStationGrain :
 {
     public static readonly string TypeString = nameof(RadioStationGrain);
 
-    public record GrainState(
-        //TODO
-    );
-
-    public record GrainActivationEvent(
-        string GrainId
-        //TODO
-    ) : IGrainActivationEvent<RadioStationGrain>;
-
-    public record SampleEvent(
-        //TODO
-    ) : IGrainEvent;
-
-    public record SampleWorkItem(
-        //TODO
-    ) : IGrainWorkItem;
+    private readonly ISilo _silo;//TODO: remove when silo is injected to AbstractGrain 
 
     public RadioStationGrain(
-        ISiloEventDispatch dispatch,
+        ISilo silo,
         GrainActivationEvent activation) :
         base(
             grainId: activation.GrainId,
             grainType: TypeString,
-            dispatch: dispatch,
-            initialState: CreateInitialState(activation))
+            dispatch: silo.Dispatch,
+            initialState: CreateInitialState(activation, silo))
     {
+        _silo = silo;
     }
 
-    public void AttachGroundStationMedium(GrainRef<IGroundStationRadioMediumGrain> medium)
+    public void TurnOnMobileStation(Location location, Frequency selectedFrequency)
+    {
+        if (State.Status != TransceiverStatus.Off)
+        {
+            throw new InvalidOperationException($"Mobile station [{GrainId}] is already powered on.");
+        }
+
+        PrivateTuneMobileStation(location, selectedFrequency);
+    }
+
+    public void TurnOffMobileStation()
     {
         throw new NotImplementedException();
     }
 
-    public void TuneMobileStation(GeoPoint position, Altitude altitude, Frequency frequency)
+    public void TuneMobileStation(Location location, Frequency selectedFrequency)
     {
-        throw new NotImplementedException();
+        if (State.Status == TransceiverStatus.Off)
+        {
+            throw new InvalidOperationException($"Cannot tune mobile station [{GrainId}] as it is powered off.");
+        }
+        
+        PrivateTuneMobileStation(location, selectedFrequency);
+    }
+
+    public void TurnOnGroundStation(Location groundLocation, Frequency fixedFrequency)
+    {
+        if (State.StationType != RadioStationType.Ground)
+        {
+            throw new InvalidOperationException($"Station [{GrainId}] is not of type Ground.");
+        }
+        if (State.Status != TransceiverStatus.Off)
+        {
+            throw new InvalidOperationException($"Ground station [{GrainId}] is already powered on.");
+        }
+
+        var mediumRef = _silo.Grains.CreateGrain<GroundStationRadioMediumGrain>(
+            grainId => new GroundStationRadioMediumGrain.GrainActivationEvent(grainId)
+        ).As<IGroundStationRadioMediumGrain>();
+        
+        Dispatch(new InitGroundStationEvent(groundLocation, fixedFrequency, mediumRef));
+
+        mediumRef.Get().InitGroundStation(GetRefToSelfAs<IRadioStationGrain>());
+        State.World.Get().AddRadioMedium(mediumRef);
     }
 
     public void AddListener(GrainRef<IRadioStationListener> listener, RadioStationListenerMask mask)
     {
-        throw new NotImplementedException();
+        Dispatch(new AddListenerEvent(
+            new RadioStationListenerEntry(listener, mask)
+        ));
     }
 
     public void RemoveListener(GrainRef<IRadioStationListener> listener)
@@ -145,35 +172,29 @@ public class RadioStationGrain :
         throw new NotImplementedException();
     }
 
-    public void BeginReceiveTransmission(
-        TransmissionDescription transmission, 
-        ConversationToken? conversationToken,
+    public void BeginReceiveTransmission(TransmissionDescription transmission, ConversationToken? conversationToken,
+        GrainRef<IRadioStationGrain> stationTransmitting)
+    {
+        Dispatch(new BeginReceiveTransmissionEvent(transmission, conversationToken, stationTransmitting));        
+    }
+
+    public void EndReceiveCompletedTransmission(TransmissionDescription transmission, ConversationToken? conversationToken,
+        GrainRef<IRadioStationGrain> stationTransmitting, IntentDescription intent)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void EndReceiveAbortedTransmission(TransmissionDescription transmission, ConversationToken? conversationToken,
         GrainRef<IRadioStationGrain> stationTransmitting)
     {
         throw new NotImplementedException();
     }
 
-    public void EndReceiveCompletedTransmission(
-        TransmissionDescription transmission, 
-        ConversationToken? conversationToken,
-        GrainRef<IRadioStationGrain> stationTransmitting, 
-        IntentDescription intent)
-    {
-        throw new NotImplementedException();
-    }
-
-    public void EndReceiveAbortedTransmission(
-        TransmissionDescription transmission, 
-        ConversationToken? conversationToken,
-        GrainRef<IRadioStationGrain> stationTransmitting)
-    {
-        throw new NotImplementedException();
-    }
-
-    public RadioStationType StationType => throw new NotImplementedException();
-    public GroundLocation? GroundLocation => throw new NotImplementedException();
-    public Frequency TunedFrequency => throw new NotImplementedException();
-    public GrainRef<IGroundStationRadioMediumGrain>? Medium => throw new NotImplementedException();
+    public RadioStationType StationType => State.StationType;
+    public Location Location => State.LastKnownLocation;
+    public Frequency Frequency => State.SelectedFrequency;
+    public GrainRef<IGroundStationRadioMediumGrain>? GroundStationMedium => State.GroundStationMedium;
+    public ITransceiverState TransceiverState => State;
 
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {
@@ -188,8 +209,67 @@ public class RadioStationGrain :
     {
         switch (@event)
         {
+            case InitGroundStationEvent initGround:
+                return stateBefore with {
+                    StationType = RadioStationType.Ground,
+                    SelectedFrequency = initGround.FixedFrequency,
+                    GroundStationMedium = initGround.Medium,
+                    PttPressed = false,
+                    Status = TransceiverStatus.Silence,
+                    CurrentTransmission = null,
+                    ConversationToken = null,
+                    LastKnownLocation = initGround.GroundLocation,
+                    Listeners = ImmutableArray<RadioStationListenerEntry>.Empty
+                };
+            case TuneMobileStationEvent tuneMobile:
+                return stateBefore with {
+                    StationType = RadioStationType.Mobile,
+                    SelectedFrequency = tuneMobile.SelectedFrequency,
+                    GroundStationMedium = tuneMobile.MediumIfFound,
+                    PttPressed = false,
+                    Status = tuneMobile.MediumIfFound.HasValue 
+                        ? TransceiverStatus.Silence
+                        : TransceiverStatus.NoMedium,
+                    CurrentTransmission = null,
+                    ConversationToken = null,
+                    LastKnownLocation = tuneMobile.Location,
+                    Listeners = ImmutableArray<RadioStationListenerEntry>.Empty
+                };
+            case AddListenerEvent addListener:
+                return stateBefore with {
+                    Listeners = stateBefore.Listeners.Add(addListener.Entry)
+                };
+            case BeginReceiveTransmissionEvent beginReceive:
+                return stateBefore with {
+                    Status = TransceiverStatus.ReceivingSingleTransmission,
+                    CurrentTransmission = beginReceive.Transmission,
+                    ConversationToken = beginReceive.ConversationToken 
+                };
             default:
                 return stateBefore;
+        }
+    }
+
+    private void PrivateTuneMobileStation(Location location, Frequency selectedFrequency)
+    {
+        if (State.StationType != RadioStationType.Mobile)
+        {
+            throw new InvalidOperationException($"Station [{GrainId}] is not of type Mobile.");
+        }
+
+        var mediumRef = State.World.Get().TryFindRadioMedium(
+            location.Position,
+            location.Altitude,
+            selectedFrequency);
+
+        Dispatch(new TuneMobileStationEvent(
+            Location: location,
+            SelectedFrequency: selectedFrequency,
+            MediumIfFound: mediumRef));
+
+        if (mediumRef.HasValue)
+        {
+            mediumRef.Value.Get().AddMobileStation(GetRefToSelfAs<IRadioStationGrain>());
         }
     }
 
@@ -198,15 +278,74 @@ public class RadioStationGrain :
         config.RegisterGrainType<RadioStationGrain, GrainActivationEvent>(
             TypeString,
             (activation, context) => new RadioStationGrain(
-                dispatch: context.Resolve<ISiloEventDispatch>(),
+                silo: context.Resolve<ISilo>(),
                 activation: activation
             ));
     }
 
-    private static GrainState CreateInitialState(GrainActivationEvent activation)
+    private static GrainState CreateInitialState(GrainActivationEvent activation, ISilo silo)
     {
-        return new GrainState(
-            //TODO
+        var state = new GrainState(
+            World: silo.GetWorld(),
+            StationType: activation.StationType,
+            SelectedFrequency: Frequency.FromKhz(0),
+            GroundStationMedium: null,
+            PttPressed: false,
+            Status: TransceiverStatus.Off,
+            CurrentTransmission: null,
+            ConversationToken: null,
+            LastKnownLocation: Location.Create(0f, 0f, 0f),
+            Listeners: ImmutableArray<RadioStationListenerEntry>.Empty
         );
+        return state;
     }
+    
+    public record GrainState(
+        GrainRef<IWorldGrain> World,
+        RadioStationType StationType,
+        Frequency SelectedFrequency,
+        GrainRef<IGroundStationRadioMediumGrain>? GroundStationMedium,
+        bool PttPressed,
+        TransceiverStatus Status,
+        TransmissionDescription? CurrentTransmission,
+        ConversationToken? ConversationToken,//TODO: necessary?
+        Location LastKnownLocation,
+        ImmutableArray<RadioStationListenerEntry> Listeners
+    ) : ITransceiverState;
+
+    public record RadioStationListenerEntry(
+        GrainRef<IRadioStationListener> Listener,
+        RadioStationListenerMask Mask
+    );
+
+    public record GrainActivationEvent(
+        string GrainId,
+        RadioStationType StationType
+    ) : IGrainActivationEvent<RadioStationGrain>;
+
+    public record InitGroundStationEvent(
+        Location GroundLocation, 
+        Frequency FixedFrequency,
+        GrainRef<IGroundStationRadioMediumGrain> Medium
+    ) : IGrainEvent;
+
+    public record TuneMobileStationEvent(
+        Location Location, 
+        Frequency SelectedFrequency,
+        GrainRef<IGroundStationRadioMediumGrain>? MediumIfFound
+    ) : IGrainEvent;
+
+    public record AddListenerEvent(
+        RadioStationListenerEntry Entry
+    ) : IGrainEvent;
+
+    public record BeginReceiveTransmissionEvent(
+        TransmissionDescription Transmission, 
+        ConversationToken? ConversationToken,
+        GrainRef<IRadioStationGrain> StationTransmitting    
+    ) : IGrainEvent;
+
+    public record SampleWorkItem(
+        //TODO
+    ) : IGrainWorkItem;
 }

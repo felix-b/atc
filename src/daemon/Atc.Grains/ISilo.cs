@@ -72,7 +72,11 @@ public interface ISiloGrains
         }
 
         throw new GrainNotFoundException($"Grain '{grainId}' could not be found");
-    }    
+    }
+    
+    public const ulong InstanceIdStartValue = 1;
+    public static string MakeGrainId(string typeString, ulong instanceId) => $"{typeString}/#{instanceId}";
+    public static string MakeSingletonGrainId(string typeString) => MakeGrainId(typeString, InstanceIdStartValue);
 }
 
 public interface ISiloEventDispatch

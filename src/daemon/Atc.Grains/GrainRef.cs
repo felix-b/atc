@@ -1,6 +1,6 @@
 namespace Atc.Grains;
 
-public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>> 
+public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>>, IEqualityComparer<GrainRef<T>>
     where T : class, IGrainId
 {
     private readonly ISiloGrains _grains;
@@ -23,26 +23,6 @@ public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>>
         return new GrainRef<S>(_grains, _grainId);
     }
     
-    public bool Equals(GrainRef<T> other)
-    {
-        return _grainId == other._grainId;
-    }
-
-    public override bool Equals(object? obj)
-    {
-        return obj is GrainRef<T> other && Equals(other);
-    }
-
-    public override int GetHashCode()
-    {
-        return _grainId.GetHashCode();
-    }
-
-    public override string ToString()
-    {
-        return GrainId;
-    }
-
     public T Get()
     {
         if (_grains == null)
@@ -51,6 +31,44 @@ public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>>
         }
 
         return _grains.GetInstanceById<T>(_grainId);
+    }
+
+    public override string ToString()
+    {
+        return GrainId;
+    }
+
+    public override int GetHashCode()
+    {
+        return _grainId.GetHashCode();
+    }
+    
+    public bool Equals(GrainRef<T> other)
+    {
+        return other._grainId == this._grainId;
+    }
+    
+    public override bool Equals(object? obj)
+    {
+        if (obj is GrainRef<T> other)
+        {
+            return Equals(other);
+        }
+        if (obj is IAnyGrainRef anyOther)
+        {
+            return Equals(anyOther.As<T>());
+        }
+        return false;
+    }
+
+    bool IEqualityComparer<GrainRef<T>>.Equals(GrainRef<T> x, GrainRef<T> y)
+    {
+        return x == y;
+    }
+
+    int IEqualityComparer<GrainRef<T>>.GetHashCode(GrainRef<T> value)
+    {
+        return value.GetHashCode();
     }
 
     public string GrainId => _grainId;

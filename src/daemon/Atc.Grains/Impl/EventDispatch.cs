@@ -48,10 +48,11 @@ public class EventDispatch : ISiloEventDispatch
                 target.ObserveChanges(state0, state1);
             }
         }
-        catch //(Exception e)
-        {
-            //logSpan.Fail(e);
-        }
+        // catch (Exception e)
+        // {
+        //     //TODO: logSpan.Fail(e);
+        //     //throw;
+        // }
         finally
         {
             _dispatching = false;

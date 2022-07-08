@@ -63,7 +63,7 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         }
 
         var instanceId = GetNextInstanceId(registration.GrainTypeString);
-        var uniqueId = $"{registration.GrainTypeString}/#{instanceId}";
+        var uniqueId = ISiloGrains.MakeGrainId(registration.GrainTypeString, instanceId);//$"{registration.GrainTypeString}/#{instanceId}";
         var activationEvent = activationEventFactory(uniqueId);
             
         _dispatch.Dispatch(this, activationEvent);
@@ -251,6 +251,11 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
         }
     }
 
+    internal void InjectGrainInstance(IGrain instance)
+    {
+        _grainInstanceById[instance.GrainId] = instance;
+    }
+
     protected override GrainState Reduce(GrainState stateBefore, IGrainEvent @event)
     {
         switch (@event)
@@ -320,7 +325,7 @@ public class SuperGrain : AbstractGrain<SuperGrain.GrainState>, ISiloGrains, ISi
     {
         return State.LastInstanceIdPerTypeString.TryGetValue(typeString, out var id)
             ? id + 1
-            : 1;
+            : ISiloGrains.InstanceIdStartValue;
     }
 
     private T TakeLastCreatedGrainOrThrow<T>() where T : class, IGrainId
