@@ -27,8 +27,8 @@ public readonly struct Location
         return HashCode.Combine(Position, Altitude);
     }
 
-    public static Location Create(double lat, double lon, float elevationFeetMsl)
+    public static Location At(double lat, double lon, float elevationFt)
     {
-        return new Location(new GeoPoint(lat, lon), Altitude.FromFeetMsl(elevationFeetMsl));
+        return new Location(new GeoPoint(lat, lon), Altitude.FromFeetMsl(elevationFt));
     }
 }

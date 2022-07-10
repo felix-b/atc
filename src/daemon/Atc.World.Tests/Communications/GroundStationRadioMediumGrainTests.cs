@@ -37,7 +37,7 @@ public class GroundStationRadioMediumGrainTests
         var mediumGrain = silo.Grains.CreateGrain<GroundStationRadioMediumGrain>(grainId => 
             new GroundStationRadioMediumGrain.GrainActivationEvent(grainId)
         );
-        var groundStationLocation = Location.Create(30, 30, 100); 
+        var groundStationLocation = Location.At(30, 30, 100); 
         var groundStation = MockGroundStation(
             frequency: Frequency.FromKhz(123000),
             location: groundStationLocation);
@@ -175,6 +175,7 @@ public class GroundStationRadioMediumGrainTests
         //-- when
 
         var conversationToken = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain,
             mobiles[0].Operator.Grain, 
             conversationToken: null,
             AirGroundPriority.FlightSafetyHigh);
@@ -219,7 +220,9 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
+            mobiles[0].Operator.Grain);
         
         //-- when
 
@@ -245,19 +248,22 @@ public class GroundStationRadioMediumGrainTests
         ground.Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            1
         ), Times.Once);
         
         mobiles[1].Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            1
         ), Times.Once);
 
         mobiles[0].Station.Mock.Verify(x => x.BeginReceiveTransmission(
             It.IsAny<TransmissionDescription>(),
             It.IsAny<ConversationToken?>(),
-            It.IsAny<GrainRef<IRadioStationGrain>>()
+            It.IsAny<GrainRef<IRadioStationGrain>>(),
+            1
         ), Times.Never);
     }
 
@@ -280,7 +286,7 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
 
         var transmission1 = new TransmissionDescription();
         mediumGrain.Get().NotifyTransmissionStarted(
@@ -291,11 +297,12 @@ public class GroundStationRadioMediumGrainTests
             stationTransmitting: mobiles[0].Station.Grain,
             transmission: transmission1,
             conversationToken: conversationToken1,
-            new IntentDescription(ConcludesConversation: false));
+            new IntentDescription(1, ConcludesConversation: false));
 
         //-- when
 
         var conversationToken1B = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             conversationToken: conversationToken1);
 
@@ -341,7 +348,7 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
         var transmission1 = new TransmissionDescription();
         mediumGrain.Get().NotifyTransmissionStarted(
             stationTransmitting: mobiles[0].Station.Grain,
@@ -351,7 +358,7 @@ public class GroundStationRadioMediumGrainTests
         //-- when
 
         environment.UtcNow = environment.UtcNow.AddSeconds(20);
-        var intent1 = new IntentDescription(ConcludesConversation: false);
+        var intent1 = new IntentDescription(1, ConcludesConversation: false);
 
         mediumGrain.Get().NotifyTransmissionCompleted(
             stationTransmitting: mobiles[0].Station.Grain,
@@ -413,7 +420,7 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
         var transmission1 = new TransmissionDescription();
         mediumGrain.Get().NotifyTransmissionStarted(
             stationTransmitting: mobiles[0].Station.Grain,
@@ -423,7 +430,7 @@ public class GroundStationRadioMediumGrainTests
         //-- when
 
         environment.UtcNow = environment.UtcNow.AddSeconds(20);
-        var intent1 = new IntentDescription(ConcludesConversation: true);
+        var intent1 = new IntentDescription(1, ConcludesConversation: true);
 
         mediumGrain.Get().NotifyTransmissionCompleted(
             stationTransmitting: mobiles[0].Station.Grain,
@@ -484,7 +491,7 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
         var transmission1 = new TransmissionDescription();
         mediumGrain.Get().NotifyTransmissionStarted(
             stationTransmitting: mobiles[0].Station.Grain,
@@ -513,19 +520,22 @@ public class GroundStationRadioMediumGrainTests
         ground.Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            0
         ), Times.Once);
 
         mobiles[1].Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            0
         ), Times.Once);
         
         mobiles[0].Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             It.IsAny<TransmissionDescription>(),
             It.IsAny<ConversationToken?>(),
-            It.IsAny<GrainRef<IRadioStationGrain>>()
+            It.IsAny<GrainRef<IRadioStationGrain>>(),
+            It.IsAny<int>()
         ), Times.Never);
     }
 
@@ -548,8 +558,8 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
-        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
+        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Station.Grain, mobiles[1].Operator.Grain);
 
         var transmission1 = new TransmissionDescription();
         mediumGrain.Get().NotifyTransmissionStarted(
@@ -585,24 +595,28 @@ public class GroundStationRadioMediumGrainTests
         ground.Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            1
         ), Times.Once);
         ground.Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission2,
             conversationToken2,
-            mobiles[1].Station.Grain
+            mobiles[1].Station.Grain,
+            2
         ), Times.Once);
         
         mobiles[0].Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission2,
             conversationToken2,
-            mobiles[1].Station.Grain
+            mobiles[1].Station.Grain,
+            2
         ), Times.Once);
 
         mobiles[1].Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            1
         ), Times.Once);
     }
 
@@ -626,8 +640,8 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
-        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
+        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Station.Grain, mobiles[1].Operator.Grain);
 
         var transmission1 = new TransmissionDescription();
         mediumGrain.Get().NotifyTransmissionStarted(
@@ -643,7 +657,7 @@ public class GroundStationRadioMediumGrainTests
 
         //-- when
         
-        var intent2 = new IntentDescription(ConcludesConversation: false);
+        var intent2 = new IntentDescription(2, ConcludesConversation: false);
         mediumGrain.Get().NotifyTransmissionCompleted(
             stationTransmitting: mobiles[1].Station.Grain,
             transmission: transmission2,
@@ -669,7 +683,8 @@ public class GroundStationRadioMediumGrainTests
         ground.Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission2,
             conversationToken2,
-            mobiles[1].Station.Grain
+            mobiles[1].Station.Grain,
+            1
         ), Times.Once);
         ground.Station.Mock.Verify(x => x.EndReceiveCompletedTransmission(
             transmission2,
@@ -681,7 +696,8 @@ public class GroundStationRadioMediumGrainTests
         mobiles[0].Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission2,
             conversationToken2,
-            mobiles[1].Station.Grain
+            mobiles[1].Station.Grain,
+            1
         ), Times.Once);
         mobiles[0].Station.Mock.Verify(x => x.EndReceiveCompletedTransmission(
             transmission2,
@@ -693,7 +709,8 @@ public class GroundStationRadioMediumGrainTests
         mobiles[1].Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission2,
             conversationToken2,
-            mobiles[1].Station.Grain
+            mobiles[1].Station.Grain,
+            1
         ), Times.Never);
         mobiles[1].Station.Mock.Verify(x => x.EndReceiveCompletedTransmission(
             transmission2,
@@ -724,8 +741,8 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
-        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
+        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Station.Grain, mobiles[1].Operator.Grain);
 
         var transmission1 = new TransmissionDescription();
         mediumGrain.Get().NotifyTransmissionStarted(
@@ -739,7 +756,7 @@ public class GroundStationRadioMediumGrainTests
             transmission: transmission2,
             conversationToken: conversationToken2);
 
-        var intent2 = new IntentDescription(ConcludesConversation: false);
+        var intent2 = new IntentDescription(2, ConcludesConversation: false);
         mediumGrain.Get().NotifyTransmissionCompleted(
             stationTransmitting: mobiles[1].Station.Grain,
             transmission: transmission2,
@@ -748,7 +765,7 @@ public class GroundStationRadioMediumGrainTests
 
         //-- when
         
-        var intent1 = new IntentDescription(ConcludesConversation: true);
+        var intent1 = new IntentDescription(1, ConcludesConversation: true);
         mediumGrain.Get().NotifyTransmissionCompleted(
             stationTransmitting: mobiles[0].Station.Grain,
             transmission: transmission1,
@@ -771,7 +788,8 @@ public class GroundStationRadioMediumGrainTests
         ground.Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            0
         ), Times.Once);
         ground.Station.Mock.Verify(x => x.EndReceiveCompletedTransmission(
             transmission1,
@@ -783,7 +801,8 @@ public class GroundStationRadioMediumGrainTests
         mobiles[0].Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            It.IsAny<int>()
         ), Times.Never);
         mobiles[0].Station.Mock.Verify(x => x.EndReceiveCompletedTransmission(
             transmission1,
@@ -795,7 +814,8 @@ public class GroundStationRadioMediumGrainTests
         mobiles[1].Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            0
         ), Times.Once);
         mobiles[1].Station.Mock.Verify(x => x.EndReceiveCompletedTransmission(
             transmission1,
@@ -825,8 +845,8 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
-        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
+        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Station.Grain, mobiles[1].Operator.Grain);
 
         var transmission1 = new TransmissionDescription();
         mediumGrain.Get().NotifyTransmissionStarted(
@@ -865,19 +885,22 @@ public class GroundStationRadioMediumGrainTests
         ground.Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission2,
             conversationToken2,
-            mobiles[1].Station.Grain
+            mobiles[1].Station.Grain,
+            1
         ), Times.Once);
         
         mobiles[0].Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission2,
             conversationToken2,
-            mobiles[1].Station.Grain
+            mobiles[1].Station.Grain,
+            1
         ), Times.Once);
 
         mobiles[1].Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission2,
             conversationToken2,
-            mobiles[1].Station.Grain
+            mobiles[1].Station.Grain,
+            It.IsAny<int>()
         ), Times.Never);
     }
 
@@ -898,6 +921,7 @@ public class GroundStationRadioMediumGrainTests
             out var mobiles);
 
         var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             priority: AirGroundPriority.GroundToAir);
         
@@ -924,19 +948,22 @@ public class GroundStationRadioMediumGrainTests
         ground.Station.Mock.Verify(x => x.BeginReceiveTransmission(
             It.IsAny<TransmissionDescription>(),
             It.IsAny<ConversationToken?>(),
-            It.IsAny<GrainRef<IRadioStationGrain>>()
+            It.IsAny<GrainRef<IRadioStationGrain>>(),
+            1
         ), Times.Never);
         
         mobiles[0].Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission1,
             conversationToken1,
-            ground.Station.Grain
+            ground.Station.Grain,
+            1
         ), Times.Once);
 
         mobiles[1].Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission1,
             conversationToken1,
-            ground.Station.Grain
+            ground.Station.Grain,
+            1
         ), Times.Once);
     }
 
@@ -968,7 +995,7 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
         var transmission1 = new TransmissionDescription();
         mediumGrain.Get().NotifyTransmissionStarted(
             stationTransmitting: mobiles[0].Station.Grain,
@@ -995,7 +1022,8 @@ public class GroundStationRadioMediumGrainTests
         addedMobile.Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            1
         ), Times.Once);
     }
 
@@ -1015,7 +1043,7 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
         var transmission1 = new TransmissionDescription();
         mediumGrain.Get().NotifyTransmissionStarted(
             stationTransmitting: mobiles[0].Station.Grain,
@@ -1032,15 +1060,53 @@ public class GroundStationRadioMediumGrainTests
         removedMobile.Station.Mock.Verify(x => x.EndReceiveAbortedTransmission(
             transmission1,
             conversationToken1,
-            mobiles[0].Station.Grain
+            mobiles[0].Station.Grain,
+            0
         ), Times.Once);
+    }
+
+    // Given: MS#1 and MS#2 is tuned;
+    //        MS#2 enqueued pending transmission C1;
+    //        MS#1 enqueued pending transmission C2;
+    //        MS#2 enqueued pending transmission C3;
+    //  When: MS#2 is removed
+    //  Then: C1 and C3 and removed from pending transmissions 
+    [Test]
+    public void CanRemovePendingTransmissionEnqueuedForRemovedStation()
+    {
+        //-- given
+        
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest);
+        var mediumGrain = SetupGroundStationRadioMediumGrain(
+            silo, 
+            mobileStationCount: 2, 
+            out var ground,
+            out var mobiles);
+
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Station.Grain, mobiles[1].Operator.Grain);
+        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
+        var conversationToken3 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Station.Grain, mobiles[1].Operator.Grain);
+
+        //-- when
+
+        var removedMobile = mobiles[1];
+        mediumGrain.Get().RemoveMobileStation(mobiles[1].Station.Grain);
+        
+        //-- then
+
+        var state = SiloTestDoubles.GetGrainState(mediumGrain.Get());
+
+        state.PendingTransmissionQueue.Count.Should().Be(1);
+        state.PendingTransmissionQueue.Count(e => e.Token == conversationToken1).Should().Be(0);
+        state.PendingTransmissionQueue.Count(e => e.Token == conversationToken2).Should().Be(1);
+        state.PendingTransmissionQueue.Count(e => e.Token == conversationToken3).Should().Be(0);
     }
 
     // Given: MS#1 and MS#2 tuned;
     //        MS#1 enqueued for transmission
     //        MS#2 enqueued for transmission
     //  When: MS#1 cancels pending transmission
-    //  Then: state: pending transmission is removed from the qeueu
+    //  Then: state: pending transmission is removed from the queue
     [Test]
     public void CanOrderPendingTransmissionsByPriority()
     {
@@ -1056,14 +1122,17 @@ public class GroundStationRadioMediumGrainTests
         //-- when
 
         var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             priority: AirGroundPriority.FlightRegularity);
         
         var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[1].Station.Grain, 
             mobiles[1].Operator.Grain,
             priority: AirGroundPriority.Distress);
 
         var conversationToken3 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[2].Station.Grain, 
             mobiles[2].Operator.Grain,
             priority: AirGroundPriority.FlightSafetyNormal);
 
@@ -1097,8 +1166,8 @@ public class GroundStationRadioMediumGrainTests
             out var ground,
             out var mobiles);
 
-        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Operator.Grain);
-        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Operator.Grain);
+        var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[0].Station.Grain, mobiles[0].Operator.Grain);
+        var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(mobiles[1].Station.Grain, mobiles[1].Operator.Grain);
 
         //-- when
 
@@ -1132,12 +1201,15 @@ public class GroundStationRadioMediumGrainTests
             out var mobiles);
 
         var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             priority: AirGroundPriority.Meteorology);
         var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[1].Station.Grain, 
             mobiles[1].Operator.Grain,
             priority: AirGroundPriority.Urgency);
         var conversationToken3 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[2].Station.Grain, 
             mobiles[2].Operator.Grain,
             priority: AirGroundPriority.FlightSafetyNormal);
 
@@ -1189,15 +1261,18 @@ public class GroundStationRadioMediumGrainTests
             out var mobiles);
 
         var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             priority: AirGroundPriority.Urgency);
         var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[1].Station.Grain, 
             mobiles[1].Operator.Grain,
             priority: AirGroundPriority.FlightSafetyHigh);
 
         //-- when
 
         var conversationToken3 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            ground.Station.Grain,
             ground.Operator.Grain,
             priority: AirGroundPriority.GroundToAir);
         
@@ -1237,13 +1312,16 @@ public class GroundStationRadioMediumGrainTests
             ConversationsInProgress = mediumState.ConversationsInProgress
                 .Add(conversationToken3),
             PendingTransmissionQueue = mediumState.PendingTransmissionQueue
-                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken1, mobiles[0].Operator.Grain))
-                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken2, mobiles[1].Operator.Grain))
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(
+                    conversationToken1, mobiles[0].Station.Grain, mobiles[0].Operator.Grain))
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(
+                    conversationToken2, mobiles[1].Station.Grain, mobiles[1].Operator.Grain))
         });
 
         //-- when
 
         mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[2].Station.Grain, 
             mobiles[2].Operator.Grain,
             conversationToken3,
             AirGroundPriority.FlightRegularity);
@@ -1284,13 +1362,16 @@ public class GroundStationRadioMediumGrainTests
             ConversationsInProgress = mediumState.ConversationsInProgress
                 .Add(conversationToken1),
             PendingTransmissionQueue = mediumState.PendingTransmissionQueue
-                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken1, mobiles[0].Operator.Grain))
-                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken2, mobiles[1].Operator.Grain))
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(
+                    conversationToken1, mobiles[0].Station.Grain, mobiles[0].Operator.Grain))
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(
+                    conversationToken2, mobiles[1].Station.Grain, mobiles[1].Operator.Grain))
         });
 
         //-- when
 
         mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[1].Station.Grain, 
             mobiles[1].Operator.Grain,
             conversationToken2,
             AirGroundPriority.FlightSafetyNormal);
@@ -1328,13 +1409,16 @@ public class GroundStationRadioMediumGrainTests
         var mediumState = SiloTestDoubles.GetGrainState(mediumGrain.Get());
         SiloTestDoubles.SetGrainState(mediumGrain.Get(), mediumState with {
             PendingTransmissionQueue = mediumState.PendingTransmissionQueue
-                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken1, mobiles[0].Operator.Grain))
-                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(conversationToken2, mobiles[1].Operator.Grain))
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(
+                    conversationToken1, mobiles[0].Station.Grain, mobiles[0].Operator.Grain))
+                .Add(new GroundStationRadioMediumGrain.PendingTransmissionQueueEntry(
+                    conversationToken2, mobiles[1].Station.Grain, mobiles[1].Operator.Grain))
         });
 
         //-- when
 
         mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[1].Operator.Grain,
             conversationToken2,
             AirGroundPriority.Urgency);
@@ -1374,6 +1458,7 @@ public class GroundStationRadioMediumGrainTests
             out var mobiles);
 
         var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             priority: AirGroundPriority.FlightSafetyNormal);
         
@@ -1415,6 +1500,7 @@ public class GroundStationRadioMediumGrainTests
             out var mobiles);
 
         var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             priority: AirGroundPriority.FlightSafetyNormal);
         
@@ -1452,6 +1538,7 @@ public class GroundStationRadioMediumGrainTests
             out var mobiles);
 
         var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             priority: AirGroundPriority.FlightSafetyNormal);
         
@@ -1461,6 +1548,7 @@ public class GroundStationRadioMediumGrainTests
         });
 
         var conversationToken1B = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             conversationToken: conversationToken1);
         
@@ -1506,9 +1594,11 @@ public class GroundStationRadioMediumGrainTests
             out var mobiles);
 
         var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             priority: AirGroundPriority.FlightSafetyNormal);
         var conversationToken2 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[1].Station.Grain, 
             mobiles[1].Operator.Grain,
             priority: AirGroundPriority.FlightSafetyNormal);
         
@@ -1573,6 +1663,7 @@ public class GroundStationRadioMediumGrainTests
             out var mobiles);
 
         var conversationToken1 = mediumGrain.Get().EnqueueAIOperatorForTransmission(
+            mobiles[0].Station.Grain, 
             mobiles[0].Operator.Grain,
             priority: AirGroundPriority.FlightSafetyNormal);
         
@@ -1597,19 +1688,22 @@ public class GroundStationRadioMediumGrainTests
         ground.Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission1,
             null,
-            mobiles[1].Station.Grain
+            mobiles[1].Station.Grain,
+            1
         ), Times.Once);
         
         mobiles[0].Station.Mock.Verify(x => x.BeginReceiveTransmission(
             transmission1,
             null,
-            mobiles[1].Station.Grain
+            mobiles[1].Station.Grain,
+            1
         ), Times.Once);
 
         mobiles[1].Station.Mock.Verify(x => x.BeginReceiveTransmission(
             It.IsAny<TransmissionDescription>(),
             It.IsAny<ConversationToken>(),
-            It.IsAny<GrainRef<IRadioStationGrain>>()
+            It.IsAny<GrainRef<IRadioStationGrain>>(),
+            1
         ), Times.Never);
 
         var state = SiloTestDoubles.GetGrainState(mediumGrain.Get());

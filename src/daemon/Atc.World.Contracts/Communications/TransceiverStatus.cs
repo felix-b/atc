@@ -6,6 +6,6 @@ public enum TransceiverStatus
     NoMedium,
     Silence,
     ReceivingSingleTransmission,
-    ReceivingMutualCancellation,
+    ReceivingInterferenceNoise,
     Transmitting
 }

@@ -1,7 +1,7 @@
 namespace Atc.World.Contracts.Communications;
 
 public record IntentDescription(
-    //TODO
-    
+    ulong Id,
+    WellKnownIntentType WellKnownType = WellKnownIntentType.None,
     bool ConcludesConversation = false
 );

@@ -20,6 +20,7 @@ public interface IGroundStationRadioMediumGrain : IGrainId, IRadioStationListene
     // - conversationToken - when transmitting as part of existing conversation; obtained from BeginTransmittingNow call
     // - priority - when registering to start a new conversation, or to amend priority of the conversation that continues.
     ConversationToken EnqueueAIOperatorForTransmission(
+        GrainRef<IRadioStationGrain> station,
         GrainRef<IAIRadioOperatorGrain> aiOperator,
         ConversationToken? conversationToken = null,
         AirGroundPriority? priority = null);
@@ -33,6 +34,8 @@ public interface IGroundStationRadioMediumGrain : IGrainId, IRadioStationListene
     GrainRef<IRadioStationGrain> GroundStation { get; }
     Location AntennaLocation { get; }
     Frequency Frequency { get; }
+    int TransmittingStationsCount { get; }
+    TransmissionDescription? SingleTransmission { get; }
 }
 
 public interface IAIRadioOperatorGrain : IGrainId
@@ -111,7 +114,8 @@ public class GroundStationRadioMediumGrain :
                 station.Get().BeginReceiveTransmission(
                     transmission: entry.Transmission,
                     conversationToken: entry.ConversationToken,
-                    stationTransmitting: entry.StationTransmitting);
+                    stationTransmitting: entry.StationTransmitting,
+                    transmittingStationsCount: State.InProgressTransmissionByStationId.Count);
             }
         }
     }
@@ -135,7 +139,8 @@ public class GroundStationRadioMediumGrain :
                     station.Get().EndReceiveAbortedTransmission(
                         transmission: entry.Transmission,
                         conversationToken: entry.ConversationToken,
-                        stationTransmitting: entry.StationTransmitting);
+                        stationTransmitting: entry.StationTransmitting,
+                        transmittingStationsCount: 0);
                 }
             }
         }
@@ -147,6 +152,7 @@ public class GroundStationRadioMediumGrain :
     }
 
     public ConversationToken EnqueueAIOperatorForTransmission(
+        GrainRef<IRadioStationGrain> station, 
         GrainRef<IAIRadioOperatorGrain> aiOperator, 
         ConversationToken? conversationToken = null,
         AirGroundPriority? priority = null)
@@ -157,7 +163,7 @@ public class GroundStationRadioMediumGrain :
                 ? conversationToken 
                 : new ConversationToken(conversationToken.Id, priority.Value);
 
-        var entry = new PendingTransmissionQueueEntry(effectiveToken, aiOperator);
+        var entry = new PendingTransmissionQueueEntry(effectiveToken, station, aiOperator);
         Dispatch(new EnqueuePendingTransmissionEvent(entry));
         return effectiveToken;
     }
@@ -210,7 +216,11 @@ public class GroundStationRadioMediumGrain :
 
         foreach (var station in GetAllStations(except: stationTransmitting))
         {
-            station.Get().BeginReceiveTransmission(transmission, conversationToken, stationTransmitting);
+            station.Get().BeginReceiveTransmission(
+                transmission, 
+                conversationToken, 
+                stationTransmitting,
+                transmittingStationsCount: State.InProgressTransmissionByStationId.Count);
         }
     }
 
@@ -235,11 +245,19 @@ public class GroundStationRadioMediumGrain :
         {
             if (!transmissionWasInterfered)
             {
-                station.Get().EndReceiveCompletedTransmission(transmission, conversationToken, stationTransmitting, transmittedIntent);
+                station.Get().EndReceiveCompletedTransmission(
+                    transmission, 
+                    conversationToken, 
+                    stationTransmitting, 
+                    transmittedIntent);
             }
             else
             {
-                station.Get().EndReceiveAbortedTransmission(transmission, conversationToken, stationTransmitting);
+                station.Get().EndReceiveAbortedTransmission(
+                    transmission, 
+                    conversationToken, 
+                    stationTransmitting,
+                    transmittingStationsCount: State.InProgressTransmissionByStationId.Count);
             }
         }
     }
@@ -262,13 +280,20 @@ public class GroundStationRadioMediumGrain :
             station.Get().EndReceiveAbortedTransmission(
                 transmission, 
                 conversationToken, 
-                stationTransmitting);
+                stationTransmitting,
+                transmittingStationsCount: State.InProgressTransmissionByStationId.Count);
         }
     }
 
     public GrainRef<IRadioStationGrain> GroundStation => State.GroundStation;
     public Location AntennaLocation => GroundStation.Get().Location;
     public Frequency Frequency => GroundStation.Get().Frequency;
+    public int TransmittingStationsCount => State.InProgressTransmissionByStationId.Count;
+
+    public TransmissionDescription? SingleTransmission =>
+        State.InProgressTransmissionByStationId.Count == 1
+            ? State.InProgressTransmissionByStationId.First().Value.Transmission
+            : null;
 
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {
@@ -294,7 +319,10 @@ public class GroundStationRadioMediumGrain :
             case RemoveMobileStationEvent removeMobile:
                 //TODO: remove pending 
                 return stateBefore with {
-                    MobileStationById = stateBefore.MobileStationById.Remove(removeMobile.MobileStation.GrainId) 
+                    MobileStationById = stateBefore.MobileStationById.Remove(removeMobile.MobileStation.GrainId),
+                    PendingTransmissionQueue = ImmutableSortedSet<PendingTransmissionQueueEntry>.Empty.Union(
+                        stateBefore.PendingTransmissionQueue.Where(
+                            e => e.Station != removeMobile.MobileStation))
                 };
             case EnqueuePendingTransmissionEvent enqueuePending:
                 pendingEntry = TryFindTransmissionQueueEntry(stateBefore, enqueuePending.Entry.Token);
@@ -433,6 +461,7 @@ public class GroundStationRadioMediumGrain :
 
     public record PendingTransmissionQueueEntry(
         ConversationToken Token,
+        GrainRef<IRadioStationGrain> Station,
         GrainRef<IAIRadioOperatorGrain> Operator
     );
 
