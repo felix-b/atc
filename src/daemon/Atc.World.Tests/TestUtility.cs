@@ -1,4 +1,5 @@
 using Atc.Grains;
+using Atc.World.Contracts.Communications;
 using Moq;
 
 namespace Atc.World.Tests;
@@ -11,6 +12,7 @@ public record MockedGrain<T>(
 public static class TestUtility
 {
     private static int __nextMockId = 1;
+    private static ulong __nextTransmissionId = 1;
     
     public static MockedGrain<T> MockGrain<T>(string? grainId = null, ISilo? injectTo = null) where T : class, IGrainId
     {
@@ -40,8 +42,49 @@ public static class TestUtility
         return MockGrain<IWorldGrain>(grainId: SiloExtensions.WorldGrainId, injectTo: silo);
     }
 
+    public static TransmissionDescription NewTransmission(
+        ISiloEnvironment? environment = null,
+        ulong? id = null,
+        PartyDescription? partyTransmitting = null,
+        Intent? intent = null,
+        LanguageCode? language = null,
+        ulong? audioStreamId = null,
+        TimeSpan? duration = null)
+    {
+        var effectiveStartUtc = environment?.UtcNow ?? DateTime.UtcNow; 
+        var effectiveId = id ?? Interlocked.Increment(ref __nextTransmissionId); 
+        var effectiveDuration = duration ?? TimeSpan.FromSeconds(3);
+        var effectivePartyTransmitting = partyTransmitting ?? MakePartyDescription(intent?.Header.Callee);
+        var effectiveLanguage = language ?? LanguageCode.English;
+        var effectiveSynthesisRequest = intent != null
+            ? new SpeechSynthesisRequest(effectiveId, effectivePartyTransmitting, intent, effectiveLanguage)
+            : null;
+        
+        return new TransmissionDescription(
+            Id: effectiveId,
+            StartUtc: effectiveStartUtc,
+            AudioStreamId: effectiveSynthesisRequest != null 
+                ? null 
+                : (audioStreamId ?? 0),
+            SynthesisRequest: effectiveSynthesisRequest,
+            Duration: effectiveDuration);
+    }
+    
     private static int TakeNextMockId()
     {
         return Interlocked.Increment(ref __nextMockId);
+    }
+
+    private static PartyDescription MakePartyDescription(Callsign? callsign = null)
+    {
+        return new PersonPartyDescription(
+            "test",
+            callsign ?? new Callsign("test", "test"),
+            NatureType.AI,
+            VoiceDescription.Default,
+            GenderType.Male,
+            AgeType.Mature,
+            SeniorityType.Senior,
+            "Bob");
     }
 }

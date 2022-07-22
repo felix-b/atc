@@ -62,6 +62,8 @@ public abstract class AbstractGrain<TStateRecord> : IGrain
         return abstractRef.As<T>();
     }
 
+    protected ISilo Silo => _dispatch.Silo;
+
     protected TStateRecord State => _state;
     
     internal ISiloEventDispatch GetDispatch() => _dispatch;

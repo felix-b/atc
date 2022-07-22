@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Atc.Grains;
 using Atc.Maths;
 using Atc.World.Communications;
@@ -27,7 +28,7 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
 
     public void AddRadioMedium(GrainRef<IGroundStationRadioMediumGrain> medium)
     {
-        throw new NotImplementedException();
+        Dispatch(new AddRadioMediumEvent(medium));
     }
 
     public GrainRef<IGroundStationRadioMediumGrain>? TryFindRadioMedium(
@@ -35,7 +36,7 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
         Altitude altitude, 
         Frequency frequency)
     {
-        throw new NotImplementedException();
+        return State.RadioMediums.First();//TODO
     }
 
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
@@ -51,6 +52,10 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
     {
         switch (@event)
         {
+            case AddRadioMediumEvent addMedium:
+                return stateBefore with {
+                    RadioMediums = stateBefore.RadioMediums.Add(addMedium.Medium)
+                };
             default:
                 return stateBefore;
         }
@@ -69,12 +74,13 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
     private static GrainState CreateInitialState(GrainActivationEvent activation)
     {
         return new GrainState(
-            //TODO
+            RadioMediums: ImmutableArray<GrainRef<IGroundStationRadioMediumGrain>>.Empty
         );
     }
 
     public record GrainState(
-        //TODO
+        //TODO: optimize
+        ImmutableArray<GrainRef<IGroundStationRadioMediumGrain>> RadioMediums  
     );
 
     public record GrainActivationEvent(
@@ -82,8 +88,8 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
         //TODO
     ) : IGrainActivationEvent<WorldGrain>;
 
-    public record SampleEvent(
-        //TODO
+    public record AddRadioMediumEvent(
+        GrainRef<IGroundStationRadioMediumGrain> Medium  
     ) : IGrainEvent;
 
     public record SampleWorkItem(

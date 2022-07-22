@@ -19,9 +19,11 @@ public interface IRadioStationGrain : IGrainId
         GrainRef<IAIRadioOperatorGrain> operatorGrain, 
         AirGroundPriority priority,
         ConversationToken? conversationToken = null);
-    
+
+    ConversationToken TakeNewAIConversationToken();
+
     void BeginTransmission(TransmissionDescription transmission, ConversationToken? conversationToken);
-    void CompleteTransmission(IntentDescription intent, bool keepPttPressed = false);
+    void CompleteTransmission(Intent intent, bool keepPttPressed = false);
     void AbortTransmission();
 
     void BeginReceiveTransmission(
@@ -34,7 +36,7 @@ public interface IRadioStationGrain : IGrainId
         TransmissionDescription transmission, 
         ConversationToken? conversationToken,
         GrainRef<IRadioStationGrain> stationTransmitting,
-        IntentDescription intent);
+        Intent intent);
 
     void EndReceiveAbortedTransmission(
         TransmissionDescription transmission, 
@@ -47,6 +49,10 @@ public interface IRadioStationGrain : IGrainId
     Frequency Frequency { get; }
     GrainRef<IGroundStationRadioMediumGrain>? GroundStationMedium { get; }
     ITransceiverState TransceiverState { get; }
+    bool HasMonitor { get; }
+
+    event Action<ITransceiverState>? OnTransceiverStateChanged;
+    event Action<Intent>? OnIntentCaptured;
 }
 
 public interface IRadioStationListener : IGrainId
@@ -70,7 +76,7 @@ public interface IRadioStationListener : IGrainId
         GrainRef<IRadioStationGrain> stationTransmitting,
         TransmissionDescription transmission, 
         ConversationToken? conversationToken,
-        IntentDescription transmittedIntent);
+        Intent transmittedIntent);
 
     void NotifyTransmissionAborted(
         GrainRef<IRadioStationGrain> stationTransmitting,
@@ -194,9 +200,16 @@ public class RadioStationGrain :
             priority: priority);
     }
 
+    public ConversationToken TakeNewAIConversationToken()
+    {
+        ValidatePoweredOnAndTuned();
+        return State.GroundStationMedium!.Value.Get().TakeNewAIConversationToken();
+    }
+
     public void BeginTransmission(TransmissionDescription transmission, ConversationToken? conversationToken)
     {
         ValidatePoweredOnAndTuned();
+        transmission.ValidateOrThrow(paramName: nameof(transmission));
         
         Dispatch(new BeginTransmissionEvent(transmission, conversationToken));
 
@@ -208,7 +221,7 @@ public class RadioStationGrain :
                 conversationToken));
     }
 
-    public void CompleteTransmission(IntentDescription intent, bool keepPttPressed = false)
+    public void CompleteTransmission(Intent intent, bool keepPttPressed = false)
     {
         var transmission = GetCurrentTransmissionOrThrow();
         var conversationToken = State.ConversationToken;
@@ -223,6 +236,8 @@ public class RadioStationGrain :
                 transmission, 
                 conversationToken,
                 intent));
+        
+        OnIntentCaptured?.Invoke(intent);
     }
 
     public void AbortTransmission()
@@ -267,7 +282,7 @@ public class RadioStationGrain :
         TransmissionDescription transmission, 
         ConversationToken? conversationToken,
         GrainRef<IRadioStationGrain> stationTransmitting, 
-        IntentDescription intent)
+        Intent intent)
     {
         Dispatch(new EndReceiveTransmissionEvent(
             transmission, 
@@ -283,6 +298,8 @@ public class RadioStationGrain :
                 transmission, 
                 conversationToken,
                 intent));
+        
+        OnIntentCaptured?.Invoke(intent);
     }
 
     public void EndReceiveAbortedTransmission(
@@ -315,7 +332,9 @@ public class RadioStationGrain :
     public Frequency Frequency => State.SelectedFrequency;
     public GrainRef<IGroundStationRadioMediumGrain>? GroundStationMedium => State.GroundStationMedium;
     public ITransceiverState TransceiverState => State;
+    public bool HasMonitor => OnTransceiverStateChanged != null;
     public event Action<ITransceiverState>? OnTransceiverStateChanged;
+    public event Action<Intent>? OnIntentCaptured;
 
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {

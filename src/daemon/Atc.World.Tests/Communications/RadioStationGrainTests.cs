@@ -647,8 +647,8 @@ public class RadioStationGrainTests
         var listener = TestUtility.MockGrain<IRadioStationListener>();
         stationGrain.Get().AddListener(listener.Grain, RadioStationListenerMask.Receiver);
 
-        var conversationToken1 = new ConversationToken(1, AirGroundPriority.FlightSafetyNormal);
-        var transmission1 = new TransmissionDescription();
+        var conversationToken1 = new ConversationToken(1);
+        var transmission1 = TestUtility.NewTransmission();
         var stationTransmitting = mediumGrain.Get().GroundStation; 
 
         //-- when
@@ -687,9 +687,9 @@ public class RadioStationGrainTests
         var listener = TestUtility.MockGrain<IRadioStationListener>();
         stationGrain.Get().AddListener(listener.Grain, RadioStationListenerMask.Receiver);
 
-        var conversationToken1 = new ConversationToken(1, AirGroundPriority.FlightSafetyNormal);
-        var transmission1 = new TransmissionDescription();
-        var intent1 = new IntentDescription(1, ConcludesConversation: false);
+        var conversationToken1 = new ConversationToken(1);
+        var transmission1 = TestUtility.NewTransmission();
+        var intent1 = new TestIntentA(1);
         var stationTransmitting = mediumGrain.Get().GroundStation; 
 
         stationGrain.Get().BeginReceiveTransmission(
@@ -735,8 +735,8 @@ public class RadioStationGrainTests
         var listener = TestUtility.MockGrain<IRadioStationListener>();
         stationGrain.Get().AddListener(listener.Grain, RadioStationListenerMask.Receiver);
 
-        var conversationToken1 = new ConversationToken(1, AirGroundPriority.FlightSafetyNormal);
-        var transmission1 = new TransmissionDescription();
+        var conversationToken1 = new ConversationToken(1);
+        var transmission1 = TestUtility.NewTransmission();
         var stationTransmitting = mediumGrain.Get().GroundStation; 
 
         stationGrain.Get().BeginReceiveTransmission(
@@ -784,8 +784,8 @@ public class RadioStationGrainTests
 
         Assert.Throws<InvalidOperationException>(() => {
             mobileStationGrain.Get().BeginReceiveTransmission(
-                new TransmissionDescription(),
-                new ConversationToken(1, AirGroundPriority.FlightSafetyNormal),
+                TestUtility.NewTransmission(),
+                new ConversationToken(1),
                 groundStationGrain.As<IRadioStationGrain>(),
                 transmittingStationsCount: 1);
         });
@@ -810,13 +810,13 @@ public class RadioStationGrainTests
         var conversationToken1 = mobileStation1Grain.Get().EnqueueAIOperatorForTransmission(
             aiOperator1.Grain, 
             AirGroundPriority.FlightSafetyNormal);
-        var transmission1 = new TransmissionDescription();
+        var transmission1 = TestUtility.NewTransmission();
         mobileStation1Grain.Get().BeginTransmission(transmission1, conversationToken1);
 
         var conversationToken2 = mobileStation1Grain.Get().EnqueueAIOperatorForTransmission(
             aiOperator2.Grain, 
             AirGroundPriority.FlightSafetyNormal);
-        var transmission2 = new TransmissionDescription();
+        var transmission2 = TestUtility.NewTransmission();
         
         mobileStation1Grain.Get().TransceiverState.Status.Should().Be(TransceiverStatus.Transmitting);
         mobileStation2Grain.Get().TransceiverState.Status.Should().Be(TransceiverStatus.ReceivingSingleTransmission);
@@ -857,13 +857,13 @@ public class RadioStationGrainTests
         var mediumState = SiloTestDoubles.GetGrainState(mediumGrain.Get());
         var queueEntry = mediumState.PendingTransmissionQueue.Single();
         queueEntry.Token.Should().BeSameAs(conversationToken);
-        queueEntry.Token.Priority.Should().Be(AirGroundPriority.FlightSafetyNormal);
+        queueEntry.Priority.Should().Be(AirGroundPriority.FlightSafetyNormal);
         queueEntry.Operator.Should().Be(aiOperator.Grain);
         queueEntry.Station.Should().Be(stationGrain.As<IRadioStationGrain>());
     }
 
     [Test]
-    public void CanEnqueueAIOperatorForTransmissionAndUpdateExistingToken()
+    public void CanEnqueueAIOperatorForTransmissionAndUpdateExistingPriority()
     {
         //-- given 
         
@@ -887,12 +887,12 @@ public class RadioStationGrainTests
         
         //-- then
 
-        conversationToken2.Should().NotBeSameAs(conversationToken1);
+        conversationToken2.Id.Should().Be(conversationToken1.Id);
         
         var mediumState = SiloTestDoubles.GetGrainState(mediumGrain.Get());
         var queueEntry = mediumState.PendingTransmissionQueue.Single();
         queueEntry.Token.Should().BeSameAs(conversationToken2);
-        queueEntry.Token.Priority.Should().Be(AirGroundPriority.Urgency);
+        queueEntry.Priority.Should().Be(AirGroundPriority.Urgency);
     }
 
     [Test]
@@ -949,8 +949,8 @@ public class RadioStationGrainTests
         var listener = TestUtility.MockGrain<IRadioStationListener>();
         stationGrain.Get().AddListener(listener.Grain, RadioStationListenerMask.Transmitter);
 
-        var conversationToken1 = new ConversationToken(1, AirGroundPriority.FlightSafetyNormal);
-        var transmission1 = new TransmissionDescription();
+        var conversationToken1 = new ConversationToken(1);
+        var transmission1 = TestUtility.NewTransmission();
 
         //-- when
         
@@ -985,9 +985,9 @@ public class RadioStationGrainTests
         var listener = TestUtility.MockGrain<IRadioStationListener>();
         stationGrain.Get().AddListener(listener.Grain, RadioStationListenerMask.Transmitter);
 
-        var conversationToken1 = new ConversationToken(1, AirGroundPriority.FlightSafetyNormal);
-        var transmission1 = new TransmissionDescription();
-        var intent1 = new IntentDescription(1, ConcludesConversation: false);
+        var conversationToken1 = new ConversationToken(1);
+        var transmission1 = TestUtility.NewTransmission();
+        var intent1 = new TestIntentA(1);
 
         stationGrain.Get().BeginTransmission(transmission1, conversationToken1);
 
@@ -1025,9 +1025,9 @@ public class RadioStationGrainTests
         var listener = TestUtility.MockGrain<IRadioStationListener>();
         stationGrain.Get().AddListener(listener.Grain, RadioStationListenerMask.Transmitter);
 
-        var conversationToken1 = new ConversationToken(1, AirGroundPriority.FlightSafetyNormal);
-        var transmission1 = new TransmissionDescription();
-        var intent1 = new IntentDescription(1, ConcludesConversation: false);
+        var conversationToken1 = new ConversationToken(1);
+        var transmission1 = TestUtility.NewTransmission();
+        var intent1 = new TestIntentA(1);
 
         stationGrain.Get().BeginTransmission(transmission1, conversationToken1);
 
@@ -1067,13 +1067,13 @@ public class RadioStationGrainTests
         
         Assert.Throws<InvalidOperationException>(() => {
             stationGrain.Get().BeginTransmission(
-                new TransmissionDescription(),
-                new ConversationToken(1, AirGroundPriority.FlightSafetyNormal));
+                TestUtility.NewTransmission(),
+                new ConversationToken(1));
         });
     }
 
     [Test]
-    public void CanRaiseCSharpEventOnStateChanges()
+    public void CanRaiseCSharpEventOnStateChanged()
     {
         List<ITransceiverState> stateLog = new();
         
@@ -1088,9 +1088,9 @@ public class RadioStationGrainTests
 
         //-- when
 
-        var conversationToken1 = new ConversationToken(1, AirGroundPriority.FlightSafetyNormal);
-        var transmission1 = new TransmissionDescription();
-        var intent1 = new IntentDescription(1, ConcludesConversation: false);
+        var conversationToken1 = new ConversationToken(1);
+        var transmission1 = TestUtility.NewTransmission();
+        var intent1 = new TestIntentA(1);
 
         stationGrain.Get().BeginTransmission(transmission1, conversationToken1);
         stationGrain.Get().CompleteTransmission(intent1, keepPttPressed: false);
@@ -1110,6 +1110,51 @@ public class RadioStationGrainTests
         stateLog[2].Status.Should().Be(TransceiverStatus.Silence);
         stateLog[2].CurrentTransmission.Should().BeNull();
         stateLog[2].ConversationToken.Should().BeSameAs(conversationToken1);
+    }
+
+    [Test]
+    public void CanRaiseCSharpEventOnIntentCaptured()
+    {
+        List<Intent> intentLog = new();
+        
+        //-- given 
+        
+        var silo = SiloTestDoubles.CreateSilo("test", ConfigureSiloForTest);
+        var world = TestUtility.MockWorldGrain(silo);
+
+        var groundStation = CreateGroundStation(
+            silo, 
+            world, 
+            Location.At(10f, 20f, 100f), 
+            Frequency.FromKhz(118000), 
+            out var mediumGrain);
+
+        var mobileStation1Grain = CreateMobileStationTunedToGround(
+            silo, 
+            mediumGrain, 
+            turnedOn: true);
+
+        groundStation.Get().OnIntentCaptured += intentLog.Add;
+
+        //-- when
+
+        var transmission1 = TestUtility.NewTransmission();
+        var intent1 = new TestIntentA(1);
+            
+        groundStation.Get().BeginTransmission(transmission1, conversationToken: null);
+        groundStation.Get().CompleteTransmission(intent1);
+
+        var transmission2 = TestUtility.NewTransmission();
+        var intent2 = new TestIntentA(2);
+
+        mobileStation1Grain.Get().BeginTransmission(transmission2, conversationToken: null);
+        mobileStation1Grain.Get().CompleteTransmission(intent2);
+        
+        //-- then
+
+        intentLog.Count.Should().Be(2);
+        intentLog[0].Should().BeSameAs(intent1);
+        intentLog[1].Should().BeSameAs(intent2);
     }
 
     private GrainRef<RadioStationGrain> CreateGroundStation(
@@ -1200,15 +1245,14 @@ public class RadioStationGrainTests
         out ConversationToken conversationToken,
         out TransmissionDescription transmission)
     {
-        conversationToken = new ConversationToken(1, AirGroundPriority.FlightSafetyNormal);
-        transmission = new TransmissionDescription();
+        conversationToken = new ConversationToken(1);
+        transmission = TestUtility.NewTransmission();
 
         var otherMobileStation = TestUtility.MockGrain<IRadioStationGrain>();
         var mediumState = SiloTestDoubles.GetGrainState(mediumGrain.Get());
 
         SiloTestDoubles.SetGrainState(mediumGrain.Get(), mediumState with {
-            InProgressTransmissionByStationId =
-            ImmutableDictionary<string, GroundStationRadioMediumGrain.InProgressTransmissionEntry>
+            InProgressTransmissionByStationId = ImmutableDictionary<string, GroundStationRadioMediumGrain.InProgressTransmissionEntry>
                 .Empty
                 .Add(otherMobileStation.Grain.GrainId, new GroundStationRadioMediumGrain.InProgressTransmissionEntry(
                     otherMobileStation.Grain,
@@ -1229,7 +1273,7 @@ public class RadioStationGrainTests
             groundOperator.Grain,
             priority: AirGroundPriority.FlightSafetyNormal);
 
-        var transmission1 = new TransmissionDescription();
+        var transmission1 = TestUtility.NewTransmission();
         groundStationGrain.Get().BeginTransmission(transmission1, conversationToken1);
 
         return new(transmission1, conversationToken1);
