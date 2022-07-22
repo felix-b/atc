@@ -1,8 +1,12 @@
+using Atc.Grains;
+
 namespace Atc.World.Contracts.Communications;
 
 public record TransmissionDescription(
     ulong Id,
     DateTime StartUtc,
+    float Volume,
+    VoiceLinkQuality Quality,
     ulong? AudioStreamId,
     SpeechSynthesisRequest? SynthesisRequest,
     TimeSpan? Duration

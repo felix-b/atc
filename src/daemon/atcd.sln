@@ -27,6 +27,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.World.Tests", "Atc.Worl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Speech.AzurePlugin", "Atc.Speech.AzurePlugin\Atc.Speech.AzurePlugin.csproj", "{54C11BCD-1A0D-4CF1-971A-A114E0D92B5E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Sound.OpenAL", "Atc.Sound.OpenAL\Atc.Sound.OpenAL.csproj", "{2AD8E0A0-F223-47F5-B64A-45EA55771F0E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Telemetry.Tests", "Atc.Telemetry.Tests\Atc.Telemetry.Tests.csproj", "{4A2345C1-4887-4C2F-B14C-AFF26977A758}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Telemetry.Exporters.CodePath", "Atc.Telemetry.Exporters.CodePath\Atc.Telemetry.Exporters.CodePath.csproj", "{08311F6B-CDA2-48A4-BA4A-BFB8BEEB9E82}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -84,5 +90,17 @@ Global
 		{54C11BCD-1A0D-4CF1-971A-A114E0D92B5E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{54C11BCD-1A0D-4CF1-971A-A114E0D92B5E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{54C11BCD-1A0D-4CF1-971A-A114E0D92B5E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2AD8E0A0-F223-47F5-B64A-45EA55771F0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AD8E0A0-F223-47F5-B64A-45EA55771F0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2AD8E0A0-F223-47F5-B64A-45EA55771F0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AD8E0A0-F223-47F5-B64A-45EA55771F0E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4A2345C1-4887-4C2F-B14C-AFF26977A758}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4A2345C1-4887-4C2F-B14C-AFF26977A758}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4A2345C1-4887-4C2F-B14C-AFF26977A758}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4A2345C1-4887-4C2F-B14C-AFF26977A758}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08311F6B-CDA2-48A4-BA4A-BFB8BEEB9E82}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08311F6B-CDA2-48A4-BA4A-BFB8BEEB9E82}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08311F6B-CDA2-48A4-BA4A-BFB8BEEB9E82}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08311F6B-CDA2-48A4-BA4A-BFB8BEEB9E82}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

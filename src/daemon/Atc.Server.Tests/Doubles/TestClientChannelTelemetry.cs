@@ -1,3 +1,5 @@
+#if false
+
 using System.Net.WebSockets;
 using Atc.Telemetry;
 
@@ -75,3 +77,5 @@ public class TestClientChannelTelemetry : TelemetryTestDoubleBase, IClientChanne
         ReportDebug($"ClientReplyingSocketCloseHandshake");
     }
 }
+
+#endif

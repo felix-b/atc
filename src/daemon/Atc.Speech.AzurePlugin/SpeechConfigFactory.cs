@@ -12,6 +12,9 @@ public static class SpeechConfigFactory
         var subscriptionKey = Environment.GetEnvironmentVariable(SubscriptionKeyVariableName);
         var region = Environment.GetEnvironmentVariable(RegionVariableName);
 
+        Console.WriteLine($"SpeechConfigFactory >>> [{SubscriptionKeyVariableName}]=[{subscriptionKey}]");
+        Console.WriteLine($"SpeechConfigFactory >>> [{RegionVariableName}]=[{region}]");
+        
         if (string.IsNullOrWhiteSpace(subscriptionKey) || string.IsNullOrWhiteSpace(region))
         {
             //TODO find right exception type

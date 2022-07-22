@@ -1,0 +1,76 @@
+table.trace-view {
+    font-family: system-ui, arial;
+    font-size: 13px;
+    border-spacing: 0;
+    background-color: white;
+}
+
+table.trace-view tr {
+    height: 20px;
+}
+
+table.trace-view td {
+    border-bottom: 1px solid #f0f0f0;
+    border-right: 1px solid #f0f0f0;
+    padding-right: 2px; 
+    padding-left: 2px;
+}
+
+.trace-depth0 { padding-left: 0px !important; background-color: white; }
+.trace-depth1 { padding-left: 30px !important; background-color: white; }
+.trace-depth2 { padding-left: 60px !important; background-color: white; }
+.trace-depth3 { padding-left: 90px !important; background-color: white; }
+.trace-depth4 { padding-left: 120px !important; background-color: white; }
+.trace-depth5 { padding-left: 150px !important; background-color: white; }
+.trace-depth6 { padding-left: 180px !important; background-color: white; }
+.trace-depth7 { padding-left: 210px !important; background-color: white; }
+.trace-depth8 { padding-left: 240px !important; background-color: white; }
+.trace-depth9 { padding-left: 270px !important; background-color: white; }
+.trace-depth10 { padding-left: 300px !important; background-color: white; }
+.trace-depth11 { padding-left: 330px !important; background-color: white; }
+.trace-depth12 { padding-left: 360px !important; background-color: white; }
+.trace-depth13 { padding-left: 390px !important; background-color: white; }
+.trace-depth14 { padding-left: 420px !important; background-color: white; }
+.trace-depth15 { padding-left: 450px !important; background-color: white; }
+
+.trace-node-noexpander, 
+.trace-node-expander { 
+    background-color: white; 
+    display: inline-block; 
+    width: 20px; 
+}
+
+.trace-node-expander { 
+    cursor: pointer;
+}
+
+.trace-node-value-key { 
+    color:#cccccc;
+}
+
+.trace-node-value { 
+    padding: 0px 3px 0px 3px;
+    border-radius: 7px;
+    background-color: #f0f0f0;
+    margin-right: 5px;
+    font-weight: 400;
+}
+
+td.trace-col-id,
+td.trace-col-time {
+    font-family: monospace, Courier New;
+    font-size: 10px;
+    text-align: right;
+}
+
+td.trace-col-time span.time-sec-ms {
+    font-size: 12px;
+    font-weight: 400;
+}
+
+tr.trace-level-1 { color: black; }
+tr.trace-level-2 { color: crimson; }
+tr.trace-level-3 { color: darkorange; }
+tr.trace-level-4 { color: navy; }
+tr.trace-level-5 { color: #a0a0a0; }
+tr.trace-level-6 { color: #c0c0c0; }

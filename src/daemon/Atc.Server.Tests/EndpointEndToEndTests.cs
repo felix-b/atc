@@ -1,11 +1,10 @@
 using System;
-using System.Net.WebSockets;
 using System.Threading.Tasks;
-using Atc.Server.Tests.Doubles;
+using Atc.Server.TestDoubles;
 using Atc.Server.Tests.Samples;
 using AtcServerSamplesProto;
 using NUnit.Framework;
-using TestClientOne = Atc.Server.Tests.Doubles.TestServiceClient<AtcServerSamplesProto.Sample1ClientToServer, AtcServerSamplesProto.Sample1ServerToClient>;
+using TestClientOne = Atc.Server.TestDoubles.TestServiceClient<AtcServerSamplesProto.Sample1ClientToServer, AtcServerSamplesProto.Sample1ServerToClient>;
 
 namespace Atc.Server.Tests;
 
@@ -14,6 +13,14 @@ public class EndpointEndToEndTests
 {
     private const int ServicePortNumber = 3333;
     private const string ServiceUrlPath = "/ws";
+
+    [OneTimeSetUp]
+    public void OneTimeSetup()
+    {
+        TestServiceClientAssert.Fail = Assert.Fail;
+        TestServiceClientAssert.NotNull = Assert.NotNull;
+        TestServiceClientAssert.IsTrue = Assert.IsTrue;
+    }
     
     [Test]
     public async Task CanStartAndStopEndpoint()

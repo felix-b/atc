@@ -2,16 +2,14 @@ namespace Atc.World.Contracts.Communications;
 
 public abstract class PartyDescription
 {
-    protected PartyDescription(string uniqueId, Callsign callsign, NatureType nature, VoiceDescription voice)
+    protected PartyDescription(string uniqueId, NatureType nature, VoiceDescription voice)
     {
         UniqueId = uniqueId;
-        Callsign = callsign;
         Voice = voice;
         Nature = nature;
     }
 
     public string UniqueId { get; }
-    public Callsign Callsign { get; }
     public NatureType Nature { get; }
     public VoiceDescription Voice { get; }
 }
@@ -19,26 +17,27 @@ public abstract class PartyDescription
 public class ServicePartyDescription : PartyDescription 
 {
     public ServicePartyDescription(string uniqueId, Callsign callsign, VoiceDescription voice, AutomaticServiceType serviceType) : 
-        base(uniqueId, callsign, NatureType.AI, voice)
+        base(uniqueId, NatureType.AI, voice)
     {
         ServiceType = serviceType;
+        Callsign = callsign;
     }
 
     public AutomaticServiceType ServiceType { get; }  
+    public Callsign Callsign { get; }
 }
 
 public class PersonPartyDescription : PartyDescription
 {
     public PersonPartyDescription(
         string uniqueId, 
-        Callsign callsign, 
         NatureType nature, 
         VoiceDescription voice, 
         GenderType gender, 
         AgeType age, 
         SeniorityType seniority, 
         string? firstName) : 
-        base(uniqueId, callsign, nature, voice)
+        base(uniqueId, nature, voice)
     {
         Gender = gender;
         Age = age;

@@ -11,7 +11,12 @@ public class UtteranceDescription
         Parts = parts.ToArray();
         EstimatedDuration = estimatedDuration;
     }
-        
+
+    public override string ToString()
+    {
+        return string.Join('|', Parts.Select(p => p.Text));
+    }
+
     public LanguageCode Language { get; }
     public IReadOnlyList<Part> Parts { get; }
     public TimeSpan EstimatedDuration { get; }

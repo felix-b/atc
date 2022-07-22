@@ -1,3 +1,5 @@
+#if false
+
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
@@ -80,3 +82,5 @@ public class TestServiceClient<TClientToServer, TServerToClient> : IAsyncDisposa
         return Task.CompletedTask;
     }
 }
+
+#endif

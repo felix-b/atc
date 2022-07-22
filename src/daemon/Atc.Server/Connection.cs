@@ -98,10 +98,16 @@ public class Connection : IAsyncDisposable, IConnectionContext
     public ValueTask SendMessage(object message)
     {
         ValidateActive();
-        
+
+        if (_socket.State != WebSocketState.Open)
+        {
+            //TODO: log to telemetry; dispose connection?
+            return ValueTask.CompletedTask;
+        }
+
         _outgoingMessageBuffer.Clear();
         _serviceHost.Serializer.SerializeOutgoingEnvelope(message, _outgoingMessageBuffer);
-
+        
         return _socket.SendAsync(
             _outgoingMessageBuffer.WrittenMemory, 
             WebSocketMessageType.Binary, 
@@ -138,7 +144,10 @@ public class Connection : IAsyncDisposable, IConnectionContext
 
     public long Id => _id;
 
-    public bool IsActive => !_disposed && !_cancelForAnyReason.IsCancellationRequested;
+    public bool IsActive =>
+        !_disposed &&
+        !_cancelForAnyReason.IsCancellationRequested; 
+        //TODO: && _socket.State == WebSocketState.Open;
 
     // service operations use this token as abort processing of a request
     public CancellationToken Cancellation => _cancelForAnyReason.Token;

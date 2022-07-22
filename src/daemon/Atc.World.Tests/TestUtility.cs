@@ -42,27 +42,33 @@ public static class TestUtility
         return MockGrain<IWorldGrain>(grainId: SiloExtensions.WorldGrainId, injectTo: silo);
     }
 
+    public static ulong TakeNextTransmissionId()
+    {
+        return Interlocked.Increment(ref __nextTransmissionId);
+    }
+
     public static TransmissionDescription NewTransmission(
         ISiloEnvironment? environment = null,
         ulong? id = null,
-        PartyDescription? partyTransmitting = null,
+        GrainRef<IAIRadioOperatorGrain>? originator = null,
         Intent? intent = null,
         LanguageCode? language = null,
         ulong? audioStreamId = null,
         TimeSpan? duration = null)
     {
-        var effectiveStartUtc = environment?.UtcNow ?? DateTime.UtcNow; 
-        var effectiveId = id ?? Interlocked.Increment(ref __nextTransmissionId); 
+        var effectiveStartUtc = environment?.UtcNow ?? DateTime.UtcNow;
+        var effectiveId = id ?? TakeNextTransmissionId(); 
         var effectiveDuration = duration ?? TimeSpan.FromSeconds(3);
-        var effectivePartyTransmitting = partyTransmitting ?? MakePartyDescription(intent?.Header.Callee);
         var effectiveLanguage = language ?? LanguageCode.English;
         var effectiveSynthesisRequest = intent != null
-            ? new SpeechSynthesisRequest(effectiveId, effectivePartyTransmitting, intent, effectiveLanguage)
+            ? new SpeechSynthesisRequest(effectiveId, originator!.Value, intent, effectiveLanguage)
             : null;
-        
+         
         return new TransmissionDescription(
             Id: effectiveId,
             StartUtc: effectiveStartUtc,
+            Volume: 1.0f,
+            Quality: VoiceLinkQuality.Good,
             AudioStreamId: effectiveSynthesisRequest != null 
                 ? null 
                 : (audioStreamId ?? 0),
@@ -79,7 +85,6 @@ public static class TestUtility
     {
         return new PersonPartyDescription(
             "test",
-            callsign ?? new Callsign("test", "test"),
             NatureType.AI,
             VoiceDescription.Default,
             GenderType.Male,

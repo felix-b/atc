@@ -6,8 +6,7 @@ public static class TransmissionDescriptionExtensions
 {
     public static async Task<TransmissionDescription> WithEnsuredAudioStreamId(
         this TransmissionDescription transmission,
-        IVerbalizationService verbalizationService,
-        ISpeechSynthesisPlugin speechSynthesisPlugin,
+        ISpeechService speechService,
         CancellationToken cancellation)
     {
         //TODO: use cancellation token
@@ -17,18 +16,18 @@ public static class TransmissionDescriptionExtensions
             return transmission;
         }
 
-        if (transmission.SynthesisRequest == null)
+        var request = 
+            transmission.SynthesisRequest
+            ?? throw new InvalidOperationException("Transmission has no audio stream and no synthesis request");
+
+        var synthesisResult = await speechService.SynthesizeSpeech(request, cancellation);
+        if (synthesisResult.Duration.HasValue)
         {
-            throw new InvalidOperationException("Transmission has no audio stream and no synthesis request");
+            request.Originator.Get().NotifyTransmissionDurationAvailable(
+                transmission.Id, 
+                synthesisResult.Duration.Value);
         }
-
-        var verbalizer = verbalizationService.GetVerbalizer(transmission.SynthesisRequest);
-        var utterance = verbalizer.VerbalizeIntent(transmission.SynthesisRequest);
-        var synthesisResult = await speechSynthesisPlugin.SynthesizeSpeech(
-            utterance, 
-            transmission.SynthesisRequest.Party.Voice, 
-            cancellation);
-
+        
         //TODO: propagate AssignedPlatformVoiceId
         
         return transmission with {

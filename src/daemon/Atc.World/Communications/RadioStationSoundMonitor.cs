@@ -10,8 +10,7 @@ namespace Atc.World.Communications;
 public class RadioStationSoundMonitor : IDisposable
 {
     private readonly ISiloEnvironment _environment;
-    private readonly IVerbalizationService _verbalization;
-    private readonly ISpeechSynthesisPlugin _synthesizer;
+    private readonly ISpeechService _speechService;
     private readonly IAudioStreamCache _streamCache;
     private readonly IRadioSpeechPlayer _player;
     private readonly IThisTelemetry _telemetry;
@@ -24,16 +23,14 @@ public class RadioStationSoundMonitor : IDisposable
         
     public RadioStationSoundMonitor(
         ISiloEnvironment environment,
-        IVerbalizationService verbalization,
-        ISpeechSynthesisPlugin synthesizer, 
+        ISpeechService speechService, 
         IAudioStreamCache streamCache,
         IRadioSpeechPlayer player, 
         IThisTelemetry telemetry,
         GrainRef<IRadioStationGrain> radioStation)
     {
         _environment = environment;
-        _verbalization = verbalization;
-        _synthesizer = synthesizer;
+        _speechService = speechService;
         _streamCache = streamCache;
         _player = player;
         _telemetry = telemetry;
@@ -41,6 +38,7 @@ public class RadioStationSoundMonitor : IDisposable
         _disposing = new CancellationTokenSource();
 
         _radioStation.Get().OnTransceiverStateChanged += ListenerCallback;
+        ListenerCallback(_radioStation.Get().TransceiverState);
     }
 
     public void Dispose()
@@ -72,19 +70,18 @@ public class RadioStationSoundMonitor : IDisposable
                     });
                     break;
                 case TransceiverStatus.Transmitting:
-                    _playCancellation?.Cancel();
-                    _playTask.SafeContinueWith(() => {
-                        _playTask = null;
-                        _playCancellation = null;
-                        _player.StartPttStaticNoise();
-                    });
+                    PlayAITransmissionSpeech();
+                    // if (state.CurrentTransmission?.AudioStreamId == null)
+                    // {
+                    //     PlayHumanTransmissionStatic();
+                    // }
+                    // else
+                    // {
+                    //     PlayAITransmissionSpeech();
+                    // }
                     break;
                 case TransceiverStatus.ReceivingSingleTransmission:
-                    _playCancellation?.Cancel();
-                    _playTask.SafeContinueWith(() => {
-                        _playCancellation = new CancellationTokenSource();
-                        return BeginPlayTransmissionSpeech(state.CurrentTransmission!, _playCancellation.Token);
-                    });
+                    PlayAITransmissionSpeech();
                     break;
                 case TransceiverStatus.ReceivingInterferenceNoise:
                     _playCancellation?.Cancel();
@@ -95,14 +92,33 @@ public class RadioStationSoundMonitor : IDisposable
             _lastStatus = state.Status;
             _lastReceivedTransmissionId = state.CurrentTransmission?.Id;
         }
-            
+
+        // void PlayHumanTransmissionStatic()
+        // {
+        //     _playCancellation?.Cancel();
+        //     _playTask.SafeContinueWith(() => {
+        //         _playTask = null;
+        //         _playCancellation = null;
+        //         _player.StartPttStaticNoise();
+        //     });
+        // }
+
+        void PlayAITransmissionSpeech()
+        {
+            _playCancellation?.Cancel();
+            _playTask.SafeContinueWith(() => {
+                _playCancellation = new CancellationTokenSource();
+                return BeginPlayTransmissionSpeech(state.CurrentTransmission!, _playCancellation.Token);
+            });
+        }
+
         bool AnythingChanged()
         {
             if (state.Status != _lastStatus)
             {
                 return true;
             }
-            if (state.Status != TransceiverStatus.ReceivingSingleTransmission)
+            if (state.Status != TransceiverStatus.ReceivingSingleTransmission && state.Status != TransceiverStatus.Transmitting)
             {
                 return false;
             }
@@ -118,8 +134,7 @@ public class RadioStationSoundMonitor : IDisposable
         try
         {
             var transmissionWithAudio = await transmission.WithEnsuredAudioStreamId(
-                _verbalization, 
-                _synthesizer,
+                _speechService,
                 cancellation);
 
             if (cancellation.IsCancellationRequested)
@@ -132,7 +147,7 @@ public class RadioStationSoundMonitor : IDisposable
 
             _telemetry.VerbosePlayingTransmissionSpeech(transmission.Id, speechStream.Id, startPoint, speechStream.Duration);
 
-            await _player.Play(speechStream, startPoint, volume: 1.0f, cancellation);
+            await _player.Play(speechStream, startPoint, volume: transmission.Volume, cancellation);
         }
         catch (Exception e)
         {

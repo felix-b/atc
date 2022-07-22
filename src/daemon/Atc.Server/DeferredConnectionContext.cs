@@ -8,12 +8,22 @@ public class DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut> : IDeferredCon
 {
     private readonly IConnectionContext _inner;
     private readonly IEndpointTelemetry _telemetry;
+    private readonly FlushRequestedCallback? _onFlushRequested;
     private List<OutputRequest>? _outputRequests = null;
 
-    public DeferredConnectionContext(IConnectionContext inner, IEndpointTelemetry telemetry)
+    public DeferredConnectionContext(
+        IConnectionContext inner, 
+        IEndpointTelemetry telemetry, 
+        FlushRequestedCallback? onFlushRequested)
     {
         _inner = inner;
         _telemetry = telemetry;
+        _onFlushRequested = onFlushRequested;
+    }
+
+    IDeferredConnectionContext<TEnvelopeOut> IDeferredConnectionContext<TEnvelopeOut>.CopyForPush()
+    {
+        return new DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut>(_inner, _telemetry, _onFlushRequested);
     }
 
     void IDeferredConnectionContext<TEnvelopeOut>.FireMessage(TEnvelopeOut outgoingMessageEnvelope)
@@ -38,7 +48,7 @@ public class DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut> : IDeferredCon
 
     void IDeferredConnectionContext<TEnvelopeOut>.RequestFlush()
     {
-        OnFlushRequested?.Invoke();
+        _onFlushRequested?.Invoke(this);
     }
 
     public async ValueTask PerformOutputRequests()
@@ -104,8 +114,6 @@ public class DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut> : IDeferredCon
 
     public IReadOnlyList<OutputRequest>? OutputRequests => _outputRequests;
 
-    public Action OnFlushRequested { get; set; } = () => { };
-        
     public abstract record OutputRequest; 
     public record CloseConnectionRequest : OutputRequest; 
     public record FireMessageRequest(TEnvelopeOut Envelope) : OutputRequest;
@@ -121,4 +129,6 @@ public class DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut> : IDeferredCon
             
         _outputRequests.Add(request);
     }
+
+    public delegate void FlushRequestedCallback(DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut> copyOfContext);
 }

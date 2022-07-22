@@ -33,6 +33,8 @@ public class EventDispatch : ISiloEventDispatch
         _eventWriter.FireGrainEvent(envelope);
 
         //using var logSpan = _logger.Dispatch(sequenceNo, target.UniqueId, @event.GetType().Name, @event.ToString());
+        _telemetry.DebugDispatchEvent(target.GrainId, @event);
+
         _dispatching = true;
 
         try

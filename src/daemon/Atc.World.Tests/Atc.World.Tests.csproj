@@ -25,6 +25,10 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Atc.Grains\Atc.Grains.csproj" />
+        <ProjectReference Include="..\Atc.Sound.OpenAL\Atc.Sound.OpenAL.csproj" />
+        <ProjectReference Include="..\Atc.Speech.AzurePlugin\Atc.Speech.AzurePlugin.csproj" />
+        <ProjectReference Include="..\Atc.Telemetry.Exporters.CodePath\Atc.Telemetry.Exporters.CodePath.csproj" />
+        <ProjectReference Include="..\Atc.Telemetry.Impl\Atc.Telemetry.Impl.csproj" />
         <ProjectReference Include="..\Atc.Telemetry\Atc.Telemetry.csproj" />
         <ProjectReference Include="..\Atc.World\Atc.World.csproj" />
     </ItemGroup>

@@ -4,11 +4,12 @@ namespace Atc.World.Contracts.Sound;
 
 public interface IAudioStream
 {
-    void NotifyWriteCompleted(); // use Data.Writer.TryComplete, it's idempotent
+    Task AddDataChunk(byte[] dataChunk, CancellationToken cancellation);
+    void Complete();
     ulong Id { get; }
     SoundFormat Format { get; }
     TimeSpan? Duration { get; }
-    Channel<byte[]> Data { get; }
+    IAsyncEnumerable<byte[]> DataChunks { get; }
     event Action? DurationReady;
 }
 

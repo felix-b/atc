@@ -1,3 +1,4 @@
+using Atc.Grains;
 using Atc.World.Contracts.Sound;
 
 namespace Atc.World.Contracts.Communications;
@@ -12,7 +13,7 @@ public interface ISpeechSynthesisPlugin
 
 public record SpeechSynthesisRequest(
     ulong TransmissionId,
-    PartyDescription Party,
+    GrainRef<IAIRadioOperatorGrain> Originator,
     Intent Intent,
     LanguageCode Language
 );

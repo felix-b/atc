@@ -33,17 +33,17 @@ public record PocIntent(
 
 public enum PocIntentType
 {
-    I1,
-    I2,
-    I3,
-    I4,
-    I5,
-    I6,
-    I7,
-    I8,
-    I9,
-    I10,
-    I11
+    I1 = 1,
+    I2 = 2,
+    I3 = 3,
+    I4 = 4,
+    I5 = 5,
+    I6 = 6,
+    I7 = 7,
+    I8 = 8,
+    I9 = 9,
+    I10 = 10,
+    I11 = 11
 }
 
 public static class PocIntentTypeExtensions

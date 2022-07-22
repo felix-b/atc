@@ -41,29 +41,6 @@ public interface IGroundStationRadioMediumGrain : IGrainId, IRadioStationListene
     TransmissionDescription? SingleTransmission { get; }
 }
 
-public interface IAIRadioOperatorGrain : IGrainId
-{
-    // Called when it's the AI operator's turn to transmit,
-    // according to priority queue managed by GroundStationRadioMediumGrain.
-    // At this moment the AI operator can either start transmitting
-    // by invoking associated IRadioStationGrain.BeginTransmission,
-    // or give up the transmission. The returned response must match the action taken.
-    // If BeganTransmission == false is returned, the AI operator is removed from the queue,
-    // and it has to call EnqueueAIOperatorForTransmission again.
-    BeginTransmitNowResponse BeginTransmitNow(ConversationToken conversationToken);
-}
-
-public record BeginTransmitNowResponse(
-    // whether the AI operator began a transmission
-    bool BeganTransmission,
-    // conversation token associated with the started transmission
-    // must be present if BeganTransmission is true, otherwise it must be null
-    ConversationToken? ConversationToken = null,
-    // optionally, update priority of the conversation
-    // must be null if BeganTransmission is false.
-    AirGroundPriority? NewPriority = null
-);
-
 public enum TransmitNowAction
 {
     // starting a transmission as part of conversation received in the token

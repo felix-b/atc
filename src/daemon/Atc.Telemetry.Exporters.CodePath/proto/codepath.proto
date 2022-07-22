@@ -1,0 +1,35 @@
+syntax = "proto3";
+package atc_telemetry_codepath_proto;
+
+message CodePathClientToServer {
+
+  message ConnectRequest {
+  }
+
+  message DisconnectRequest {
+  }
+
+  oneof payload {
+    ConnectRequest connect_request = 101;
+    DisconnectRequest disconnect_request = 102;
+  }
+  
+}
+
+message CodePathServerToClient {
+
+  message ConnectReply {
+    bool success = 1;
+    string error = 2;
+  }
+
+  message TelemetryBuffer {
+    bytes buffer = 1;
+  }
+
+  oneof payload {
+    ConnectReply connect_reply = 201;
+    TelemetryBuffer telemetry_buffer = 202;
+  }
+
+}

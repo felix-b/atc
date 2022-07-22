@@ -1,10 +1,8 @@
+#if false
+
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.WebSockets;
 using Atc.Telemetry;
-using NUnit.Framework;
 
 namespace Atc.Server.Tests.Doubles;
 
@@ -237,3 +235,5 @@ public class TestEndpointTelemetry : TelemetryTestDoubleBase, IEndpointTelemetry
         return new TestSpan(this, $"ConnectionPerformOutputRequest(index={index},type={type})");
     }
 }
+
+#endif

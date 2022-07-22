@@ -4,20 +4,20 @@ namespace Atc.Telemetry;
 
 public abstract class TelemetryTestDoubleBase
 {
-    private readonly ConcurrentQueue<string> _errors = new();
-    private readonly ConcurrentQueue<string> _warnings = new();
-    private readonly ConcurrentQueue<string> _allMessages = new();
+    private readonly ConcurrentQueue<LogEntry> _errors = new();
+    private readonly ConcurrentQueue<LogEntry> _warnings = new();
+    private readonly ConcurrentQueue<LogEntry> _allMessages = new();
     
-    public IEnumerable<string> Errors => _errors;
-    public IEnumerable<string> Warnings => _warnings;
-    public IEnumerable<string> AllMessages => _allMessages;
+    public IEnumerable<string> Errors => _errors.Select(entry => entry.Message);
+    public IEnumerable<string> Warnings => _warnings.Select(entry => entry.Message);
+    public IEnumerable<string> AllMessages => _allMessages.Select(entry => entry.Message);
 
     public void PrintAllToConsole()
     {
         Console.WriteLine("============ ALL TELEMETRY MESSAGES ============");
-        foreach (var message in _allMessages)
+        foreach (var entry in _allMessages)
         {
-            Console.WriteLine(message);
+            Console.WriteLine($"{entry.Time:HH:mm:ss.fff} {entry.Message}");
         }
         Console.WriteLine("============ END OF TELEMETRY MESSAGES ============");
     }
@@ -26,7 +26,8 @@ public abstract class TelemetryTestDoubleBase
     {
         if (!_errors.IsEmpty)
         {
-            fail($"Telemetry reported {_errors.Count} errors. 1st: {_errors.First()}");
+            var errorMessages = string.Join('\n', _errors.Take(3).Select((e, index) => $"\n{index}: {e.ToString()}"));
+            fail($"Telemetry reported {_errors.Count} errors: {errorMessages}");
         }
     }
 
@@ -42,13 +43,13 @@ public abstract class TelemetryTestDoubleBase
 
     protected void ReportError(string error)
     {
-        _errors.Enqueue(error);
+        _errors.Enqueue(new LogEntry(DateTime.Now, error));
         ReportMessage("Error", error);
     }
 
     protected void ReportWarning(string warning)
     {
-        _warnings.Enqueue(warning);
+        _warnings.Enqueue(new LogEntry(DateTime.Now, warning));
         ReportMessage("Warning", warning);
     }
 
@@ -79,7 +80,7 @@ public abstract class TelemetryTestDoubleBase
 
     private void ReportMessage(string level, string message)
     {
-        _allMessages.Enqueue($"{DateTime.Now:HH:mm:ss.fff} {level}|{message}");
+        _allMessages.Enqueue(new LogEntry(DateTime.Now, $"{level}|{message}"));
     }
 
     protected class TestSpan : ITraceSpan
@@ -100,10 +101,33 @@ public abstract class TelemetryTestDoubleBase
             _owner.ReportEndSpan(_message, success: !_failed);
         }
 
-        public void Fail(Exception error)
+        public void Fail(Exception exception)
         {
             _failed = true;
-            _owner.ReportError($"Span[{_message}] FAILED: {error.Message}");
+            _owner.ReportError($"Span[{_message}] FAILED, EXCEPTION: {exception.Message}");
+        }
+
+        public void Fail(string errorCode)
+        {
+            _failed = true;
+            _owner.ReportError($"Span[{_message}] FAILED, ERROR {errorCode}");
+        }
+    }
+
+    private readonly struct LogEntry
+    {
+        public readonly DateTime Time;
+        public readonly string Message;
+
+        public LogEntry(DateTime time, string message)
+        {
+            Time = time;
+            Message = message;
+        }
+
+        public override string ToString()
+        {
+            return $"{Time:HH:mm:ss.fff} {Message}";
         }
     }
 }

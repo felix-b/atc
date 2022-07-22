@@ -13,4 +13,11 @@
       </PackageReference>
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Atc.Server\Atc.Server.csproj" />
+      <ProjectReference Include="..\Atc.Sound.OpenAL\Atc.Sound.OpenAL.csproj" />
+      <ProjectReference Include="..\Atc.Speech.AzurePlugin\Atc.Speech.AzurePlugin.csproj" />
+      <ProjectReference Include="..\Atc.World\Atc.World.csproj" />
+    </ItemGroup>
+
 </Project>

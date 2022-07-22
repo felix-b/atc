@@ -98,6 +98,8 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
         var utcNow = _environment.UtcNow;
         var readyWorkItemQuery = GetReadyWorkItemQuery();
 
+        using var traceSpan = _telemetry.SpanExecuteReadyWorkItems();
+        
         foreach (var entry in readyWorkItemQuery)
         {
             var (shouldExecute, timedOut) = ShouldExecuteEntry(entry);
@@ -111,21 +113,22 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
         {
             return State.Entries.TakeWhile(e => 
                 e.NotEarlierThanUtc == null || 
-                e.NotEarlierThanUtc.Value <= utcNow ||
+                e.NotEarlierThanUtc.Value.Subtract(utcNow).TotalMilliseconds <= 50d ||
                 e.NotLaterThanUtc <= utcNow);
         }
 
         void ExecuteEntry(WorkItemEntry entry, bool timedOut)
         {
-            //TODO: create telemetry span
+            using var executeEntrySpan = _telemetry.SpanExecuteWorkItem(entry.TargetRef.GrainId, entry.WorkItem, timedOut);
+            
             try
             {
                 Dispatch(new RemoveWorkItemEntryEvent(_environment.UtcNow, entry.Id));
                 entry.TargetRef.Get().ExecuteWorkItem(entry.WorkItem, timedOut);
             }
-            catch //(Exception e)
+            catch (Exception e)
             {
-                //TODO: report telemetry error
+                executeEntrySpan.Fail(e);
             }
         }
 

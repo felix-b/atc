@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text;
 using Atc.Telemetry;
 using Atc.World.Contracts.Communications;
@@ -69,14 +70,17 @@ public class AzureSpeechSynthesisPlugin : ISpeechSynthesisPlugin, IDisposable
         var platformVoiceId = voice.AssignedPlatformVoiceId ?? FindPlatformVoiceId(voice);
         var ssml = BuildSsml(utterance, voice, platformVoiceId);
 
+        var clock = Stopwatch.StartNew();
         var result = await entry.Synthesizer.SpeakSsmlAsync(ssml);
+        
+        Console.WriteLine($"SynthesizeSpeech >>> [{utterance}] -> {result.AudioData.Length} bytes, {clock.ElapsedMilliseconds} ms");
         
         //TODO: use streaming instead of buffering
         
         var stream = _audioStreamCache.CreateStream(SoundFormat, duration: null);
-        await stream.Data.Writer.WriteAsync(result.AudioData, cancellation);
-        stream.NotifyWriteCompleted();
-
+        await stream.AddDataChunk(result.AudioData, cancellation);
+        stream.Complete();
+        
         return new SpeechSynthesisResult(   
             AudioStreamId: stream.Id,
             AssignedPlatformVoiceId: platformVoiceId,
@@ -115,7 +119,7 @@ public class AzureSpeechSynthesisPlugin : ISpeechSynthesisPlugin, IDisposable
         ssml.Append(
             $"<voice name=\"{platformVoiceId}\">");
 
-        ssml.Append($"<prosody volume='100' rate='1.2' pitch='low'>");
+        ssml.Append($"<prosody volume='{GetVolumeSetting()}' rate='{GetRateSetting()}' pitch='{GetPitchSetting()}'>");
 
         foreach (var part in utterance.Parts)
         {
@@ -130,6 +134,48 @@ public class AzureSpeechSynthesisPlugin : ISpeechSynthesisPlugin, IDisposable
         ssml.Append("</speak>");
 
         return ssml.ToString();
+
+        string GetPitchSetting()
+        {
+            switch (voice.Type)
+            {
+                case VoiceType.Bass: 
+                    return "x-low";
+                case VoiceType.Contralto: 
+                    return "low";
+                case VoiceType.Baritone: 
+                    return "low";
+                case VoiceType.MezzoSoprano: 
+                    return "medium";
+                case VoiceType.Tenor: 
+                    return "medium";
+                case VoiceType.Soprano: 
+                    return "high";
+                case VoiceType.Countertenor: 
+                    return "high";
+                case VoiceType.Treble: 
+                    return "x-high";
+                default:
+                    return "default";
+            }
+        }
+
+        string GetRateSetting()
+        {
+            switch (voice.Rate)
+            {
+                case VoiceRate.Fast: return "1.2";
+                case VoiceRate.Medium: return "1.1";
+                case VoiceRate.Slow: return "1";
+                default: return "default";
+            }
+        }
+
+        string GetVolumeSetting()
+        {
+            var intVolume = (int)Math.Round(100 * voice.Volume);
+            return intVolume.ToString();
+        }
     }
 
     private SpeechSynthesizerEntry GetOrAddSpeechSynthesizerEntry(LanguageCode language)
@@ -153,10 +199,10 @@ public class AzureSpeechSynthesisPlugin : ISpeechSynthesisPlugin, IDisposable
     }
 
     public static readonly SoundFormat SoundFormat = 
-        new SoundFormat(bitsPerSample: 16, samplesPerSecond: 16000, channelCount: 1);
+        new SoundFormat(bitsPerSample: 16, samplesPerSecond: 8000, channelCount: 1);
         
     public static readonly SpeechSynthesisOutputFormat SynthesisOutputFormat = 
-        SpeechSynthesisOutputFormat.Raw16Khz16BitMonoPcm;
+        SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm;
 
     public interface IThisTelemetry : ITelemetry
     {

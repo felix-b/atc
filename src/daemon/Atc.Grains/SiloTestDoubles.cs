@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Reflection;
 using Atc.Grains.Impl;
 using Atc.Telemetry;
 
@@ -132,6 +133,17 @@ public static class SiloTestDoubles
     public class TestEnvironment : ISiloEnvironment
     {
         private DateTime? _presetUtcNow = null;
+        private string _assetRootPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+
+        public string GetAssetFilePath(string relativePath)
+        {
+            return Path.Combine(_assetRootPath, relativePath);
+        }
+
+        public void SetAssetRootPath(string path)
+        {
+            _assetRootPath = path;
+        }
 
         public DateTime UtcNow
         {
@@ -142,6 +154,20 @@ public static class SiloTestDoubles
     
     public class TestTelemetry : TelemetryTestDoubleBase, ISiloTelemetry
     {
+        public void DebugDispatchEvent(string grainId, IGrainEvent @event)
+        {
+            ReportDebug($"DispatchEvent [{grainId}] [{@event.GetType().Name}]");
+        }
+
+        public ITraceSpan SpanExecuteReadyWorkItems()
+        {
+            return new TestSpan(this, $"ExecuteReadyWorkItems");
+        }
+
+        public ITraceSpan SpanExecuteWorkItem(string grainId, IGrainWorkItem workItem, bool timedOut)
+        {
+            return new TestSpan(this, $"ExecuteWorkItem [{grainId}] [{workItem.GetType().Name}]");
+        }
     }
 
     private class MockSuperGrainForGrainRef : ISiloGrains

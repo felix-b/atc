@@ -20,11 +20,14 @@ public class PocAIRadioOperatorGrain :
 
     [NotEventSourced]
     private readonly ISiloEnvironment _environment;
+    // [NotEventSourced]
+    // private readonly ISpeechService _speechService;
     [NotEventSourced]
     private readonly PocBrain _brain;
-
+    
     public PocAIRadioOperatorGrain(
         ISilo silo,
+        //ISpeechService speechService,
         GrainActivationEvent activation) :
         base(
             grainId: activation.GrainId,
@@ -34,6 +37,7 @@ public class PocAIRadioOperatorGrain :
     {
         _brain = CreateBrain(activation.Callsign);
         _environment = silo.Environment;
+        //_speechService = speechService;
     }
 
     public void Start()
@@ -51,22 +55,50 @@ public class PocAIRadioOperatorGrain :
 
         var firstToTransmit = State.Brain.OutgoingIntents[0];
         var transmissionPriority = firstToTransmit.Intent.Header.Priority;
+        var transmissionId = TestUtility.TakeNextTransmissionId();
+        var transmission = new TransmissionDescription(
+            Id: transmissionId,
+            StartUtc: _environment.UtcNow,
+            Volume: State.Party.Voice.Volume,
+            Quality: State.Party.Voice.Quality,
+            AudioStreamId: null,
+            Duration: null,
+            SynthesisRequest: new SpeechSynthesisRequest(
+                transmissionId, 
+                Originator: GetRefToSelfAs<IAIRadioOperatorGrain>(),
+                Intent: firstToTransmit.Intent,
+                Language: LanguageCode.English //TODO: remove hard-coded value 
+            ));
         
-        State.Radio.Get().BeginTransmission(TestUtility.NewTransmission(), firstToTransmit.ConversationToken);
+        State.Radio.Get().BeginTransmission(transmission, firstToTransmit.ConversationToken);
 
-        var transmissionDuration = firstToTransmit.Intent is PocIntent pocIntent
+        var estimatedDuration = firstToTransmit.Intent is PocIntent pocIntent
             ? pocIntent.PocType.GetTransmissionDuration()
             : TimeSpan.FromSeconds(3);
 
-        Dispatch(new PopOutgoingIntentEvent());
-        Defer(
-            new CompleteTransmissionWorkItem(firstToTransmit.Intent),
-            notEarlierThanUtc: _environment.UtcNow.Add(transmissionDuration));
-        
+        var utcNow = _environment.UtcNow;
+        var finishWorkItemHandle = ScheduleEndOfTransmission(firstToTransmit.Intent, utcNow, estimatedDuration);
+
+        var info = new MyTransmissionInfo(
+            StartedAtUtc: utcNow,
+            Intent: firstToTransmit.Intent, 
+            TransmissionId: transmission.Id, 
+            FinishWorkItemHandle: finishWorkItemHandle);
+
+        Dispatch(new StartedMyTransmissionEvent(info));
+
         return new BeginTransmitNowResponse(
             BeganTransmission: true, 
             firstToTransmit.ConversationToken, 
             transmissionPriority);
+    }
+
+    private GrainWorkItemHandle ScheduleEndOfTransmission(Intent intent, DateTime startUtc, TimeSpan duration)
+    {
+        var finishWorkItemHandle = Defer(
+            new CompleteTransmissionWorkItem(intent),
+            notEarlierThanUtc: startUtc.Add(duration));
+        return finishWorkItemHandle;
     }
 
     public void NotifyTransmissionStarted(
@@ -95,7 +127,24 @@ public class PocAIRadioOperatorGrain :
         // nothing
     }
 
+    public void NotifyTransmissionDurationAvailable(ulong transmissionId, TimeSpan duration)
+    {
+        var info = State.MyCurrentTransmission;
+        
+        if (info != null && info.TransmissionId == transmissionId)
+        {
+            Silo.TaskQueue.CancelWorkItem(info.FinishWorkItemHandle);
+            var newWorkItemHandle = ScheduleEndOfTransmission(info.Intent, _environment.UtcNow, duration);
+            var newInfo = info with {
+                FinishWorkItemHandle = newWorkItemHandle
+            };
+            Dispatch(new UpdatedMyTransmissionDuration(newInfo));
+        }
+    }
+
     public PocBrain Brain => _brain;
+
+    public PartyDescription Party => State.Party;
     
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {
@@ -103,6 +152,7 @@ public class PocAIRadioOperatorGrain :
         {
             case CompleteTransmissionWorkItem completeTx:
                 State.Radio.Get().CompleteTransmission(completeTx.Intent, keepPttPressed: false);
+                Dispatch(new FinishedMyTransmissionEvent());
                 EnqueueForTransmissionIfNecessary();
                 return true;
             case WakeUpWorkItem:
@@ -122,12 +172,21 @@ public class PocAIRadioOperatorGrain :
                 return stateBefore with {
                     Brain = updateBrain.BrainState
                 };
-            case PopOutgoingIntentEvent:
+            case StartedMyTransmissionEvent startedMyTx:
                 return stateBefore with {
                     Brain = stateBefore.Brain with {
                         OutgoingIntents = stateBefore.Brain.OutgoingIntents.RemoveAt(0)
-                    }
+                    },
+                    MyCurrentTransmission = startedMyTx.Info
                 }; 
+            case UpdatedMyTransmissionDuration updatedDuration:
+                return stateBefore with {
+                    MyCurrentTransmission = updatedDuration.NewInfo
+                };
+            case FinishedMyTransmissionEvent:
+                return stateBefore with {
+                    MyCurrentTransmission = null
+                };
             case EnqueuedForTransmissionEvent enqueued:
                 return stateBefore with {
                     Brain = stateBefore.Brain with {
@@ -208,6 +267,8 @@ public class PocAIRadioOperatorGrain :
         Dispatch(new EnqueuedForTransmissionEvent(firstToTransmit.Intent, conversationToken));
     }
 
+    private static int __nextPartyKey = 0; 
+    
     public static void RegisterGrainType(SiloConfigurationBuilder config)
     {
         config.RegisterGrainType<PocAIRadioOperatorGrain, GrainActivationEvent>(
@@ -220,16 +281,53 @@ public class PocAIRadioOperatorGrain :
 
     private static GrainState CreateInitialState(GrainActivationEvent activation, ISilo silo)
     {
+        var callsign = new Callsign(activation.Callsign, activation.Callsign);
+        var party = CreatePartyDescription(activation);
+
         return new GrainState(
             StartUtc: silo.Environment.UtcNow,
-            Callsign: new Callsign(activation.Callsign, activation.Callsign),
+            Party: party,
+            Callsign: callsign,
             Radio: activation.Radio,
             Brain: new PocBrainState(
                 OutgoingIntents: ImmutableArray<PocIntentTuple>.Empty, 
                 ConversationPerCallsign: ImmutableDictionary<string, ConversationToken?>.Empty,
                 Step: 0
             ),
-            IntentEnqueuedForTransmission: null
+            IntentEnqueuedForTransmission: null,
+            MyCurrentTransmission: null
+        );
+    }
+
+    private static PersonPartyDescription CreatePartyDescription(GrainActivationEvent activation)
+    {
+        var key = __nextPartyKey++;
+        var genders = new[] {GenderType.Male, GenderType.Male, GenderType.Male, GenderType.Female, GenderType.Female};
+        var voiceTypes = new[] {VoiceType.Bass, VoiceType.Baritone, VoiceType.Tenor, VoiceType.Contralto, VoiceType.Soprano};
+        var voiceRates = new[] {VoiceRate.Slow, VoiceRate.Medium, VoiceRate.Slow, VoiceRate.Medium, VoiceRate.Fast};
+        var linkQualities = new[] {VoiceLinkQuality.Good, VoiceLinkQuality.Medium, VoiceLinkQuality.Poor, VoiceLinkQuality.Medium, VoiceLinkQuality.Good};
+        var volumeLevels = new[] {1.0f, 0.8f, 0.7f, 0.8f, 1.0f};
+        var ages = new[] {AgeType.Mature, AgeType.Senior, AgeType.Young, AgeType.Young, AgeType.Mature};
+        var seniorities = new[] {SeniorityType.Senior, SeniorityType.Novice, SeniorityType.Senior, SeniorityType.Novice, SeniorityType.Veteran};
+        var firstNames = new[] {"Bob", "Michelle", "Peter", "Kelsey", "Kate"};
+
+        var voice = new VoiceDescription(
+            Language: LanguageCode.English,
+            Gender: genders[key],
+            Type: voiceTypes[key],
+            Rate: voiceRates[key],
+            Quality: linkQualities[key],
+            Volume: volumeLevels[key],
+            AssignedPlatformVoiceId: null);
+        
+        return new PersonPartyDescription(
+            uniqueId: activation.GrainId,
+            NatureType.AI,
+            voice,
+            genders[key],
+            ages[key],
+            seniorities[key],
+            firstNames[key]
         );
     }
 
@@ -248,10 +346,19 @@ public class PocAIRadioOperatorGrain :
 
     public record GrainState(
         DateTime StartUtc,
+        PartyDescription Party,
         Callsign Callsign,
         GrainRef<IRadioStationGrain> Radio,
         PocBrainState Brain,
-        Intent? IntentEnqueuedForTransmission
+        Intent? IntentEnqueuedForTransmission,
+        MyTransmissionInfo? MyCurrentTransmission
+    );
+
+    public record MyTransmissionInfo(
+        DateTime StartedAtUtc,
+        Intent Intent,
+        ulong TransmissionId,
+        GrainWorkItemHandle FinishWorkItemHandle
     );
 
     public record GrainActivationEvent(
@@ -264,7 +371,15 @@ public class PocAIRadioOperatorGrain :
         PocBrainState BrainState
     ) : IGrainEvent;
 
-    public record PopOutgoingIntentEvent : IGrainEvent;
+    public record StartedMyTransmissionEvent(
+        MyTransmissionInfo Info
+    ) : IGrainEvent;
+
+    public record FinishedMyTransmissionEvent : IGrainEvent;
+
+    public record UpdatedMyTransmissionDuration(
+        MyTransmissionInfo NewInfo
+    ) : IGrainEvent;
 
     public record EnqueuedForTransmissionEvent(
         Intent Intent,

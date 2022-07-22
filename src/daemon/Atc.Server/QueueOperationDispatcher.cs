@@ -66,7 +66,7 @@ public class QueueOperationDispatcher<TEnvelopeIn, TEnvelopeOut> : IOperationDis
 
         var workItem = new IncomingMessageWorkItem(
             Id: TakeNextWorkItemId(),
-            Context: new DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut>(connection, _telemetry), 
+            Context: new DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut>(connection, _telemetry, EnqueueObserverOutputRequests), 
             Envelope: (TEnvelopeIn)envelope);
             
         _telemetry.DebugQueueOpDispatcherAcceptingWorkItem(connection.Id, workItem.Id, workItem.GetType().Name);
@@ -92,28 +92,26 @@ public class QueueOperationDispatcher<TEnvelopeIn, TEnvelopeOut> : IOperationDis
         }
     }
 
-    private void EnqueueOutputRequests(IncomingMessageWorkItem workItem)
+    private void EnqueueOutputRequests(DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut> context, ulong workItemId)
     {
-        var queueIndex = workItem.Context.Id % _outputQueues.Length;
-        _telemetry.DebugQueueOpDispatcherEnqueueOutputRequests(count: workItem.Context.OutputRequests?.Count ?? 0, queueIndex);
-            
-        // when implementing observers, the context can be kept referenced beyond the lifetime of the operation
-        // an observer might write to the context again at a later moment
-        // the observer must then call RequestFlush() which invokes the delegate below 
-        // and so we ensure that the context enters the output queue once again
-        workItem.Context.OnFlushRequested += () => {
-            _outputQueues[queueIndex].Add(new OperationOutputsWorkItem(
-                Id: workItem.Id,
-                Context: workItem.Context
-            ));
-        };
-            
+        var queueIndex = context.Id % _outputQueues.Length;
+        _telemetry.DebugQueueOpDispatcherEnqueueOutputRequests(count: context.OutputRequests?.Count ?? 0, queueIndex);
+        
         _outputQueues[queueIndex].Add(new OperationOutputsWorkItem(
-            Id: workItem.Id,
-            Context: workItem.Context
+            Id: workItemId,
+            Context: context
         ));
     }
-        
+    
+    // when implementing observers, the context can be kept referenced beyond the lifetime of the operation
+    // an observer might write to the context again at a later moment
+    // the observer must then call RequestFlush() which invokes the delegate below 
+    // and so we ensure that the context enters the output queue once again
+    private void EnqueueObserverOutputRequests(DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut> context)
+    {
+        EnqueueOutputRequests(context, workItemId: TakeNextWorkItemId());
+    }
+
     private void RunInputThread()
     {
         using var traceSpan = _telemetry.SpanQueueOpDispatcherRunInputThread();
@@ -200,7 +198,7 @@ public class QueueOperationDispatcher<TEnvelopeIn, TEnvelopeOut> : IOperationDis
         {
             case IncomingMessageWorkItem incomingMessage:
                 _next.DispatchOperation(incomingMessage.Context, incomingMessage.Envelope!);
-                EnqueueOutputRequests(incomingMessage);
+                EnqueueOutputRequests(incomingMessage.Context, workItem.Id);
                 break;
             case ArbitraryCallbackWorkItem arbitraryCallback:
                 ExecuteArbitraryCallback(arbitraryCallback);

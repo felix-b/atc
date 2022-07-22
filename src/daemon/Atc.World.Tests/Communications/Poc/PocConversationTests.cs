@@ -1,6 +1,12 @@
 using System.Diagnostics;
 using Atc.Grains;
 using Atc.Maths;
+using Atc.Server.TestDoubles;
+using Atc.Sound.OpenAL;
+using Atc.Speech.AzurePlugin;
+using Atc.Telemetry.CodePath;
+using Atc.Telemetry.Exporters.CodePath;
+using Atc.Telemetry.Impl;
 using Atc.World.Communications;
 using Atc.World.Contracts.Communications;
 using FluentAssertions;
@@ -96,7 +102,6 @@ public class PocConversationTests
             iterationCount++;
             Console.WriteLine($"====== iteration #{iterationCount} ======");
 
-            //Thread.Sleep(silo.NextWorkItemAtUtc - environment.UtcNow);
             environment.UtcNow = silo.NextWorkItemAtUtc;
             Console.WriteLine($"{environment.UtcNow:HH:mm:ss.fff}");
 
@@ -131,18 +136,41 @@ public class PocConversationTests
             expectedIntentsInOrder: new[] {"I1", "I2", "I3", "I4", "I6", "I7", "I8", "I9", "I10"});
     }
 
-    [Test]
+    [Test, Category("manual")]
     public void ConversationEndToEndTest()
     {
         //-- given
+
+        using var telemetryExporter = new CodePathWebSocketExporter(listenPortNumber: 3003);
+        var telemetryEnvironment = new CodePathEnvironment(CodePathLogLevel.Debug, telemetryExporter);
+
+        Thread.Sleep(3000);
         
-        // var startUtc = new DateTime(2022, 10, 10, 8, 30, 0); 
-        // var environment = new SiloTestDoubles.TestEnvironment {
-        //     UtcNow = startUtc
-        // };
         var startUtc = DateTime.UtcNow;
-        var environment = new SiloTestDoubles.TestEnvironment(); // use real date/time
-        var silo = SiloTestDoubles.CreateSilo("ABCD", ConfigureSilo, environment: environment);
+        var siloEnvironment = new SiloTestDoubles.TestEnvironment(); 
+        var silo = SiloTestDoubles.CreateSilo(
+            "ABCD", 
+            ConfigureSilo, 
+            environment: siloEnvironment,
+            telemetry: new ImplOf_ISiloTelemetry.CodePath(telemetryEnvironment));
+        
+        siloEnvironment.SetAssetRootPath(Path.Combine(
+            TestContext.CurrentContext.TestDirectory,
+            "..", "..", "..", "..", "..", "..", "assets"));
+
+        using var audioContext = new AudioContextScope(new AudioContextScope_Telemetry.Noop());
+        
+        var verbalizationService = new PocVerbalizationService();
+        var audioStreamCache = new PocAudioStreamCache();
+        var speechSynthesisPlugin = new AzureSpeechSynthesisPlugin(
+            audioStreamCache, 
+            new AzureSpeechSynthesisPlugin_Telemetry.Noop());
+        var speechService = new SpeechService(
+            verbalizationService, 
+            speechSynthesisPlugin,
+            new SpeechService_IMyTelemetry.Noop());
+        var radioSpeechPlayer = new OpenalRadioSpeechPlayer(siloEnvironment);
+        
         var world = silo.Grains.CreateGrain<WorldGrain>(
             id => new WorldGrain.GrainActivationEvent(id)
         );
@@ -154,6 +182,10 @@ public class PocConversationTests
         groundQ.Get().OnTransceiverStateChanged += state => Console.WriteLine($"Q> status [{state.Status}]");
         groundQ.Get().OnIntentCaptured += intent => Console.WriteLine($"Q> captured [{intent}]");
 
+        var mobileOpA = CreateMobileStation(silo, "A");
+        var mobileOpB = CreateMobileStation(silo, "B");
+        var mobileOpC = CreateMobileStation(silo, "C");
+        var mobileOpD = CreateMobileStation(silo, "D");
         var groundOp = silo.Grains.CreateGrain<PocAIRadioOperatorGrain>(
             grainId => new PocAIRadioOperatorGrain.GrainActivationEvent(
                 grainId, 
@@ -161,10 +193,13 @@ public class PocConversationTests
                 groundQ.As<IRadioStationGrain>()
             ));
         
-        var mobileOpA = CreateMobileStation(silo, "A");
-        var mobileOpB = CreateMobileStation(silo, "B");
-        var mobileOpC = CreateMobileStation(silo, "C");
-        var mobileOpD = CreateMobileStation(silo, "D");
+        var monitor = new RadioStationSoundMonitor(
+            siloEnvironment,
+            speechService,
+            audioStreamCache,
+            radioSpeechPlayer,
+            telemetry: new RadioStationSoundMonitor_Telemetry.Noop(),
+            radioStation: groundQ.As<IRadioStationGrain>());
 
         //-- when
         
@@ -174,16 +209,20 @@ public class PocConversationTests
             iterationCount++;
             Console.WriteLine($"====== iteration #{iterationCount} ======");
 
-            Thread.Sleep(silo.NextWorkItemAtUtc - environment.UtcNow);
-            Console.WriteLine($"{environment.UtcNow:HH:mm:ss.fff}");
-
+            var millisecondsToSleep = (int)silo.NextWorkItemAtUtc.Subtract(siloEnvironment.UtcNow).TotalMilliseconds;
+            if (millisecondsToSleep > 25)
+            {
+                Thread.Sleep(millisecondsToSleep);
+            }
+            
+            Console.WriteLine($"{siloEnvironment.UtcNow:HH:mm:ss.fff}");
             silo.ExecuteReadyWorkItems();
         }
 
         //-- then 
-        
-        iterationCount.Should().Be(21);
-        environment.UtcNow.Subtract(startUtc).TotalSeconds.Should().BeApproximately(39.0d, precision: 1.0d);
+
+        iterationCount.Should().BeGreaterOrEqualTo(20);
+        siloEnvironment.UtcNow.Subtract(startUtc).TotalSeconds.Should().BeGreaterThanOrEqualTo(39);
         
         var mediumState = SiloTestDoubles.GetGrainState(
             groundQ.Get().GroundStationMedium!.Value.As<GroundStationRadioMediumGrain>().Get());
