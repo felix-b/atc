@@ -9,11 +9,11 @@ namespace Atc.World.Communications;
 [NotEventSourced]
 public class RadioStationSoundMonitor : IDisposable
 {
-    private readonly ISiloEnvironment _environment;
+    private readonly ISilo _silo;
     private readonly ISpeechService _speechService;
     private readonly IAudioStreamCache _streamCache;
     private readonly IRadioSpeechPlayer _player;
-    private readonly IThisTelemetry _telemetry;
+    private readonly IMyTelemetry _telemetry;
     private readonly GrainRef<IRadioStationGrain> _radioStation;
     private readonly CancellationTokenSource _disposing;
     private TransceiverStatus _lastStatus = TransceiverStatus.Silence;
@@ -22,14 +22,14 @@ public class RadioStationSoundMonitor : IDisposable
     private CancellationTokenSource? _playCancellation = null;
         
     public RadioStationSoundMonitor(
-        ISiloEnvironment environment,
+        ISilo silo,
         ISpeechService speechService, 
         IAudioStreamCache streamCache,
         IRadioSpeechPlayer player, 
-        IThisTelemetry telemetry,
+        IMyTelemetry telemetry,
         GrainRef<IRadioStationGrain> radioStation)
     {
-        _environment = environment;
+        _silo = silo;
         _speechService = speechService;
         _streamCache = streamCache;
         _player = player;
@@ -37,13 +37,13 @@ public class RadioStationSoundMonitor : IDisposable
         _radioStation = radioStation;
         _disposing = new CancellationTokenSource();
 
-        _radioStation.Get().OnTransceiverStateChanged += ListenerCallback;
+        _radioStation.Get().TransceiverStateChanged += ListenerCallback;
         ListenerCallback(_radioStation.Get().TransceiverState);
     }
 
     public void Dispose()
     {
-        _radioStation.Get().OnTransceiverStateChanged -= ListenerCallback;
+        _radioStation.Get().TransceiverStateChanged -= ListenerCallback;
         _disposing.Cancel();
         _playCancellation?.Cancel();
         _player.Dispose();
@@ -134,6 +134,7 @@ public class RadioStationSoundMonitor : IDisposable
         try
         {
             var transmissionWithAudio = await transmission.WithEnsuredAudioStreamId(
+                _silo,
                 _speechService,
                 cancellation);
 
@@ -156,14 +157,15 @@ public class RadioStationSoundMonitor : IDisposable
 
         TimeSpan GetPlayStartPoint()
         {
-            var elapsed = _environment.UtcNow.Subtract(transmission.StartUtc);
+            var elapsed = _silo.Environment.UtcNow.Subtract(transmission.StartUtc);
             return elapsed.TotalMilliseconds > 250
                 ? elapsed
                 : TimeSpan.Zero;
         }
     }
         
-    public interface IThisTelemetry : ITelemetry
+    [TelemetryName("RadioStationSoundMonitor")]
+    public interface IMyTelemetry : ITelemetry
     {
         void DebugPreparingToPlayTransmissionSpeech(ulong transmissionId);
         void VerbosePlayingTransmissionSpeech(ulong transmissionId, ulong audioStreamId, TimeSpan startPoint, TimeSpan? duration);

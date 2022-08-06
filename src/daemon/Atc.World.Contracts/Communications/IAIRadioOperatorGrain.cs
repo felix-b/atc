@@ -16,7 +16,7 @@ public interface IAIRadioOperatorGrain : IGrainId
     // Called when speech synthesis is complete for the transmission,
     // and the exact duration of speech is known. 
     // This allows AI operator to correctly time the end of transmission.
-    void NotifyTransmissionDurationAvailable(ulong transmissionId, TimeSpan duration);
+    void NotifyTransmissionDurationAvailable(ulong transmissionId, DateTime startUtc, TimeSpan duration);
     
     PartyDescription Party { get; }
 }

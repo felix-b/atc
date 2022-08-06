@@ -256,7 +256,7 @@ public class ImplementationMapSyntaxGenerator
                         IdentifierName(implementationSyntax.Identifier)
                     )
                     .WithArgumentList(ArgumentList(SeparatedList<ArgumentSyntax>(
-                        GetDependencyArgumentListTokens()
+                        GetDependencyArgumentListTokens(useInstanceFields: true)
                     )))
                 );
             }
@@ -291,7 +291,7 @@ public class ImplementationMapSyntaxGenerator
         return result;
     }
 
-    private IEnumerable<SyntaxNodeOrToken> GetDependencyArgumentListTokens()
+    private IEnumerable<SyntaxNodeOrToken> GetDependencyArgumentListTokens(bool useInstanceFields = false)
     {
         var result = new List<SyntaxNodeOrToken>();
 
@@ -301,8 +301,13 @@ public class ImplementationMapSyntaxGenerator
             {
                 result.Add(Token(SyntaxKind.CommaToken));
             }
+
+            var identifierName = useInstanceFields
+                ? "_" + nameTypePair.Key
+                : nameTypePair.Key;
+            
             result.Add(
-                Argument(IdentifierName(nameTypePair.Key))
+                Argument(IdentifierName(identifierName))
             );
         }
             

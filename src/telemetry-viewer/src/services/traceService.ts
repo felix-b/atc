@@ -1,105 +1,30 @@
 import { 
-    CodePathClientToServer, 
-    CodePathServerToClient, 
-    DeepPartial 
-} from "../proto/codepath";
+    LISTENER_ACTION_RECEIVED, 
+    LISTENER_ACTION_UPDATED, 
+    TraceNode, 
+    TraceNodeListener, 
+    TraceNodeListenerAction, 
+    TraceNodePresentation, 
+    TraceOpCode, 
+    TraceQuery, 
+    TraceQueryObserver, 
+    TraceQueryResultCallback, 
+    TraceQueryResults, 
+    TraceService, 
+    TraceTreeLayer, 
+    TraceViewChangedListener
+} from "./types";
+
 import { BufferReader, createBufferReader } from "./bufferReader";
+import { CodePathClientToServer, CodePathServerToClient, DeepPartial } from "../proto/codepath";
+import { createTraceFilter } from "./traceFilter";
+import { createTraceQueryObserver } from "./traceQueryObserver";
 
-export enum LogLevel {
-    quiet = -1,
-    audit = 0,
-    critical = 1,
-    error = 2,
-    warning = 3,
-    info = 4,
-    verbose = 5,
-    debug = 6,
-}
-
-export enum TraceOpCode {
-    noop = 0,
-    // stream op-codes
-    beginStreamChunk = 0xA0,
-    endStreamChunk = 0xA1,
-    stringKey = 0xA2,
-    // message op-codes
-    message = 0xB1,
-    beginMessage = 0xB2,
-    endMessage = 0xB3,
-    openSpan = 0xB4,
-    beginOpenSpan = 0xB5,
-    endOpenSpan = 0xB6,
-    closeSpan = 0xB7,
-    beginCloseSpan = 0xB8,
-    endCloseSpan = 0xB9,  
-    // value op-codes
-    exceptionValue = 0xC0,
-    boolValue = 0xC1,
-    int8Value = 0xC2,
-    int16Value = 0xC3,
-    int32Value = 0xC4,
-    int64Value = 0xC5,
-    uInt64Value = 0xC6,
-    floatValue = 0xC7,
-    doubleValue = 0xC8,
-    decimalValue = 0xC9,
-    stringValue = 0xCA,
-    timeSpanValue = 0xCB,
-    dateTimeValue = 0xCC,
-}
-
-export interface TraceNode {
-    readonly id: BigInt; // positive if holds span id; negative if holds viewer-generated id for message node
-    readonly parentSpanId: BigInt; // parent span id (0 for top-level nodes)
-    readonly isSpan: boolean;
-    readonly opCode: TraceOpCode;
-    readonly unparsed?: BufferReader;
-    readonly children: TraceNode[];
-
-    getPresentation(): TraceNodePresentation;
-    addChild(node: TraceNode): void;
-    addCloseSpan(closeSpanBuffer: BufferReader): void;
-}
-
-export interface TraceNodePresentation {
-    id: string;
-    parentSpanId: string | undefined;
-    timestamp: string;
-    messageId: string;
-    level: LogLevel;
-    threadId: number;
-    //depth: number;
-    isSpan: boolean;
-    isSpanInProgress: boolean;
-    endTimestamp?: string;
-    duration?: string;
-    error?: string;
-    values: Record<string, string>;
-}
+const UNIX_EPOCH_TICKS = BigInt('621355968000000000');
+const NANOSECx100_IN_MILLISECOND = BigInt('10000');
 
 interface PrivateTraceNodePresentation extends TraceNodePresentation {
     parseCloseSpan(buffer: BufferReader): void;
-}
-
-export type TraceNodeListenerAction = 'received' | 'updated';
-export const LISTENER_ACTION_RECEIVED: TraceNodeListenerAction = 'received';
-export const LISTENER_ACTION_UPDATED: TraceNodeListenerAction = 'updated';
-
-export type TraceNodeListener = (
-    node: TraceNode, 
-    action: TraceNodeListenerAction
-) => void;
-
-export interface TraceService {
-    getTopLevelNodes(): TraceNode[];
-    getNodeById(id: BigInt): TraceNode;
-    addNodeListener(callback: TraceNodeListener): void;
-}
-
-declare global {
-    interface Window { 
-        traceService: TraceService | undefined; 
-    }
 }
 
 export const TraceServiceSingleton = {
@@ -111,9 +36,6 @@ export const TraceServiceSingleton = {
     }
 };
 
-const UNIX_EPOCH_TICKS = BigInt('621355968000000000');
-const NANOSECx100_IN_MILLISECOND = BigInt('10000');
-
 export function createTraceService(endpointUrl: string): TraceService {
     
     const _endpointUrl = endpointUrl;
@@ -121,8 +43,14 @@ export function createTraceService(endpointUrl: string): TraceService {
     const _nodeById = new Map<BigInt, TraceNode>();
     const _stringByKey = new Map<number, string>();
     const _nodeListeners: TraceNodeListener[] = [];
+    const _viewChangedListeners: TraceViewChangedListener[] = [];
     const _webSocket: WebSocket = new WebSocket(endpointUrl);// 'http://localhost:3003/telemetry'
+    const _queryObservers = new Map<number, TraceQueryObserver>();
     let _nextInternalNodeId = -1; // an ever-decreasing number, to dstinguish from Span Ids which are positive
+    let _nextQueryId = 1;
+    let _filterLayer: TraceTreeLayer | undefined = undefined;
+
+    _nodeById.set(_rootNode.id, _rootNode);
 
     _webSocket.binaryType = 'arraybuffer';
     _webSocket.onerror = e => console.log('TraceService.webSocketError', e);
@@ -140,7 +68,7 @@ export function createTraceService(endpointUrl: string): TraceService {
         }
     };
 
-    const service = {
+    const service: TraceService & TraceTreeLayer  = {
         getTopLevelNodes() {
             return _rootNode.children;
         },
@@ -153,9 +81,65 @@ export function createTraceService(endpointUrl: string): TraceService {
             throw new Error(`Node id ${id} not found`);
         },
 
+        tryGetNodeById(id: BigInt): TraceNode | undefined {
+            return _nodeById.get(id);
+        },
+
         addNodeListener(callback: TraceNodeListener): void {
             _nodeListeners.push(callback);
         },
+
+        removeNodeListener(callback: TraceNodeListener): void {
+            const index = _nodeListeners.indexOf(callback);
+            if (index >= 0) {
+                _nodeListeners.splice(index, 1);
+            }
+        },
+
+        addViewChangedListener(callback: TraceViewChangedListener) {
+            _viewChangedListeners.push(callback);
+            callback(this.getCurrentView());
+        },
+
+        removeViewChangedListener(callback: TraceViewChangedListener) {
+            const index = _viewChangedListeners.indexOf(callback);
+            if (index >= 0) {
+                _viewChangedListeners.splice(index, 1);
+            }
+        },
+
+        getCurrentView(): TraceTreeLayer {
+            return _filterLayer || service;
+        },
+
+        setFilter(queries: TraceQuery[], includeNodeIds: string[]) {
+            _filterLayer?.dispose();
+            _filterLayer = createTraceFilter(service, queries, includeNodeIds);
+            invokeViewChangedListeners(_filterLayer);
+        },
+        
+        clearFilter() {
+            _filterLayer?.dispose();
+            _filterLayer = undefined;
+            invokeViewChangedListeners(service);
+        },
+
+        dispose() {
+            throw new Error('NotSupported');
+        },
+
+        createQuery(query: TraceQuery, onUpdate: TraceQueryResultCallback): TraceQueryResults {
+            const newQueryId = _nextQueryId++;
+            const observer = createTraceQueryObserver(service, onUpdate, newQueryId, query);
+            _queryObservers.set(newQueryId, observer);
+            return observer.runQuery();
+        },
+
+        disposeQuery(id: number): void {
+            const observer = _queryObservers.get(id);
+            observer?.dispose();
+            _queryObservers.delete(id);
+        }
     };
 
     TraceServiceSingleton.instance = service;
@@ -241,6 +225,16 @@ export function createTraceService(endpointUrl: string): TraceService {
         });
     } 
 
+    function invokeViewChangedListeners(newView: TraceTreeLayer) {
+        _viewChangedListeners.forEach(callback => {
+            try {
+                callback(newView);
+            } catch (err) {
+                console.log(err);
+            }
+        });
+    }
+
     function createNode(opCode: TraceOpCode, buffer: BufferReader | undefined): TraceNode {
 
         if (!buffer) {
@@ -279,8 +273,8 @@ export function createTraceService(endpointUrl: string): TraceService {
             getPresentation() {
                 if (!_presentation) {
                     _presentation = createNodePresentation(node, buffer!, _closeSpanBuffer);
-                    buffer = undefined;
-                    _closeSpanBuffer = undefined;
+                    //buffer = undefined;
+                    //_closeSpanBuffer = undefined;
                 }
                 return _presentation;
             },
@@ -294,6 +288,9 @@ export function createTraceService(endpointUrl: string): TraceService {
                 } else {
                     _closeSpanBuffer = closeSpanBuffer;
                 }
+            },
+            printBuffer() {
+                buffer!.printBuffer();
             }
         };   
         
@@ -330,7 +327,8 @@ export function createTraceService(endpointUrl: string): TraceService {
             },
             addCloseSpan() {
                 throw new Error('NotSupported');
-            }
+            },
+            printBuffer() { }
         };
     }
 
@@ -398,6 +396,18 @@ export function createTraceService(endpointUrl: string): TraceService {
                 case TraceOpCode.timeSpanValue:
                     key = readStringKey(buffer);
                     values[key] = dotnetTicksToDurationString(buffer.readUint64());
+                    break;
+                case TraceOpCode.dateTimeValue:
+                    key = readStringKey(buffer);
+                    values[key] = dotnetTicksToTimestampString(buffer.readUint64());
+                    break;
+                    case TraceOpCode.uInt64Value:
+                    key = readStringKey(buffer);
+                    values[key] = buffer.readUint64().toString();
+                    break;
+                case TraceOpCode.int64Value:
+                    key = readStringKey(buffer);
+                    values[key] = buffer.readInt64().toString();
                     break;
                 case TraceOpCode.exceptionValue:
                     key = 'exception'

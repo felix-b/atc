@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Telemetry.Exporters.Cod
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Telemetry.Generators", "Atc.Telemetry.Generators\Atc.Telemetry.Generators.csproj", "{5EC350A3-50A0-404B-B528-CEA862BC67D8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Utilities", "Atc.Utilities\Atc.Utilities.csproj", "{F9246551-4202-41C8-8B17-395BE4C54B46}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -108,5 +110,9 @@ Global
 		{5EC350A3-50A0-404B-B528-CEA862BC67D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5EC350A3-50A0-404B-B528-CEA862BC67D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5EC350A3-50A0-404B-B528-CEA862BC67D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9246551-4202-41C8-8B17-395BE4C54B46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9246551-4202-41C8-8B17-395BE4C54B46}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9246551-4202-41C8-8B17-395BE4C54B46}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9246551-4202-41C8-8B17-395BE4C54B46}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

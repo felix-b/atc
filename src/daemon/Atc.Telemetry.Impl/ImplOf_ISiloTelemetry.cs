@@ -1,3 +1,5 @@
+#if false
+
 using Atc.Grains;
 using Atc.Telemetry.CodePath;
 
@@ -67,3 +69,5 @@ public static class ImplOf_ISiloTelemetry
     }
 
 }
+
+#endif

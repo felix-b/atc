@@ -1,9 +1,11 @@
 using System.Collections.Immutable;
 using Atc.Grains;
 using Atc.Maths;
+using Atc.Telemetry;
 using Atc.World.Communications;
 using Atc.World.Contracts.Communications;
 using FluentAssertions;
+using GeneratedCode;
 using Moq;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
@@ -23,7 +25,8 @@ public class RadioStationGrainTests
         var stationGrain = silo.Grains.CreateGrain<RadioStationGrain>(grainId => 
             new RadioStationGrain.GrainActivationEvent(
                 grainId, 
-                RadioStationType.Ground));
+                RadioStationType.Ground,
+                Callsign("A")));
 
         //-- when 
         
@@ -70,7 +73,8 @@ public class RadioStationGrainTests
         var stationGrain = silo.Grains.CreateGrain<RadioStationGrain>(grainId => 
             new RadioStationGrain.GrainActivationEvent(
                 grainId, 
-                RadioStationType.Mobile));
+                RadioStationType.Mobile,
+                new Callsign("A", "A")));
 
         world.Mock.Setup(x => x.TryFindRadioMedium(
             GeoPoint.LatLon(10f, 20f), 
@@ -114,7 +118,8 @@ public class RadioStationGrainTests
         var stationGrain = silo.Grains.CreateGrain<RadioStationGrain>(grainId => 
             new RadioStationGrain.GrainActivationEvent(
                 grainId, 
-                RadioStationType.Mobile));
+                RadioStationType.Mobile,
+                new Callsign("A", "A")));
 
         var mediumGrain = silo.Grains.CreateGrain<GroundStationRadioMediumGrain>(
             grainId => new GroundStationRadioMediumGrain.GrainActivationEvent(grainId));
@@ -202,7 +207,8 @@ public class RadioStationGrainTests
         var stationGrain = silo.Grains.CreateGrain<RadioStationGrain>(grainId => 
             new RadioStationGrain.GrainActivationEvent(
                 grainId, 
-                RadioStationType.Mobile));
+                RadioStationType.Mobile,
+                Callsign("A")));
 
         world.Mock.Setup(x => x.TryFindRadioMedium(
             GeoPoint.LatLon(10f, 20f), 
@@ -438,7 +444,7 @@ public class RadioStationGrainTests
         SetupInProgressTransmission(mediumGrain2, out var conversationToken1, out var transmission1);
 
         var mobileStationGrain = silo.Grains.CreateGrain<RadioStationGrain>(
-            grainId => new RadioStationGrain.GrainActivationEvent(grainId, RadioStationType.Mobile));
+            grainId => new RadioStationGrain.GrainActivationEvent(grainId, RadioStationType.Mobile, Callsign("A")));
         
         mobileStationGrain.Get().TurnOnMobileStation(        
             Location.At(lat: 10f, lon: 20f, elevationFt: 100f), 
@@ -574,7 +580,7 @@ public class RadioStationGrainTests
         )).Returns((GrainRef<IGroundStationRadioMediumGrain>?)null);
 
         var mobileStationGrain = silo.Grains.CreateGrain<RadioStationGrain>(
-            grainId => new RadioStationGrain.GrainActivationEvent(grainId, RadioStationType.Mobile));
+            grainId => new RadioStationGrain.GrainActivationEvent(grainId, RadioStationType.Mobile, Callsign("A")));
         
         mobileStationGrain.Get().TurnOnMobileStation(        
             Location.At(lat: 10f, lon: 20f, elevationFt: 100f), 
@@ -1083,7 +1089,7 @@ public class RadioStationGrainTests
         var world = TestUtility.MockWorldGrain(silo);
 
         var stationGrain = CreateMobileStationWithMediumSetup(silo, world, out var mediumGrain);
-        stationGrain.Get().OnTransceiverStateChanged += stateLog.Add; 
+        stationGrain.Get().TransceiverStateChanged += stateLog.Add; 
         stationGrain.Get().TurnOnMobileStation(mediumGrain.Get().AntennaLocation, mediumGrain.Get().Frequency);
 
         //-- when
@@ -1134,7 +1140,7 @@ public class RadioStationGrainTests
             mediumGrain, 
             turnedOn: true);
 
-        groundStation.Get().OnIntentCaptured += intentLog.Add;
+        groundStation.Get().IntentCaptured += intentLog.Add;
 
         //-- when
 
@@ -1167,7 +1173,8 @@ public class RadioStationGrainTests
         var groundStationGrain = silo.Grains.CreateGrain<RadioStationGrain>(grainId =>
             new RadioStationGrain.GrainActivationEvent(
                 grainId,
-                RadioStationType.Ground));
+                RadioStationType.Ground,
+                Callsign("A")));
 
         groundStationGrain.Get().TurnOnGroundStation(location, frequency);
         mediumGrain = groundStationGrain.Get().GroundStationMedium!.Value.As<GroundStationRadioMediumGrain>();
@@ -1189,7 +1196,8 @@ public class RadioStationGrainTests
         var mobileStationGrain = silo.Grains.CreateGrain<RadioStationGrain>(grainId =>
             new RadioStationGrain.GrainActivationEvent(
                 grainId,
-                RadioStationType.Mobile));
+                RadioStationType.Mobile,
+                Callsign("A")));
 
         if (turnedOn)
         {
@@ -1218,7 +1226,8 @@ public class RadioStationGrainTests
         var groundStationGrain = silo.Grains.CreateGrain<RadioStationGrain>(grainId =>
             new RadioStationGrain.GrainActivationEvent(
                 grainId,
-                RadioStationType.Ground));
+                RadioStationType.Ground,
+                Callsign("A")));
 
         groundStationGrain.Get().TurnOnGroundStation(
             Location.At(lat: 10f, lon: 20f, elevationFt: 100f), 
@@ -1229,7 +1238,8 @@ public class RadioStationGrainTests
         var mobileStationGrain = silo.Grains.CreateGrain<RadioStationGrain>(grainId =>
             new RadioStationGrain.GrainActivationEvent(
                 grainId,
-                RadioStationType.Mobile));
+                RadioStationType.Mobile,
+                Callsign("A")));
         
         world.Mock.Setup(x => x.TryFindRadioMedium(
             GeoPoint.LatLon(10f, 20f),
@@ -1281,7 +1291,13 @@ public class RadioStationGrainTests
 
     private void ConfigureSiloForTest(SiloConfigurationBuilder config)
     {
+        TestUtility.RegisterTelemetryProvider(config);
         RadioStationGrain.RegisterGrainType(config);
         GroundStationRadioMediumGrain.RegisterGrainType(config);
+    }
+    
+    private Callsign Callsign(string callsign)
+    {
+        return new Callsign(callsign, callsign);
     }
 }

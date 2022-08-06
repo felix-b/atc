@@ -1,20 +1,21 @@
 using System.Collections.Immutable;
+using Atc.World.Communications;
 using Atc.World.Contracts.Communications;
-using Microsoft.VisualStudio.TestPlatform.Utilities;
 
 namespace Atc.World.Tests.Communications.Poc;
 
-public abstract class PocBrain
+public abstract class PocBrain : AIOperatorBrain<PocBrainState>
 {
-    protected PocBrain(string callsign)
+    protected PocBrain(
+        string callsign, 
+        IMyTelemetry telemetry) 
+        : base(new Callsign(callsign, callsign), telemetry)
     {
-        MyCallsign = new Callsign(callsign, callsign);
+        Telemetry = telemetry;
     }
 
-    public PocBrainOutput Process(PocBrainInput input)
+    protected override void OnBeforeProcess(BrainInput input)
     {
-        //Console.WriteLine($"--- {this.GetType().Name}.Process @ clock={input.Clock.TotalMilliseconds}ms ---");
-
         if (input.IncomingIntent != null)
         {
             AllReceivedIntentsLog.Add(input.IncomingIntent.Intent);
@@ -23,9 +24,10 @@ public abstract class PocBrain
                 TargetedIntentsLog.Add(input.IncomingIntent.Intent);
             }
         }
-        
-        var output = OnProcess(input);
+    }
 
+    protected override void OnAfterProcess(BrainInput input, BrainOutput output)
+    {
         foreach (var intent in output.State.OutgoingIntents.Select(tuple => tuple.Intent))
         {
             if (!OutgoingIntentsLog.Contains(intent))
@@ -33,110 +35,148 @@ public abstract class PocBrain
                 OutgoingIntentsLog.Add(intent);
             }
         }
-        
-        return output;
     }
 
-    public Callsign MyCallsign { get; }
+    protected BrainOutput WithOutgoingIntent(BrainInput input, Intent intent, DateTime? wakeUpAtUtc = null, int? step = null)
+    {
+        return WithOutgoingIntent(input, new IntentTuple(intent), wakeUpAtUtc, step);
+    }
+
+    protected BrainOutput WithOutgoingIntent(BrainInput input, IntentTuple tuple, DateTime? wakeUpAtUtc = null, int? step = null)
+    {
+        AIOperatorBrainState.MergeOutgoingIntent(
+            input.State, 
+            tuple, 
+            out var intentsAfter, 
+            out var conversationsAfter);
+
+        return new BrainOutput(
+            input.State with {
+                OutgoingIntents = intentsAfter,
+                ConversationPerCallsign = conversationsAfter,
+                Step = step ?? input.State.Step
+            },
+            wakeUpAtUtc
+        );
+    }
+
+    protected BrainOutput WithNoOutgoingIntent(BrainInput input, DateTime? wakeUpAtUtc = null, int? step = null)
+    {
+        return new BrainOutput(
+            input.State with {
+                Step = step ?? input.State.Step
+            },
+            wakeUpAtUtc
+        );
+    }
+
+    public override PocBrainState CreateInitialState()
+    {
+        return new PocBrainState(
+            OutgoingIntents: ImmutableArray<IntentTuple>.Empty,
+            ConversationPerCallsign: ImmutableDictionary<Callsign, ConversationToken?>.Empty,
+            Step: 0);
+    }
+
     public List<Intent> AllReceivedIntentsLog { get; } = new();
     public List<Intent> TargetedIntentsLog { get; } = new();
     public List<Intent> OutgoingIntentsLog { get; } = new();
 
-    protected abstract PocBrainOutput OnProcess(PocBrainInput input);
+    protected IMyTelemetry Telemetry { get; }
+    
+    public interface IMyTelemetry : IMyTelemetryBase
+    {
+    }
 }
 
 public record PocBrainState(
-    ImmutableArray<PocIntentTuple> OutgoingIntents,
-    ImmutableDictionary<string, ConversationToken?> ConversationPerCallsign,
+    ImmutableArray<IntentTuple> OutgoingIntents,
+    ImmutableDictionary<Callsign, ConversationToken?> ConversationPerCallsign,
     int Step
-);
+) : AIOperatorBrainState(OutgoingIntents, ConversationPerCallsign);
 
-public record PocBrainInput(
-    TimeSpan Clock,
-    PocBrainState State,
-    PocIntentTuple? IncomingIntent
-) {
-    public PocBrainOutput WithOutgoingIntent(
-        Intent intent, 
-        ConversationToken? conversationToken = null, 
-        bool clearOtherIntents = false, 
-        int? step = null)
-    {
-        var outgoingIntentsBefore = clearOtherIntents
-            ? State.OutgoingIntents.Clear()
-            : State.OutgoingIntents;
-        
-        return new PocBrainOutput(
-            State: new PocBrainState(
-                OutgoingIntents: outgoingIntentsBefore.Add(
-                    new PocIntentTuple(intent, ConversationToken: conversationToken)
-                ),
-                ConversationPerCallsign: State.ConversationPerCallsign,
-                Step: step ?? State.Step
-            )
-        );
-    }
-}
-
-public record PocBrainOutput(
-    PocBrainState State,
-    TimeSpan? WakeUpAtClock = null
-) {
-    public PocBrainOutput WithMemoizedConversationToken(PocBrainInput input)
-    {
-        if (input.IncomingIntent == null)
-        {
-            return this;
-        }
-        return this with {
-            State = State with {
-                ConversationPerCallsign = State.ConversationPerCallsign.SetItem(
-                    input.IncomingIntent.Intent.Header.Caller.Full, 
-                    input.IncomingIntent.ConversationToken
-                )
-            }
-        };
-    }
-}
-
-public record PocIntentTuple(
-    Intent Intent,
-    ConversationToken? ConversationToken,
-    AirGroundPriority? Priority = null
-);
+// public record PocBrainInput(
+//     TimeSpan Clock,
+//     PocBrainState State,
+//     IntentTuple? IncomingIntent
+// ) {
+//     public PocBrainOutput WithOutgoingIntent(
+//         Intent intent, 
+//         ConversationToken? conversationToken = null, 
+//         bool clearOtherIntents = false, 
+//         int? step = null)
+//     {
+//         var outgoingIntentsBefore = clearOtherIntents
+//             ? State.OutgoingIntents.Clear()
+//             : State.OutgoingIntents;
+//         
+//         return new PocBrainOutput(
+//             State: new PocBrainState(
+//                 OutgoingIntents: outgoingIntentsBefore.Add(
+//                     new IntentTuple(intent, ConversationToken: conversationToken)
+//                 ),
+//                 ConversationPerCallsign: State.ConversationPerCallsign,
+//                 Step: step ?? State.Step
+//             )
+//         );
+//     }
+// }
+//
+// public record PocBrainOutput(
+//     PocBrainState State,
+//     TimeSpan? WakeUpAtClock = null
+// ) {
+//     public PocBrainOutput WithMemoizedConversationToken(PocBrainInput input)
+//     {
+//         if (input.IncomingIntent == null)
+//         {
+//             return this;
+//         }
+//         return this with {
+//             State = State with {
+//                 ConversationPerCallsign = State.ConversationPerCallsign.SetItem(
+//                     input.IncomingIntent.Intent.Header.Caller.Full, 
+//                     input.IncomingIntent.ConversationToken
+//                 )
+//             }
+//         };
+//     }
+// }
 
 public class PocBrainA : PocBrain
 {
-    public PocBrainA() : base("A")
+    public PocBrainA(IMyTelemetry telemetry) : base("A", telemetry)
     {
     }
 
-    protected override PocBrainOutput OnProcess(PocBrainInput input)
+    protected override BrainOutput OnProcess(BrainInput input)
     {
         if (input.State.Step == 0)
         {
-            return input.WithOutgoingIntent(
-                PocIntent.Create(0, "A", "Q", PocIntentType.I1, false),
+            return WithOutgoingIntent(
+                input,
+                PocIntent.Create(TakeNextIntentId(), "A", "Q", PocIntentType.I1, false),
                 step: 1
             );
         }
 
-        return new PocBrainOutput(input.State);
+        return WithNoOutgoingIntent(input);
     }
 }
 
 public class PocBrainB : PocBrain
 {
-    public PocBrainB() : base("B")
+    public PocBrainB(IMyTelemetry telemetry) : base("B", telemetry)
     {
     }
 
-    protected override PocBrainOutput OnProcess(PocBrainInput input)
+    protected override BrainOutput OnProcess(BrainInput input)
     {
         if (input.State.Step == 0)
         {
-            return input.WithOutgoingIntent(
-                PocIntent.Create(0, "B", "Q", PocIntentType.I3, false),
+            return WithOutgoingIntent(
+                input,
+                PocIntent.Create(TakeNextIntentId(), "B", "Q", PocIntentType.I3, false),
                 step: 1
             );
         }
@@ -145,39 +185,40 @@ public class PocBrainB : PocBrain
         {
             if (intent.PocType == PocIntentType.I6)
             {
-                return input.WithOutgoingIntent(
-                    PocIntent.Create(0, "B", "Q", PocIntentType.I7, false),
-                    input.IncomingIntent.ConversationToken
+                return WithOutgoingIntent(
+                    input,
+                    new IntentTuple(PocIntent.Create(TakeNextIntentId(), "B", "Q", PocIntentType.I7, false), input.IncomingIntent.ConversationToken)
                 );
             }
         }
-        
-        return new PocBrainOutput(input.State);
+
+        return WithNoOutgoingIntent(input);
     }
 }
 
 public class PocBrainC : PocBrain
 {
-    public PocBrainC() : base("C")
+    public PocBrainC(IMyTelemetry telemetry) : base("C", telemetry)
     {
     }
 
-    protected override PocBrainOutput OnProcess(PocBrainInput input)
+    protected override BrainOutput OnProcess(BrainInput input)
     {
         if (input.State.Step == 0)
         {
-            return new PocBrainOutput(
+            return new BrainOutput(
                 State: input.State with {
                     Step = 1
                 },
-                WakeUpAtClock: TimeSpan.FromSeconds(5)
+                WakeUpAtUtc: input.UtcNow.Add(TimeSpan.FromSeconds(5))
             );
         }
         
         if (input.IncomingIntent == null && input.State.Step == 1)
         {
-            return input.WithOutgoingIntent(
-                PocIntent.Create(0, "C", "Q", PocIntentType.I11, false),
+            return WithOutgoingIntent(
+                input,
+                PocIntent.Create(TakeNextIntentId(), "C", "Q", PocIntentType.I11, false),
                 step: 2
             );
         }
@@ -186,88 +227,111 @@ public class PocBrainC : PocBrain
         {
             if (intent.PocType == PocIntentType.I8)
             {
-                return input.WithOutgoingIntent(
-                    PocIntent.Create(0, "C", "Q", PocIntentType.I9, true),
-                    input.IncomingIntent.ConversationToken,
-                    clearOtherIntents: true
+                return WithOutgoingIntent(
+                    input,
+                    new IntentTuple(
+                        PocIntent.Create(TakeNextIntentId(), "C", "Q", PocIntentType.I9, true), 
+                        input.IncomingIntent.ConversationToken,
+                        MergeOption: OutgoingIntentMergeOption.RemoveAllOther
+                    )
                 );
             }
         }
-        
-        return new PocBrainOutput(input.State);
+
+        return WithNoOutgoingIntent(input);
     }
 }
 
 public class PocBrainD : PocBrain
 {
-    public PocBrainD() : base("D")
+    public PocBrainD(IMyTelemetry telemetry) : base("D", telemetry)
     {
     }
 
-    protected override PocBrainOutput OnProcess(PocBrainInput input)
+    protected override BrainOutput OnProcess(BrainInput input)
     {
         if (input.IncomingIntent != null && input.IncomingIntent.Intent is PocIntent intent)
         {
             if (intent.PocType == PocIntentType.I4)
             {
-                return input.WithOutgoingIntent(
-                    PocIntent.Create(0, "D", "Q", PocIntentType.I5, true),
-                    input.IncomingIntent.ConversationToken
+                return WithOutgoingIntent(
+                    input,
+                    new IntentTuple(PocIntent.Create(TakeNextIntentId(), "D", "Q", PocIntentType.I5, true), input.IncomingIntent.ConversationToken)
                 );
             }
         }
-        
-        return new PocBrainOutput(input.State);
+
+        return WithNoOutgoingIntent(input);
     }
 }
 
 public class PocBrainQ : PocBrain
 {
-    public PocBrainQ() : base("Q")
+    public PocBrainQ(IMyTelemetry telemetry) : base("Q", telemetry)
     {
     }
 
-    protected override PocBrainOutput OnProcess(PocBrainInput input)
+    protected override BrainOutput OnProcess(BrainInput input)
     {
         if (input.IncomingIntent == null || !(input.IncomingIntent.Intent is PocIntent intent))
         {
-            return new PocBrainOutput(input.State);
+            return WithNoOutgoingIntent(input);
         }
 
         switch (intent.PocType)
         {
             case PocIntentType.I1:
-                return input.WithOutgoingIntent(
-                    PocIntent.Create(0, "Q", "A", PocIntentType.I2, concludesConversation: true, priority: AirGroundPriority.GroundToAir),
-                    input.IncomingIntent.ConversationToken
-                ).WithMemoizedConversationToken(input);
+                return WithOutgoingIntent(
+                    input,
+                    new IntentTuple(
+                        PocIntent.Create(TakeNextIntentId(), "Q", "A", PocIntentType.I2, concludesConversation: true, priority: AirGroundPriority.GroundToAir),
+                        input.IncomingIntent.ConversationToken
+                    )
+                );
             case PocIntentType.I3:
-                return input.WithOutgoingIntent(
-                    PocIntent.Create(0, "Q", "D", PocIntentType.I4, concludesConversation: false, priority: AirGroundPriority.GroundToAir),
-                    conversationToken: null
-                ).WithMemoizedConversationToken(input);
+                return WithOutgoingIntent(
+                    input,
+                    new IntentTuple(
+                        PocIntent.Create(TakeNextIntentId(), "Q", "D", PocIntentType.I4, concludesConversation: false, priority: AirGroundPriority.GroundToAir),
+                        input.IncomingIntent.ConversationToken
+                    )
+                );
             case PocIntentType.I5:
-                return input.WithOutgoingIntent(
-                    PocIntent.Create(0, "Q", "B", PocIntentType.I6, concludesConversation: false, priority: AirGroundPriority.GroundToAir),
-                    TryGetMemoizedConversationToken("B")
-                ).WithMemoizedConversationToken(input);
+                return WithOutgoingIntent(
+                    input,
+                    new IntentTuple(
+                        PocIntent.Create(TakeNextIntentId(), "Q", "B", PocIntentType.I6, concludesConversation: false, priority: AirGroundPriority.GroundToAir),
+                        TryGetMemoizedConversationToken("B")
+                    )
+                );
             case PocIntentType.I7:
-                return input.WithOutgoingIntent(
-                    PocIntent.Create(0, "Q", "C", PocIntentType.I8, concludesConversation: false, priority: AirGroundPriority.GroundToAir),
-                    TryGetMemoizedConversationToken("C")
-                ).WithMemoizedConversationToken(input);
+                return WithOutgoingIntent(
+                    input,
+                    new IntentTuple(
+                        PocIntent.Create(TakeNextIntentId(), "Q", "C", PocIntentType.I8, concludesConversation: false, priority: AirGroundPriority.GroundToAir),
+                        TryGetMemoizedConversationToken("C")
+                    )
+                );
             case PocIntentType.I9:
-                return input.WithOutgoingIntent(
-                    PocIntent.Create(0, "Q", "B", PocIntentType.I10, concludesConversation: true, priority: AirGroundPriority.GroundToAir),
-                    TryGetMemoizedConversationToken("B")
-                ).WithMemoizedConversationToken(input);
+                return WithOutgoingIntent(
+                    input, 
+                    new IntentTuple(
+                        PocIntent.Create(TakeNextIntentId(), "Q", "B", PocIntentType.I10, concludesConversation: true, priority: AirGroundPriority.GroundToAir),
+                        TryGetMemoizedConversationToken("B")
+                    )
+                );
             default:
-                return new PocBrainOutput(input.State);
+                return WithNoOutgoingIntent(input);
         }
 
         ConversationToken? TryGetMemoizedConversationToken(string callsign)
         {
-            return input.State.ConversationPerCallsign.TryGetValue(callsign, out var token)
+            if (input.IncomingIntent?.Intent.Header.Caller.Full == callsign && input.IncomingIntent.ConversationToken != null)
+            {
+                return input.IncomingIntent.ConversationToken;
+            }
+            
+            return input.State.ConversationPerCallsign.TryGetValue(new Callsign(callsign, callsign), out var token)
                 ? token
                 : null;
         }

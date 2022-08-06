@@ -105,7 +105,7 @@ public class TelemetrySourceGenerator : ISourceGenerator
         IReadOnlyList<TelemetryDescription> telemetries, 
         List<string> generatorMessages)
     {
-        var facadeClassName = context.Compilation.AssemblyName!.Replace(".", "");
+        var facadeClassName = context.Compilation.AssemblyName!.Replace(".", "") + "Telemetry";
         var classSyntaxImplementationFacade =
             ImplementationFacadeSyntaxGenerator.GenerateClass(facadeClassName, telemetries);
         var unitSyntax = CompilationUnitGenerator.GenerateCompilationUnit(

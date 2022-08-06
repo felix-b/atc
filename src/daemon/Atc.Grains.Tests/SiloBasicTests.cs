@@ -1,5 +1,6 @@
 using Atc.Grains.Tests.Samples;
 using FluentAssertions;
+using FluentAssertions.Formatting;
 using NUnit.Framework;
 
 namespace Atc.Grains.Tests;
@@ -304,5 +305,59 @@ public class SiloBasicTests
                 .Select(g => g.GrainId)
                 .ToArray();
         }
+    }
+
+    [Test]
+    public void CannotDispatchGrainEventOnDifferentThread()
+    {
+        var eventWriter = new SiloTestDoubles.TestEventStreamWriter();
+        var silo = SiloTestDoubles.CreateSilo("test1", SampleSilo.Configure, eventWriter: eventWriter);
+        var one1Ref = silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(
+            grainId,
+            Num: 123,
+            Str: "ORIGINAL"));
+
+        Exception? exception = null;
+        
+        var thread = new Thread(unused => {
+            try
+            {
+                one1Ref.Get().ChangeStr("CHANGED");
+            }
+            catch (Exception e)
+            {
+                exception = e;
+            }
+        });
+        thread.Start();
+        thread.Join();
+
+        exception.Should().NotBeNull();
+        exception.Should().BeOfType<InvalidOperationException>();
+    }
+
+    [Test]
+    public void CannotExecuteReadyWorkItemsOnDifferentThread()
+    {
+        var eventWriter = new SiloTestDoubles.TestEventStreamWriter();
+        var silo = SiloTestDoubles.CreateSilo("test1", SampleSilo.Configure, eventWriter: eventWriter);
+
+        Exception? exception = null;
+        
+        var thread = new Thread(unused => {
+            try
+            {
+                silo.ExecuteReadyWorkItems();
+            }
+            catch (Exception e)
+            {
+                exception = e;
+            }
+        });
+        thread.Start();
+        thread.Join();
+
+        exception.Should().NotBeNull();
+        exception.Should().BeOfType<InvalidOperationException>();
     }
 }

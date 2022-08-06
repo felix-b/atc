@@ -1,13 +1,21 @@
 import React from 'react';
-import logo from './logo.svg';
-import { Counter } from './features/counter/Counter';
 import './App.css';
 import { TraceView } from './features/traceView/TraceView';
+import { TraceToolbar } from './features/traceView/TraceViewToolbar';
+import { AppDependencyContext } from './AppDependencyContext';
 
 
 const App = () => (
     <>
         <h1>Trace View</h1>
+        <AppDependencyContext.Consumer>
+            {dependencies => (
+                <TraceToolbar 
+                    store={dependencies.store} 
+                    traceService={dependencies.traceService} 
+                    traceViewAPI={dependencies.traceViewAPI} />
+            )}
+        </AppDependencyContext.Consumer>
         <hr/>
         <TraceView />
     </>

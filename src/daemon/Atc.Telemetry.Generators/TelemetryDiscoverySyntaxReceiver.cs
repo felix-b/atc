@@ -108,13 +108,21 @@ public class TelemetryDiscoverySyntaxReceiver : ISyntaxContextReceiver
         {
             _messages.Add($"CreateTelemetryDescription: {interfaceTypeSymbol.GetFullyQualifiedMetadataName()}");
 
-            var telemetryName = GetTelemetryName(interfaceTypeSymbol); 
+            var telemetryName = GetTelemetryName(interfaceTypeSymbol);
+            var allInterfaces = interfaceTypeSymbol
+                .AllInterfaces.CastArray<ITypeSymbol>()
+                .Add(interfaceTypeSymbol);
+            var allMethods = allInterfaces
+                .SelectMany(symbol => symbol.GetMembers().OfType<IMethodSymbol>())
+                .ToArray();
+            
             return new TelemetryDescription(
                 name: telemetryName,
                 interfaceSymbol: interfaceTypeSymbol!,
-                methods: interfaceTypeSymbol.GetMembers()
-                    .OfType<IMethodSymbol>()
-                    .Select(methodSymbol => CreateTelemetryMethodDescription(methodSymbol, telemetryName))
+                methods: allMethods.Select(methodSymbol => CreateTelemetryMethodDescription(methodSymbol, telemetryName))
+                // methods: interfaceTypeSymbol.GetMembers()
+                //     .OfType<IMethodSymbol>()
+                //     .Select(methodSymbol => CreateTelemetryMethodDescription(methodSymbol, telemetryName))
             );
         }
             

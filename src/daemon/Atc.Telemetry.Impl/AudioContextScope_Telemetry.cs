@@ -1,10 +1,12 @@
+#if false
+
 using Atc.Sound.OpenAL;
 
 namespace Atc.Telemetry.Impl;
 
 public static class AudioContextScope_Telemetry
 {
-    public class Noop : AudioContextScope.IThisTelemetry
+    public class Noop : AudioContextScope.IMyTelemetry
     {
         public ITraceSpan InitializingSoundContext()
         {
@@ -25,3 +27,5 @@ public static class AudioContextScope_Telemetry
 
     }
 }
+
+#endif

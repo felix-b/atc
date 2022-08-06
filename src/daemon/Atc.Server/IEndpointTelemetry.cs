@@ -23,7 +23,7 @@ public interface IEndpointTelemetry : ITelemetry
     void DebugConnectionJoiningReceiveLoop(long connectionId);
     ITraceSpan SpanConnectionDispose(long connectionId, WebSocketState socketState);
     void ErrorDispatchOperationFailed(string requestType, Exception exception);
-    OperationMethodNotFoundException ExceptionOperationMethodNotFound<TPayloadCaseIn>(TPayloadCaseIn discriminatorValue) where TPayloadCaseIn : Enum;
+    OperationMethodNotFoundException ExceptionOperationMethodNotFound(int discriminatorValue);
     ITraceSpan SpanQueueOpDispatcherRunOutputThread(int queueIndex);
     ITraceSpan SpanQueueOpDispatcherRunInputThread();
     ITraceSpan SpanConnectionRunReceiveLoop(long connectionId);
@@ -46,7 +46,7 @@ public interface IEndpointTelemetry : ITelemetry
     void DebugQueueOpDispatcherAcceptingWorkItem(long connectionId, ulong workItemId, string workItemType);
     ITraceSpan SpanQueueOpDispatcherExecuteWorkItem(ulong workItemId, string workItemType);
     void DebugQueueOpDispatcherEnqueueOutputRequests(int count, long queueIndex);
-    ITraceSpan SpanMethodDispatcherInvoke<TPayloadCaseIn>(TPayloadCaseIn payloadCase, string methodName) where TPayloadCaseIn : Enum;
+    ITraceSpan SpanMethodDispatcherInvoke(int payloadCase, string methodName);
     ITraceSpan SpanQueueOpDispatcherInvokeArbitrary();
     ITraceSpan SpanQueueOpDispatcherPerformOutputRequests(ulong workItemId, int count);
     ITraceSpan SpanConnectionPerformOutputRequest(int index, string type);

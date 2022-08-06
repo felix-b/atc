@@ -24,7 +24,7 @@
         <ProjectReference Include="..\Atc.Speech.AzurePlugin\Atc.Speech.AzurePlugin.csproj" />
         <ProjectReference Include="..\Atc.World\Atc.World.csproj" />
 
-        <ProjectReference Include="..\Atc.Telemetry.Generators\Atc.Telemetry.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <!--ProjectReference Include="..\Atc.Telemetry.Generators\Atc.Telemetry.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" /-->
     </ItemGroup>
 
 </Project>

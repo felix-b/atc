@@ -1,3 +1,5 @@
+#if false
+
 using Atc.World.Communications;
 
 // ReSharper disable InconsistentNaming
@@ -10,3 +12,6 @@ public static class SpeechService_IMyTelemetry
     {
     }
 }
+
+#endif
+

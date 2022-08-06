@@ -8,6 +8,7 @@ export interface BufferReader {
     readUtf8String(byteLength: number): string;
     readLengthPrefixedUtf8String(): string;
     rewindInt8(): void;
+    printBuffer(): void;
     isEndOfBuffer: boolean;
 }
 
@@ -64,6 +65,27 @@ export function createBufferReader(dataView: DataView): BufferReader {
         _offset -= 1;
     }
 
+    function printBuffer() {
+        let printOffset = 0;
+        let printLine = '';
+
+        while (printOffset < dataView.byteLength) {
+            const byte = dataView.getUint8(printOffset);
+            printOffset++;
+            
+            printLine += `${byte.toString(16).padStart(2,'0')} `;
+        
+            if ((printOffset % 16) === 0) {
+                console.log(printLine);
+                printLine = '';
+            } else if ((printOffset % 8) === 0) {
+                printLine += '   ';
+            } 
+        }
+
+        console.log(printLine);
+    }
+
     return {
         readUint8,
         readInt8,
@@ -73,6 +95,7 @@ export function createBufferReader(dataView: DataView): BufferReader {
         readUtf8String,
         readLengthPrefixedUtf8String,
         rewindInt8,
+        printBuffer,
         
         get isEndOfBuffer() {
             return _offset >= dataView.byteLength;

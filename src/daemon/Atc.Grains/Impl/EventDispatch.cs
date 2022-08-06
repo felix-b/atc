@@ -23,6 +23,8 @@ public class EventDispatch : ISiloEventDispatch
 
     public void Dispatch(IGrain target, IGrainEvent @event)
     {
+        _silo.ValidateOwnerThread();
+        
         if (_dispatching)
         {
             throw new InvalidOperationException("Reentrant dispatch is not allowed. Use TaskQueue.Defer() instead.");
@@ -50,11 +52,10 @@ public class EventDispatch : ISiloEventDispatch
                 target.ObserveChanges(state0, state1);
             }
         }
-        // catch (Exception e)
-        // {
-        //     //TODO: logSpan.Fail(e);
-        //     //throw;
-        // }
+        catch (Exception e)
+        {
+            throw _telemetry.ExceptionDispatchEventFailed(sequenceNo, target.GrainId, @event.GetType().Name, exception: e);
+        }
         finally
         {
             _dispatching = false;

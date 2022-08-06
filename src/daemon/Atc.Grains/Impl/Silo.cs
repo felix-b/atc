@@ -7,11 +7,14 @@ public class Silo : ISilo
     private readonly ISiloDependencyContext _dependencyContext;
     private readonly SuperGrain _superGrain;
     private readonly TaskQueueGrain _taskQueueGrain;
+    private readonly int _ownerManagedThreadId;
     
     public Silo(
         string siloId, 
         SiloConfigurationBuilder configuration)
     {
+        _ownerManagedThreadId = Thread.CurrentThread.ManagedThreadId;
+        
         SiloId = siloId;
         Telemetry = configuration.Telemetry;
         Environment = configuration.Environment;
@@ -44,9 +47,31 @@ public class Silo : ISilo
             .Get(); 
     }
 
+    public void BlockWhileIdle(CancellationToken cancellation)
+    {
+        ValidateOwnerThread();
+        _taskQueueGrain.BlockWhileIdle(cancellation);
+    }
+        
     public void ExecuteReadyWorkItems()
     {
+        ValidateOwnerThread();
         _taskQueueGrain.ExecuteReadyWorkItems();
+    }
+
+    public void PostAsyncAction(ulong key, Action action)
+    {
+        _taskQueueGrain.PostAsyncAction(key, action);
+    }
+
+    public void ValidateOwnerThread()
+    {
+        var currentThreadId = Thread.CurrentThread.ManagedThreadId;
+        if (currentThreadId != _ownerManagedThreadId)
+        {
+            throw Telemetry.ExceptionInvalidInteractionThread(
+                SiloId, ownerThreadId: _ownerManagedThreadId, currentThreadId: currentThreadId);
+        }
     }
 
     public string SiloId { get; }

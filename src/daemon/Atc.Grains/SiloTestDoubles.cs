@@ -164,9 +164,59 @@ public static class SiloTestDoubles
             return new TestSpan(this, $"ExecuteReadyWorkItems");
         }
 
-        public ITraceSpan SpanExecuteWorkItem(string grainId, IGrainWorkItem workItem, bool timedOut)
+        public ITraceSpan SpanExecuteWorkItem(string grainId, string workItemType, ulong workItemId, bool timedOut)
         {
-            return new TestSpan(this, $"ExecuteWorkItem [{grainId}] [{workItem.GetType().Name}]");
+            return new TestSpan(this, $"ExecuteWorkItem [{grainId}] type[{workItemType}] id[{workItemId}] timedOut[{timedOut}]");
+        }
+
+        public void DebugInsertWorkItem(
+            ulong id, string type, DateTime notEarlierThanUtc, DateTime notLaterThanUtc, DateTime firstWorkItemUtc)
+        {
+            ReportDebug("InsertWorkItem");
+        }
+
+        public void DebugRemoveWorkItem(ulong id, DateTime firstWorkItemUtc)
+        {
+            ReportDebug("RemoveWorkItem");
+        }
+
+        public EventFailedException ExceptionDispatchEventFailed(ulong sequenceNo, string targetGrainId, string eventType, Exception exception)
+        {
+            var message = $"DispatchEventFailed seqNop[{sequenceNo}] targetGrainId[{targetGrainId}] eventType[{eventType}] exception[{exception.GetType().Name}: {exception.Message}]";
+            ReportError(message);
+            return new EventFailedException(message);
+        }
+
+        public InvalidOperationException ExceptionInvalidInteractionThread(string siloId, int ownerThreadId, int currentThreadId)
+        {
+            var message = $"InvalidInteractionThread siloId[{siloId}] ownerThreadId[{ownerThreadId}] currentThreadId[{currentThreadId}]";
+            ReportError(message);
+            return new InvalidOperationException(message);
+        }
+
+        public void DebugPostedAsyncAction(ulong key)
+        {
+            ReportDebug($"PostedAsyncAction key[{key}]");
+        }
+
+        public void ErrorFailedToPostAsyncActionQueueFull(ulong key)
+        {
+            ReportDebug($"FailedToPostAsyncActionQueueFull key[{key}]");
+        }
+
+        public ITraceSpan SpanRunAsyncAction(ulong key)
+        {
+            return new TestSpan(this, $"SpanRunAsyncAction key[{key}]");
+        }
+
+        public void ErrorFailedToExecuteAsyncAction(ulong key, Exception exception)
+        {
+            ReportError($"FailedToExecuteAsyncAction key[{key}], exception[${exception.GetType().Name}: {exception.Message}]");
+        }
+
+        public void ErrorExecuteReadyWorkItemsFailed(Exception exception)
+        {
+            ReportError($"ExecuteReadyWorkItemsFailed exception[${exception.GetType().Name}: {exception.Message}]");
         }
     }
 

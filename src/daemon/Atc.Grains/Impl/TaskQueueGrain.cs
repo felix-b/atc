@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Threading.Channels;
 
 namespace Atc.Grains.Impl;
 
@@ -49,6 +50,9 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
     private readonly ISiloGrains _grains;
     private readonly ISiloTelemetry _telemetry;
     private readonly ISiloEnvironment _environment;
+    
+    [NotEventSourced]
+    private readonly Channel<AsyncActionEntry> _postedAsyncActions = Channel.CreateBounded<AsyncActionEntry>(1000);
 
     public TaskQueueGrain(
         string grainId,
@@ -85,28 +89,73 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
             HasPredicate: withPredicate);
 
         Dispatch(new InsertWorkItemEntryEvent(_environment.UtcNow, entry));
+        
+        _telemetry.DebugInsertWorkItem(
+            id: entry.Id, 
+            type: workItem.GetType().Name, 
+            notEarlierThanUtc ?? _environment.UtcNow, 
+            notLaterThanUtc ?? DateTime.MaxValue, 
+            State.FirstWorkItemUtc);
+    
         return new GrainWorkItemHandle(itemId);
     }
 
     public void CancelWorkItem(GrainWorkItemHandle handle)
     {
         Dispatch(new RemoveWorkItemEntryEvent(_environment.UtcNow, handle.Id));
+
+        _telemetry.DebugRemoveWorkItem(
+            id: handle.Id, 
+            State.FirstWorkItemUtc);
+    }
+
+    public void PostAsyncAction(ulong key, Action action)
+    {
+        if (_postedAsyncActions.Writer.TryWrite(new AsyncActionEntry(key, action)))
+        {
+            _telemetry.DebugPostedAsyncAction(key);
+        }
+        else
+        {
+            _telemetry.ErrorFailedToPostAsyncActionQueueFull(key);
+        }
+    }
+
+    public void BlockWhileIdle(CancellationToken cancellation)
+    {
+        var millisecondsToNextWorkItem = (int)NextWorkItemAtUtc.Subtract(_environment.UtcNow).TotalMilliseconds;
+        if (millisecondsToNextWorkItem <= 25)
+        {
+            return;
+        }
+        
+        var awaitAsyncAction = _postedAsyncActions.Reader.WaitToReadAsync(cancellation);
+        awaitAsyncAction.AsTask().Wait(millisecondsToNextWorkItem, cancellation);
     }
 
     public void ExecuteReadyWorkItems()
     {
         var utcNow = _environment.UtcNow;
-        var readyWorkItemQuery = GetReadyWorkItemQuery();
-
         using var traceSpan = _telemetry.SpanExecuteReadyWorkItems();
-        
-        foreach (var entry in readyWorkItemQuery)
+
+        try
         {
-            var (shouldExecute, timedOut) = ShouldExecuteEntry(entry);
-            if (shouldExecute)
+            var readyWorkItemQuery = GetReadyWorkItemQuery();
+
+            foreach (var entry in readyWorkItemQuery)
             {
-                ExecuteEntry(entry, timedOut);
+                var (shouldExecute, timedOut) = ShouldExecuteEntry(entry);
+                if (shouldExecute)
+                {
+                    ExecuteEntry(entry, timedOut);
+                }
             }
+
+            ExecutePendingAsyncActions();
+        }
+        catch (Exception e)
+        {
+            _telemetry.ErrorExecuteReadyWorkItemsFailed(exception: e);
         }
 
         IEnumerable<WorkItemEntry> GetReadyWorkItemQuery()
@@ -119,7 +168,8 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
 
         void ExecuteEntry(WorkItemEntry entry, bool timedOut)
         {
-            using var executeEntrySpan = _telemetry.SpanExecuteWorkItem(entry.TargetRef.GrainId, entry.WorkItem, timedOut);
+            using var executeEntrySpan = _telemetry.SpanExecuteWorkItem(
+                entry.TargetRef.GrainId, entry.WorkItem.GetType().Name, entry.Id, timedOut);
             
             try
             {
@@ -138,6 +188,24 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
             var timedOut = !predicateResult && entry.NotLaterThanUtc <= utcNow;
             var shouldExecute = predicateResult || timedOut;
             return (shouldExecute, timedOut);
+        }
+
+        void ExecutePendingAsyncActions()
+        {
+            while (_postedAsyncActions.Reader.TryRead(out var actionEntry))
+            {
+                using (_telemetry.SpanRunAsyncAction(key: actionEntry.Key))
+                {
+                    try
+                    {
+                        actionEntry.Action();
+                    }
+                    catch (Exception e)
+                    {
+                        _telemetry.ErrorFailedToExecuteAsyncAction(key: actionEntry.Key, exception: e);
+                    }
+                }
+            }
         }
     }
 
@@ -224,6 +292,18 @@ public class TaskQueueGrain : AbstractGrain<TaskQueueGrain.GrainState>, ISiloTas
             }
 
             return x.Id < y.Id ? -1 : 1;
+        }
+    }
+
+    private struct AsyncActionEntry
+    {
+        public readonly ulong Key;
+        public readonly Action Action;
+
+        public AsyncActionEntry(ulong key, Action action)
+        {
+            Key = key;
+            Action = action;
         }
     }
 }

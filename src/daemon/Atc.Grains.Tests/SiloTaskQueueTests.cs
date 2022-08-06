@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Atc.Grains.Impl;
 using Atc.Grains.Tests.Samples;
 using FluentAssertions;
@@ -328,7 +329,92 @@ public class SiloTaskQueueTests
         grainRef2.Get().Str.Should().Be("DEF");     // unchanged - work item cancelled
         grainRef2.Get().Num.Should().Be(666);       // multiplied - work item executed
     }
-    
+
+    [Test]
+    public void CanExecuteAsyncActionPostedOnDifferentThread() 
+    {
+        var startUtc = new DateTime(2022, 10, 10, 8, 30, 0, DateTimeKind.Utc);
+        var environment = new SiloTestDoubles.TestEnvironment {
+            UtcNow = startUtc
+        };
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure, environment: environment);
+        PopulateGrains(silo);
+        
+        var grainRef = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
+        Exception? exception = null;
+        
+        var thread = new Thread(unused => {
+            try
+            {
+                silo.PostAsyncAction(555, () => {
+                    grainRef.Get().ChangeStr("CHANGED");
+                });
+            }
+            catch (Exception e)
+            {
+                exception = e;
+            }
+        });
+        thread.Start();
+        thread.Join();
+
+        silo.ExecuteReadyWorkItems();
+
+        exception.Should().BeNull();
+        grainRef.Get().Str.Should().Be("CHANGED");
+    }
+
+    [Test]
+    public void CanEnqueueWorkItemFromAsyncActionPostedOnDifferentThread() 
+    {
+        //-- given
+        
+        var startUtc = new DateTime(2022, 10, 10, 8, 30, 0, DateTimeKind.Utc);
+        var environment = new SiloTestDoubles.TestEnvironment {
+            UtcNow = startUtc
+        };
+        var silo = SiloTestDoubles.CreateSilo("test-task-queue", SampleSilo.Configure, environment: environment);
+
+        PopulateGrains(silo);
+        var grainRef1 = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One1);
+        var grainRef2 = silo.Grains.GetRefById<SampleGrainOne>(GrainIds.One2);
+
+        grainRef1.Get().DeferredDuplicateStr(atUtc: startUtc.AddSeconds(5));
+        Exception? exception = null;
+        var clock = Stopwatch.StartNew();
+
+        var thread = new Thread(unused => {
+            Thread.Sleep(50);
+            try
+            {
+                silo.PostAsyncAction(555, () => {
+                    grainRef2.Get().DeferredDuplicateStr(atUtc: startUtc.AddMilliseconds(250));
+                });
+            }
+            catch (Exception e)
+            {
+                exception = e;
+            }
+        });
+        thread.Start();
+
+        //-- when
+        
+        silo.BlockWhileIdle(CancellationToken.None);
+        
+        //-- then
+        
+        clock.ElapsedMilliseconds.Should().BeLessThan(1000);
+        thread.Join();
+        exception.Should().BeNull();
+        
+        environment.UtcNow = startUtc.Add(TimeSpan.FromMilliseconds(500));
+        silo.ExecuteReadyWorkItems(); // execute async action and enqueue work item
+        silo.ExecuteReadyWorkItems(); // execute work item
+
+        grainRef2.Get().Str.Should().Be("DEF|DEF");
+    }
+
     private void PopulateGrains(ISilo silo)
     {
         silo.Grains.CreateGrain(grainId => new SampleGrainOne.GrainActivationEvent(

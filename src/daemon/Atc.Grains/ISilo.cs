@@ -20,7 +20,11 @@ public interface ISilo
     
     DateTime NextWorkItemAtUtc { get; }
 
+    void BlockWhileIdle(CancellationToken cancellation);
+
     void ExecuteReadyWorkItems();
+
+    void PostAsyncAction(ulong key, Action action);
 
     public static ISilo Create(
         string siloId,
@@ -96,6 +100,7 @@ public interface ISiloTaskQueue
         bool withPredicate = false);
 
     void CancelWorkItem(GrainWorkItemHandle handle);
+    void PostAsyncAction(ulong key, Action action);
 }
 
 public struct GrainWorkItemHandle

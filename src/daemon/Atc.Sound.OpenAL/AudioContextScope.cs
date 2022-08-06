@@ -5,12 +5,12 @@ namespace Atc.Sound.OpenAL;
 
 public unsafe class AudioContextScope : IDisposable
 {
-    private readonly IThisTelemetry _telemetry;
+    private readonly IMyTelemetry _telemetry;
     private readonly ALDevice _device; 
     private readonly ALContext _context;
     private bool _disposed = false;
         
-    public AudioContextScope(IThisTelemetry telemetry)
+    public AudioContextScope(IMyTelemetry telemetry)
     {
         _telemetry = telemetry;
         using var logSpan =_telemetry.InitializingSoundContext();
@@ -21,7 +21,7 @@ public unsafe class AudioContextScope : IDisposable
         _telemetry.InfoOpenALInit(version, vendor, renderer);
 
         var devices = ALC.GetStringList(GetEnumerationStringList.DeviceSpecifier);
-        _telemetry.VerboseListAlcDevices(deviceList: string.Join(", ", devices));
+        _telemetry.VerboseListAlcDevices(deviceList: string.Join(";", devices));
 
         _device = ALC.OpenDevice(null);
         _context = ALC.CreateContext(_device, (int*)null);
@@ -51,7 +51,8 @@ public unsafe class AudioContextScope : IDisposable
         }
     }
     
-    public interface IThisTelemetry : ITelemetry
+    [TelemetryName("AudioContextScope")]
+    public interface IMyTelemetry : ITelemetry
     {
         ITraceSpan InitializingSoundContext();
         void InfoOpenALInit(string version, string vendor, string renderer);

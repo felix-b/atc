@@ -7,9 +7,8 @@ public record PocIntent(
     PocIntentType PocType
 ) : Intent(Header)
 {
-
     public override string ToString() => $"{Header.Caller.Full}->{Header.Callee?.Full ?? "*"} : {PocType}";
-
+    
     public static PocIntent Create(
         ulong id, 
         string from, 

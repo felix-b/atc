@@ -1,5 +1,8 @@
 using Atc.Grains;
+using Atc.Telemetry;
+using Atc.Telemetry.CodePath;
 using Atc.World.Contracts.Communications;
+using GeneratedCode;
 using Moq;
 
 namespace Atc.World.Tests;
@@ -74,6 +77,30 @@ public static class TestUtility
                 : (audioStreamId ?? 0),
             SynthesisRequest: effectiveSynthesisRequest,
             Duration: effectiveDuration);
+    }
+
+    public static void RegisterTelemetryProvider(
+        SiloConfigurationBuilder config, 
+        CodePathEnvironment? codePathEnvironment = null)
+    {
+        if (codePathEnvironment == null)
+        {
+            config.DependencyBuilder.AddSingleton<ITelemetryProvider>(new TelemetryProvider(new[] {
+                AtcSpeechAzurePluginTelemetry.GetTestDoubleImplementations(),
+                AtcSoundOpenALTelemetry.GetTestDoubleImplementations(),
+                AtcWorldTelemetry.GetTestDoubleImplementations(),
+                AtcWorldTestsTelemetry.GetTestDoubleImplementations()
+            }));
+        }
+        else
+        {
+            config.DependencyBuilder.AddSingleton<ITelemetryProvider>(new TelemetryProvider(new[] {
+                AtcSpeechAzurePluginTelemetry.GetCodePathImplementations(codePathEnvironment),
+                AtcSoundOpenALTelemetry.GetCodePathImplementations(codePathEnvironment),
+                AtcWorldTelemetry.GetCodePathImplementations(codePathEnvironment),
+                AtcWorldTestsTelemetry.GetCodePathImplementations(codePathEnvironment)
+            }));
+        }
     }
     
     private static int TakeNextMockId()

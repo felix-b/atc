@@ -95,7 +95,7 @@ public class TestEndpointTelemetry : TelemetryTestDoubleBase, IEndpointTelemetry
         ReportError($"ErrorDispatchOperationFailed({requestType},{exception.GetType().Name}:{exception.Message})");
     }
 
-    OperationMethodNotFoundException IEndpointTelemetry.ExceptionOperationMethodNotFound<TPayloadCaseIn>(TPayloadCaseIn discriminatorValue)
+    OperationMethodNotFoundException IEndpointTelemetry.ExceptionOperationMethodNotFound(int discriminatorValue)
     {
         var message = $"ExceptionOperationMethodNotFound(discriminatorValue={discriminatorValue})"; 
         ReportError(message);
@@ -212,7 +212,7 @@ public class TestEndpointTelemetry : TelemetryTestDoubleBase, IEndpointTelemetry
         ReportDebug($"QueueOpDispatcherEnqueueOutputRequests(count={count},queueIndex={queueIndex})");
     }
 
-    ITraceSpan IEndpointTelemetry.SpanMethodDispatcherInvoke<TPayloadCaseIn>(TPayloadCaseIn payloadCase, string methodName)
+    ITraceSpan IEndpointTelemetry.SpanMethodDispatcherInvoke(int payloadCase, string methodName)
     {
         return new TestSpan(this, $"MethodDispatcherInvoke(payloadCase={payloadCase},methodName={methodName})");
     }

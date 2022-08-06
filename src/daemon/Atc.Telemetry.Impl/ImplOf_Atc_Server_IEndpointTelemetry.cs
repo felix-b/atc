@@ -1,3 +1,5 @@
+#if false
+
 using System.Net.WebSockets;
 using Atc.Server;
 
@@ -207,3 +209,5 @@ public static class ImplOf_Atc_Server_IEndpointTelemetry
         }
     }
 }
+
+#endif

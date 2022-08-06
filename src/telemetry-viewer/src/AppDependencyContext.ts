@@ -1,10 +1,16 @@
 import React from 'react';
-import { TraceService } from './services/traceService';
+import { AppStore } from './app/store';
+import { TraceViewAPI } from './features/traceView/traceViewAPI';
+import { TraceService } from './services/types';
 
 export interface AppDependencies {
-    traceService: TraceService
+    store: AppStore;
+    traceService: TraceService;
+    traceViewAPI: TraceViewAPI;
 }
 
 export const AppDependencyContext = React.createContext<AppDependencies>({
-    traceService: undefined as any
+    store: undefined as any,
+    traceService: undefined as any,
+    traceViewAPI: undefined as any,
 });

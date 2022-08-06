@@ -2,7 +2,8 @@ using System.Collections.Immutable;
 using System.Threading.Channels;
 using Atc.Server;
 using Atc.Telemetry.CodePath;
-using Atc.Telemetry.Impl;
+using Atc.Utilities;
+using GeneratedCode;
 
 namespace Atc.Telemetry.Exporters.CodePath;
 
@@ -22,7 +23,7 @@ public class CodePathWebSocketExporter : ICodePathExporter, IDisposable
 
     public CodePathWebSocketExporter(int listenPortNumber, IEndpointTelemetry? telemetry = null)
     {
-        var effectiveTelemetry = telemetry ?? new ImplOf_Atc_Server_IEndpointTelemetry.Noop();
+        var effectiveTelemetry = telemetry ?? AtcServerTelemetry.CreateNoopTelemetry<IEndpointTelemetry>();
         
         _buffers = Channel.CreateBounded<MemoryStream>(capacity: 100000);
         _reader = _buffers.Reader;

@@ -9,6 +9,8 @@ public interface IWorldGrain : IGrainId
 {
     void AddRadioMedium(GrainRef<IGroundStationRadioMediumGrain> medium);
     GrainRef<IGroundStationRadioMediumGrain>? TryFindRadioMedium(GeoPoint position, Altitude altitude, Frequency frequency);
+    ulong TakeNextIntentId();
+    ulong TakeNextTransmissionId();
 }
 
 public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
@@ -39,6 +41,20 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
         return State.RadioMediums.First();//TODO
     }
 
+    public ulong TakeNextIntentId()
+    {
+        var result = State.NextIntentId;
+        Dispatch(new NextIntentIdTakenEvent());
+        return result;
+    }
+
+    public ulong TakeNextTransmissionId()
+    {
+        var result = State.NextTransmissionId;
+        Dispatch(new NextTransmissionIdTakenEvent());
+        return result;
+    }
+
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {
         switch (workItem)
@@ -55,6 +71,14 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
             case AddRadioMediumEvent addMedium:
                 return stateBefore with {
                     RadioMediums = stateBefore.RadioMediums.Add(addMedium.Medium)
+                };
+            case NextIntentIdTakenEvent:
+                return stateBefore with {
+                    NextIntentId = stateBefore.NextIntentId + 1
+                };
+            case NextTransmissionIdTakenEvent:
+                return stateBefore with {
+                    NextTransmissionId = stateBefore.NextTransmissionId + 1
                 };
             default:
                 return stateBefore;
@@ -74,13 +98,17 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
     private static GrainState CreateInitialState(GrainActivationEvent activation)
     {
         return new GrainState(
-            RadioMediums: ImmutableArray<GrainRef<IGroundStationRadioMediumGrain>>.Empty
+            RadioMediums: ImmutableArray<GrainRef<IGroundStationRadioMediumGrain>>.Empty,
+            NextIntentId: 1,
+            NextTransmissionId: 1
         );
     }
 
     public record GrainState(
         //TODO: optimize
-        ImmutableArray<GrainRef<IGroundStationRadioMediumGrain>> RadioMediums  
+        ImmutableArray<GrainRef<IGroundStationRadioMediumGrain>> RadioMediums,
+        ulong NextIntentId,
+        ulong NextTransmissionId
     );
 
     public record GrainActivationEvent(
@@ -91,6 +119,10 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
     public record AddRadioMediumEvent(
         GrainRef<IGroundStationRadioMediumGrain> Medium  
     ) : IGrainEvent;
+
+    public record NextIntentIdTakenEvent : IGrainEvent;
+
+    public record NextTransmissionIdTakenEvent : IGrainEvent;
 
     public record SampleWorkItem(
         //TODO

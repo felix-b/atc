@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Atc.Utilities;
 
 namespace Atc.Server;
 
@@ -45,7 +46,7 @@ public class MethodInvocationOperationDispatcher<TEnvelopeIn, TEnvelopeOut, TPay
 
         if (_methodByPayloadCase.TryGetValue(payloadCase, out var method))
         {
-            using var traceSpan = _telemetry.SpanMethodDispatcherInvoke(payloadCase, methodName: method.Method.Name);
+            using var traceSpan = _telemetry.SpanMethodDispatcherInvoke(payloadCase.AsInt(), methodName: method.Method.Name);
 
             try
             {
@@ -59,7 +60,7 @@ public class MethodInvocationOperationDispatcher<TEnvelopeIn, TEnvelopeOut, TPay
         }
         else
         {
-            throw _telemetry.ExceptionOperationMethodNotFound(discriminatorValue: payloadCase); 
+            throw _telemetry.ExceptionOperationMethodNotFound(discriminatorValue: payloadCase.AsInt()); 
         }
     }
 

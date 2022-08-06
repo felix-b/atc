@@ -3,26 +3,25 @@ import { connect } from 'react-redux';
 
 import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import { AppDependencyContext } from '../../AppDependencyContext';
-import { LogLevel, TraceNode, TraceNodePresentation, TraceService } from '../../services/traceService';
+import { LogLevel, TraceNode, TraceNodePresentation, TraceService } from '../../services/types';
 
 import styles from './TraceView.module.css';
-import { TraceNodeActions, TraceNodeState, TraceViewState } from './traceViewState';
+import { TraceViewActions, TraceNodeState, TraceViewState, RootState } from './traceViewState';
 
 interface PureTraceNodeStateProps {
+    nodeId: string;
     node: TraceNodeState;
     time: string;
     logLevel: LogLevel;
     message: string;
     values: TraceNodePresentation['values'];
     traceService: TraceService;
+    selected: boolean;
 }
 interface PureTraceNodeDispatchProps {
     expand: () => void;
     collapse: () => void;
-}
-
-interface RootState {
-    traceView: TraceViewState;
+    select: () => void;
 }
 
 type PureTraceNodeProps = PureTraceNodeStateProps & PureTraceNodeDispatchProps;
@@ -66,13 +65,31 @@ const PureTraceNodeValuesCell: FunctionComponent<{ values: TraceNodePresentation
 };
 
 const PureTraceNode: FunctionComponent<PureTraceNodeProps> = (props) => {
-    const { node, message, time, logLevel, values, traceService } = props;
+    const { 
+        node, 
+        message, 
+        time, 
+        logLevel, 
+        values, 
+        traceService, 
+        selected, 
+        select 
+    } = props;
+
+    if (!node) {
+        return (<span>MISSING NODE ID {}</span>);
+    }
+
+    const trClassNames = [styles[`trace-level-${logLevel}`]];
+    if (selected) {
+        trClassNames.push(styles['selected']);
+    }
 
     return (
         <>
-            <tr key={node.id} className={styles[`trace-level-${logLevel}`]}>
+            <tr key={node.id} id={`tr${node.id}`} className={trClassNames.join(' ')}>
                 {null /* <td className={styles['trace-col-id']}>{node.id}</td>*/}
-                <td className={styles['trace-col-time']}>
+                <td className={styles['trace-col-time']}  onClick={select}>
                     {time.substring(0, 6)}
                     <span className={styles['time-sec-ms']}>
                         {time.substring(6)}
@@ -102,40 +119,58 @@ interface ConnectedTraceNodeProps {
 const ConnectedTraceNode = connect<PureTraceNodeStateProps, PureTraceNodeDispatchProps, ConnectedTraceNodeProps, RootState>(
     (state, ownProps) => {
         const { traceService } = ownProps;
-        const dataNode = traceService.getNodeById(BigInt(ownProps.nodeId));
+        const dataNode = traceService.getCurrentView().getNodeById(BigInt(ownProps.nodeId));
         try {
             const presentation = dataNode.getPresentation();
-            
+            const selected = state.traceView.selectedNodeId === ownProps.nodeId;
+            const nodeState = state.traceView.nodeById[ownProps.nodeId];
+            if (!nodeState) {
+                throw new Error(`state.traceView.nodeById[${ownProps.nodeId}] does not exist`);
+            }
+
             return {
-                node: state.traceView.nodeById[ownProps.nodeId],
+                nodeId: ownProps.nodeId,
+                node: nodeState,
                 time: presentation.timestamp,
                 logLevel: presentation.level,
                 message: presentation.messageId,
                 values: presentation.values,
                 traceService,
+                selected,
             }
         } catch (err) {
             //console.error(`TraceService.getPresentation[node-id=${dataNode.id}}]: ${err}`);
             return {
-                node: state.traceView.nodeById[ownProps.nodeId],
+                nodeId: ownProps.nodeId,
+                node: state.traceView.nodeById[ownProps.nodeId] || { id: ownProps.nodeId, depth: 0 },
                 time: 'n/a',
                 logLevel: LogLevel.debug,
                 message: `failed-nodeid-${dataNode.id}`,
-                values: {},
+                values: {'error': (err as any).message || err},
+                selected: false,
                 traceService,
             }
         }
     },
-    (dispatch, state) => {
+    (dispatch, ownProps) => {
         return {
             expand: () => {
-                const action = TraceNodeActions.nodeExpand(state.nodeId);
+                const action = TraceViewActions.nodeExpand(ownProps.nodeId);
                 dispatch(action);
             },
             collapse: () => {
-                const action = TraceNodeActions.nodeCollapse(state.nodeId);
+                const action = TraceViewActions.nodeCollapse(ownProps.nodeId);
                 dispatch(action);
             },
+            select: () => {
+                const action = TraceViewActions.nodeSelect(ownProps.nodeId);
+                dispatch(action);
+                
+                const nodeData = ownProps.traceService.getCurrentView().getNodeById(BigInt(ownProps.nodeId));
+                const nodePresentation = nodeData.getPresentation();
+                console.log(nodePresentation);
+                nodeData.printBuffer();
+            }
         }
     }
 )(PureTraceNode);
@@ -156,7 +191,7 @@ const PureTraceView = (props: PureTraceViewProps) => {
     return (
         <AppDependencyContext.Consumer>
             {dependencies => (
-                <table className={styles['trace-view']}>
+                <table id="tableTraceView" className={styles['trace-view']}>
                     <thead>
                         <tr>
                             {null /*<th>Id</th>*/}
@@ -186,3 +221,4 @@ const ConnectedTraceView = connect<PureTraceViewProps, {}, {}, RootState>(
 )(PureTraceView);
 
 export const TraceView = ConnectedTraceView;
+

@@ -1,3 +1,5 @@
+#if false
+
 using Atc.World.Communications;
 
 namespace Atc.Telemetry.Impl;
@@ -19,3 +21,5 @@ public static class RadioStationSoundMonitor_Telemetry
         }
     }
 }
+
+#endif

@@ -1,13 +1,10 @@
-using System.Diagnostics;
 using Atc.Grains;
 using Atc.Maths;
-using Atc.Server.TestDoubles;
 using Atc.Sound.OpenAL;
 using Atc.Speech.AzurePlugin;
 using Atc.Telemetry;
 using Atc.Telemetry.CodePath;
 using Atc.Telemetry.Exporters.CodePath;
-using Atc.Telemetry.Impl;
 using Atc.World.Communications;
 using Atc.World.Contracts.Communications;
 using FluentAssertions;
@@ -72,29 +69,31 @@ public class PocConversationTests
         var environment = new SiloTestDoubles.TestEnvironment {
             UtcNow = startUtc
         };
-        var silo = SiloTestDoubles.CreateSilo("ABCD", ConfigureSilo, environment: environment);
+        var silo = SiloTestDoubles.CreateSilo("ABCD", config => ConfigureSilo(config), environment: environment);
         var world = silo.Grains.CreateGrain<WorldGrain>(
             id => new WorldGrain.GrainActivationEvent(id)
         );
         var groundQ = silo.Grains.CreateGrain<RadioStationGrain>(
-            id => new RadioStationGrain.GrainActivationEvent(id, RadioStationType.Ground)
+            id => new RadioStationGrain.GrainActivationEvent(id, RadioStationType.Ground, Callsign("G"))
         );
         groundQ.Get().TurnOnGroundStation(Location.At(10f, 20f, 100f), Frequency.FromKhz(123000));
 
-        groundQ.Get().OnTransceiverStateChanged += state => Console.WriteLine($"Q> status [{state.Status}]");
-        groundQ.Get().OnIntentCaptured += intent => Console.WriteLine($"Q> captured [{intent}]");
+        groundQ.Get().TransceiverStateChanged += state => Console.WriteLine($"Q> status [{state.Status}]");
+        groundQ.Get().IntentCaptured += intent => Console.WriteLine($"Q> captured [{intent}]");
 
-        var groundOp = silo.Grains.CreateGrain<PocAIRadioOperatorGrain>(
-            grainId => new PocAIRadioOperatorGrain.GrainActivationEvent(
+        var groundOp = silo.Grains.CreateGrain<PocAIControllerGrain>(
+            grainId => new PocAIControllerGrain.AIControllerGrainActivationEvent(
                 grainId, 
                 "Q",
+                world.As<IWorldGrain>(),
                 groundQ.As<IRadioStationGrain>()
-            ));
+            )
+        );
         
-        var mobileOpA = CreateMobileStation(silo, "A");
-        var mobileOpB = CreateMobileStation(silo, "B");
-        var mobileOpC = CreateMobileStation(silo, "C");
-        var mobileOpD = CreateMobileStation(silo, "D");
+        var mobileOpA = CreateMobileStation(silo, world, "A");
+        var mobileOpB = CreateMobileStation(silo, world, "B");
+        var mobileOpC = CreateMobileStation(silo, world, "C");
+        var mobileOpD = CreateMobileStation(silo, world, "D");
 
         //-- when
         
@@ -111,9 +110,9 @@ public class PocConversationTests
         }
 
         //-- then 
-        
-        iterationCount.Should().Be(21);
-        environment.UtcNow.Subtract(startUtc).Should().Be(TimeSpan.FromSeconds(39));
+
+        iterationCount.Should().Be(20);
+        environment.UtcNow.Subtract(startUtc).Should().Be(TimeSpan.FromSeconds(42));
         
         var mediumState = SiloTestDoubles.GetGrainState(
             groundQ.Get().GroundStationMedium!.Value.As<GroundStationRadioMediumGrain>().Get());
@@ -146,61 +145,64 @@ public class PocConversationTests
         using var telemetryExporter = new CodePathWebSocketExporter(listenPortNumber: 3003);
         var telemetryEnvironment = new CodePathEnvironment(LogLevel.Debug, telemetryExporter);
 
-        Thread.Sleep(3000);
+        Thread.Sleep(5000);
         
         var startUtc = DateTime.UtcNow;
         var siloEnvironment = new SiloTestDoubles.TestEnvironment(); 
         var silo = SiloTestDoubles.CreateSilo(
             "ABCD", 
-            ConfigureSilo, 
+            config => ConfigureSilo(config, telemetryEnvironment), 
             environment: siloEnvironment,
-            telemetry: new ImplOf_ISiloTelemetry.CodePath(telemetryEnvironment));
-        
+            telemetry: AtcGrainsTelemetry.CreateCodePathTelemetry<ISiloTelemetry>(telemetryEnvironment));
+        var myTelemetry = AtcWorldTestsTelemetry.CreateCodePathTelemetry<IMyTestTelemetry>(telemetryEnvironment);
+            
         siloEnvironment.SetAssetRootPath(Path.Combine(
             TestContext.CurrentContext.TestDirectory,
             "..", "..", "..", "..", "..", "..", "assets"));
 
-        using var audioContext = new AudioContextScope(new AudioContextScope_Telemetry.Noop());
+        using var audioContext = new AudioContextScope(
+            AtcSoundOpenALTelemetry.CreateCodePathTelemetry<AudioContextScope.IMyTelemetry>(telemetryEnvironment));
         
         var verbalizationService = new PocVerbalizationService();
         var audioStreamCache = new PocAudioStreamCache();
         var speechSynthesisPlugin = new AzureSpeechSynthesisPlugin(
             audioStreamCache, 
-            AtcSpeechAzurePluginTelemetry.CreateNoopTelemetry<AzureSpeechSynthesisPlugin.IMyTelemetry>());
+            AtcSpeechAzurePluginTelemetry.CreateCodePathTelemetry<AzureSpeechSynthesisPlugin.IMyTelemetry>(telemetryEnvironment));
         var speechService = new SpeechService(
-            verbalizationService, 
+            verbalizationService,
             speechSynthesisPlugin,
-            new SpeechService_IMyTelemetry.Noop());
+            telemetry: AtcWorldTelemetry.CreateCodePathTelemetry<SpeechService.IMyTelemetry>(telemetryEnvironment));
         var radioSpeechPlayer = new OpenalRadioSpeechPlayer(siloEnvironment);
         
         var world = silo.Grains.CreateGrain<WorldGrain>(
             id => new WorldGrain.GrainActivationEvent(id)
         );
         var groundQ = silo.Grains.CreateGrain<RadioStationGrain>(
-            id => new RadioStationGrain.GrainActivationEvent(id, RadioStationType.Ground)
+            id => new RadioStationGrain.GrainActivationEvent(id, RadioStationType.Ground, Callsign("Q"))
         );
         groundQ.Get().TurnOnGroundStation(Location.At(10f, 20f, 100f), Frequency.FromKhz(123000));
 
-        groundQ.Get().OnTransceiverStateChanged += state => Console.WriteLine($"Q> status [{state.Status}]");
-        groundQ.Get().OnIntentCaptured += intent => Console.WriteLine($"Q> captured [{intent}]");
+        groundQ.Get().TransceiverStateChanged += state => Console.WriteLine($"Q> status [{state.Status}]");
+        groundQ.Get().IntentCaptured += intent => Console.WriteLine($"Q> captured [{intent}]");
 
-        var mobileOpA = CreateMobileStation(silo, "A");
-        var mobileOpB = CreateMobileStation(silo, "B");
-        var mobileOpC = CreateMobileStation(silo, "C");
-        var mobileOpD = CreateMobileStation(silo, "D");
-        var groundOp = silo.Grains.CreateGrain<PocAIRadioOperatorGrain>(
-            grainId => new PocAIRadioOperatorGrain.GrainActivationEvent(
+        var mobileOpA = CreateMobileStation(silo, world, "A");
+        var mobileOpB = CreateMobileStation(silo, world, "B");
+        var mobileOpC = CreateMobileStation(silo, world, "C");
+        var mobileOpD = CreateMobileStation(silo, world, "D");
+        var groundOp = silo.Grains.CreateGrain<PocAIControllerGrain>(
+            grainId => new PocAIControllerGrain.AIControllerGrainActivationEvent(
                 grainId, 
                 "Q",
+                world.As<IWorldGrain>(),
                 groundQ.As<IRadioStationGrain>()
             ));
         
         var monitor = new RadioStationSoundMonitor(
-            siloEnvironment,
+            silo,
             speechService,
             audioStreamCache,
             radioSpeechPlayer,
-            telemetry: new RadioStationSoundMonitor_Telemetry.Noop(),
+            telemetry: AtcWorldTelemetry.CreateCodePathTelemetry<RadioStationSoundMonitor.IMyTelemetry>(telemetryEnvironment),
             radioStation: groundQ.As<IRadioStationGrain>());
 
         //-- when
@@ -211,11 +213,15 @@ public class PocConversationTests
             iterationCount++;
             Console.WriteLine($"====== iteration #{iterationCount} ======");
 
-            var millisecondsToSleep = (int)silo.NextWorkItemAtUtc.Subtract(siloEnvironment.UtcNow).TotalMilliseconds;
-            if (millisecondsToSleep > 25)
-            {
-                Thread.Sleep(millisecondsToSleep);
-            }
+            // var millisecondsToSleep = (int)silo.NextWorkItemAtUtc.Subtract(siloEnvironment.UtcNow).TotalMilliseconds;
+            // myTelemetry.VerboseSleepBeforeNextWorkItem(nextWorkItemAtUtc: silo.NextWorkItemAtUtc, millisecondsToSleep);    
+            //
+            // if (millisecondsToSleep > 25)
+            // {
+            //     Thread.Sleep(millisecondsToSleep);
+            // }
+
+            silo.BlockWhileIdle(CancellationToken.None);
             
             Console.WriteLine($"{siloEnvironment.UtcNow:HH:mm:ss.fff}");
             silo.ExecuteReadyWorkItems();
@@ -224,7 +230,7 @@ public class PocConversationTests
         //-- then 
 
         iterationCount.Should().BeGreaterOrEqualTo(20);
-        siloEnvironment.UtcNow.Subtract(startUtc).TotalSeconds.Should().BeGreaterThanOrEqualTo(39);
+        siloEnvironment.UtcNow.Subtract(startUtc).TotalSeconds.Should().BeApproximately(37, precision: 2);
         
         var mediumState = SiloTestDoubles.GetGrainState(
             groundQ.Get().GroundStationMedium!.Value.As<GroundStationRadioMediumGrain>().Get());
@@ -257,29 +263,43 @@ public class PocConversationTests
             .Should().BeEquivalentTo(expectedIntentsInOrder, config: options => options.WithStrictOrdering());
     }
     
-    private GrainRef<PocAIRadioOperatorGrain> CreateMobileStation(ISilo silo, string callsign)
+    private GrainRef<PocAIPilotGrain> CreateMobileStation(ISilo silo, GrainRef<WorldGrain> world, string callsign)
     {
         var station = silo.Grains.CreateGrain<RadioStationGrain>(
-            id => new RadioStationGrain.GrainActivationEvent(id, RadioStationType.Mobile)
+            id => new RadioStationGrain.GrainActivationEvent(id, RadioStationType.Mobile, Callsign(callsign))
         );
 
         station.Get().TurnOnMobileStation(Location.At(10f, 20f, 1000f), Frequency.FromKhz(123000));
         
-        var aiOperator = silo.Grains.CreateGrain<PocAIRadioOperatorGrain>(
-            grainId => new PocAIRadioOperatorGrain.GrainActivationEvent(
+        var aiOperator = silo.Grains.CreateGrain<PocAIPilotGrain>(
+            grainId => new PocAIPilotGrain.AIPilotGrainActivationEvent(
                 grainId, 
                 callsign,
+                world.As<IWorldGrain>(),
                 station.As<IRadioStationGrain>()
             ));
 
         return aiOperator;
     }
 
-    private void ConfigureSilo(SiloConfigurationBuilder config)
+    private void ConfigureSilo(SiloConfigurationBuilder config, CodePathEnvironment? codePathEnvironment = null)
     {
+        TestUtility.RegisterTelemetryProvider(config, codePathEnvironment);
         WorldGrain.RegisterGrainType(config);
         RadioStationGrain.RegisterGrainType(config);
         GroundStationRadioMediumGrain.RegisterGrainType(config);
-        PocAIRadioOperatorGrain.RegisterGrainType(config);
+        PocAIPilotGrain.RegisterGrainType(config);
+        PocAIControllerGrain.RegisterGrainType(config);
+    }
+
+    private Callsign Callsign(string text)
+    {
+        return new Callsign(text, text);
+    }
+
+    [TelemetryName("ConversationEndToEndTest")]
+    public interface IMyTestTelemetry : ITelemetry
+    {
+        void VerboseSleepBeforeNextWorkItem(DateTime nextWorkItemAtUtc, int millisecondsToSleep);
     }
 }

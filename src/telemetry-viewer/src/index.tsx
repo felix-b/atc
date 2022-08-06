@@ -7,32 +7,49 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import './index.css';
 import { createTraceService } from './services/traceService';
-import { createTraceViewState } from './features/traceView/traceViewState';
+import { createTraceViewState, TraceViewActionTypes } from './features/traceView/traceViewState';
 import { AppDependencies, AppDependencyContext } from './AppDependencyContext';
+import { createAppStore } from './app/store';
+import { createTraceViewAPI } from './features/traceView/traceViewAPI';
+import { LogLevel } from './services/types';
 
 const container = document.getElementById('root')!;
 const root = createRoot(container);
 
 const traceService = createTraceService('ws://localhost:3003/telemetry');
 const traceViewState = createTraceViewState(traceService);
+let appDependencies: AppDependencies = {
+    traceService,
+    traceViewAPI: undefined as any,
+    store: undefined as any,
+};
+const store = createAppStore(traceViewState, appDependencies);
+const traceViewAPI = createTraceViewAPI(store, traceService);
 
+appDependencies.store = store;
+appDependencies.traceViewAPI = traceViewAPI;
+
+traceViewState.startTraceViewUpdates(store);
+traceViewAPI.addQuery(undefined, [LogLevel.error]);
+
+/*
 export const store = configureStore({
     reducer: {
         traceView: traceViewState.reducer
     },
     middleware: (getDefaultMiddleware) => getDefaultMiddleware({
         serializableCheck: {
-            ignoredActions: ['traceView/nodeAdd', 'traceView/nodeUpdate', 'traceView/nodeExpand', 'traceView/nodeCollapse'],
+            ignoredActions: TraceViewActionTypes.getAllActionTypes(),
             ignoredPaths: ['traceView'],
         },
-    }),    
+        thunk: {
+            extraArgument: appDependencies
+        }
+    }),
 });
 
 traceViewState.startTraceViewUpdates(store);
-
-const appDependencies: AppDependencies = {
-    traceService
-};
+*/
 
 root.render(
     <React.StrictMode>

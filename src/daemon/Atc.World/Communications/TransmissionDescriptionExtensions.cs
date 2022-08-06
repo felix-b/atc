@@ -1,3 +1,4 @@
+using Atc.Grains;
 using Atc.World.Contracts.Communications;
 
 namespace Atc.World.Communications;
@@ -6,6 +7,7 @@ public static class TransmissionDescriptionExtensions
 {
     public static async Task<TransmissionDescription> WithEnsuredAudioStreamId(
         this TransmissionDescription transmission,
+        ISilo silo,
         ISpeechService speechService,
         CancellationToken cancellation)
     {
@@ -23,9 +25,12 @@ public static class TransmissionDescriptionExtensions
         var synthesisResult = await speechService.SynthesizeSpeech(request, cancellation);
         if (synthesisResult.Duration.HasValue)
         {
-            request.Originator.Get().NotifyTransmissionDurationAvailable(
-                transmission.Id, 
-                synthesisResult.Duration.Value);
+            silo.PostAsyncAction(transmission.Id, () => {
+                request.Originator.Get().NotifyTransmissionDurationAvailable(
+                    transmission.Id, 
+                    transmission.StartUtc,
+                    synthesisResult.Duration.Value);
+            });  
         }
         
         //TODO: propagate AssignedPlatformVoiceId
