@@ -1,6 +1,6 @@
-namespace Atc.Telemetry.CodePath;
+namespace Atc.Telemetry;
 
-public enum CodePathLogLevel : sbyte
+public enum LogLevel : sbyte
 {
     Quiet = -1,
     Audit = 0,

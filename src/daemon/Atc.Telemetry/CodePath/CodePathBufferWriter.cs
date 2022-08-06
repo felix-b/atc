@@ -34,7 +34,7 @@ public class CodePathBufferWriter
         }
     }
 
-    public void WriteMessage(ulong parentSpanId, DateTime time, string id, CodePathLogLevel level)
+    public void WriteMessage(ulong parentSpanId, DateTime time, string id, LogLevel level)
     {
         _buffer.WriteOpCode(LogStreamOpCode.Message);
         _buffer.WriteSpanId(parentSpanId);
@@ -44,7 +44,7 @@ public class CodePathBufferWriter
         _buffer.WriteThreadId(Thread.CurrentThread.ManagedThreadId);
     }
 
-    public void WriteBeginMessage(ulong parentSpanId, DateTime time, string id, CodePathLogLevel level)
+    public void WriteBeginMessage(ulong parentSpanId, DateTime time, string id, LogLevel level)
     {
         _buffer.WriteOpCode(LogStreamOpCode.BeginMessage);
         _buffer.WriteSpanId(parentSpanId);
@@ -69,7 +69,7 @@ public class CodePathBufferWriter
         _buffer.WriteOpCode(LogStreamOpCode.EndMessage);
     }
 
-    public void WriteOpenSpan(ulong spanId, ulong parentSpanId, DateTime time, string messageId, CodePathLogLevel level)
+    public void WriteOpenSpan(ulong spanId, ulong parentSpanId, DateTime time, string messageId, LogLevel level)
     {
         _buffer.WriteOpCode(LogStreamOpCode.OpenSpan);
         _buffer.WriteSpanId(spanId);
@@ -80,7 +80,7 @@ public class CodePathBufferWriter
         _buffer.WriteThreadId(Thread.CurrentThread.ManagedThreadId);
     }
 
-    public void WriteBeginOpenSpan(ulong spanId, ulong parentSpanId, DateTime time, string messageId, CodePathLogLevel level)
+    public void WriteBeginOpenSpan(ulong spanId, ulong parentSpanId, DateTime time, string messageId, LogLevel level)
     {
         _buffer.WriteOpCode(LogStreamOpCode.BeginOpenSpan);
         _buffer.WriteSpanId(spanId);
@@ -199,7 +199,7 @@ public class CodePathBufferWriter
             Writer.Write(key);
         }
 
-        public void WriteLogLevel(CodePathLogLevel level)
+        public void WriteLogLevel(LogLevel level)
         {
             Writer.Write((sbyte)level);
         }
@@ -350,6 +350,7 @@ public class CodePathBufferWriter
         {
             if (!__writerByType.TryGetValue(typeof(T), out var untypedDelegate))
             {
+                WriteStringValue(in buffer, key, value?.ToString() ?? string.Empty);
                 return;
             }
 

@@ -8,7 +8,7 @@ public static class AudioContextScope_Telemetry
     {
         public ITraceSpan InitializingSoundContext()
         {
-            return new NoopSpan();
+            return new NoopTraceSpan();
         }
 
         public void InfoOpenALInit(string version, string vendor, string renderer)

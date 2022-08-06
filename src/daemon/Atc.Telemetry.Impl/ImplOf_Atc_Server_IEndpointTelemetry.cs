@@ -37,12 +37,12 @@ public static class ImplOf_Atc_Server_IEndpointTelemetry
 
         public ITraceSpan SpanAspNetCoreIncoming()
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
 
         public ITraceSpan SpanAcceptingSocket(long connectionId)
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
 
         public void InfoConnectionSocketOpened(long connectionId)
@@ -79,7 +79,7 @@ public static class ImplOf_Atc_Server_IEndpointTelemetry
 
         public ITraceSpan SpanConnectionDispose(long connectionId, WebSocketState socketState)
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
 
         public void ErrorDispatchOperationFailed(string requestType, Exception exception)
@@ -95,17 +95,17 @@ public static class ImplOf_Atc_Server_IEndpointTelemetry
 
         public ITraceSpan SpanQueueOpDispatcherRunOutputThread(int queueIndex)
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
 
         public ITraceSpan SpanQueueOpDispatcherRunInputThread()
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
 
         public ITraceSpan SpanConnectionRunReceiveLoop(long connectionId)
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
 
         public void WarningQueueOpDispatcherOutputThreadStoppingTimedOut(int threadIndex)
@@ -178,7 +178,7 @@ public static class ImplOf_Atc_Server_IEndpointTelemetry
 
         public ITraceSpan SpanQueueOpDispatcherExecuteWorkItem(ulong workItemId, string workItemType)
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
 
         public void DebugQueueOpDispatcherEnqueueOutputRequests(int count, long queueIndex)
@@ -188,22 +188,22 @@ public static class ImplOf_Atc_Server_IEndpointTelemetry
         public ITraceSpan SpanMethodDispatcherInvoke<TPayloadCaseIn>(TPayloadCaseIn payloadCase, string methodName)
             where TPayloadCaseIn : Enum
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
 
         public ITraceSpan SpanQueueOpDispatcherInvokeArbitrary()
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
 
         public ITraceSpan SpanQueueOpDispatcherPerformOutputRequests(ulong workItemId, int count)
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
 
         public ITraceSpan SpanConnectionPerformOutputRequest(int index, string type)
         {
-            return NoopSpan.Instance;
+            return NoopTraceSpan.Instance;
         }
     }
 }

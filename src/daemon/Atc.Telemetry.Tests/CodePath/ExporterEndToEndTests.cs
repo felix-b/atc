@@ -43,10 +43,10 @@ public class ExporterEndToEndTests
     public void CanPublishTelemetryWithoutConnectedClient()
     {
         var exporter = new CodePathWebSocketExporter(listenPortNumber: 3003);
-        var environment = new CodePathEnvironment(CodePathLogLevel.Debug, exporter);
+        var environment = new CodePathEnvironment(LogLevel.Debug, exporter);
 
         var buffer = environment.NewBuffer();
-        buffer.WriteMessage(parentSpanId: 0, environment.GetUtcNow(), "M1", CodePathLogLevel.Debug);
+        buffer.WriteMessage(parentSpanId: 0, environment.GetUtcNow(), "M1", LogLevel.Debug);
         buffer.Flush();
         
         Thread.Sleep(100);
@@ -61,7 +61,7 @@ public class ExporterEndToEndTests
         TestClientChannelTelemetry clientTelemetry;
 
         using var exporter = new CodePathWebSocketExporter(listenPortNumber: 3003, serverTelemetry);
-        var environment = new CodePathEnvironment(CodePathLogLevel.Debug, exporter);
+        var environment = new CodePathEnvironment(LogLevel.Debug, exporter);
 
         await using (var client = CreateCodePathClient(out clientTelemetry))
         {
@@ -98,7 +98,7 @@ public class ExporterEndToEndTests
         TestClientChannelTelemetry clientTelemetry;
 
         using var exporter = new CodePathWebSocketExporter(listenPortNumber: 3003, serverTelemetry);
-        var environment = new CodePathEnvironment(CodePathLogLevel.Debug, exporter);
+        var environment = new CodePathEnvironment(LogLevel.Debug, exporter);
         var client = CreateCodePathClient(out clientTelemetry);
 
         await using (client)
@@ -154,13 +154,13 @@ public class ExporterEndToEndTests
         TestClientChannelTelemetry clientTelemetry;
 
         using var exporter = new CodePathWebSocketExporter(listenPortNumber: 3003, serverTelemetry);
-        var environment = new CodePathEnvironment(CodePathLogLevel.Debug, exporter);
+        var environment = new CodePathEnvironment(LogLevel.Debug, exporter);
 
         var writer = new CodePathWriter(environment, "test");
-        using (writer.Span("M1", CodePathLogLevel.Debug))
+        using (writer.Span("M1", LogLevel.Debug))
         {
-            writer.Message("M2", CodePathLogLevel.Debug);
-            writer.Message("M3", CodePathLogLevel.Debug);
+            writer.Message("M2", LogLevel.Debug);
+            writer.Message("M3", LogLevel.Debug);
         }
         await Task.Delay(100);
 
@@ -176,7 +176,7 @@ public class ExporterEndToEndTests
                 predicate: e => e.connect_reply != null, 
                 millisecondsTimeout: 1000);
 
-            writer.Message("M1", CodePathLogLevel.Debug);
+            writer.Message("M1", LogLevel.Debug);
 
             await client.WaitForIncomingEnvelopes(
                 predicate: e => e.telemetry_buffer != null,
@@ -232,7 +232,7 @@ public class ExporterEndToEndTests
         TestEndpointTelemetry serverTelemetry = new TestEndpointTelemetry();
 
         using var exporter = new CodePathWebSocketExporter(listenPortNumber: 3003, serverTelemetry);
-        var environment = new CodePathEnvironment(CodePathLogLevel.Debug, exporter);
+        var environment = new CodePathEnvironment(LogLevel.Debug, exporter);
         var cancelAfter10Minutes = new CancellationTokenSource(TimeSpan.FromMinutes(3));
 
         await Task.Delay(5000, cancelAfter10Minutes.Token);
@@ -254,42 +254,42 @@ public class ExporterEndToEndTests
 
         var task11 = async () => {
             await Task.Delay(10);
-            using (var span11 = writer.Span("root-s1-s11", CodePathLogLevel.Debug))
+            using (var span11 = writer.Span("root-s1-s11", LogLevel.Debug))
             {
-                writer.Message("root-s1-s11-M3", CodePathLogLevel.Debug);
-                writer.Message("root-s1-s11-M4", CodePathLogLevel.Debug);
+                writer.Message("root-s1-s11-M3", LogLevel.Debug);
+                writer.Message("root-s1-s11-M4", LogLevel.Debug);
             }
         };
         var task12 = async () => {
-            using (var span12 = writer.Span("root-s1-s12", CodePathLogLevel.Debug))
+            using (var span12 = writer.Span("root-s1-s12", LogLevel.Debug))
             {
-                writer.Message("root-s1-s12-M5", CodePathLogLevel.Debug);
+                writer.Message("root-s1-s12-M5", LogLevel.Debug);
                 await Task.Delay(15);
-                writer.Message("root-s1-s12-M6", CodePathLogLevel.Debug);
+                writer.Message("root-s1-s12-M6", LogLevel.Debug);
             }
         };
 
         var task1 = async () => {
-            using (var span1 = writer.Span("root-s1", CodePathLogLevel.Debug))
+            using (var span1 = writer.Span("root-s1", LogLevel.Debug))
             {
                 var taskM2 = async () => {
                     await Task.Delay(15);
-                    writer.Message("root-s1-M2", CodePathLogLevel.Debug);
+                    writer.Message("root-s1-M2", LogLevel.Debug);
                 };
                 
                 //longTaskResult = longTask();
                 
                 var taskM7 = async () => {
                     await Task.Yield();
-                    writer.Message("root-s1-M7", CodePathLogLevel.Debug);
+                    writer.Message("root-s1-M7", LogLevel.Debug);
                 };
                 await Task.WhenAll(task11(), task12(), taskM2(), taskM7());
             }
         };
 
-        writer.Message("root-M1", CodePathLogLevel.Debug);
+        writer.Message("root-M1", LogLevel.Debug);
         await task1();
-        writer.Message("root-M8", CodePathLogLevel.Debug);
+        writer.Message("root-M8", LogLevel.Debug);
     }
 
     private async Task PlayTelemetryExampleForFrontEnd(CodePathEnvironment environment, CancellationToken cancellation)
@@ -473,14 +473,14 @@ public class ExporterEndToEndTests
         public void InfoHello()
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_hello, CodePathLogLevel.Info);
+            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_hello, LogLevel.Info);
             buffer.Flush();
         }
 
         public void DebugSomeLowLevelStuff(int num, string str)
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someLowLevelStuff, CodePathLogLevel.Debug);
+            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someLowLevelStuff, LogLevel.Debug);
             buffer.WriteValue(__s_num, num);
             buffer.WriteValue(__s_str, str);
             buffer.WriteEndMessage();
@@ -490,7 +490,7 @@ public class ExporterEndToEndTests
         public void WarnSomethingDangerous(TimeSpan timeLeft)
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_somethingDangerous, CodePathLogLevel.Warning);
+            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_somethingDangerous, LogLevel.Warning);
             buffer.WriteValue(__s_timeLeft, timeLeft);
             buffer.WriteEndMessage();
             buffer.Flush();
@@ -499,7 +499,7 @@ public class ExporterEndToEndTests
         public void VerboseKeepAlive(int beatNo)
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_keepAlive, CodePathLogLevel.Verbose);
+            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_keepAlive, LogLevel.Verbose);
             buffer.WriteValue(__s_beatNo, beatNo);
             buffer.WriteEndMessage();
             buffer.Flush();
@@ -510,7 +510,7 @@ public class ExporterEndToEndTests
             _writer.SpawnNewSpan(out var spanId, out var parentSpanId);
 
             var buffer = _environment.NewBuffer();
-            buffer.WriteBeginOpenSpan(spanId, parentSpanId, _environment.GetUtcNow(), __s_doSomeWork, CodePathLogLevel.Verbose);
+            buffer.WriteBeginOpenSpan(spanId, parentSpanId, _environment.GetUtcNow(), __s_doSomeWork, LogLevel.Verbose);
             buffer.WriteValue(__s_inputNumber, inputNumber);
             buffer.WriteValue(__s_inputString, inputString);
             buffer.WriteEndOpenSpan();
@@ -524,7 +524,7 @@ public class ExporterEndToEndTests
             _writer.SpawnNewSpan(out var spanId, out var parentSpanId);
 
             var buffer = _environment.NewBuffer();
-            buffer.WriteBeginOpenSpan(spanId, parentSpanId, _environment.GetUtcNow(), __s_doSomeWorkStep, CodePathLogLevel.Verbose);
+            buffer.WriteBeginOpenSpan(spanId, parentSpanId, _environment.GetUtcNow(), __s_doSomeWorkStep, LogLevel.Verbose);
             buffer.WriteValue(__s_stepIndex, stepIndex);
             buffer.WriteValue(__s_stepName, stepName);
             buffer.WriteEndOpenSpan();
@@ -536,42 +536,42 @@ public class ExporterEndToEndTests
         public void DebugSomeInternalDebugOne()
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someInternalDebugOne, CodePathLogLevel.Debug);
+            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someInternalDebugOne, LogLevel.Debug);
             buffer.Flush();
         }
 
         public void DebugSomeInternalDebugTwo()
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someInternalDebugTwo, CodePathLogLevel.Debug);
+            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someInternalDebugTwo, LogLevel.Debug);
             buffer.Flush();
         }
 
         public void DebugSomeInternalDebugThree()
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someInternalDebugThree, CodePathLogLevel.Debug);
+            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someInternalDebugThree, LogLevel.Debug);
             buffer.Flush();
         }
 
         public void DebugSomeInternalDebugFour()
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someInternalDebugFour, CodePathLogLevel.Debug);
+            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someInternalDebugFour, LogLevel.Debug);
             buffer.Flush();
         }
 
         public void DebugSomeInternalDebugFive()
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someInternalDebugFive, CodePathLogLevel.Debug);
+            buffer.WriteMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_someInternalDebugFive, LogLevel.Debug);
             buffer.Flush();
         }
 
         public void ErrorThisAllWentWrong(Exception error)
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_thisAllWentWrong, CodePathLogLevel.Error);
+            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_thisAllWentWrong, LogLevel.Error);
             buffer.WriteException(error);
             buffer.WriteEndMessage();
             buffer.Flush();
@@ -580,7 +580,7 @@ public class ExporterEndToEndTests
         public void ErrorCancellationRequested(Exception error)
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_cancellationRequested, CodePathLogLevel.Error);
+            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_cancellationRequested, LogLevel.Error);
             buffer.WriteException(error);
             buffer.WriteEndMessage();
             buffer.Flush();

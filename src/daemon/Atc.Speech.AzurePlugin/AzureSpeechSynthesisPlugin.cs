@@ -12,11 +12,11 @@ namespace Atc.Speech.AzurePlugin;
 public class AzureSpeechSynthesisPlugin : ISpeechSynthesisPlugin, IDisposable
 {
     private readonly IAudioStreamCache _audioStreamCache;
-    private readonly IThisTelemetry _telemetry;
+    private readonly IMyTelemetry _telemetry;
     private readonly ConcurrentDictionary<string, SpeechSynthesizerEntry> _synthesizerByLanguageCode = new();
     private bool _disposed = false;
 
-    public AzureSpeechSynthesisPlugin(IAudioStreamCache audioStreamCache, IThisTelemetry telemetry)
+    public AzureSpeechSynthesisPlugin(IAudioStreamCache audioStreamCache, IMyTelemetry telemetry)
     {
         _audioStreamCache = audioStreamCache;
         _telemetry = telemetry;
@@ -59,33 +59,43 @@ public class AzureSpeechSynthesisPlugin : ISpeechSynthesisPlugin, IDisposable
         VoiceDescription voice,
         CancellationToken cancellation)
     {
-        if (_disposed)
+        using var traceSpan = _telemetry.SpanSynthesizeSpeech();
+
+        try
         {
-            throw new ObjectDisposedException(objectName: nameof(AzureSpeechSynthesisPlugin));
-        }
+            if (_disposed)
+            {
+                throw _telemetry.ObjectDisposed();;
+            }
 
-        var entry = GetOrAddSpeechSynthesizerEntry(utterance.Language);
-        using var acquiredLock = entry.SynthesizerLock.Acquire(TimeSpan.FromSeconds(5));
+            var entry = GetOrAddSpeechSynthesizerEntry(utterance.Language);
+            using var acquiredLock = entry.SynthesizerLock.Acquire(TimeSpan.FromSeconds(5));
             
-        var platformVoiceId = voice.AssignedPlatformVoiceId ?? FindPlatformVoiceId(voice);
-        var ssml = BuildSsml(utterance, voice, platformVoiceId);
+            var platformVoiceId = voice.AssignedPlatformVoiceId ?? FindPlatformVoiceId(voice);
+            var ssml = BuildSsml(utterance, voice, platformVoiceId);
 
-        var clock = Stopwatch.StartNew();
-        var result = await entry.Synthesizer.SpeakSsmlAsync(ssml);
+            var clock = Stopwatch.StartNew();
+            var result = await entry.Synthesizer.SpeakSsmlAsync(ssml);
+
+            _telemetry.VerboseSpeechSynthesisComplete(byteLength: result.AudioData.Length, elapsed: clock.Elapsed);
         
-        Console.WriteLine($"SynthesizeSpeech >>> [{utterance}] -> {result.AudioData.Length} bytes, {clock.ElapsedMilliseconds} ms");
+            //TODO: use streaming instead of buffering
         
-        //TODO: use streaming instead of buffering
+            var stream = _audioStreamCache.CreateStream(SoundFormat, duration: null);
+            await stream.AddDataChunk(result.AudioData, cancellation);
+            stream.Complete();
         
-        var stream = _audioStreamCache.CreateStream(SoundFormat, duration: null);
-        await stream.AddDataChunk(result.AudioData, cancellation);
-        stream.Complete();
-        
-        return new SpeechSynthesisResult(   
-            AudioStreamId: stream.Id,
-            AssignedPlatformVoiceId: platformVoiceId,
-            Duration: stream.Duration 
-        );
+            return new SpeechSynthesisResult(   
+                AudioStreamId: stream.Id,
+                AssignedPlatformVoiceId: platformVoiceId,
+                Duration: stream.Duration 
+            );
+        }
+        catch (Exception e)
+        {
+            traceSpan.Fail(e);
+            throw;
+        }
     }
 
     private string FindPlatformVoiceId(VoiceDescription voice)
@@ -183,6 +193,9 @@ public class AzureSpeechSynthesisPlugin : ISpeechSynthesisPlugin, IDisposable
         return _synthesizerByLanguageCode.GetOrAdd(language.Code, code => {
             var config = CreateSpeechConfig(code);
             var synthesizer = new SpeechSynthesizer(config, audioConfig: null);
+
+            _telemetry.InfoCreatedNewSynthesizer(languageCode: language.Code);
+
             return new SpeechSynthesizerEntry(
                 synthesizer,
                 new ExclusiveLock($"speech-synthesizer-{language.Code}")
@@ -204,9 +217,13 @@ public class AzureSpeechSynthesisPlugin : ISpeechSynthesisPlugin, IDisposable
     public static readonly SpeechSynthesisOutputFormat SynthesisOutputFormat = 
         SpeechSynthesisOutputFormat.Raw8Khz16BitMonoPcm;
 
-    public interface IThisTelemetry : ITelemetry
+    [TelemetryName("AzureSpeechSynthesisPlugin")]
+    public interface IMyTelemetry : ITelemetry
     {
-        
+        ObjectDisposedException ObjectDisposed();
+        ITraceSpan SpanSynthesizeSpeech();
+        void VerboseSpeechSynthesisComplete(int byteLength, TimeSpan elapsed);
+        void InfoCreatedNewSynthesizer(string languageCode);
     }
     
     private record SpeechSynthesizerEntry(

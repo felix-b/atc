@@ -153,7 +153,7 @@ public class CodePathStreamReader
                 _root,
                 time: time,
                 messageId: "unknown_span",
-                CodePathLogLevel.Debug,
+                LogLevel.Debug,
                 threadId: -1,
                 depth: _root.Depth + 1,
                 isSpan: true);
@@ -183,7 +183,7 @@ public class CodePathStreamReader
 
         var timeTicks = _reader.ReadInt64();
         var messageId = ReadString();
-        var logLevel = (CodePathLogLevel)_reader.ReadSByte();
+        var logLevel = (LogLevel)_reader.ReadSByte();
         var threadId = _reader.ReadInt32();
 
         node = new Node(
@@ -242,7 +242,7 @@ public class CodePathStreamReader
             parent: null, 
             DateTime.MinValue, 
             messageId: string.Empty, 
-            level: CodePathLogLevel.Debug,
+            level: LogLevel.Debug,
             threadId: -1,
             depth: -1, 
             isSpan: true);
@@ -253,7 +253,7 @@ public class CodePathStreamReader
         private List<NamedValue>? _values = null;
         private List<Node>? _nodes = null;
 
-        public Node(int nodeId, Node? parent, DateTime time, string messageId, CodePathLogLevel level, int threadId, int depth, bool isSpan)
+        public Node(int nodeId, Node? parent, DateTime time, string messageId, LogLevel level, int threadId, int depth, bool isSpan)
         {
             NodeId = nodeId;
             Parent = parent;
@@ -296,7 +296,7 @@ public class CodePathStreamReader
         public Node? Parent { get; }
         public DateTime Time { get; }
         public string MessageId { get; }
-        public CodePathLogLevel Level { get; }
+        public LogLevel Level { get; }
         public int ThreadId { get; }
         public int Depth { get; }
         public bool IsSpan { get; }

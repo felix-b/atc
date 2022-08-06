@@ -1,6 +1,6 @@
-namespace Atc.Telemetry.Impl;
+namespace Atc.Telemetry;
 
-public class NoopSpan : ITraceSpan
+public class NoopTraceSpan : ITraceSpan
 {
     public void Dispose()
     {
@@ -14,6 +14,6 @@ public class NoopSpan : ITraceSpan
     {
     }
 
-    public static readonly NoopSpan Instance = new NoopSpan();
+    public static readonly NoopTraceSpan Instance = new NoopTraceSpan();
 }
 

@@ -6,13 +6,13 @@ public class CodePathEnvironment : ICodePathEnvironment
 {
     public const ulong RootSpanId = 0;
     
-    private readonly CodePathLogLevel _logLevel;
+    private readonly LogLevel _logLevel;
     private readonly ICodePathExporter _output;
     private readonly AsyncLocal<ulong> _currentSpanId = new();
     private readonly CodePathStringMap _stringMap = new();
     private ulong _nextSpanId = 0;
 
-    public CodePathEnvironment(CodePathLogLevel logLevel, ICodePathExporter output)
+    public CodePathEnvironment(LogLevel logLevel, ICodePathExporter output)
     {
         _logLevel = logLevel;
         _output = output;
@@ -26,7 +26,7 @@ public class CodePathEnvironment : ICodePathEnvironment
         return DateTime.UtcNow;
     }
 
-    public virtual CodePathLogLevel GetLogLevel(string? loggerName = null)
+    public virtual LogLevel GetLogLevel(string? loggerName = null)
     {
         return _logLevel; //TODO: support level per logger
     }

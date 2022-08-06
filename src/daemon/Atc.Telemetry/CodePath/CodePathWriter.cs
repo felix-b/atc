@@ -11,7 +11,7 @@ public class CodePathWriter
         _loggerName = loggerName;
     }
 
-    public void Message(string id, CodePathLogLevel level)
+    public void Message(string id, LogLevel level)
     {
         var buffer = _environment.NewBuffer();
         buffer.WriteMessage(CurrentSpanId, Time, id, level);
@@ -20,7 +20,7 @@ public class CodePathWriter
 
     public void Message<T1>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1)
     {
         var buffer = _environment.NewBuffer();
@@ -34,7 +34,7 @@ public class CodePathWriter
 
     public void Message<T1, T2>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2)
     {
@@ -50,7 +50,7 @@ public class CodePathWriter
 
     public void Message<T1, T2, T3>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3)
@@ -68,7 +68,7 @@ public class CodePathWriter
 
     public void Message<T1, T2, T3, T4>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3,
@@ -88,7 +88,7 @@ public class CodePathWriter
 
     public void Message<T1, T2, T3, T4, T5>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3,
@@ -110,7 +110,7 @@ public class CodePathWriter
 
     public void Message<T1, T2, T3, T4, T5, T6>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3,
@@ -134,7 +134,7 @@ public class CodePathWriter
 
     public void Message<T1, T2, T3, T4, T5, T6, T7>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3,
@@ -160,7 +160,7 @@ public class CodePathWriter
 
     public void Message<T1, T2, T3, T4, T5, T6, T7, T8>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3,
@@ -186,7 +186,7 @@ public class CodePathWriter
         buffer.Flush();
     }
 
-    public TraceSpan Span(string id, CodePathLogLevel level)
+    public TraceSpan Span(string id, LogLevel level)
     {
         SpawnNewSpan(out var spanId, out var parentSpanId);
 
@@ -199,7 +199,7 @@ public class CodePathWriter
 
     public TraceSpan Span<T1>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1)
     {
         SpawnNewSpan(out var spanId, out var parentSpanId);
@@ -215,7 +215,7 @@ public class CodePathWriter
 
     public TraceSpan Span<T1, T2>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2)
     {
@@ -233,7 +233,7 @@ public class CodePathWriter
 
     public TraceSpan Span<T1, T2, T3>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3)
@@ -253,7 +253,7 @@ public class CodePathWriter
 
     public TraceSpan Span<T1, T2, T3, T4>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3,
@@ -275,7 +275,7 @@ public class CodePathWriter
 
     public TraceSpan Span<T1, T2, T3, T4, T5>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3,
@@ -299,7 +299,7 @@ public class CodePathWriter
 
     public TraceSpan Span<T1, T2, T3, T4, T5, T6>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3,
@@ -325,7 +325,7 @@ public class CodePathWriter
     
     public TraceSpan Span<T1, T2, T3, T4, T5, T6, T7>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3,
@@ -353,7 +353,7 @@ public class CodePathWriter
 
     public TraceSpan Span<T1, T2, T3, T4, T5, T6, T7, T8>(
         string id,
-        CodePathLogLevel level,
+        LogLevel level,
         in (string name, T1 value) pair1,
         in (string name, T2 value) pair2,
         in (string name, T3 value) pair3,
@@ -381,7 +381,7 @@ public class CodePathWriter
         return new TraceSpan(this, spanId, parentSpanId);
     }
 
-    public bool ShouldWrite(CodePathLogLevel level)
+    public bool ShouldWrite(LogLevel level)
     {
         return level <= _environment.GetLogLevel(_loggerName);
     }
@@ -393,7 +393,7 @@ public class CodePathWriter
         _environment.SetCurrentSpanId(spanId);
     }
 
-    public CodePathLogLevel Level => _environment.GetLogLevel(_loggerName);
+    public LogLevel Level => _environment.GetLogLevel(_loggerName);
     public DateTime Time => _environment.GetUtcNow();
     public ulong CurrentSpanId => _environment.GetCurrentSpanId();
 

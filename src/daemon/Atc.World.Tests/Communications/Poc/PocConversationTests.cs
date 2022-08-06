@@ -4,12 +4,14 @@ using Atc.Maths;
 using Atc.Server.TestDoubles;
 using Atc.Sound.OpenAL;
 using Atc.Speech.AzurePlugin;
+using Atc.Telemetry;
 using Atc.Telemetry.CodePath;
 using Atc.Telemetry.Exporters.CodePath;
 using Atc.Telemetry.Impl;
 using Atc.World.Communications;
 using Atc.World.Contracts.Communications;
 using FluentAssertions;
+using GeneratedCode;
 using NUnit.Framework;
 
 namespace Atc.World.Tests.Communications.Poc;
@@ -142,7 +144,7 @@ public class PocConversationTests
         //-- given
 
         using var telemetryExporter = new CodePathWebSocketExporter(listenPortNumber: 3003);
-        var telemetryEnvironment = new CodePathEnvironment(CodePathLogLevel.Debug, telemetryExporter);
+        var telemetryEnvironment = new CodePathEnvironment(LogLevel.Debug, telemetryExporter);
 
         Thread.Sleep(3000);
         
@@ -164,7 +166,7 @@ public class PocConversationTests
         var audioStreamCache = new PocAudioStreamCache();
         var speechSynthesisPlugin = new AzureSpeechSynthesisPlugin(
             audioStreamCache, 
-            new AzureSpeechSynthesisPlugin_Telemetry.Noop());
+            AtcSpeechAzurePluginTelemetry.CreateNoopTelemetry<AzureSpeechSynthesisPlugin.IMyTelemetry>());
         var speechService = new SpeechService(
             verbalizationService, 
             speechSynthesisPlugin,

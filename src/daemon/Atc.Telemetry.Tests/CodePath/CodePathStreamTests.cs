@@ -41,7 +41,7 @@ public class CodePathStreamTests
         var environment = CodePathTestDoubles.CreateEnvironment();
         var writer = new CodePathWriter(environment, "test");
 
-        writer.Message("M1", CodePathLogLevel.Info);
+        writer.Message("M1", LogLevel.Info);
 
         var root = ReadAll(environment);
 
@@ -51,7 +51,7 @@ public class CodePathStreamTests
         root.Nodes[0].Depth.Should().Be(0);
         root.Nodes[0].Parent.Should().BeSameAs(root);
         root.Nodes[0].Time.Should().Be(environment.GetUtcNow());
-        root.Nodes[0].Level.Should().Be(CodePathLogLevel.Info);
+        root.Nodes[0].Level.Should().Be(LogLevel.Info);
         root.Nodes[0].MessageId.Should().Be("M1");
         root.Nodes[0].Values.Should().BeEmpty();
         root.Nodes[0].IsSpan.Should().BeFalse();
@@ -65,7 +65,7 @@ public class CodePathStreamTests
         var environment = CodePathTestDoubles.CreateEnvironment();
         var writer = new CodePathWriter(environment, "test");
 
-        writer.Message("M1", CodePathLogLevel.Info, ("p1", "abc"), ("p2", 123));
+        writer.Message("M1", LogLevel.Info, ("p1", "abc"), ("p2", 123));
             
         var root = ReadAll(environment);
 
@@ -90,7 +90,7 @@ public class CodePathStreamTests
         var environment = CodePathTestDoubles.CreateEnvironment();
         var writer = new CodePathWriter(environment, "test");
 
-        var span = writer.Span("S1", CodePathLogLevel.Debug);
+        var span = writer.Span("S1", LogLevel.Debug);
         environment.MoveTimeBy(seconds: 60);
         span.Dispose();
             
@@ -102,7 +102,7 @@ public class CodePathStreamTests
         root.Nodes[0].Depth.Should().Be(0);
         root.Nodes[0].Parent.Should().BeSameAs(root);
         root.Nodes[0].Time.Should().Be(environment.StartUtc);
-        root.Nodes[0].Level.Should().Be(CodePathLogLevel.Debug);
+        root.Nodes[0].Level.Should().Be(LogLevel.Debug);
         root.Nodes[0].MessageId.Should().Be("S1");
         root.Nodes[0].Values.Should().BeEmpty();
         root.Nodes[0].IsSpan.Should().BeTrue();
@@ -120,7 +120,7 @@ public class CodePathStreamTests
 
         var span = writer.Span(
             "S1", 
-            CodePathLogLevel.Debug,
+            LogLevel.Debug,
             ("str", "ABC"),
             ("num", 123)
         );
@@ -136,7 +136,7 @@ public class CodePathStreamTests
         root.Nodes[0].Depth.Should().Be(0);
         root.Nodes[0].Parent.Should().BeSameAs(root);
         root.Nodes[0].Time.Should().Be(environment.StartUtc);
-        root.Nodes[0].Level.Should().Be(CodePathLogLevel.Debug);
+        root.Nodes[0].Level.Should().Be(LogLevel.Debug);
         root.Nodes[0].MessageId.Should().Be("S1");
         root.Nodes[0].IsSpan.Should().BeTrue();
         root.Nodes[0].EndTime.HasValue.Should().BeTrue();
@@ -161,11 +161,11 @@ public class CodePathStreamTests
         var environment = CodePathTestDoubles.CreateEnvironment();
         var writer = new CodePathWriter(environment, "test");
 
-        var span1 = writer.Span("S1", CodePathLogLevel.Debug);
+        var span1 = writer.Span("S1", LogLevel.Debug);
         environment.MoveTimeBy(seconds: 60);
         span1.Dispose();
         environment.MoveTimeBy(seconds: 30);
-        var span2 = writer.Span("S2", CodePathLogLevel.Debug);
+        var span2 = writer.Span("S2", LogLevel.Debug);
         environment.MoveTimeBy(seconds: 30);
         span2.Dispose();
             
@@ -191,7 +191,7 @@ public class CodePathStreamTests
         var environment = CodePathTestDoubles.CreateEnvironment();
         var writer = new CodePathWriter(environment, "test");
 
-        var span1 = writer.Span("S1F", CodePathLogLevel.Debug);
+        var span1 = writer.Span("S1F", LogLevel.Debug);
         
         environment.MoveTimeBy(seconds: 20);
         span1.Fail(new Exception("test-exception"));
@@ -202,7 +202,7 @@ public class CodePathStreamTests
         var root = ReadAll(environment);
 
         root.Nodes[0].IsSpan.Should().BeTrue();
-        root.Nodes[0].Level.Should().Be(CodePathLogLevel.Debug);
+        root.Nodes[0].Level.Should().Be(LogLevel.Debug);
         root.Nodes[0].MessageId.Should().Be("S1F");
         
         root.Nodes[0].EndTime.HasValue.Should().BeTrue();
@@ -221,7 +221,7 @@ public class CodePathStreamTests
         var environment = CodePathTestDoubles.CreateEnvironment();
         var writer = new CodePathWriter(environment, "test");
 
-        var span1 = writer.Span("S1F", CodePathLogLevel.Debug);
+        var span1 = writer.Span("S1F", LogLevel.Debug);
         
         environment.MoveTimeBy(seconds: 20);
         span1.Fail(errorCode: "TEST-ERR");
@@ -232,7 +232,7 @@ public class CodePathStreamTests
         var root = ReadAll(environment);
 
         root.Nodes[0].IsSpan.Should().BeTrue();
-        root.Nodes[0].Level.Should().Be(CodePathLogLevel.Debug);
+        root.Nodes[0].Level.Should().Be(LogLevel.Debug);
         root.Nodes[0].MessageId.Should().Be("S1F");
         
         root.Nodes[0].EndTime.HasValue.Should().BeTrue();
@@ -251,18 +251,18 @@ public class CodePathStreamTests
         var environment = CodePathTestDoubles.CreateEnvironment();
         var writer = new CodePathWriter(environment, "test");
         
-        writer.Message("root-M1", CodePathLogLevel.Debug);
-        using (var span1 = writer.Span("root-s1", CodePathLogLevel.Debug))
+        writer.Message("root-M1", LogLevel.Debug);
+        using (var span1 = writer.Span("root-s1", LogLevel.Debug))
         {
-            writer.Message("root-s1-M2", CodePathLogLevel.Debug);
-            using (var span12 = writer.Span("root-s1-s12", CodePathLogLevel.Debug))
+            writer.Message("root-s1-M2", LogLevel.Debug);
+            using (var span12 = writer.Span("root-s1-s12", LogLevel.Debug))
             {
-                writer.Message("root-s1-s12-M3", CodePathLogLevel.Debug);
-                writer.Message("root-s1-s12-M4", CodePathLogLevel.Debug);
+                writer.Message("root-s1-s12-M3", LogLevel.Debug);
+                writer.Message("root-s1-s12-M4", LogLevel.Debug);
             }
-            writer.Message("root-s1-M5", CodePathLogLevel.Debug);
+            writer.Message("root-s1-M5", LogLevel.Debug);
         }
-        writer.Message("root-M6", CodePathLogLevel.Debug);
+        writer.Message("root-M6", LogLevel.Debug);
         
         var root = ReadAll(environment);
 
@@ -297,42 +297,42 @@ public class CodePathStreamTests
 
         var task11 = async () => {
             await Task.Delay(10);
-            using (var span11 = writer.Span("root-s1-s11", CodePathLogLevel.Debug))
+            using (var span11 = writer.Span("root-s1-s11", LogLevel.Debug))
             {
-                writer.Message("root-s1-s11-M3", CodePathLogLevel.Debug);
-                writer.Message("root-s1-s11-M4", CodePathLogLevel.Debug);
+                writer.Message("root-s1-s11-M3", LogLevel.Debug);
+                writer.Message("root-s1-s11-M4", LogLevel.Debug);
             }
         };
         var task12 = async () => {
-            using (var span12 = writer.Span("root-s1-s12", CodePathLogLevel.Debug))
+            using (var span12 = writer.Span("root-s1-s12", LogLevel.Debug))
             {
-                writer.Message("root-s1-s12-M5", CodePathLogLevel.Debug);
+                writer.Message("root-s1-s12-M5", LogLevel.Debug);
                 await Task.Delay(15);
-                writer.Message("root-s1-s12-M6", CodePathLogLevel.Debug);
+                writer.Message("root-s1-s12-M6", LogLevel.Debug);
             }
         };
 
         var task1 = async () => {
-            using (var span1 = writer.Span("root-s1", CodePathLogLevel.Debug))
+            using (var span1 = writer.Span("root-s1", LogLevel.Debug))
             {
                 var taskM2 = async () => {
                     await Task.Delay(15);
-                    writer.Message("root-s1-M2", CodePathLogLevel.Debug);
+                    writer.Message("root-s1-M2", LogLevel.Debug);
                 };
                 
                 //longTaskResult = longTask();
                 
                 var taskM7 = async () => {
                     await Task.Yield();
-                    writer.Message("root-s1-M7", CodePathLogLevel.Debug);
+                    writer.Message("root-s1-M7", LogLevel.Debug);
                 };
                 await Task.WhenAll(task11(), task12(), taskM2(), taskM7());
             }
         };
 
-        writer.Message("root-M1", CodePathLogLevel.Debug);
+        writer.Message("root-M1", LogLevel.Debug);
         await task1();
-        writer.Message("root-M8", CodePathLogLevel.Debug);
+        writer.Message("root-M8", LogLevel.Debug);
         //await longTaskResult!;
         
         var root = ReadAll(environment);

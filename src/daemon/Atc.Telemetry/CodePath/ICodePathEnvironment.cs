@@ -3,7 +3,7 @@ namespace Atc.Telemetry.CodePath;
 public interface ICodePathEnvironment
 {
     DateTime GetUtcNow();
-    CodePathLogLevel GetLogLevel(string? loggerName = null);
+    LogLevel GetLogLevel(string? loggerName = null);
     ulong GetCurrentSpanId();
     void SetCurrentSpanId(ulong spanId);
     ulong TakeNextSpanId();

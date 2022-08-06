@@ -7,7 +7,7 @@ public static class CodePathTestDoubles
     public static readonly DateTime StartUtcValue = 
         new DateTime(2022, 10, 10, 8, 30, 0, DateTimeKind.Utc);
 
-    public static TestEnvironment CreateEnvironment(CodePathLogLevel logLevel = CodePathLogLevel.Debug)
+    public static TestEnvironment CreateEnvironment(LogLevel logLevel = LogLevel.Debug)
     {
         var exporter = new TestExporter();
         return new TestEnvironment(logLevel, exporter);
@@ -15,7 +15,7 @@ public static class CodePathTestDoubles
     
     public class TestEnvironment : CodePathEnvironment
     {
-        public TestEnvironment(CodePathLogLevel logLevel, TestExporter exporter) 
+        public TestEnvironment(LogLevel logLevel, TestExporter exporter) 
             : base(logLevel, exporter)
         {
             this.Exporter = exporter;

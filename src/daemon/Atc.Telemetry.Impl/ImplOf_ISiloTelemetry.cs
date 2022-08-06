@@ -32,7 +32,7 @@ public static class ImplOf_ISiloTelemetry
         public void DebugDispatchEvent(string grainId, IGrainEvent @event)
         {
             var buffer = _environment.NewBuffer();
-            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_dispatchEvent, CodePathLogLevel.Debug);
+            buffer.WriteBeginMessage(_environment.GetCurrentSpanId(), _environment.GetUtcNow(), __s_dispatchEvent, LogLevel.Debug);
             buffer.WriteValue(__s_grainId, grainId);
             buffer.WriteValue(__s_eventType, @event.GetType().Name);
             buffer.WriteEndMessage();
@@ -44,7 +44,7 @@ public static class ImplOf_ISiloTelemetry
             _writer.SpawnNewSpan(out var spanId, out var parentSpanId);
 
             var buffer = _environment.NewBuffer();
-            buffer.WriteOpenSpan(spanId, parentSpanId, _environment.GetUtcNow(), __s_executeReadyWorkItems, CodePathLogLevel.Verbose);
+            buffer.WriteOpenSpan(spanId, parentSpanId, _environment.GetUtcNow(), __s_executeReadyWorkItems, LogLevel.Verbose);
             buffer.Flush();
         
             return new CodePathWriter.TraceSpan(_writer, spanId, parentSpanId);
@@ -55,7 +55,7 @@ public static class ImplOf_ISiloTelemetry
             _writer.SpawnNewSpan(out var spanId, out var parentSpanId);
 
             var buffer = _environment.NewBuffer();
-            buffer.WriteBeginOpenSpan(spanId, parentSpanId, _environment.GetUtcNow(), __s_executeReadyWorkItems, CodePathLogLevel.Verbose);
+            buffer.WriteBeginOpenSpan(spanId, parentSpanId, _environment.GetUtcNow(), __s_executeReadyWorkItems, LogLevel.Verbose);
             buffer.WriteValue(__s_grainId, grainId);
             buffer.WriteValue(__s_workItem, workItem.GetType().Name);
             buffer.WriteValue(__s_timedOut, timedOut);
