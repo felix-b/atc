@@ -35,7 +35,7 @@ public class Silo : ISilo
         dependencies.AddSingleton<ISilo>(this);        
         dependencies.AddSingleton<ISiloGrains>(this.Grains);        
         dependencies.AddSingleton<ISiloEventDispatch>(this.Dispatch);
-        dependencies.AddSingleton<ISiloTaskQueue>(this.TaskQueue);        
+        dependencies.AddTransient<ISiloTaskQueue>(() => this.TaskQueue);        
         dependencies.AddSingleton<ISiloTimeTravel>(this.TimeTravel);
         dependencies.AddSingleton<ISiloTelemetry>(this.Telemetry);
         dependencies.AddSingleton<ISiloEnvironment>(this.Environment);

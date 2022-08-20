@@ -29,7 +29,7 @@ public class PocAIControllerGrain :
         base(
             silo: silo,
             grainType: TypeString,
-            brain: CreateBrain(activation.Callsign, brainTelemetry),
+            brain: CreateBrain(activation.Callsign.Full, brainTelemetry),
             telemetry: telemetry,
             party: PocPartyDescriptionFactory.CreateParty(activation),
             activation: activation)
@@ -63,10 +63,10 @@ public class PocAIControllerGrain :
 
     public record AIControllerGrainActivationEvent(
         string GrainId,
-        string Callsign,
+        Callsign Callsign,
         GrainRef<IWorldGrain> World,
         GrainRef<IRadioStationGrain> Radio
-    ) : AIRadioOperatorGrain<PocBrainState>.GrainActivationEvent(
+    ) : GrainActivationEventBase(
         GrainId: GrainId,
         Callsign: Callsign,
         World: World,

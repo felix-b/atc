@@ -1,13 +1,14 @@
+using Atc.Grains;
 using Atc.World.Communications;
 using Atc.World.Contracts.Communications;
 
-namespace Atc.World.Tests.Communications.Poc;
+namespace Atc.World.LLLL;
 
-public static class PocPartyDescriptionFactory
+public static class LlhzPartyDescriptionFactory
 {
     private static int __nextPartyKey = 0;
 
-    public static PersonPartyDescription CreateParty(AIRadioOperatorGrain<PocBrainState>.GrainActivationEventBase activation)
+    public static PersonPartyDescription CreateParty(IGrainActivationEvent activation)
     {
         var key = __nextPartyKey++;
         var genders = new[] {GenderType.Male, GenderType.Male, GenderType.Male, GenderType.Female, GenderType.Female};
@@ -21,21 +22,21 @@ public static class PocPartyDescriptionFactory
 
         var voice = new VoiceDescription(
             Language: LanguageCode.English,
-            Gender: genders[key],
-            Type: voiceTypes[key],
-            Rate: voiceRates[key],
-            Quality: linkQualities[key],
-            Volume: volumeLevels[key],
+            Gender: genders[key % genders.Length],
+            Type: voiceTypes[key % voiceTypes.Length],
+            Rate: voiceRates[key % voiceRates.Length],
+            Quality: linkQualities[key % linkQualities.Length],
+            Volume: volumeLevels[key % volumeLevels.Length],
             AssignedPlatformVoiceId: null);
         
         return new PersonPartyDescription(
             uniqueId: activation.GrainId,
             NatureType.AI,
             voice,
-            genders[key],
-            ages[key],
-            seniorities[key],
-            firstNames[key]
+            genders[key % genders.Length],
+            ages[key % ages.Length],
+            seniorities[key % seniorities.Length],
+            firstNames[key % firstNames.Length]
         );
     }
 }

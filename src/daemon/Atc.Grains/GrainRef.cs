@@ -74,6 +74,8 @@ public readonly struct GrainRef<T> : IAnyGrainRef, IEquatable<GrainRef<T>>, IEqu
     public string GrainId => _grainId;
     public bool CanGet => _grains != null;
 
+    public static GrainRef<T> NotInitialized => new GrainRef<T>();
+
     public static bool operator ==(GrainRef<T> left, GrainRef<T> right)
     {
         return left._grainId == right._grainId;

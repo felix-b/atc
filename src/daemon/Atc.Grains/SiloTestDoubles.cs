@@ -103,12 +103,12 @@ public static class SiloTestDoubles
         private readonly Dictionary<Type, object> _singletonInstanceByType = new();
         private readonly Dictionary<Type, Delegate> _transientFactoryByType = new();
 
-        public void AddSingleton<T>(T singletonInstance)
+        public void AddSingleton<T>(T singletonInstance) where T : class
         {
             _singletonInstanceByType[typeof(T)] = singletonInstance!;
         }
 
-        public void AddTransient<T>(Func<T> factory)
+        public void AddTransient<T>(Func<T> factory) where T : class
         {
             _transientFactoryByType[typeof(T)] = factory;
         }

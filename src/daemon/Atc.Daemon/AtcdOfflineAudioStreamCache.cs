@@ -1,17 +1,18 @@
+using System.Collections.Concurrent;
 using Atc.Utilities;
 using Atc.World.Contracts.Sound;
 
-namespace Atc.World.Tests.Communications.Poc;
+namespace Atc.Daemon;
 
-public class PocAudioStreamCache : IAudioStreamCache
+public class AtcdOfflineAudioStreamCache : IAudioStreamCache
 {
-    private readonly Dictionary<ulong, IAudioStream> _streamById = new();
+    private readonly ConcurrentDictionary<ulong, IAudioStream> _streamById = new();
     private ulong _nextStreamId = 1;
     
     public IAudioStream CreateStream(SoundFormat format, TimeSpan? duration = null)
     {
         var id = Interlocked.Increment(ref _nextStreamId);
-        var stream = new PocAudioStream(id, format, duration);
+        var stream = new BufferAudioStream(id, format, duration);
         _streamById[id] = stream;
         return stream;
     }
@@ -26,11 +27,11 @@ public class PocAudioStreamCache : IAudioStreamCache
         throw new KeyNotFoundException($"Audio stream with id {id} does not exist");
     }
 
-    public class PocAudioStream : IAudioStream
+    public class BufferAudioStream : IAudioStream
     {
         private readonly List<byte[]> _chunks = new();
 
-        public PocAudioStream(ulong id, SoundFormat format, TimeSpan? duration = null)
+        public BufferAudioStream(ulong id, SoundFormat format, TimeSpan? duration = null)
         {
             Id = id;
             Format = format;

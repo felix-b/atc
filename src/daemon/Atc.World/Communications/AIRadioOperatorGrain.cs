@@ -25,7 +25,7 @@ public abstract class AIRadioOperatorGrain<TBrainState> :
         string grainType,
         AIOperatorBrain<TBrainState> brain,
         PartyDescription party,
-        GrainActivationEvent activation) :
+        GrainActivationEventBase activation) :
         base(
             grainId: activation.GrainId,
             grainType,
@@ -223,7 +223,7 @@ public abstract class AIRadioOperatorGrain<TBrainState> :
         }
     }
 
-    private void InvokeBrain(IntentTuple? incomingIntent)
+    protected void InvokeBrain(IntentTuple? incomingIntent)
     {
         var brainInput = new AIOperatorBrain<TBrainState>.BrainInput(
             UtcNow: _silo.Environment.UtcNow,
@@ -281,18 +281,15 @@ public abstract class AIRadioOperatorGrain<TBrainState> :
     }
 
     private static GrainState CreateInitialState(
-        GrainActivationEvent activation, 
+        GrainActivationEventBase activation, 
         ISilo silo, 
         AIOperatorBrain<TBrainState> brain,
         PartyDescription party)
     {
-        var callsign = new Callsign(activation.Callsign, activation.Callsign);
-        //var party = CreatePartyDescription(activation);
-
         return new GrainState(
             StartUtc: silo.Environment.UtcNow,
             Party: party,
-            Callsign: callsign,
+            Callsign: activation.Callsign,
             World: activation.World,
             Radio: activation.Radio,
             Brain: brain.CreateInitialState(),
@@ -353,9 +350,9 @@ public abstract class AIRadioOperatorGrain<TBrainState> :
         GrainWorkItemHandle FinishWorkItemHandle
     );
 
-    public record GrainActivationEvent(
+    public record GrainActivationEventBase(
         string GrainId,
-        string Callsign,
+        Callsign Callsign,
         GrainRef<IWorldGrain> World,
         GrainRef<IRadioStationGrain> Radio,
         LanguageCode Language

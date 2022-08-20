@@ -127,8 +127,8 @@ public record SiloSnapshot(
 
 public interface ISiloDependencyBuilder
 {
-    void AddSingleton<T>(T singletonInstance);
-    void AddTransient<T>(Func<T> transientFactory);
+    void AddSingleton<T>(T singletonInstance) where T : class;
+    void AddTransient<T>(Func<T> transientFactory) where T : class;
     ISiloDependencyContext GetContext();
 }
 

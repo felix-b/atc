@@ -11,4 +11,8 @@
       <ProjectReference Include="..\Atc.Maths\Atc.Maths.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Control" />
+    </ItemGroup>
+
 </Project>

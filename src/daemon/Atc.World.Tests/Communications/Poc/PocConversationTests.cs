@@ -84,7 +84,7 @@ public class PocConversationTests
         var groundOp = silo.Grains.CreateGrain<PocAIControllerGrain>(
             grainId => new PocAIControllerGrain.AIControllerGrainActivationEvent(
                 grainId, 
-                "Q",
+                new Callsign("Q", "Q"),
                 world.As<IWorldGrain>(),
                 groundQ.As<IRadioStationGrain>()
             )
@@ -192,7 +192,7 @@ public class PocConversationTests
         var groundOp = silo.Grains.CreateGrain<PocAIControllerGrain>(
             grainId => new PocAIControllerGrain.AIControllerGrainActivationEvent(
                 grainId, 
-                "Q",
+                new Callsign("Q", "Q"),
                 world.As<IWorldGrain>(),
                 groundQ.As<IRadioStationGrain>()
             ));
@@ -274,7 +274,7 @@ public class PocConversationTests
         var aiOperator = silo.Grains.CreateGrain<PocAIPilotGrain>(
             grainId => new PocAIPilotGrain.AIPilotGrainActivationEvent(
                 grainId, 
-                callsign,
+                new Callsign(callsign, callsign),
                 world.As<IWorldGrain>(),
                 station.As<IRadioStationGrain>()
             ));

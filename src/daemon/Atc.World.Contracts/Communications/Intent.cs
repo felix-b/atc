@@ -22,5 +22,7 @@ public enum IntentFlags
     None = 0x0,
     HasGreeting = 0x01,
     HasFarewell = 0x02,
-    ConcludesConversation = 0x04
+    HasPositiveAck = 0x04,
+    HasNegativeAck = 0x08,
+    ConcludesConversation = 0x80
 }
