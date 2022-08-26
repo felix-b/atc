@@ -1,24 +1,29 @@
 using System.Collections.Immutable;
 using Atc.Telemetry;
+using Atc.Utilities;
 
 namespace Atc.Daemon;
 
 public class RunLoop : IDisposable
 {
-    private ImmutableDictionary<string, FirEntry> _firById;
-    private ImmutableHashSet<string> _leaderFirIds;
-    private ImmutableDictionary<string, Thread> _firLoopThreadById;
+    private readonly ImmutableHashSet<string> _allFirIds;
+    private WriteLocked<ImmutableHashSet<string>> _leaderFirIds;
+    private WriteLocked<ImmutableDictionary<string, FirEntry>> _firById;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly FirSiloBuilder _siloBuilder;
     private readonly IMyTelemetry _telemetry;
     private bool _disposed = false;
 
-    public RunLoop(IEnumerable<FirEntry> firs, IEnumerable<string> leaderFirIds, IMyTelemetry telemetry)
+    public RunLoop(
+        FirSiloBuilder siloBuilder,
+        IEnumerable<string> allFirIds, 
+        IEnumerable<string> leaderFirIds, 
+        IMyTelemetry telemetry)
     {
-        _firById = firs.ToImmutableDictionary(fir => fir.Icao, fir => fir);
-        _firLoopThreadById = firs.ToImmutableDictionary(
-            fir => fir.Icao, 
-            fir => CreateRunLoopThread(fir));
+        _siloBuilder = siloBuilder;
+        _allFirIds = ImmutableHashSet<string>.Empty.Union(allFirIds);
         _leaderFirIds = ImmutableHashSet<string>.Empty.Union(leaderFirIds);
+        _firById = ImmutableDictionary<string, FirEntry>.Empty;
         _telemetry = telemetry;
         
         Start();
@@ -39,10 +44,11 @@ public class RunLoop : IDisposable
 
     private void Start()
     {
-        foreach (var thread in _firLoopThreadById.Values)
-        {
-            thread.Start();
-        }
+        var allLoopThreads = _allFirIds
+            .Select(id => CreateRunLoopThread(id))
+            .ToList();
+        
+        allLoopThreads.ForEach(thread => thread.Start());
     }
     
     private bool ShutDown(TimeSpan timeout)
@@ -51,9 +57,9 @@ public class RunLoop : IDisposable
         
         _cancellationTokenSource.Cancel();
         
-        foreach (var kvp in _firLoopThreadById)
+        foreach (var kvp in _firById.Read())
         {
-            var thread = kvp.Value;
+            var thread = kvp.Value.RunLoopThread!;
             if (!thread.Join(timeout))
             {
                 _telemetry.WarningFailedTimelyShutdown(icao: kvp.Key, timeout);
@@ -65,26 +71,40 @@ public class RunLoop : IDisposable
         return true;
     }
 
-    private Thread CreateRunLoopThread(FirEntry fir)
+    private Thread CreateRunLoopThread(string firIcaoCode)
     {
-        return new Thread(state => {
-            _telemetry.InfoFirLoopThreadStarted(icao: fir.Icao);
-            
+        var thread =  new Thread(state => {
+            _telemetry.VerboseFirLoopThreadStarted(icao: firIcaoCode);
+
             try
             {
-                RunFirLoop(fir);
-                _telemetry.InfoFirLoopThreadCompleted(icao: fir.Icao);
+                RunFirLoop(firIcaoCode);
+                _telemetry.InfoFirLoopThreadCompleted(icao: firIcaoCode);
+            }
+            catch (OperationCanceledException)
+            {
+                _telemetry.InfoFirLoopThreadCompleted(icao: firIcaoCode);
             }
             catch (Exception e)
             {
-                _telemetry.ErrorFirLoopThreadCrashed(icao: fir.Icao, exception: e);
+                _telemetry.CriticalFirLoopThreadCrashed(icao: firIcaoCode, exception: e);
             }
         });
+
+        thread.Name = $"FIR_{firIcaoCode}";
+        thread.IsBackground = true;
+        
+        return thread;
     }
 
-    private void RunFirLoop(FirEntry fir)
+    private void RunFirLoop(string icao)
     {
-        var silo = fir.Silo;
+        var entry = _siloBuilder.InitializeFir(icao);
+
+        _telemetry.InfoFirInitialized(icao);
+        _firById.Replace(old => old.SetItem(icao, entry));
+        
+        var silo = entry.Silo;
         //int iterationCount = 0;
         
         while (!_cancellationTokenSource.IsCancellationRequested)
@@ -101,7 +121,7 @@ public class RunLoop : IDisposable
             var nextWorkItemUtc = silo.NextWorkItemAtUtc;
             if (nextWorkItemUtc > silo.Environment.UtcNow.AddMinutes(30))
             {
-                _telemetry.WarningFirIdle(icao: fir.Icao, nextWorkItemUtc);
+                _telemetry.WarningFirIdle(icao: icao, nextWorkItemUtc);
             }
         }
     }
@@ -109,12 +129,13 @@ public class RunLoop : IDisposable
     [TelemetryName("RunLoop")]
     public interface IMyTelemetry : ITelemetry
     {
-        void InfoFirLoopThreadStarted(string icao);
+        void VerboseFirLoopThreadStarted(string icao);
         void InfoFirLoopThreadCompleted(string icao);
-        void ErrorFirLoopThreadCrashed(string icao, Exception exception);
+        void CriticalFirLoopThreadCrashed(string icao, Exception exception);
         void WarningFirIdle(string icao, DateTime nextWorkItemUtc);
         void WarningFailedTimelyShutdown(string icao, TimeSpan timeout);
         void InfoAllFirsShutdownTimely();
         void InfoAllFirsShuttingDown();
+        void InfoFirInitialized(string icao);
     }
 }
