@@ -89,6 +89,10 @@ public class WebSocketEndpoint : IAsyncDisposable
             .ConfigureWebHostDefaults(hostBuilder => {
                 hostBuilder.UseUrls($"http://localhost:{_port}/");
                 hostBuilder.Configure(ConfigureWebSocket);
+                hostBuilder.ConfigureServices(services => {
+                    // now the host app is responsible for handling SIGINT/SIGTERM/...
+                    services.AddSingleton<IHostLifetime, NoopHostLifetime>();
+                });
             })
             .Build();
             

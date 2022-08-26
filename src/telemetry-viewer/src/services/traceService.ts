@@ -44,31 +44,32 @@ export function createTraceService(endpointUrl: string): TraceService {
     const _stringByKey = new Map<number, string>();
     const _nodeListeners: TraceNodeListener[] = [];
     const _viewChangedListeners: TraceViewChangedListener[] = [];
-    const _webSocket: WebSocket = new WebSocket(endpointUrl);// 'http://localhost:3003/telemetry'
     const _queryObservers = new Map<number, TraceQueryObserver>();
+    let _webSocket: WebSocket | undefined = undefined;
+    let _connectedStateRequested: boolean = false;
     let _nextInternalNodeId = -1; // an ever-decreasing number, to dstinguish from Span Ids which are positive
     let _nextQueryId = 1;
     let _filterLayer: TraceTreeLayer | undefined = undefined;
 
     _nodeById.set(_rootNode.id, _rootNode);
 
-    _webSocket.binaryType = 'arraybuffer';
-    _webSocket.onerror = e => console.log('TraceService.webSocketError', e);
-    _webSocket.onclose = e => console.log('TraceService.webSocketClose', e);
-    _webSocket.onopen = e => {
-        console.log('TraceService.webSocketOpen', e);
-        sendEnvelopeMessage({
-            connectRequest: { }
-        })
-    };
-    _webSocket.onmessage = e => {
-        //console.log('TraceService.webSocketMessageReceived', e.data);
-        if (e.data instanceof ArrayBuffer) {
-            receiveEnvelopeMessage(e.data);
-        }
-    };
 
-    const service: TraceService & TraceTreeLayer  = {
+    const service: TraceService & TraceTreeLayer = {
+        connect() {
+            _connectedStateRequested = true;
+            if (!_webSocket) {
+                _webSocket = initWebSocket();
+            }
+        },
+
+        disconnect() {
+            _connectedStateRequested = false;
+            if (_webSocket) {
+                _webSocket.close();
+                _webSocket = undefined;
+            }
+        },
+
         getTopLevelNodes() {
             return _rootNode.children;
         },
@@ -142,8 +143,44 @@ export function createTraceService(endpointUrl: string): TraceService {
         }
     };
 
+    (service as any).getWebSocket = () => _webSocket;
+
     TraceServiceSingleton.instance = service;
     return service;
+
+    function retryConnect() {
+        console.log('TraceService.retryConnect', 'will retry in 1s');
+        window.setTimeout(() => {
+            _webSocket = initWebSocket();
+        }, 1000);
+    }
+
+    function initWebSocket(): WebSocket {
+        const socket: WebSocket = new WebSocket(endpointUrl);// 'http://localhost:3003/telemetry'
+        socket.binaryType = 'arraybuffer';
+        socket.onerror = e => console.log('TraceService.webSocketError', e);
+        socket.onclose = e => {
+            console.log('TraceService.webSocketClose', e);
+            if (_connectedStateRequested) {
+                retryConnect();
+            } else {
+                _webSocket = undefined;
+            }
+        };
+        socket.onopen = e => {
+            console.log('TraceService.webSocketOpen', e);
+            sendEnvelopeMessage({
+                connectRequest: { }
+            })
+        };
+        socket.onmessage = e => {
+            //console.log('TraceService.webSocketMessageReceived', e.data);
+            if (e.data instanceof ArrayBuffer) {
+                receiveEnvelopeMessage(e.data);
+            }
+        };
+        return socket;
+    };
 
     function receiveEnvelopeMessage(data: ArrayBuffer) {
         const envelope = CodePathServerToClient.decode(new Uint8Array(data));
@@ -160,6 +197,10 @@ export function createTraceService(endpointUrl: string): TraceService {
 
     function sendEnvelopeMessage(envelope: DeepPartial<CodePathClientToServer>) {
         console.log('TraceService.webSocketEncodeOutgoing', envelope);
+        if (!_webSocket) {
+            console.error('TraceService.sendEnvelopeMessage: not connected');
+            return;
+        }
 
         const writer = CodePathClientToServer.encode(envelope as CodePathClientToServer);
         const byteArray = writer.finish();

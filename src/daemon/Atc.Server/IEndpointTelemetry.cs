@@ -50,4 +50,10 @@ public interface IEndpointTelemetry : ITelemetry
     ITraceSpan SpanQueueOpDispatcherInvokeArbitrary();
     ITraceSpan SpanQueueOpDispatcherPerformOutputRequests(ulong workItemId, int count);
     ITraceSpan SpanConnectionPerformOutputRequest(int index, string type);
+    void DebugConnectionFireMessageRequest(long connectionId);
+    void DebugConnectionRegisterObserverRequest(long connectionId, string? registrationKey);
+    void DebugConnectionDisposeObserverRequest(long connectionId, string registrationKey);
+    void DebugConnectionCloseRequest(long connectionId);
+    void DebugConnectionFlushRequest(long connectionId);
+    Exception ExceptionDisposeObserverRegistrationKeyNull();
 }

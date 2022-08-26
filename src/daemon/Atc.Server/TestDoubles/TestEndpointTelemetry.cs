@@ -231,4 +231,34 @@ public class TestEndpointTelemetry : TelemetryTestDoubleBase, IEndpointTelemetry
     {
         return new TestSpan(this, $"ConnectionPerformOutputRequest(index={index},type={type})");
     }
+
+    public void DebugConnectionFireMessageRequest(long connectionId)
+    {
+        ReportDebug($"ConnectionFireMessageRequest(connectionId={connectionId})");
+    }
+
+    public void DebugConnectionRegisterObserverRequest(long connectionId, string? registrationKey)
+    {
+        ReportDebug($"ConnectionRegisterObserverRequest(connectionId={connectionId},registrationKey={registrationKey})");
+    }
+
+    public void DebugConnectionDisposeObserverRequest(long connectionId, string registrationKey)
+    {
+        ReportDebug($"ConnectionDisposeObserverRequest(connectionId={connectionId},registrationKey={registrationKey})");
+    }
+
+    public void DebugConnectionCloseRequest(long connectionId)
+    {
+        ReportDebug($"ConnectionCloseRequest(connectionId={connectionId})");
+    }
+
+    public void DebugConnectionFlushRequest(long connectionId)
+    {
+        ReportDebug($"ConnectionFlushRequest(connectionId={connectionId})");
+    }
+
+    public Exception ExceptionDisposeObserverRegistrationKeyNull()
+    {
+        return new Exception("DisposeObserverRegistrationKeyNull");
+    }
 }

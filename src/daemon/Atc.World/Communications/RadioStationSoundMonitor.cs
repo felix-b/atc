@@ -20,7 +20,20 @@ public class RadioStationSoundMonitor : IDisposable
     private ulong? _lastReceivedTransmissionId = null;
     private Task? _playTask = null;
     private CancellationTokenSource? _playCancellation = null;
-        
+
+    public RadioStationSoundMonitor(
+        GrainRef<IRadioStationGrain> radioStation,
+        ISiloDependencyContext dependencies
+    ) : this(
+        silo: dependencies.Resolve<ISilo>(),
+        speechService: dependencies.Resolve<ISpeechService>(),
+        streamCache: dependencies.Resolve<IAudioStreamCache>(),
+        player: dependencies.Resolve<IRadioSpeechPlayer>(),
+        telemetry: dependencies.Resolve<ITelemetryProvider>().GetTelemetry<IMyTelemetry>(),
+        radioStation)
+    {
+    }
+
     public RadioStationSoundMonitor(
         ISilo silo,
         ISpeechService speechService, 

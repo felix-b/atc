@@ -148,7 +148,24 @@ public class Connection : IAsyncDisposable, IConnectionContext
     public bool IsActive =>
         !_disposed &&
         !_cancelForAnyReason.IsCancellationRequested; 
-        //TODO: && _socket.State == WebSocketState.Open;
+
+    // public bool IsActive
+    // {
+    //     get
+    //     {
+    //         var result =     
+    //             !_disposed &&
+    //             !_cancelForAnyReason.IsCancellationRequested; 
+    //             //TODO: && _socket.State == WebSocketState.Open;
+    //
+    //         if (!result)
+    //         {
+    //             Console.WriteLine($"TELDBG> connection[{Id}] IsActive=FALSE disposed={_disposed} cancellationRequested={_cancelForAnyReason.IsCancellationRequested}");
+    //         }
+    //
+    //         return result;
+    //     }
+    // }
 
     // service operations use this token as abort processing of a request
     public CancellationToken Cancellation => _cancelForAnyReason.Token;

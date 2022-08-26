@@ -7,6 +7,7 @@ export interface RootState {
 }
 
 export interface TraceViewState {
+    connected: boolean;
     nodeById: Record<string, TraceNodeState>;
     selectedNodeId?: string;
     queries: Record<string, TraceQueryResults>;
@@ -25,6 +26,7 @@ export interface TraceNodeState {
 }
 
 const initialState: TraceViewState = {
+    connected: false,
     nodeById: {
         0: createRootNodeState()
     },
@@ -33,6 +35,7 @@ const initialState: TraceViewState = {
 };
 
 export const TraceViewActionTypes = {
+    CONNECTED_SET: 'traceView/connectedSet',
     NODE_ADD: 'traceView/nodeAdd',
     NODE_UPDATE: 'traceView/nodeUpdate',
     NODE_EXPAND: 'traceView/nodeExpand',
@@ -46,6 +49,7 @@ export const TraceViewActionTypes = {
     QUERY_RESULT_GOTO: 'traceView/queryResultGoto',
     
     getAllActionTypes: () => [
+        'traceView/connectedSet',
         'traceView/nodeAdd',
         'traceView/nodeUpdate',
         'traceView/nodeExpand',
@@ -61,6 +65,12 @@ export const TraceViewActionTypes = {
 };
 
 export const TraceViewActions = {
+    connectedSet(value: boolean) {
+        return {
+            type: TraceViewActionTypes.CONNECTED_SET,
+            value
+        };
+    },
     nodeAdd(node: TraceNode) {
         return {
             type: TraceViewActionTypes.NODE_ADD,
@@ -157,6 +167,15 @@ export function createTraceViewState(traceService: TraceService) {
             };
         },
     
+        [TraceViewActionTypes.CONNECTED_SET]: 
+        (state: TraceViewState, action: ReturnType<typeof TraceViewActions.connectedSet>): TraceViewState => {
+            const { value } = action;
+            return {
+                ...state,
+                connected: value
+            };
+        },
+
         [TraceViewActionTypes.NODE_UPDATE]: 
         (state: TraceViewState, action: ReturnType<typeof TraceViewActions.nodeUpdate>): TraceViewState => {
             const { nodeId } = action;
@@ -349,85 +368,12 @@ export function createTraceViewState(traceService: TraceService) {
             state: TraceViewState = initialState,
             action: AnyAction
         ): TraceViewState => {
-
             const reducerFunction = PerActionReducers[action.type];
             if (!!reducerFunction) {
                 return reducerFunction(state, action);
             } else {
                 return state;
             }
-
-            /*
-            switch (action.type) {
-                case TraceViewActionTypes.NODE_ADD:
-                    const nodeAddAction = action as ReturnType<typeof TraceViewActions.nodeAdd>;
-                    const stateAfterNodeAdd = PerActionReducers.reduceNodeAdd(state, nodeAddAction);
-                    //console.log('traceViewState.reduceNodeAdd', action, state, stateAfterNodeAdd);
-                    return stateAfterNodeAdd;
-
-                case TraceViewActionTypes.NODE_UPDATE: 
-                    const nodeUpdateAction = action as ReturnType<typeof TraceViewActions.nodeUpdate>;
-                    const stateAfterNodeUpdate = PerActionReducers.reduceNodeUpdate(state, nodeUpdateAction);
-                    //console.log('traceViewState.reduceNodeUpdate', action, state, stateAfterNodeUpdate);
-                    return stateAfterNodeUpdate;
-
-                case TraceViewActionTypes.NODE_EXPAND: 
-                    const nodeExpandAction = action as ReturnType<typeof TraceViewActions.nodeExpand>;
-                    const stateAfterNodeExpand = PerActionReducers.reduceNodeExpand(state, nodeExpandAction);
-                    //console.log('traceViewState.reduceNodeExpand', action, state, stateAfterNodeExpand);
-                    return stateAfterNodeExpand;
-
-                case TraceViewActionTypes.NODE_COLLAPSE: 
-                    const nodeCollapseAction = action as ReturnType<typeof TraceViewActions.nodeCollapse>;
-                    const stateAfterNodeCollapse = PerActionReducers.reduceNodeCollapse(state, nodeCollapseAction);
-                    //console.log('traceViewState.reduceNodeCollapse', action, state, stateAfterNodeCollapse);
-                    return stateAfterNodeCollapse;
-
-                case TraceViewActionTypes.NODE_SELECT: 
-                    const nodeSelectAction = action as ReturnType<typeof TraceViewActions.nodeSelect>;
-                    const stateAfterNodeSelect = PerActionReducers.reduceNodeSelect(state, nodeSelectAction);
-                    //console.log('traceViewState.reduceNodeSelect', action, state, stateAfterNodeSelect);
-                    return stateAfterNodeSelect;
-
-                case TraceViewActionTypes.VIEW_CHANGE_NOTIFY:
-                    const stateAfterChangeNotify = PerActionReducers.reduceViewChangeNotify(state);
-                    //console.log('traceViewState.reduceViewChangeNotify', action, state, stateAfterChangeNotify);
-                    return stateAfterChangeNotify;
-
-                case TraceViewActionTypes.FILTER_QUERY_SET: 
-                    const filterSetAction = action as ReturnType<typeof TraceViewActions.filterQuerySet>;
-                    const stateAfterFilterSet = PerActionReducers.reduceFilterQuerySet(state, filterSetAction);
-                    //console.log('traceViewState.reduceFilterQuerySet', action, state, stateAfterFilterSet);
-                    return stateAfterFilterSet;
-
-                case TraceViewActionTypes.FILTER_QUERY_CLEAR: 
-                    const filterClearAction = action as ReturnType<typeof TraceViewActions.filterQueryClear>;
-                    const stateAfterFilterClear = PerActionReducers.reduceFilterQueryClear(state, filterClearAction);
-                    //console.log('traceViewState.reduceFilterQueryClear', action, state, stateAfterFilterClear);
-                    return stateAfterFilterClear;
-
-                case TraceViewActionTypes.QUERY_RESULT_SET: 
-                    const queryResultSetAction = action as ReturnType<typeof TraceViewActions.queryResultSet>;
-                    const stateAfterResultSet = PerActionReducers.reduceQueryResultSet(state, queryResultSetAction);
-                    //console.log('traceViewState.reduceFilterQueryClear', action, state, queryResultSetAction);
-                    return stateAfterResultSet;
-
-                case TraceViewActionTypes.QUERY_RESULT_CLEAR: 
-                    const queryResultClearAction = action as ReturnType<typeof TraceViewActions.queryResultClear>;
-                    const stateAfterResultClear = PerActionReducers.reduceQueryResultClear(state, queryResultClearAction);
-                    //console.log('traceViewState.reduceFilterQueryClear', action, state, queryResultClearAction);
-                    return stateAfterResultClear;
-
-                case TraceViewActionTypes.QUERY_RESULT_GOTO: 
-                    const queryResultGotoAction = action as ReturnType<typeof TraceViewActions.queryResultGoto>;
-                    const stateAfterResultGoto = PerActionReducers.reduceQueryResultGoto(state, queryResultGotoAction);
-                    //console.log('traceViewState.reduceQueryResultGoto', action, state, queryResultGotoAction);
-                    return stateAfterResultGoto;
-
-                default:
-                    return state;
-            }
-            */
         },
 
         startTraceViewUpdates: (store: Store) => {

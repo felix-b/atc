@@ -9,6 +9,7 @@ namespace Atc.Telemetry.Exporters.CodePath;
 
 public class CodePathWebSocketExporter : ICodePathExporter, IDisposable
 {
+    private readonly TimeSpan? _delayBeforeFirstPush;
     private readonly Channel<MemoryStream> _buffers;
     private readonly ChannelWriter<MemoryStream> _writer;
     private readonly ChannelReader<MemoryStream> _reader;
@@ -20,10 +21,15 @@ public class CodePathWebSocketExporter : ICodePathExporter, IDisposable
     private ICodePathEnvironment? _environment = null;
     private ulong _totalBufferCount = 0;
     private ulong _totalBroadcastCount = 0;
+    private ulong _totalSendBufferCount = 0;
 
-    public CodePathWebSocketExporter(int listenPortNumber, IEndpointTelemetry? telemetry = null)
+    public CodePathWebSocketExporter(
+        int listenPortNumber, 
+        IEndpointTelemetry? telemetry = null, 
+        TimeSpan? delayBeforeFirstPush = null)
     {
         var effectiveTelemetry = telemetry ?? AtcServerTelemetry.CreateNoopTelemetry<IEndpointTelemetry>();
+        _delayBeforeFirstPush = delayBeforeFirstPush;
         
         _buffers = Channel.CreateBounded<MemoryStream>(capacity: 100000);
         _reader = _buffers.Reader;
@@ -71,7 +77,12 @@ public class CodePathWebSocketExporter : ICodePathExporter, IDisposable
     public ICodePathEnvironment? Environment => _environment;
     public CodePathStringMap? StringMap => _environment?.GetStringMap();
     public ulong TotalBufferCount => _totalBufferCount;
-    
+    public ulong TotalBroadcastCount => _totalBroadcastCount;
+    public ulong TotalSendBufferCount => _totalSendBufferCount;
+    public ulong TotalFireMessageCount => _service.TotalFireMessageCount;
+    public ulong TotalObserveBuffersCount => _service.TotalObserveBuffersCount;
+    public ulong TotalTelemetryBytes => _service.TotalTelemetryBytes;
+
     private WebSocketEndpoint CreateServiceEndpoint(int listenPortNumber, IEndpointTelemetry telemetry)
     {
         var endpoint = WebSocketEndpoint
@@ -88,10 +99,9 @@ public class CodePathWebSocketExporter : ICodePathExporter, IDisposable
 
     private async Task RunBuffersPumpingLoop()
     {
-        await Task.Yield();
-        
         try
         {
+            await Task.Delay(_delayBeforeFirstPush ?? TimeSpan.FromMilliseconds(10), _cancellation.Token);
             await foreach (var buffer in _buffers.Reader.ReadAllAsync(_cancellation.Token))
             {
                 Broadcast(buffer);
@@ -99,6 +109,10 @@ public class CodePathWebSocketExporter : ICodePathExporter, IDisposable
         }
         catch (OperationCanceledException)
         {
+            while (_buffers.Reader.TryRead(out var bufferToFlush))
+            {
+                Broadcast(bufferToFlush);
+            }
         }
         catch (Exception e)
         {
@@ -114,6 +128,7 @@ public class CodePathWebSocketExporter : ICodePathExporter, IDisposable
             {
                 try
                 {
+                    Interlocked.Increment(ref _totalSendBufferCount);
                     subscribersSnapshot[i].SendBuffer(buffer);
                 }
                 catch (Exception e)

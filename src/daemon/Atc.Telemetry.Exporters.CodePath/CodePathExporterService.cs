@@ -43,6 +43,7 @@ public class CodePathExporterService
             var pushConnection = connection.CopyForPush();
             if (!pushConnection.IsActive)
             {
+                //Console.WriteLine("TELDBG> OBSERVER ABORTED - CONNECTION INACTIVE");
                 return;
             }
 
@@ -52,8 +53,12 @@ public class CodePathExporterService
                 SendStringMap();
             }
             
+            //Console.WriteLine("TELDBG> OBSERVER PROCEEDING");
+
             SendObservedBuffers(observation.Added);
             pushConnection.RequestFlush();
+
+            //Console.WriteLine("TELDBG> OBSERVER COMPLETED");
 
             void SendStringMap()
             {

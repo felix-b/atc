@@ -4,6 +4,8 @@ import { LogLevel, TraceQuery, TraceService } from "../../services/types";
 import { TraceViewActions } from "./traceViewState";
 
 export interface TraceViewAPI {
+    connect(): void;
+    disconnect(): void;
     swtichFilter(on: boolean): void;
     addQuery(text?: string, logLevels?: LogLevel[]): void;
     removeQuery(id: number): void;
@@ -53,6 +55,14 @@ export function createTraceViewAPI(
     };
 
     return {
+        connect() {
+            traceService.connect();
+            dispatch(TraceViewActions.connectedSet(true));
+        },
+        disconnect() {
+            traceService.disconnect();
+            dispatch(TraceViewActions.connectedSet(false));
+        },
         swtichFilter(on: boolean) {
             dispatch(TraceViewActions.filterSwitch(on));
             if (on) {

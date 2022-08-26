@@ -9,11 +9,12 @@ import styles from './TraceView.module.css';
 import { TraceViewAPI } from "./traceViewAPI";
 
 interface TraceViewToolbarStateProps {
+    connected: TraceViewState['connected']; 
     queries: TraceViewState['queries'];
     isFilterActive: TraceViewState['isFilterActive'];
 }
 
-type  TraceViewToolbarDispatchProps = TraceViewAPI;
+type TraceViewToolbarDispatchProps = TraceViewAPI;
 
 type PureTraceToolbarProps = TraceViewToolbarStateProps & TraceViewToolbarDispatchProps;
 
@@ -78,12 +79,27 @@ const PureTraceQueryCursor = (props: PureTraceQueryCursorProps) => {
 const PureTraceToolbar = (props: PureTraceToolbarProps) => {
     console.log('PureTraceToolbar.render');
 
-    const { queries, isFilterActive, addQuery, goToResult, removeQuery, swtichFilter } = props;
+    const { 
+        connected, 
+        queries, 
+        isFilterActive, 
+        addQuery, 
+        goToResult, 
+        removeQuery, 
+        swtichFilter,
+        connect,
+        disconnect,
+    } = props;
+
     const inputRef = useRef<HTMLInputElement>(null);
     const hasQueries = Object.keys(queries).length > 0;
 
     return (
         <div className={styles['trace-toolbar-container']}>
+            <div>
+                {!connected && <span>Inactive&nbsp;<button onClick={connect}>Connect</button></span>}
+                {connected && <span>Active&nbsp;<button onClick={disconnect}>[X] Disconnect</button></span>}
+            </div>
             <div>
                 <input ref={inputRef} type="text" id="inputQueryText" name="inputQueryText" className={styles['trace-toolbar-query-input-text']} />
                 <button onClick={() => addQuery(inputRef.current?.value || '')} className={styles['trace-toolbar-query-input-add']}>Add</button>
@@ -106,6 +122,7 @@ interface ConnectedTraceToolbarProps {
 const ConnectedTraceToolbar = connect<TraceViewToolbarStateProps, TraceViewToolbarDispatchProps, ConnectedTraceToolbarProps, RootState>(
     (state) => {
         return {
+            connected: state.traceView.connected, 
             queries: state.traceView.queries,
             isFilterActive: state.traceView.isFilterActive,
         };

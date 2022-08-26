@@ -108,7 +108,7 @@ public static class SiloTestDoubles
             _singletonInstanceByType[typeof(T)] = singletonInstance!;
         }
 
-        public void AddTransient<T>(Func<T> factory) where T : class
+        public void AddTransient<T>(Func<ISiloDependencyContext, T> factory) where T : class
         {
             _transientFactoryByType[typeof(T)] = factory;
         }
@@ -125,8 +125,8 @@ public static class SiloTestDoubles
                 return (T) untypedInstance;
             }
 
-            var factory = (Func<T>) _transientFactoryByType[typeof(T)];
-            return factory();
+            var factory = (Func<ISiloDependencyContext, T>) _transientFactoryByType[typeof(T)];
+            return factory(this);
         }
     }
     

@@ -6,20 +6,36 @@ namespace Atc.Daemon;
 public class AtcdSiloDependencyBuilder : ISiloDependencyBuilder
 {
     private readonly ContainerBuilder _buidler = new();
+    private AtcdSiloDependencyContext? _context = null;
     
     public void AddSingleton<T>(T singletonInstance) where T : class
     {
+        ValidateMutable();
         _buidler.RegisterInstance<T>(singletonInstance);
     }
 
-    public void AddTransient<T>(Func<T> transientFactory) where T : class
+    public void AddTransient<T>(Func<ISiloDependencyContext, T> transientFactory) where T : class
     {
-        _buidler.Register<T>(ctx => transientFactory()).InstancePerDependency();
+        ValidateMutable();
+        _buidler.Register<T>(ctx => transientFactory(_context!)).InstancePerDependency();
     }
 
     public ISiloDependencyContext GetContext()
     {
-        return new AtcdSiloDependencyContext(_buidler.Build());
+        if (_context == null)
+        {
+            _context = new AtcdSiloDependencyContext(_buidler.Build());
+        }
+
+        return _context;
+    }
+
+    private void ValidateMutable()
+    {
+        if (_context != null)
+        {
+            throw new InvalidOperationException("DI container was already built");
+        }
     }
 }
 

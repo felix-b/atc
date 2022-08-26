@@ -28,26 +28,36 @@ public class DeferredConnectionContext<TEnvelopeIn, TEnvelopeOut> : IDeferredCon
 
     void IDeferredConnectionContext<TEnvelopeOut>.FireMessage(TEnvelopeOut outgoingMessageEnvelope)
     {
+        _telemetry.DebugConnectionFireMessageRequest(connectionId: _inner.Id);
         AddOutputRequest(new FireMessageRequest(outgoingMessageEnvelope)); 
     }
 
     void IDeferredConnectionContext<TEnvelopeOut>.RegisterObserver(IObserverSubscription observer, string? registrationKey)
     {
+        _telemetry.DebugConnectionRegisterObserverRequest(connectionId: _inner.Id, registrationKey: registrationKey ?? string.Empty);
         AddOutputRequest(new RegisterObserverRequest(observer, registrationKey)); 
     }
 
     void IDeferredConnectionContext<TEnvelopeOut>.DisposeObserver(string registrationKey)
     {
+        if (registrationKey == null)
+        {
+            throw _telemetry.ExceptionDisposeObserverRegistrationKeyNull();
+        }
+        
+        _telemetry.DebugConnectionDisposeObserverRequest(connectionId: _inner.Id, registrationKey: registrationKey);
         AddOutputRequest(new DisposeObserverRequest(registrationKey)); 
     }
 
     void IDeferredConnectionContext<TEnvelopeOut>.RequestClose()
     {
+        _telemetry.DebugConnectionCloseRequest(connectionId: _inner.Id);
         AddOutputRequest(new CloseConnectionRequest()); 
     }
 
     void IDeferredConnectionContext<TEnvelopeOut>.RequestFlush()
     {
+        _telemetry.DebugConnectionFlushRequest(connectionId: _inner.Id);
         _onFlushRequested?.Invoke(this);
     }
 

@@ -101,6 +101,8 @@ export interface TraceTreeLayer {
 }
 
 export interface TraceService { 
+    connect(): void;
+    disconnect(): void;
     getCurrentView(): TraceTreeLayer;
     setFilter(queries: TraceQuery[], includeNodeIds: string[]): void;
     clearFilter(): void;

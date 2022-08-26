@@ -12,6 +12,10 @@ public abstract class TelemetryTestDoubleBase
     public IEnumerable<string> Warnings => _warnings.Select(entry => entry.Message);
     public IEnumerable<string> AllMessages => _allMessages.Select(entry => entry.Message);
 
+    public IEnumerable<LogEntry> ErrorEntries => _errors;
+    public IEnumerable<LogEntry> WarningEntries => _warnings;
+    public IEnumerable<LogEntry> AllEntries => _allMessages;
+
     public void PrintAllToConsole()
     {
         Console.WriteLine("============ ALL TELEMETRY MESSAGES ============");
@@ -114,7 +118,7 @@ public abstract class TelemetryTestDoubleBase
         }
     }
 
-    private readonly struct LogEntry
+    public readonly struct LogEntry
     {
         public readonly DateTime Time;
         public readonly string Message;

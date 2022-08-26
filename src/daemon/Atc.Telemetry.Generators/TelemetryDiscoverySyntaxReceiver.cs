@@ -169,7 +169,7 @@ public class TelemetryDiscoverySyntaxReceiver : ISyntaxContextReceiver
             CheckMethodPrefix(eventName, "Debug", condition: returnsVoid, CopyOfLogLevel.Debug,  ref eventName, ref logLevel);
             CheckMethodPrefix(eventName, "Verbose", condition: returnsVoid, CopyOfLogLevel.Verbose,  ref eventName, ref logLevel);
             CheckMethodPrefix(eventName, "Info", condition: returnsVoid, CopyOfLogLevel.Info,  ref eventName, ref logLevel);
-            CheckMethodPrefix(eventName, "Warning", condition: returnsVoid, CopyOfLogLevel.Verbose,  ref eventName, ref logLevel);
+            CheckMethodPrefix(eventName, "Warning", condition: returnsVoid, CopyOfLogLevel.Warning,  ref eventName, ref logLevel);
             CheckMethodPrefix(eventName, "Error", condition: returnsVoid, CopyOfLogLevel.Error,  ref eventName, ref logLevel);
             CheckMethodPrefix(eventName, "Exception", condition: returnsException, CopyOfLogLevel.Error,  ref eventName, ref logLevel);
 
