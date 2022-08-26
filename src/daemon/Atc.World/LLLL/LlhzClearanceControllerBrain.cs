@@ -5,14 +5,14 @@ using Atc.World.Contracts.Communications;
 
 namespace Atc.World.LLLL;
 
-public class LlhzClearanceControllerBrain : AIOperatorBrain<LlhzClearanceControllerBrain.BrainState>
+public class LlhzClearanceControllerBrain : RadioOperatorBrain<LlhzClearanceControllerBrain.BrainState>
 {
 
     public record BrainState(
         ImmutableArray<IntentTuple> OutgoingIntents,
         ImmutableDictionary<Callsign, ConversationToken?> ConversationPerCallsign
         //TODO: add more data
-    ) : AIOperatorBrainState(OutgoingIntents, ConversationPerCallsign);
+    ) : RadioOperatorBrainState(OutgoingIntents, ConversationPerCallsign);
 
     public LlhzClearanceControllerBrain(Callsign callsign, IMyTelemetryBase telemetry) 
         : base(callsign, telemetry)

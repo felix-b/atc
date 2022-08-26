@@ -5,15 +5,15 @@ using Atc.World.Contracts.Communications;
 
 namespace Atc.World.Communications;
 
-public abstract class AIOperatorBrain<TState> 
-    where TState : AIOperatorBrainState // use C# record type
+public abstract class RadioOperatorBrain<TState> 
+    where TState : RadioOperatorBrainState // use C# record type
 {
     [NotEventSourced]
     private readonly IMyTelemetryBase _telemetry;
     [NotEventSourced]
     private Func<ulong> _onTakeNextIntentId = () => 0;
 
-    protected AIOperatorBrain(Callsign callsign, IMyTelemetryBase telemetry)
+    protected RadioOperatorBrain(Callsign callsign, IMyTelemetryBase telemetry)
     {
         _telemetry = telemetry;
         MyCallsign = callsign;
@@ -100,12 +100,12 @@ public enum OutgoingIntentMergeOption
     RemoveAllOther
 }
 
-public abstract record AIOperatorBrainState(
+public abstract record RadioOperatorBrainState(
     ImmutableArray<IntentTuple> OutgoingIntents,
     ImmutableDictionary<Callsign, ConversationToken?> ConversationPerCallsign)
 {
     public static void MergeOutgoingIntent(
-        AIOperatorBrainState stateBefore,
+        RadioOperatorBrainState stateBefore,
         IntentTuple newIntent,
         out ImmutableArray<IntentTuple> intentsAfter,
         out ImmutableDictionary<Callsign, ConversationToken?> conversationsAfter)
@@ -154,9 +154,9 @@ public static class AIOperatorBrainExtensions
     public static T WithOutgoingIntent<T>(
         this T state,
         IntentTuple tuple)
-        where T : AIOperatorBrainState
+        where T : RadioOperatorBrainState
     {
-        AIOperatorBrainState.MergeOutgoingIntent(
+        RadioOperatorBrainState.MergeOutgoingIntent(
             state, 
             tuple, 
             out var intentsAfter, 

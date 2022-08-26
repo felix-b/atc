@@ -10,20 +10,20 @@ public abstract class AIRadioOperatorGrain<TBrainState> :
     IStartableGrain,
     IAIRadioOperatorGrain,
     IRadioStationListener
-    where TBrainState : AIOperatorBrainState // use C# record type
+    where TBrainState : RadioOperatorBrainState // use C# record type
 {
     [NotEventSourced]
     private readonly ISilo _silo;
     [NotEventSourced]
     private readonly IMyTelemetryBase _telemetry;
     [NotEventSourced]
-    private readonly AIOperatorBrain<TBrainState> _brain;
+    private readonly RadioOperatorBrain<TBrainState> _brain;
     
     protected AIRadioOperatorGrain(
         ISilo silo,
         IMyTelemetryBase telemetry,
         string grainType,
-        AIOperatorBrain<TBrainState> brain,
+        RadioOperatorBrain<TBrainState> brain,
         PartyDescription party,
         GrainActivationEventBase activation) :
         base(
@@ -148,7 +148,7 @@ public abstract class AIRadioOperatorGrain<TBrainState> :
         }
     }
 
-    public AIOperatorBrain<TBrainState> Brain => _brain;
+    public RadioOperatorBrain<TBrainState> Brain => _brain;
     public PartyDescription Party => State.Party;
     
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
@@ -225,7 +225,7 @@ public abstract class AIRadioOperatorGrain<TBrainState> :
 
     protected void InvokeBrain(IntentTuple? incomingIntent)
     {
-        var brainInput = new AIOperatorBrain<TBrainState>.BrainInput(
+        var brainInput = new RadioOperatorBrain<TBrainState>.BrainInput(
             UtcNow: _silo.Environment.UtcNow,
             IncomingIntent: incomingIntent,
             State: State.Brain);
@@ -283,7 +283,7 @@ public abstract class AIRadioOperatorGrain<TBrainState> :
     private static GrainState CreateInitialState(
         GrainActivationEventBase activation, 
         ISilo silo, 
-        AIOperatorBrain<TBrainState> brain,
+        RadioOperatorBrain<TBrainState> brain,
         PartyDescription party)
     {
         return new GrainState(

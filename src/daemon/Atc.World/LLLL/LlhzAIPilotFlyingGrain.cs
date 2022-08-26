@@ -8,7 +8,7 @@ namespace Atc.World.LLLL;
 
 public interface ILlhzAIPilotFlyingGrain : IGrainId
 {
-    //TODO
+    void ReceiveIntent(Intent intent);
 }
 
 public class LlhzAIPilotFlyingGrain : 
@@ -54,6 +54,11 @@ public class LlhzAIPilotFlyingGrain :
                 
             }
         }
+    }
+
+    public void ReceiveIntent(Intent intent)
+    {
+        //
     }
 
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)

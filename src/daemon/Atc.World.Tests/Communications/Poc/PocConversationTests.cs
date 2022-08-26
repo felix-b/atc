@@ -230,7 +230,7 @@ public class PocConversationTests
         //-- then 
 
         iterationCount.Should().BeGreaterOrEqualTo(20);
-        siloEnvironment.UtcNow.Subtract(startUtc).TotalSeconds.Should().BeApproximately(37, precision: 2);
+        siloEnvironment.UtcNow.Subtract(startUtc).TotalSeconds.Should().BeApproximately(40, precision: 5);
         
         var mediumState = SiloTestDoubles.GetGrainState(
             groundQ.Get().GroundStationMedium!.Value.As<GroundStationRadioMediumGrain>().Get());

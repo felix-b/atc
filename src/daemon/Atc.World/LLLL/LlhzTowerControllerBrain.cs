@@ -5,7 +5,7 @@ using Atc.World.Contracts.Communications;
 
 namespace Atc.World.LLLL;
 
-public class LlhzTowerControllerBrain : AIOperatorBrain<LlhzTowerControllerBrain.BrainState>
+public class LlhzTowerControllerBrain : RadioOperatorBrain<LlhzTowerControllerBrain.BrainState>
 {
     public LlhzTowerControllerBrain(Callsign callsign, IMyTelemetryBase telemetry) 
         : base(callsign, telemetry)
@@ -29,7 +29,7 @@ public class LlhzTowerControllerBrain : AIOperatorBrain<LlhzTowerControllerBrain
         ImmutableArray<IntentTuple> OutgoingIntents,
         ImmutableDictionary<Callsign, ConversationToken?> ConversationPerCallsign
         //TODO: add more data
-    ) : AIOperatorBrainState(OutgoingIntents, ConversationPerCallsign);
+    ) : RadioOperatorBrainState(OutgoingIntents, ConversationPerCallsign);
 
     [TelemetryName("LlhzTowerControllerBrain")]
     public interface IMyTelemetry : IMyTelemetryBase

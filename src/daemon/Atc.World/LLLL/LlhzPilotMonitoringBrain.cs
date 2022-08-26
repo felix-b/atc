@@ -5,11 +5,11 @@ using Atc.World.Contracts.Communications;
 
 namespace Atc.World.LLLL;
 
-public class LlhzPilotBrain : AIOperatorBrain<LlhzPilotBrain.BrainState>
+public class LlhzPilotMonitoringBrain : RadioOperatorBrain<LlhzPilotMonitoringBrain.BrainState>
 {
     private readonly IMyTelemetry _telemetry;
 
-    public LlhzPilotBrain(
+    public LlhzPilotMonitoringBrain(
         Callsign callsign, 
         IMyTelemetry telemetry) 
         : base(callsign, telemetry)
@@ -33,7 +33,7 @@ public class LlhzPilotBrain : AIOperatorBrain<LlhzPilotBrain.BrainState>
         ImmutableArray<IntentTuple> OutgoingIntents,
         ImmutableDictionary<Callsign, ConversationToken?> ConversationPerCallsign
         //TODO: add more data
-    ) : AIOperatorBrainState(OutgoingIntents, ConversationPerCallsign);
+    ) : RadioOperatorBrainState(OutgoingIntents, ConversationPerCallsign);
 
     [TelemetryName("LlhzPilotBrain")]
     public interface IMyTelemetry : IMyTelemetryBase

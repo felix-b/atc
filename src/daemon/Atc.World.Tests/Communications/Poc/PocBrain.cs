@@ -4,7 +4,7 @@ using Atc.World.Contracts.Communications;
 
 namespace Atc.World.Tests.Communications.Poc;
 
-public abstract class PocBrain : AIOperatorBrain<PocBrainState>
+public abstract class PocBrain : RadioOperatorBrain<PocBrainState>
 {
     protected PocBrain(
         string callsign, 
@@ -44,7 +44,7 @@ public abstract class PocBrain : AIOperatorBrain<PocBrainState>
 
     protected BrainOutput WithOutgoingIntent(BrainInput input, IntentTuple tuple, DateTime? wakeUpAtUtc = null, int? step = null)
     {
-        AIOperatorBrainState.MergeOutgoingIntent(
+        RadioOperatorBrainState.MergeOutgoingIntent(
             input.State, 
             tuple, 
             out var intentsAfter, 
@@ -93,7 +93,7 @@ public record PocBrainState(
     ImmutableArray<IntentTuple> OutgoingIntents,
     ImmutableDictionary<Callsign, ConversationToken?> ConversationPerCallsign,
     int Step
-) : AIOperatorBrainState(OutgoingIntents, ConversationPerCallsign);
+) : RadioOperatorBrainState(OutgoingIntents, ConversationPerCallsign);
 
 // public record PocBrainInput(
 //     TimeSpan Clock,

@@ -11,7 +11,7 @@ public interface ILlhzAIPilotMonitoringGrain : IAIRadioOperatorGrain
 }
 
 public class LlhzAIPilotMonitoringGrain : 
-    AIRadioOperatorGrain<LlhzPilotBrain.BrainState>,
+    AIRadioOperatorGrain<LlhzPilotMonitoringBrain.BrainState>,
     ILlhzAIPilotMonitoringGrain
 {
     public static readonly string TypeString = nameof(LlhzAIPilotMonitoringGrain);
@@ -22,13 +22,13 @@ public class LlhzAIPilotMonitoringGrain :
     public LlhzAIPilotMonitoringGrain(
         ISilo silo,
         IMyTelemetry telemetry,
-        LlhzPilotBrain.IMyTelemetry brainTelemetry,
+        LlhzPilotMonitoringBrain.IMyTelemetry brainTelemetry,
         GrainActivationEvent activation) :
         base(
             silo,
             telemetry,
             grainType: TypeString,
-            brain: new LlhzPilotBrain(activation.Callsign, brainTelemetry),
+            brain: new LlhzPilotMonitoringBrain(activation.Callsign, brainTelemetry),
             party: LlhzPartyDescriptionFactory.CreateParty(activation),
             activation)
     {
@@ -46,7 +46,7 @@ public class LlhzAIPilotMonitoringGrain :
             (activation, context) => new LlhzAIPilotMonitoringGrain(
                 silo: context.Resolve<ISilo>(),
                 telemetry: context.Resolve<ITelemetryProvider>().GetTelemetry<IMyTelemetry>(),
-                brainTelemetry: context.Resolve<ITelemetryProvider>().GetTelemetry<LlhzPilotBrain.IMyTelemetry>(),
+                brainTelemetry: context.Resolve<ITelemetryProvider>().GetTelemetry<LlhzPilotMonitoringBrain.IMyTelemetry>(),
                 activation: activation
             ));
     }
