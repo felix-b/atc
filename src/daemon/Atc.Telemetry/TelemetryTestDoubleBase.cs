@@ -51,6 +51,12 @@ public abstract class TelemetryTestDoubleBase
         ReportMessage("Error", error);
     }
 
+    protected void ReportCritical(string error)
+    {
+        _errors.Enqueue(new LogEntry(DateTime.Now, error));
+        ReportMessage("Error", error);
+    }
+
     protected void ReportWarning(string warning)
     {
         _warnings.Enqueue(new LogEntry(DateTime.Now, warning));

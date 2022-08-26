@@ -76,7 +76,8 @@ td.trace-col-time span.time-sec-ms {
     font-weight: 400;
 }
 
-tr.trace-level-1 { color: black; }
+tr.trace-level-0 { color: black; }
+tr.trace-level-1 { color: crimson; font-weight: bold; }
 tr.trace-level-2 { color: crimson; }
 tr.trace-level-3 { color: darkorange; }
 tr.trace-level-4 { color: #1774e7; }
