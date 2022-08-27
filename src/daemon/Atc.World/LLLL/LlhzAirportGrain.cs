@@ -1,24 +1,17 @@
 using System.Collections.Immutable;
 using Atc.Grains;
 using Atc.Maths;
+using Atc.World.Airports;
 using Atc.World.Communications;
 using Atc.World.Contracts.Airports;
 using Atc.World.Contracts.Communications;
+using Atc.World.Control;
 
 namespace Atc.World.LLLL;
 
-public interface ILlhzAirportGrain : IGrainId
-{
-    string Icao { get; }
-    GeoPoint Datum { get; }
-    TerminalInformation CurrentAtis { get; }
-    GrainRef<ILlhzControllerGrain> Tower { get; }
-    GrainRef<ILlhzControllerGrain> Clearance { get; }
-}
-
 public class LlhzAirportGrain : 
     AbstractGrain<LlhzAirportGrain.GrainState>, 
-    ILlhzAirportGrain,
+    IAirportGrain,
     IStartableGrain
 {
     public static readonly string TypeString = nameof(LlhzAirportGrain);
@@ -77,8 +70,8 @@ public class LlhzAirportGrain :
     public string Icao => "LLHZ";
     public GeoPoint Datum => new GeoPoint(lat: 32.180d, lon: 34.834d);
     public TerminalInformation CurrentAtis => State.Atis;
-    public GrainRef<ILlhzControllerGrain> Clearance => State.ClearanceController;
-    public GrainRef<ILlhzControllerGrain> Tower => State.TowerController;
+    public GrainRef<IControllerGrain> Clearance => State.ClearanceController.As<IControllerGrain>();
+    public GrainRef<IControllerGrain> Tower => State.TowerController.As<IControllerGrain>();
 
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {

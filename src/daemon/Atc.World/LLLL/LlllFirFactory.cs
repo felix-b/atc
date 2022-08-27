@@ -1,5 +1,6 @@
 using Atc.Grains;
 using Atc.Maths;
+using Atc.World.Airports;
 using Atc.World.Contracts.Communications;
 using Atc.World.Contracts.Data;
 using Atc.World.Contracts.Traffic;
@@ -14,14 +15,17 @@ public static class LlllFirFactory
         GrainRef<IWorldGrain> world, 
         out GrainRef<IAircraftGrain>[] allParkedAircraft)
     {
+        var utcNow = silo.Environment.UtcNow;
         var llhzAirport = silo.Grains.CreateGrain<LlhzAirportGrain>(grainId =>
             new LlhzAirportGrain.GrainActivationEvent(grainId, world));
 
+        world.Get().AddAirport(llhzAirport.As<IAirportGrain>());
+        
         var aircraft = new[] {
-            LlllTrafficFactory.SpawnParkedAircraft(silo, "4XCGK", llhzAirport.Get().Datum, Bearing.FromTrueDegrees(0)),
-            LlllTrafficFactory.SpawnParkedAircraft(silo, "4XCDK", llhzAirport.Get().Datum, Bearing.FromTrueDegrees(0)),
-            LlllTrafficFactory.SpawnParkedAircraft(silo, "4XCDC", llhzAirport.Get().Datum, Bearing.FromTrueDegrees(0)),
-            LlllTrafficFactory.SpawnParkedAircraft(silo, "4XCDT", llhzAirport.Get().Datum, Bearing.FromTrueDegrees(0))
+            LlllTrafficFactory.SpawnParkedAircraft(silo, "4XCGK", llhzAirport.Get().Datum, Bearing.FromTrueDegrees(0), utcNow),
+            LlllTrafficFactory.SpawnParkedAircraft(silo, "4XCDK", llhzAirport.Get().Datum, Bearing.FromTrueDegrees(0), utcNow),
+            LlllTrafficFactory.SpawnParkedAircraft(silo, "4XCDC", llhzAirport.Get().Datum, Bearing.FromTrueDegrees(0), utcNow),
+            LlllTrafficFactory.SpawnParkedAircraft(silo, "4XCDT", llhzAirport.Get().Datum, Bearing.FromTrueDegrees(0), utcNow)
         };
 
         allParkedAircraft = aircraft
@@ -44,6 +48,7 @@ public static class LlllFirFactory
             var flightPlan = new PatternFlightPlan(
                 TailNo: tailNo,
                 Callsign: callsign,
+                OriginIcao: "LLHZ",
                 TakeoffTimeUtc: nextTakeoffUtc,
                 LandingTimeUtc: nextTakeoffUtc.Add(duration));
             

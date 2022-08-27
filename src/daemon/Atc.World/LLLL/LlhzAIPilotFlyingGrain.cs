@@ -1,4 +1,5 @@
 using Atc.Grains;
+using Atc.World.Airports;
 using Atc.World.Contracts.Communications;
 using Atc.World.Contracts.Data;
 using Atc.World.Contracts.Traffic;
@@ -6,14 +7,9 @@ using Atc.World.Traffic;
 
 namespace Atc.World.LLLL;
 
-public interface ILlhzAIPilotFlyingGrain : IGrainId
-{
-    void ReceiveIntent(Intent intent);
-}
-
 public class LlhzAIPilotFlyingGrain : 
     AbstractGrain<LlhzAIPilotFlyingGrain.GrainState>, 
-    ILlhzAIPilotFlyingGrain,
+    IPilotFlyingGrain,
     IStartableGrain
 {
     public static readonly string TypeString = nameof(LlhzAIPilotFlyingGrain);
@@ -40,6 +36,8 @@ public class LlhzAIPilotFlyingGrain :
                 grainId,
                 Callsign: State.FlightPlan.Callsign,
                 World: State.World,
+                Aircraft: State.Aircraft,
+                PilotFlying: GetRefToSelfAs<IPilotFlyingGrain>(),
                 Radio: State.Aircraft.Get().Com1Radio)
         );
 
@@ -60,6 +58,11 @@ public class LlhzAIPilotFlyingGrain :
     {
         //
     }
+
+    public GrainRef<IAircraftGrain> Aircraft => State.Aircraft;
+    public FlightPlan FlightPlan => State.FlightPlan;
+    public GrainRef<IAirportGrain> OriginAirport => State.OriginAirport;
+    public GrainRef<IAirportGrain> DestinationAirport => State.DestinationAirport;
 
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {
@@ -95,11 +98,17 @@ public class LlhzAIPilotFlyingGrain :
 
     private static GrainState CreateInitialState(GrainActivationEvent activation)
     {
+        var worldObject = activation.World.Get();
+        var originAirport = worldObject.FindAirportByIcao(activation.FlightPlan.OriginIcao);
+        var destinationAirport = worldObject.FindAirportByIcao(activation.FlightPlan.DestinationIcao);
+        
         return new GrainState(
             World: activation.World,
             Aircraft: activation.Aircraft,
             FlightPlan: activation.FlightPlan,
-            PilotMonitoring: GrainRef<ILlhzAIPilotMonitoringGrain>.NotInitialized
+            PilotMonitoring: GrainRef<ILlhzAIPilotMonitoringGrain>.NotInitialized,
+            OriginAirport: originAirport,
+            DestinationAirport: destinationAirport
         );
     }
     
@@ -107,7 +116,9 @@ public class LlhzAIPilotFlyingGrain :
         GrainRef<IWorldGrain> World,
         GrainRef<IAircraftGrain> Aircraft,
         GrainRef<ILlhzAIPilotMonitoringGrain> PilotMonitoring,
-        FlightPlan FlightPlan
+        FlightPlan FlightPlan,
+        GrainRef<IAirportGrain> OriginAirport,
+        GrainRef<IAirportGrain> DestinationAirport
     );
 
     public record GrainActivationEvent(

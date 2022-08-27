@@ -24,6 +24,11 @@ public readonly struct GeoPoint : IComparable<GeoPoint>
         lonRadians = Angle.FromDegrees((float) Lon).Radians;
     }
 
+    public override string ToString()
+    {
+        return $"({Lat},{Lon})";
+    }
+
     public static bool operator <(GeoPoint left, GeoPoint right)
     {
         return left.CompareTo(right) < 0;

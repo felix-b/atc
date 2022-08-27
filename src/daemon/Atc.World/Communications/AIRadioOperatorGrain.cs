@@ -286,13 +286,17 @@ public abstract class AIRadioOperatorGrain<TBrainState> :
         RadioOperatorBrain<TBrainState> brain,
         PartyDescription party)
     {
+        var brainActivation = new RadioOperatorBrain<TBrainState>.BrainActivationData(
+            OwnerGrain: new GrainRef<IAIRadioOperatorGrain>(silo.Grains, activation.GrainId),
+            OwnerActivation: activation);
+        
         return new GrainState(
             StartUtc: silo.Environment.UtcNow,
             Party: party,
             Callsign: activation.Callsign,
             World: activation.World,
             Radio: activation.Radio,
-            Brain: brain.CreateInitialState(),
+            Brain: brain.CreateInitialState(brainActivation),
             IntentEnqueuedForTransmission: null,
             MyCurrentTransmission: null,
             Language: activation.Language

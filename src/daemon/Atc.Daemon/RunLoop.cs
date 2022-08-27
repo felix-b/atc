@@ -41,6 +41,11 @@ public class RunLoop : IDisposable
         ShutDown(TimeSpan.FromSeconds(10));
         _cancellationTokenSource.Dispose();
     }
+    
+    public FirEntry GetFirByIcao(string icao)
+    {
+        return _firById.Read()[icao];
+    }
 
     private void Start()
     {

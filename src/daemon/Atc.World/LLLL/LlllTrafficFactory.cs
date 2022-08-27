@@ -10,14 +10,16 @@ public static class LlllTrafficFactory
         ISilo silo,
         string tailNo,
         GeoPoint position,
-        Bearing heading)
+        Bearing heading,
+        DateTime utc)
     {
         return silo.Grains.CreateGrain<AircraftGrain>(grainId =>
             new AircraftGrain.GrainActivationEvent(
                 grainId,
                 tailNo,
                 position,
-                heading)
+                heading,
+                utc)
         ).As<IAircraftGrain>();
     }
 }

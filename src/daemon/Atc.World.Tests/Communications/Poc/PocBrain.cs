@@ -70,7 +70,7 @@ public abstract class PocBrain : RadioOperatorBrain<PocBrainState>
         );
     }
 
-    public override PocBrainState CreateInitialState()
+    public override PocBrainState CreateInitialState(BrainActivationData activation)
     {
         return new PocBrainState(
             OutgoingIntents: ImmutableArray<IntentTuple>.Empty,

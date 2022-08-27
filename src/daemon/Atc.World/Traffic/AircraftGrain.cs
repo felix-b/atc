@@ -12,6 +12,7 @@ public interface IAircraftGrain : IGrainId
     IAircraftTypeData TypeData { get; }
     GrainRef<IRadioStationGrain> Com1Radio { get; }
     string TailNo { get; }
+    Timestamped<Location> LastKnownLocation { get; }
 }
 
 public class AircraftGrain : AbstractGrain<AircraftGrain.GrainState>, IAircraftGrain, IStartableGrain
@@ -58,6 +59,17 @@ public class AircraftGrain : AbstractGrain<AircraftGrain.GrainState>, IAircraftG
         ));
     }
 
+    
+    public IAircraftData AircraftData => _aircraftData;
+
+    public IAircraftTypeData TypeData => _typeData;
+    
+    public GrainRef<IRadioStationGrain> Com1Radio => State.RadioCom1;
+
+    public string TailNo => _aircraftData.TailNo;
+
+    public Timestamped<Location> LastKnownLocation => State.LastKnownLocation;
+
     protected override bool ExecuteWorkItem(IGrainWorkItem workItem, bool timedOut)
     {
         switch (workItem)
@@ -95,12 +107,16 @@ public class AircraftGrain : AbstractGrain<AircraftGrain.GrainState>, IAircraftG
     {
         return new GrainState(
             TailNo: activation.TailNo,
-            RadioCom1: GrainRef<IRadioStationGrain>.NotInitialized
+            RadioCom1: GrainRef<IRadioStationGrain>.NotInitialized,
+            LastKnownLocation: Timestamped.Create(
+                new Location(activation.ParkedPosition, Altitude.Ground),
+                activation.Utc)
         );
     }
     public record GrainState(
         string TailNo,
-        GrainRef<IRadioStationGrain> RadioCom1
+        GrainRef<IRadioStationGrain> RadioCom1,
+        Timestamped<Location> LastKnownLocation
         //TODO
     );
 
@@ -108,7 +124,8 @@ public class AircraftGrain : AbstractGrain<AircraftGrain.GrainState>, IAircraftG
         string GrainId,
         string TailNo,
         GeoPoint ParkedPosition,
-        Bearing ParkedHeading
+        Bearing ParkedHeading,
+        DateTime Utc
     ) : IGrainActivationEvent<AircraftGrain>;
 
     public record PartsInitializedEvent(
@@ -118,12 +135,4 @@ public class AircraftGrain : AbstractGrain<AircraftGrain.GrainState>, IAircraftG
     public record SampleWorkItem(
         //TODO
     ) : IGrainWorkItem;
-
-    public IAircraftData AircraftData => _aircraftData;
-
-    public IAircraftTypeData TypeData => _typeData;
-    
-    public GrainRef<IRadioStationGrain> Com1Radio => State.RadioCom1;
-
-    public string TailNo => _aircraftData.TailNo;
 }

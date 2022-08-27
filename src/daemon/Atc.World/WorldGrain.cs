@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Atc.Grains;
 using Atc.Maths;
+using Atc.World.Airports;
 using Atc.World.Communications;
 
 namespace Atc.World;
@@ -8,9 +9,20 @@ namespace Atc.World;
 public interface IWorldGrain : IGrainId
 {
     void AddRadioMedium(GrainRef<IGroundStationRadioMediumGrain> medium);
+    void AddAirport(GrainRef<IAirportGrain> airport);
     GrainRef<IGroundStationRadioMediumGrain>? TryFindRadioMedium(GeoPoint position, Altitude altitude, Frequency frequency);
+    GrainRef<IAirportGrain>? TryFindAirportAt(GeoPoint positionWithin);
+    GrainRef<IAirportGrain>? TryFindAirportByIcao(string icao);
     ulong TakeNextIntentId();
     ulong TakeNextTransmissionId();
+
+    public GrainRef<IAirportGrain> FindAirportAt(GeoPoint positionWithin) =>
+        TryFindAirportAt(positionWithin)
+        ?? throw new Exception($"Could not find airport at {positionWithin}");
+    
+    public GrainRef<IAirportGrain> FindAirportByIcao(string icao) => 
+        TryFindAirportByIcao(icao)
+        ?? throw new Exception($"Could not find airport '{icao}'");
 }
 
 public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
@@ -33,12 +45,30 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
         Dispatch(new AddRadioMediumEvent(medium));
     }
 
+    public void AddAirport(GrainRef<IAirportGrain> airport)
+    {
+        Dispatch(new AddAirportEvent(airport));
+    }
+
     public GrainRef<IGroundStationRadioMediumGrain>? TryFindRadioMedium(
         GeoPoint position, 
         Altitude altitude, 
         Frequency frequency)
     {
-        return State.RadioMediums.First();//TODO
+        var grainRef = State.RadioMediums.FirstOrDefault(m => m.Get().Frequency == frequency);
+        return (grainRef.CanGet ? grainRef : null);
+    }
+
+    public GrainRef<IAirportGrain>? TryFindAirportAt(GeoPoint positionWithin)
+    {
+        throw new NotImplementedException();
+    }
+
+    public GrainRef<IAirportGrain>? TryFindAirportByIcao(string icao)
+    {
+        return State.AirportByIcao.TryGetValue(icao, out var airport)
+            ? airport
+            : null;
     }
 
     public ulong TakeNextIntentId()
@@ -72,6 +102,12 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
                 return stateBefore with {
                     RadioMediums = stateBefore.RadioMediums.Add(addMedium.Medium)
                 };
+            case AddAirportEvent addAirport:
+                return stateBefore with {
+                    AirportByIcao = stateBefore.AirportByIcao.Add(
+                        addAirport.Airport.Get().Icao,
+                        addAirport.Airport)
+                };
             case NextIntentIdTakenEvent:
                 return stateBefore with {
                     NextIntentId = stateBefore.NextIntentId + 1
@@ -99,6 +135,7 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
     {
         return new GrainState(
             RadioMediums: ImmutableArray<GrainRef<IGroundStationRadioMediumGrain>>.Empty,
+            AirportByIcao: ImmutableDictionary<string, GrainRef<IAirportGrain>>.Empty, 
             NextIntentId: 1,
             NextTransmissionId: 1
         );
@@ -107,6 +144,7 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
     public record GrainState(
         //TODO: optimize
         ImmutableArray<GrainRef<IGroundStationRadioMediumGrain>> RadioMediums,
+        ImmutableDictionary<string, GrainRef<IAirportGrain>> AirportByIcao,
         ulong NextIntentId,
         ulong NextTransmissionId
     );
@@ -118,6 +156,10 @@ public class WorldGrain : AbstractGrain<WorldGrain.GrainState>, IWorldGrain
 
     public record AddRadioMediumEvent(
         GrainRef<IGroundStationRadioMediumGrain> Medium  
+    ) : IGrainEvent;
+
+    public record AddAirportEvent(
+        GrainRef<IAirportGrain> Airport  
     ) : IGrainEvent;
 
     public record NextIntentIdTakenEvent : IGrainEvent;

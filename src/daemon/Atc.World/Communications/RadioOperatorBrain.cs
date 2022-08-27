@@ -19,7 +19,7 @@ public abstract class RadioOperatorBrain<TState>
         MyCallsign = callsign;
     }
 
-    public abstract TState CreateInitialState();
+    public abstract TState CreateInitialState(BrainActivationData activation);
     
     public BrainOutput Process(BrainInput input)
     {
@@ -73,6 +73,11 @@ public abstract class RadioOperatorBrain<TState>
     {
         return _onTakeNextIntentId();
     }
+
+    public record BrainActivationData(
+        AIRadioOperatorGrain<TState>.GrainActivationEventBase OwnerActivation,
+        GrainRef<IAIRadioOperatorGrain> OwnerGrain
+    );
 
     public record BrainInput(
         DateTime UtcNow,

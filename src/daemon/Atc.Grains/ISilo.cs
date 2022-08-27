@@ -17,7 +17,9 @@ public interface ISilo
     ISiloTelemetry Telemetry { get; }
 
     ISiloEnvironment Environment { get; }
-    
+
+    ISiloDependencyContext Dependencies { get; }
+
     DateTime NextWorkItemAtUtc { get; }
 
     void BlockWhileIdle(CancellationToken cancellation);

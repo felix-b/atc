@@ -2,6 +2,7 @@ using Atc.Grains;
 using Atc.Telemetry;
 using Atc.World.Communications;
 using Atc.World.Contracts.Communications;
+using Atc.World.Traffic;
 
 namespace Atc.World.LLLL;
 
@@ -39,6 +40,16 @@ public class LlhzAIPilotMonitoringGrain :
     {
     }
 
+    protected override GrainState Reduce(GrainState stateBefore, IGrainEvent @event)
+    {
+        switch (@event)
+        {
+            
+            default:
+                return base.Reduce(stateBefore, @event);
+        }
+    }
+
     public static void RegisterGrainType(SiloConfigurationBuilder config)
     {
         config.RegisterGrainType<LlhzAIPilotMonitoringGrain, GrainActivationEvent>(
@@ -55,6 +66,8 @@ public class LlhzAIPilotMonitoringGrain :
         string GrainId,
         Callsign Callsign,
         GrainRef<IWorldGrain> World,
+        GrainRef<IAircraftGrain> Aircraft,
+        GrainRef<IPilotFlyingGrain> PilotFlying,
         GrainRef<IRadioStationGrain> Radio
     ) : GrainActivationEventBase(
         GrainId: GrainId,

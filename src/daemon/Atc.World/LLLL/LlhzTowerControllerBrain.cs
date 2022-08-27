@@ -12,7 +12,7 @@ public class LlhzTowerControllerBrain : RadioOperatorBrain<LlhzTowerControllerBr
     {
     }
     
-    public override BrainState CreateInitialState()
+    public override BrainState CreateInitialState(BrainActivationData activation)
     {
         return new BrainState(
             OutgoingIntents: ImmutableArray<IntentTuple>.Empty,

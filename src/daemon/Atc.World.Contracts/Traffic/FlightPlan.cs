@@ -10,13 +10,17 @@ public abstract record FlightPlan(
     Callsign Callsign,
     FlightType FlightType,
     FlightRules FlightRules,
+    string OriginIcao,
+    string DestinationIcao,
     DateTime TakeoffTimeUtc,
-    DateTime LandingTimeUtc
+    DateTime LandingTimeUtc,
+    ImmutableList<FlightLeg> Legs
 );
 
 public record PatternFlightPlan(
     string TailNo,
     Callsign Callsign,
+    string OriginIcao,
     DateTime TakeoffTimeUtc,
     DateTime LandingTimeUtc
 ) : FlightPlan(
@@ -24,8 +28,11 @@ public record PatternFlightPlan(
     Callsign: Callsign,
     FlightType: FlightType.StayInPattern, 
     FlightRules: FlightRules.Vfr,
+    OriginIcao: OriginIcao,
+    DestinationIcao: OriginIcao,
     TakeoffTimeUtc: TakeoffTimeUtc,
-    LandingTimeUtc: LandingTimeUtc
+    LandingTimeUtc: LandingTimeUtc,
+    Legs: ImmutableList<FlightLeg>.Empty
 );
 
 public record TrainingAreasFlightPlan(
@@ -33,15 +40,19 @@ public record TrainingAreasFlightPlan(
     Callsign Callsign,
     DateTime TakeoffTimeUtc,
     DateTime LandingTimeUtc,
-    FlightLeg? InitialLeg,
-    string? TrainingAreaName
+    string OriginIcao,
+    string? TrainingAreaName,
+    ImmutableList<FlightLeg> Legs
 ) : FlightPlan(
     TailNo: TailNo,
     Callsign: Callsign,
     FlightType: FlightType.TrainingAreas, 
     FlightRules: FlightRules.Vfr,
+    OriginIcao: OriginIcao,
+    DestinationIcao: OriginIcao,
     TakeoffTimeUtc: TakeoffTimeUtc,
-    LandingTimeUtc: LandingTimeUtc
+    LandingTimeUtc: LandingTimeUtc,
+    Legs: Legs
 );
 
 public record CrossCountryFlightPlan(
@@ -51,15 +62,18 @@ public record CrossCountryFlightPlan(
     DateTime TakeoffTimeUtc,
     DateTime LandingTimeUtc,
     string OriginIcao,
-    ImmutableList<FlightLeg> Legs,
-    string DestinationIcao
+    string DestinationIcao,
+    ImmutableList<FlightLeg> Legs
 ) : FlightPlan(
     TailNo: TailNo,
     Callsign: Callsign,
     FlightType: FlightType.CrossCountry,
     FlightRules: FlightRules,
+    OriginIcao: OriginIcao,
+    DestinationIcao: DestinationIcao,
     TakeoffTimeUtc: TakeoffTimeUtc,
-    LandingTimeUtc: LandingTimeUtc
+    LandingTimeUtc: LandingTimeUtc,
+    Legs: Legs
 );
 
 public record IfrFlightPlan(
@@ -78,8 +92,11 @@ public record IfrFlightPlan(
     Callsign: Callsign,
     FlightType: FlightType.CrossCountry,
     FlightRules: FlightRules.Ifr,
+    OriginIcao: OriginIcao,
+    DestinationIcao: DestinationIcao,
     TakeoffTimeUtc: TakeoffTimeUtc,
-    LandingTimeUtc: LandingTimeUtc
+    LandingTimeUtc: LandingTimeUtc,
+    Legs: Legs
 );
 
 public record FlightLeg( 

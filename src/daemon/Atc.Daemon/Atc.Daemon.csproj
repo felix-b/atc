@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\Atc.Daemon.Contracts\Atc.Daemon.Contracts.csproj" />
         <ProjectReference Include="..\Atc.Server\Atc.Server.csproj" />
         <ProjectReference Include="..\Atc.Telemetry.Exporters.CodePath\Atc.Telemetry.Exporters.CodePath.csproj" />
     </ItemGroup>
@@ -15,14 +16,6 @@
     <ItemGroup>
         <PackageReference Include="Autofac" Version="6.2.0" />
         <PackageReference Include="protobuf-net" Version="3.1.17" />
-        <PackageReference Include="protobuf-net.BuildTools" Version="3.1.17">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-    </ItemGroup>
-
-    <ItemGroup>
-        <AdditionalFiles Include="proto/atcd.proto" OneOf="enum" />
     </ItemGroup>
 
     <ItemGroup>

@@ -41,6 +41,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Daemon", "Atc.Daemon\At
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Daemon.Tests", "Atc.Daemon.Tests\Atc.Daemon.Tests.csproj", "{FD92FD28-223A-4400-AEA4-B10A930BD3CF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Daemon.Contracts", "Atc.Daemon.Contracts\Atc.Daemon.Contracts.csproj", "{EB167130-631E-4D07-A336-B0C43FBF420C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atc.Daemon.Cli", "Atc.Daemon.Cli\Atc.Daemon.Cli.csproj", "{D6112536-34AE-4177-BEDE-F1347296C2C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -126,5 +130,13 @@ Global
 		{FD92FD28-223A-4400-AEA4-B10A930BD3CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FD92FD28-223A-4400-AEA4-B10A930BD3CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FD92FD28-223A-4400-AEA4-B10A930BD3CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB167130-631E-4D07-A336-B0C43FBF420C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB167130-631E-4D07-A336-B0C43FBF420C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB167130-631E-4D07-A336-B0C43FBF420C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB167130-631E-4D07-A336-B0C43FBF420C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D6112536-34AE-4177-BEDE-F1347296C2C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D6112536-34AE-4177-BEDE-F1347296C2C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D6112536-34AE-4177-BEDE-F1347296C2C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D6112536-34AE-4177-BEDE-F1347296C2C1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

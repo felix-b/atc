@@ -1,32 +1,25 @@
-﻿namespace Atc.Server;
+﻿using System.Collections.Immutable;
+using Atc.Utilities;
+
+namespace Atc.Server;
 
 public struct SessionItems
 {
-    private readonly Dictionary<Type, object?> _entries;
+    private readonly WriteLocked<ImmutableDictionary<Type, object?>> _entries;
 
     public SessionItems(int initialEntryCount)
     {
-        _entries = new Dictionary<Type, object?>(initialEntryCount);
+        _entries = new WriteLocked<ImmutableDictionary<Type, object?>>(ImmutableDictionary<Type, object?>.Empty);
     }
 
     public bool Has<T>() where T : class
     {
-        return _entries.ContainsKey(typeof(T));
-    }
-
-    public bool Add<T>() where T : class
-    {
-        if (_entries.ContainsKey(typeof(T)))
-        {
-            return false;
-        }
-        _entries[typeof(T)] = null;
-        return true;
+        return _entries.Read().ContainsKey(typeof(T));
     }
 
     public bool TryGet<T>(out T? item) where T : class
     {
-        if (_entries.TryGetValue(typeof(T), out var untypedItem))
+        if (_entries.Read().TryGetValue(typeof(T), out var untypedItem))
         {
             item = (T?)untypedItem;
             return true;
@@ -38,25 +31,36 @@ public struct SessionItems
 
     public T? Get<T>() where T : class
     {
-        return (T?)_entries[typeof(T)];
+        return (T?)_entries.Read()[typeof(T)];
     }
 
     public T? GetOrAdd<T>(Func<T?> factory) where T : class
     {
-        if (_entries.TryGetValue(typeof(T), out var untypedItem))
-        {
-            return (T?)untypedItem;
-        }
-
-        var newItem = factory();
-        _entries.Add(typeof(T), newItem);
-        return newItem;
+        var newDictionary = _entries.Replace(dictionary => {
+            return dictionary.ContainsKey(typeof(T))
+                ? dictionary
+                : dictionary.Add(typeof(T), factory());
+        });
+        
+        return (T?)newDictionary[typeof(T)];
     }
         
     public void Set<T>(T? item) where T : class
     {
-        _entries[typeof(T)] = item;
+        _entries.Replace(dictionary => dictionary.Add(typeof(T), item));
     }
 
-    public IDictionary<Type, object?> Entries => _entries;
+    public bool Remove<T>() where T : class
+    {
+        var keyFound = true;
+        _entries.Replace(dictionary => {
+            keyFound = dictionary.ContainsKey(typeof(T));
+            return keyFound
+                ? dictionary.Remove(typeof(T))
+                : dictionary;
+        });
+        return keyFound;
+    }
+
+    public IReadOnlyDictionary<Type, object?> Entries => _entries.Read();
 }

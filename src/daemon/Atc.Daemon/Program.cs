@@ -69,6 +69,7 @@ static async Task RunDaemon(string[] allFirIcaoCodes)
         using var runLoop = BeginRunLoop(allFirIcaoCodes, telemetry, telemetryEnvironment);
         await using var serviceEndpoint = InitializeServiceEndpoint(
             telemetryEnvironment,
+            runLoop,
             listenPortNumber: 3001,
             out var serviceListenUrl);
 
@@ -202,12 +203,15 @@ static AudioContextScope InitializeOpenAL(CodePathEnvironment telemetryEnvironme
 }
 
 static WebSocketEndpoint InitializeServiceEndpoint(
-    CodePathEnvironment telemetryEnvironment, 
+    CodePathEnvironment telemetryEnvironment,
+    RunLoop runLoop,
     int listenPortNumber, 
     out string serviceUrl)
 {
-    var service = new AtcdService();
-    var telemetry = AtcServerTelemetry.CreateCodePathTelemetry<IEndpointTelemetry>(telemetryEnvironment);
+    var serviceTelemetry = AtcDaemonTelemetry.CreateCodePathTelemetry<AtcdService.IMyTelemetry>(telemetryEnvironment);
+    var service = new AtcdService(serviceTelemetry, runLoop);
+
+    var endpointTelemetry = AtcServerTelemetry.CreateCodePathTelemetry<IEndpointTelemetry>(telemetryEnvironment);
     var endpoint = WebSocketEndpoint
         .Define()
         .ReceiveMessagesOfType<AtcTelemetryCodepathProto.CodePathClientToServer>()
@@ -215,7 +219,7 @@ static WebSocketEndpoint InitializeServiceEndpoint(
         .SendMessagesOfType<AtcTelemetryCodepathProto.CodePathServerToClient>()
         .ListenOn(listenPortNumber, urlPath: "/atc")
         .BindToServiceInstance(service)
-        .Create(telemetry, out var taskSynchronizer);
+        .Create(endpointTelemetry, out var taskSynchronizer);
 
     serviceUrl = $"ws://localhost:{listenPortNumber}/atc";
     return endpoint;

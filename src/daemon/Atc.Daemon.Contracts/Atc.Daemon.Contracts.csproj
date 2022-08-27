@@ -7,17 +7,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="Airspaces" />
+        <PackageReference Include="protobuf-net" Version="3.1.17" />
+        <PackageReference Include="protobuf-net.BuildTools" Version="3.1.17">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Atc.Grains\Atc.Grains.csproj" />
-      <ProjectReference Include="..\Atc.Maths\Atc.Maths.csproj" />
-      <ProjectReference Include="..\Atc.World.Contracts\Atc.World.Contracts.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\Atc.Telemetry.Generators\Atc.Telemetry.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <AdditionalFiles Include="atcd.proto" OneOf="enum" />
     </ItemGroup>
 
     <PropertyGroup>

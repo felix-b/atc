@@ -1,0 +1,63 @@
+syntax = "proto3";
+package atcd_proto;
+
+message AtcdClientToServer {
+
+  message ConnectRequest {
+  }
+
+  message DisconnectRequest {
+  }
+
+  message StartRadioMonitorRequest {
+    float location_lat = 1;
+    float location_lon = 2;
+    int32 frequency_khz = 3; 
+  }
+
+  message StopRadioMonitorRequest {
+  }
+
+  oneof payload {
+    ConnectRequest connect_request = 101;
+    DisconnectRequest disconnect_request = 102;
+    StartRadioMonitorRequest start_radio_monitor_request = 201;
+    StopRadioMonitorRequest stop_radio_monitor_request = 202;
+  }
+
+}
+
+message AtcdServerToClient {
+
+  message ConnectReply {
+    bool success = 1;
+    string error = 2;
+  }
+
+  message TrafficUpdatePush {
+    repeated TrafficUpdate updates = 1;
+  }
+
+  message TrafficUpdate {
+    uint64 id = 1;
+  }
+
+  message StartRadioMonitorReply {
+    bool success = 1;
+    string error = 2;
+    string station_callsign = 3;
+  }
+
+  message StopRadioMonitorReply {
+    bool success = 1;
+    string error = 2;
+  }
+
+  oneof payload {
+    ConnectReply connect_reply = 201;
+    TrafficUpdatePush traffic_update_push = 202;
+    StartRadioMonitorReply start_radio_monitor_reply = 203;
+    StopRadioMonitorReply stop_radio_monitor_reply = 204;
+  }
+
+}

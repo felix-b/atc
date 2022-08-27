@@ -81,5 +81,6 @@ public class Silo : ISilo
     public ISiloTimeTravel TimeTravel => _superGrain;
     public ISiloTelemetry Telemetry { get; }
     public ISiloEnvironment Environment { get; }
+    public ISiloDependencyContext Dependencies => _dependencyContext;
     public DateTime NextWorkItemAtUtc => _taskQueueGrain.NextWorkItemAtUtc;
 }
