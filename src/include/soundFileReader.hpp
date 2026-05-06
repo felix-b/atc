@@ -433,10 +433,16 @@ public:
     static shared_ptr<SoundFileReader> createReader(const string& filePath)
     {
         FILE *file = fopen(filePath.c_str(), "rb");
+        if (!file)
+        {
+            throw runtime_error("Failed to open sound file: " + filePath);
+        }
+
         char magicBuffer[4 + 1];
 
         if (fread(magicBuffer, 4, 1, file) != 1)
         {
+            fclose(file);
             throw runtime_error("Failed to open sound file: " + filePath);
         }
         
@@ -453,6 +459,7 @@ public:
             return shared_ptr<SoundFileReader>(new AiffFileReader(filePath, file, true));
         }
 
+        fclose(file);
         throw runtime_error("Unrecognized file format: " + filePath);
     }
 };

@@ -1,0 +1,18 @@
+{
+  "OutputFoldersPerTargetSystem": {
+    "Local Machine": [
+      "out\\build\\x64-Debug",
+      "out\\install\\x64-Debug"
+    ]
+  },
+  "ExpandedNodes": [
+    "",
+    "\\libs",
+    "\\libs\\PPL",
+    "\\libs\\PPL\\include",
+    "\\libs\\PPL\\include\\freetype2",
+    "\\libs\\PPL\\include\\freetype2\\builds"
+  ],
+  "SelectedNode": "\\libs\\PPL\\include\\freetype2\\builds\\windows",
+  "PreviewInSolutionExplorer": false
+}

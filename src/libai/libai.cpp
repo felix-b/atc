@@ -34,19 +34,13 @@ namespace ai
             Actor::Gender newControllerGender = (m_nextControllerId % 3) == 0 ? Actor::Gender::Female : Actor::Gender::Male;
             int newControllerId = m_nextControllerId++;
 
-            switch (position->type())
+            if (position->type() == ControllerPosition::Type::Local)
             {
-            case ControllerPosition::Type::Local:
                 return shared_ptr<Controller>(new LocalController(m_host, newControllerId, newControllerGender, position));
-            case ControllerPosition::Type::ClearanceDelivery:
-            case ControllerPosition::Type::Ground:
-            case ControllerPosition::Type::Approach:
-            case ControllerPosition::Type::Departure:
-                //m_host->writeLog("Creating AI controller for position: %s", position->callSign().c_str());
-                return shared_ptr<Controller>(new AIControllerBase(m_host, newControllerId, newControllerGender, position));
             }
 
-            throw runtime_error("AIControllerFactory::createController: unsupported type for position: " + position->callSign());
+            // Imported center/area/oceanic and other non-local positions can use the generic AI controller fallback.
+            return shared_ptr<Controller>(new AIControllerBase(m_host, newControllerId, newControllerGender, position));
         }
     };
 

@@ -33,6 +33,14 @@ TEST(XPFmsxReaderTest, readFmx) {
     EXPECT_EQ(flightPlan->approachName(), "R-09LY");
     EXPECT_EQ(flightPlan->arrivalRunway(), "09L");
     EXPECT_EQ(flightPlan->flightNo(), "UAL738");
+
+    ASSERT_EQ(flightPlan->routeWaypoints().size(), 4u);
+    EXPECT_EQ(flightPlan->routeWaypoints()[0].name, "LAAYK");
+    EXPECT_NEAR(flightPlan->routeWaypoints()[0].location.latitude, 41.475733333, 1e-9);
+    EXPECT_NEAR(flightPlan->routeWaypoints()[0].location.longitude, -75.482586111, 1e-9);
+    EXPECT_EQ(flightPlan->routeWaypoints().back().name, "EMMMA");
+    EXPECT_NEAR(flightPlan->routeWaypoints().back().location.latitude, 42.884433333, 1e-9);
+    EXPECT_NEAR(flightPlan->routeWaypoints().back().location.longitude, -84.580666667, 1e-9);
 }
 
 TEST(XPFmsxReaderTest, readFms) {
@@ -51,4 +59,12 @@ TEST(XPFmsxReaderTest, readFms) {
     EXPECT_EQ(flightPlan->starTransition(), "EMMMA");
     EXPECT_EQ(flightPlan->approachName(), "I09L");
     EXPECT_EQ(flightPlan->arrivalRunway(), "09L");
+
+    ASSERT_EQ(flightPlan->routeWaypoints().size(), 7u);
+    EXPECT_EQ(flightPlan->routeWaypoints()[0].name, "HEERO");
+    EXPECT_NEAR(flightPlan->routeWaypoints()[0].location.latitude, 41.168856, 1e-9);
+    EXPECT_NEAR(flightPlan->routeWaypoints()[0].location.longitude, -74.115581, 1e-9);
+    EXPECT_EQ(flightPlan->routeWaypoints().back().name, "EMMMA");
+    EXPECT_NEAR(flightPlan->routeWaypoints().back().location.latitude, 42.884433, 1e-9);
+    EXPECT_NEAR(flightPlan->routeWaypoints().back().location.longitude, -84.580667, 1e-9);
 }

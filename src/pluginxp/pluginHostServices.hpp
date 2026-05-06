@@ -13,6 +13,8 @@
 #include <chrono>
 #include <random>
 #include <iomanip>
+#include <array>
+#include <cmath>
 
 // SDK
 #include "XPLMUtilities.h"
@@ -44,6 +46,10 @@ private:
     XPLMProbeRef m_hTerrainProbe;
     shared_ptr<World> m_world;
     shared_ptr<MessageWindow> m_messageBox;
+    chrono::milliseconds m_lastTerrainProbeFailureLog = chrono::milliseconds(0);
+    int m_terrainProbeFailureCount = 0;
+    float m_lastTerrainElevationFeet = 0.0f;
+    bool m_hasLastTerrainElevation = false;
 public:
 
     PluginHostServices() :
@@ -53,6 +59,15 @@ public:
         m_directorySeparator = XPLMGetDirectorySeparator();
         m_pluginDirectory = getPluginDirectory();
         m_randomGenerator = mt19937(m_randomDevice());
+    }
+
+    ~PluginHostServices()
+    {
+        if (m_hTerrainProbe)
+        {
+            XPLMDestroyProbe(m_hTerrainProbe);
+            m_hTerrainProbe = nullptr;
+        }
     }
 
 public:
@@ -74,50 +89,97 @@ public:
 
     float queryTerrainElevationAt(const GeoPoint& location) override
     {
-        if (!m_hTerrainProbe)
+        if (!ensureTerrainProbe())
         {
-            writeLog("HOSTSV|probeTerrainElevationAt ERROR! XPLMCreateProbe failed. Returning 0 MSL");
-            return 0;
+            logTerrainProbeFailureThrottled(
+                "XPLMCreateProbe failed. Returning fallback terrain elevation [%.1f] MSL",
+                getTerrainFallbackElevationFeet(location));
+            return getTerrainFallbackElevationFeet(location);
         }
 
-        XPLMProbeInfo_t infoProbe = {
-            sizeof(XPLMProbeInfo_t),                      // structSIze
-            0.0f, 0.0f, 0.0f, // location
-            0.0f, 0.0f, 0.0f,   // normal vector
-            0.0f, 0.0f, 0.0f,  // velocity vector
-            0                                      // is_wet
+        constexpr float metersIn5000Feet = 1524.0f;
+        constexpr float metersIn1000Feet = 304.8f;
+
+        double x = 0.0;
+        double yAtMsl0 = 0.0;
+        double z = 0.0;
+        XPLMWorldToLocal(location.latitude, location.longitude, 0.0, &x, &yAtMsl0, &z);
+
+        const std::array<float, 4> ySamples = {
+            static_cast<float>(yAtMsl0),
+            static_cast<float>(yAtMsl0 + metersIn5000Feet),
+            static_cast<float>(yAtMsl0 + metersIn1000Feet),
+            static_cast<float>(yAtMsl0 - metersIn1000Feet)
         };
-        double x, y, z;
-        XPLMWorldToLocal(location.latitude, location.longitude, 0, &x, &y, &z);
 
-        if (XPLMProbeTerrainXYZ(m_hTerrainProbe, x, 0.0f, z, &infoProbe) == xplm_ProbeHitTerrain)
+        for (const float ySample : ySamples)
         {
-            double lat, lon, altMeters;
-            XPLMLocalToWorld(x, infoProbe.locationY, z, &lat, &lon, &altMeters);
-            return altMeters * FEET_IN_1_METER;
+            XPLMProbeInfo_t infoProbe = {
+                sizeof(XPLMProbeInfo_t),
+                0.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 0.0f,
+                0
+            };
+
+            const auto probeResult = XPLMProbeTerrainXYZ(m_hTerrainProbe, static_cast<float>(x), ySample, static_cast<float>(z), &infoProbe);
+            if (probeResult == xplm_ProbeHitTerrain)
+            {
+                double lat = 0.0;
+                double lon = 0.0;
+                double altMeters = 0.0;
+                XPLMLocalToWorld(x, infoProbe.locationY, z, &lat, &lon, &altMeters);
+                const float terrainFeet = static_cast<float>(altMeters * FEET_IN_1_METER);
+                m_lastTerrainElevationFeet = terrainFeet;
+                m_hasLastTerrainElevation = true;
+                return terrainFeet;
+            }
+
+            if (probeResult == xplm_ProbeError)
+            {
+                // Probe could become stale across scenery changes; recreate and continue trying.
+                if (m_hTerrainProbe)
+                {
+                    XPLMDestroyProbe(m_hTerrainProbe);
+                    m_hTerrainProbe = nullptr;
+                }
+                ensureTerrainProbe();
+            }
         }
-        else
-        {
-            writeLog("HOSTSV|probeTerrainElevationAt ERROR! XPLMProbeTerrainXYZ failed. Returning 0 MSL");
-            return 0;
-        }
+
+        const float fallbackFeet = getTerrainFallbackElevationFeet(location);
+        logTerrainProbeFailureThrottled(
+            "XPLMProbeTerrainXYZ failed near [%.6f, %.6f]. Returning fallback terrain elevation [%.1f] MSL",
+            location.latitude,
+            location.longitude,
+            fallbackFeet);
+        return fallbackFeet;
     }
 
     LocalPoint geoToLocal(const GeoPoint& geo) override
     {
+        double x = 0.0;
+        double y = 0.0;
+        double z = 0.0;
+        const double altitudeMeters = geo.altitude / FEET_IN_1_METER;
+        XPLMWorldToLocal(geo.latitude, geo.longitude, altitudeMeters, &x, &y, &z);
         return LocalPoint({
-            (float)geo.longitude,
-            (float)geo.altitude,
-            (float)geo.latitude
+            static_cast<float>(x),
+            static_cast<float>(y),
+            static_cast<float>(z)
         });
     }
 
     GeoPoint localToGeo(const LocalPoint& local) override
     {
+        double latitude = 0.0;
+        double longitude = 0.0;
+        double altitudeMeters = 0.0;
+        XPLMLocalToWorld(local.x, local.y, local.z, &latitude, &longitude, &altitudeMeters);
         return {
-            local.z,
-            local.x,
-            local.y
+            latitude,
+            longitude,
+            altitudeMeters * FEET_IN_1_METER
         };
     }
 
@@ -164,7 +226,7 @@ public:
         return resultPath;
     }
 
-    vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts)
+    vector<string> findFilesInHostDirectory(const vector<string>& relativePathParts) override
     {
         const int bufferSize = 2048;
         char buffer[bufferSize] = { 0 };
@@ -186,7 +248,7 @@ public:
             else if (!nextFileName.empty())
             {
                 results.push_back(nextFileName);
-                writeLog("HOSTSV|DIR found[%s]", directoryPath.c_str());
+                writeLog("HOSTSV|DIR found[%s]", nextFileName.c_str());
                 nextFileName.clear();
                 fileIndex++;
             }
@@ -201,9 +263,11 @@ public:
 
     shared_ptr<istream> openFileForRead(const string& filePath) override
     {
-        auto file = shared_ptr<ifstream>(new ifstream());
-        file->exceptions(ifstream::failbit | ifstream::badbit);
-        file->open(filePath);
+        auto file = shared_ptr<ifstream>(new ifstream(filePath));
+        if (!file->is_open())
+        {
+            throw runtime_error("PluginHostServices::openFileForRead failed: " + filePath);
+        }
         return file;
     }
 
@@ -266,5 +330,48 @@ public:
         _world->onQueryTerrainElevation([this](const GeoPoint& location){
             return queryTerrainElevationAt(location);
         });
+    }
+
+private:
+
+    bool ensureTerrainProbe()
+    {
+        if (!m_hTerrainProbe)
+        {
+            m_hTerrainProbe = XPLMCreateProbe(xplm_ProbeY);
+        }
+        return m_hTerrainProbe != nullptr;
+    }
+
+    float getTerrainFallbackElevationFeet(const GeoPoint& location)
+    {
+        if (m_hasLastTerrainElevation)
+        {
+            return m_lastTerrainElevationFeet;
+        }
+
+        if (std::isfinite(location.altitude))
+        {
+            return static_cast<float>(location.altitude);
+        }
+
+        return 0.0f;
+    }
+
+    template <typename... Args>
+    void logTerrainProbeFailureThrottled(const char* format, Args... args)
+    {
+        ++m_terrainProbeFailureCount;
+        const auto now = HostServices::getLogTimestamp();
+        if (now - m_lastTerrainProbeFailureLog >= chrono::seconds(10))
+        {
+            writeLog(
+                "HOSTSV|probeTerrainElevationAt WARNING! failures[%d] %s",
+                m_terrainProbeFailureCount,
+                "(details follow)");
+            writeLog(format, args...);
+            m_lastTerrainProbeFailureLog = now;
+            m_terrainProbeFailureCount = 0;
+        }
     }
 };

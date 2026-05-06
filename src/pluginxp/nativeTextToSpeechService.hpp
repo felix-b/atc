@@ -73,10 +73,10 @@ private:
     shared_ptr<SpeechSoundBuffer> m_currentSpeech;
     int m_nextRequestId;
     int m_activeRequestId;
-    ALSoundBuffer m_radioStaticEdgeLong;
-    ALSoundBuffer m_radioStaticEdgeMedium;
-    ALSoundBuffer m_radioStaticEdgeShort;
-    ALSoundBuffer m_radioStaticBackgroundLoop;
+    shared_ptr<ALSoundBuffer> m_radioStaticEdgeLong;
+    shared_ptr<ALSoundBuffer> m_radioStaticEdgeMedium;
+    shared_ptr<ALSoundBuffer> m_radioStaticEdgeShort;
+    shared_ptr<ALSoundBuffer> m_radioStaticBackgroundLoop;
     //string m_tempSpeechFilePath;
 public:
     NativeTextToSpeechService(shared_ptr<HostServices> _host) :
@@ -85,15 +85,32 @@ public:
         m_activeRequestId(0),
         m_com1Power("sim/cockpit2/radios/actuators/com1_power", PPL::ReadOnly),
         m_com1FrequencyKhz("sim/cockpit2/radios/actuators/com1_frequency_hz_833", PPL::ReadOnly),
-        m_radioStaticEdgeLong(_host->getResourceFilePath({ "sounds", "radio-static-edge-l.wav"})),
-        m_radioStaticEdgeMedium(_host->getResourceFilePath({ "sounds", "radio-static-edge-m.wav"})),
-        m_radioStaticEdgeShort(_host->getResourceFilePath({ "sounds", "radio-static-edge-s.wav"})),
-        m_radioStaticBackgroundLoop(_host->getResourceFilePath({ "sounds", "radio-static-loop-1.wav"}))
+        m_radioStaticEdgeLong(),
+        m_radioStaticEdgeMedium(),
+        m_radioStaticEdgeShort(),
+        m_radioStaticBackgroundLoop()
     {
-        m_radioStaticBackgroundLoop.setLoop(true);
-        m_synthesizerThread = shared_ptr<thread>(new thread([this](){ 
-            runSynthesizerThread();
-        }));
+        init_sound();
+
+        m_radioStaticEdgeLong = loadRadioStaticSoundBuffer("radio-static-edge-l.wav", "edge-long");
+        m_radioStaticEdgeMedium = loadRadioStaticSoundBuffer("radio-static-edge-m.wav", "edge-medium");
+        m_radioStaticEdgeShort = loadRadioStaticSoundBuffer("radio-static-edge-s.wav", "edge-short");
+        m_radioStaticBackgroundLoop = loadRadioStaticSoundBuffer("radio-static-loop-1.wav", "background-loop");
+        if (m_radioStaticBackgroundLoop)
+        {
+            m_radioStaticBackgroundLoop->setLoop(true);
+        }
+
+        try
+        {
+            m_synthesizerThread = shared_ptr<thread>(new thread([this](){ 
+                runSynthesizerThread();
+            }));
+        }
+        catch (const exception& e)
+        {
+            m_host->writeLog("NATT2S|failed to start synthesizer thread: %s", e.what());
+        }
         //m_tempSpeechFilePath = m_host->getResourceFilePath({ "speech", "tempgen.wav" });
     }
 
@@ -102,7 +119,10 @@ public:
         m_host->writeLog("NATT2S|NativeTextToSpeechService::~ctor");
         
         m_messageQueue.enqueue({ ThreadMessageType::TerminateThread });
-        m_synthesizerThread->join();
+        if (m_synthesizerThread && m_synthesizerThread->joinable())
+        {
+            m_synthesizerThread->join();
+        }
     }
 public:
 
@@ -287,11 +307,17 @@ private:
             if (isReqeustStillActive(message.requestId) && m_currentSpeech)
             {
                 m_host->writeLog("SPECHW|request id[%d], playing PTT-PUSH", message.requestId);
-                ALSoundBuffer& pttOnSound = message.radioStyle.delayAfterPtt < chrono::milliseconds(1)
+                shared_ptr<ALSoundBuffer> pttOnSound = message.radioStyle.delayAfterPtt < chrono::milliseconds(1)
                                             ? m_radioStaticEdgeShort
                                             : message.radioStyle.delayAfterPtt <= chrono::milliseconds(500) ? m_radioStaticEdgeMedium : m_radioStaticEdgeLong;
-                pttOnSound.play(message.radioStyle.staticVolume);
-                m_radioStaticBackgroundLoop.play(max(0.1f, message.radioStyle.staticVolume - 0.1f));
+                if (pttOnSound)
+                {
+                    pttOnSound->play(message.radioStyle.staticVolume);
+                }
+                if (m_radioStaticBackgroundLoop)
+                {
+                    m_radioStaticBackgroundLoop->play(max(0.1f, message.radioStyle.staticVolume - 0.1f));
+                }
             }
             break;
         case ThreadMessageType::PlayRadioSpeech:
@@ -306,9 +332,15 @@ private:
             if (isReqeustStillActive(message.requestId) && m_currentSpeech)
             {
                 m_host->writeLog("SPECHW|request id[%d], playing PTT-RELEASE", message.requestId);
-                m_radioStaticEdgeShort.play(message.radioStyle.staticVolume);
+                if (m_radioStaticEdgeShort)
+                {
+                    m_radioStaticEdgeShort->play(message.radioStyle.staticVolume);
+                }
                 m_currentSpeech->stop();
-                m_radioStaticBackgroundLoop.stop();
+                if (m_radioStaticBackgroundLoop)
+                {
+                    m_radioStaticBackgroundLoop->stop();
+                }
                 m_activeRequestId++;
                 m_host->writeLog("SPECHW|COMPLETED request id[%d], m_activeRequestId=%d", m_activeRequestId);
             }
@@ -497,17 +529,47 @@ private:
 
     void stopAllSounds()
     {
-        m_radioStaticEdgeMedium.stop();
-        m_radioStaticEdgeMedium.rewind();
-        m_radioStaticEdgeShort.stop();
-        m_radioStaticEdgeShort.rewind();
-        m_radioStaticEdgeLong.stop();
-        m_radioStaticEdgeLong.rewind();
-        m_radioStaticBackgroundLoop.stop();
+        if (m_radioStaticEdgeMedium)
+        {
+            m_radioStaticEdgeMedium->stop();
+            m_radioStaticEdgeMedium->rewind();
+        }
+        if (m_radioStaticEdgeShort)
+        {
+            m_radioStaticEdgeShort->stop();
+            m_radioStaticEdgeShort->rewind();
+        }
+        if (m_radioStaticEdgeLong)
+        {
+            m_radioStaticEdgeLong->stop();
+            m_radioStaticEdgeLong->rewind();
+        }
+        if (m_radioStaticBackgroundLoop)
+        {
+            m_radioStaticBackgroundLoop->stop();
+        }
 
         if (m_currentSpeech)
         {
             m_currentSpeech->stop();
+        }
+    }
+
+    shared_ptr<ALSoundBuffer> loadRadioStaticSoundBuffer(const string& fileName, const char* label)
+    {
+        const string filePath = m_host->getResourceFilePath({ "sounds", fileName });
+        try
+        {
+            return shared_ptr<ALSoundBuffer>(new ALSoundBuffer(filePath));
+        }
+        catch (const exception& e)
+        {
+            m_host->writeLog(
+                "NATT2S|static radio sound[%s] unavailable at[%s]: %s",
+                label,
+                filePath.c_str(),
+                e.what());
+            return shared_ptr<ALSoundBuffer>();
         }
     }
 

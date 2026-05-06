@@ -48,6 +48,7 @@ public:
         float groundSpeedKt = 0;
         float verticalSpeedFpm = 0;
         CellAction action = CellAction::None;
+        vector<MutexEvent> expectedEvents;
         MutexEvent expectedEvent;
     };
     struct CellBuilder
@@ -215,6 +216,52 @@ public:
             cell.expectedEvent.immediate = true;
             return cell;
         }
+        Cell HS_CHK_HLD_WAKE(bool expectImmediate = true) const
+        {
+            Cell cell = HS(1);
+            cell.action = CellAction::CheckInDeparture;
+            cell.expectedEvent.type = MutexEventType::HoldShort;
+            cell.expectedEvent.reason = DeclineReason::WakeTurbulence;
+            cell.expectedEvent.immediate = expectImmediate;
+            return cell;
+        }
+        Cell HS_CHK_HLD_AND_CLRTO(const TrafficAdvisory& traffic) const
+        {
+            Cell cell = HS(1);
+            cell.action = CellAction::CheckInDeparture;
+
+            MutexEvent holdShort;
+            holdShort.type = MutexEventType::HoldShort;
+            holdShort.reason = DeclineReason::WaitInLine;
+            holdShort.immediate = true;
+            cell.expectedEvents.push_back(holdShort);
+
+            MutexEvent clearedForTakeoff;
+            clearedForTakeoff.type = MutexEventType::ClearedForTakeoff;
+            clearedForTakeoff.immediate = false;
+            cell.expectedEvents.push_back(clearedForTakeoff);
+
+            return cell;
+        }
+        Cell LUAW_CHK_LUAW(
+            const TrafficAdvisory& traffic1 = { TrafficAdvisoryType::NotSpecified },
+            const TrafficAdvisory& traffic2 = { TrafficAdvisoryType::NotSpecified }) const
+        {
+            Cell cell = HS(1);
+            cell.action = CellAction::CheckInDeparture;
+            cell.expectedEvent.type = MutexEventType::AuthorizedLineUpAndWait;
+            m_test.addCellTraffic(cell, traffic1, traffic2);
+            return cell;
+        }
+        Cell HS_CHK_CONT(int numberInLine, bool immediate = true) const
+        {
+            Cell cell = HS(1);
+            cell.action = CellAction::CheckInDeparture;
+            cell.expectedEvent.type = MutexEventType::Continue;
+            cell.expectedEvent.numberInLine = numberInLine;
+            cell.expectedEvent.immediate = immediate;
+            return cell;
+        }
         Cell HS_CHK_HLD_DRLINE(int numberInLine, int expectImmediate) const
         {
             Cell cell = HS(numberInLine);
@@ -294,12 +341,47 @@ public:
             m_test.addCellTraffic(cell, traffic1, traffic2);
             return cell;
         }
+        Cell LINEDUP_CHK_LUAW(
+            const TrafficAdvisory& traffic1 = { TrafficAdvisoryType::NotSpecified },
+            const TrafficAdvisory& traffic2 = { TrafficAdvisoryType::NotSpecified }) const
+        {
+            Cell cell = LINEDUP();
+            cell.expectedEvent.type = MutexEventType::AuthorizedLineUpAndWait;
+            m_test.addCellTraffic(cell, traffic1, traffic2);
+            return cell;
+        }
         Cell LUAW_CLR_ITO(
             const TrafficAdvisory& traffic1 = { TrafficAdvisoryType::NotSpecified },
             const TrafficAdvisory& traffic2 = { TrafficAdvisoryType::NotSpecified }) const
         {
             Cell cell = LUAW_CLRTO(traffic1, traffic2);
             cell.expectedEvent.immediate = true;
+            return cell;
+        }
+        Cell LUAW_CHK_HLD_WAKE(
+            const TrafficAdvisory& traffic1 = { TrafficAdvisoryType::NotSpecified },
+            const TrafficAdvisory& traffic2 = { TrafficAdvisoryType::NotSpecified }) const
+        {
+            Cell cell = LINEDUP();
+            cell.action = CellAction::CheckInDeparture;
+            cell.expectedEvent.type = MutexEventType::HoldShort;
+            cell.expectedEvent.reason = DeclineReason::WakeTurbulence;
+            cell.expectedEvent.immediate = true;
+            m_test.addCellTraffic(cell, traffic1, traffic2);
+            return cell;
+        }
+        Cell LUAW_CHK_CONT(
+            int numberInLine,
+            bool readyForImmediateTakeoff = true,
+            const TrafficAdvisory& traffic1 = { TrafficAdvisoryType::NotSpecified },
+            const TrafficAdvisory& traffic2 = { TrafficAdvisoryType::NotSpecified }) const
+        {
+            Cell cell = LINEDUP();
+            cell.action = CellAction::CheckInDeparture;
+            cell.expectedEvent.type = MutexEventType::Continue;
+            cell.expectedEvent.numberInLine = numberInLine;
+            cell.expectedEvent.immediate = readyForImmediateTakeoff;
+            m_test.addCellTraffic(cell, traffic1, traffic2);
             return cell;
         }
         Cell HS_CLRTO(
@@ -544,7 +626,13 @@ private:
     {
         const auto& column = m_columns.at(columnIndex);
 
-        int expectedCount = cell.expectedEvent.type == MutexEventType::NotSet ? 0 : 1;
+        vector<MutexEvent> expectedEvents = cell.expectedEvents;
+        if (expectedEvents.empty() && cell.expectedEvent.type != MutexEventType::NotSet)
+        {
+            expectedEvents.push_back(cell.expectedEvent);
+        }
+
+        int expectedCount = static_cast<int>(expectedEvents.size());
 
         if (column.actualEvents.size() != expectedCount)
         {
@@ -566,9 +654,14 @@ private:
             return true;
         }
 
-        bool bodyMatch = MutexTestCase::assertMutexEventBody(cell.expectedEvent, column.actualEvents.at(0));
-        bool trafficMatch = MutexTestCase::assertMutexEventTraffic(cell.expectedEvent, column.actualEvents.at(0));
-        return bodyMatch && trafficMatch;
+        bool result = true;
+        for (int i = 0 ; i < expectedEvents.size() ; i++)
+        {
+            result = MutexTestCase::assertMutexEventBody(expectedEvents.at(i), column.actualEvents.at(i)) && result;
+            result = MutexTestCase::assertMutexEventTraffic(expectedEvents.at(i), column.actualEvents.at(i)) && result;
+        }
+
+        return result;
     }
 
     void addCellTraffic(Cell& cell, const TrafficAdvisory& traffic1, const TrafficAdvisory& traffic2)

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.5)
 project(libworld VERSION 0.1.0)
 
 add_library(libworld STATIC
@@ -9,6 +9,8 @@ add_library(libworld STATIC
     actor.cpp
     aircraft.cpp
     airport.cpp
+    airportFlow.cpp
+    airportFlow.hpp
     airspaceClass.cpp
     altitude.cpp
     basicManeuverTypes.hpp

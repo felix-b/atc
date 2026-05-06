@@ -604,7 +604,34 @@ namespace world
 
             builder.addData(spellCallsign(intent->subjectFlight()->callSign()));
             builder.addPunctuation();
-            builder.addText("winds calm"); //TODO add winds data
+
+            auto weatherService = m_host->services().tryGet<WeatherService>();
+            if (weatherService)
+            {
+                auto weather = weatherService->getWeatherAt(runwayEnd.centerlinePoint().geo(), runwayEnd.elevationFeet() / FEET_IN_1_METER);
+                const float windSpeedKt = weather.windSpeedMetersPerSecond * KNOT_IN_1_METER_PER_SEC;
+                if (windSpeedKt < 2.5f)
+                {
+                    builder.addText("winds calm");
+                }
+                else
+                {
+                    builder.addText("wind");
+                    builder.addData(spellHeading(weather.windDirectionTrueDegrees));
+                    builder.addText("at");
+                    builder.addText(to_string((int)(windSpeedKt + 0.5f)));
+                    builder.addText("knots");
+                    if (weather.windGustMetersPerSecond > weather.windSpeedMetersPerSecond + 0.5f)
+                    {
+                        builder.addText("gust");
+                        builder.addText(to_string((int)(weather.windGustMetersPerSecond * KNOT_IN_1_METER_PER_SEC + 0.5f)));
+                    }
+                }
+            }
+            else
+            {
+                builder.addText("winds calm");
+            }
 
             float turnDegrees = GeoMath::getTurnDegrees(runwayEnd.heading(), clearance->initialHeading());
             if (abs(turnDegrees) < 1)
@@ -674,8 +701,39 @@ namespace world
 
         void verbalizeLandingClearance(UtteranceBuilder& builder, shared_ptr<TowerClearedForLandingIntent> intent)
         {
+            const auto& runwayEnd = m_host->getWorld()->getRunwayEnd(
+                intent->subjectFlight()->plan()->arrivalAirportIcao(),
+                intent->clearance()->runway());
+            auto weatherService = m_host->services().tryGet<WeatherService>();
+
             builder.addData(spellCallsign(intent->subjectFlight()->callSign()));
-            builder.addText("winds calm cleared to land runway");
+            if (weatherService)
+            {
+                auto weather = weatherService->getWeatherAt(runwayEnd.centerlinePoint().geo(), runwayEnd.elevationFeet() / FEET_IN_1_METER);
+                const float windSpeedKt = weather.windSpeedMetersPerSecond * KNOT_IN_1_METER_PER_SEC;
+                if (windSpeedKt < 2.5f)
+                {
+                    builder.addText("winds calm cleared to land runway");
+                }
+                else
+                {
+                    builder.addText("wind");
+                    builder.addData(spellHeading(weather.windDirectionTrueDegrees));
+                    builder.addText("at");
+                    builder.addText(to_string((int)(windSpeedKt + 0.5f)));
+                    builder.addText("knots");
+                    if (weather.windGustMetersPerSecond > weather.windSpeedMetersPerSecond + 0.5f)
+                    {
+                        builder.addText("gust");
+                        builder.addText(to_string((int)(weather.windGustMetersPerSecond * KNOT_IN_1_METER_PER_SEC + 0.5f)));
+                    }
+                    builder.addText("cleared to land runway");
+                }
+            }
+            else
+            {
+                builder.addText("winds calm cleared to land runway");
+            }
             builder.addData(spellRunway(intent->clearance()->runway()));
             if (!intent->traffic().empty())
             {

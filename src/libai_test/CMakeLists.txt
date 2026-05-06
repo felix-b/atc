@@ -6,6 +6,9 @@ include(GoogleTest)
 enable_testing()
 
 add_executable(libai_test 
+    aiPilotTest.cpp
+    departureRunwayNormalizationTest.cpp
+    staleCrossClearanceTest.cpp
     maneuverFactoryTest.cpp
     workflowTest.cpp
     mutexTestCase.hpp

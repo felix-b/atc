@@ -41,7 +41,7 @@ namespace ai
                 plan->sidName(),
                 plan->sidTransition(),
                 5000,
-                34000,
+                plan->cruiseAltitudeFeet(),
                 5,
                 0, //why DEP??
                 to_string(squawk)
@@ -69,12 +69,22 @@ namespace ai
             auto taxiPath = airport->taxiNet()->tryFindDepartureTaxiPathToRunway(p0, runwayEnd);
             if (!taxiPath) 
             {
-                throw runtime_error(
-                    "departure taxi path from [" +
-                    to_string(p0.latitude) + "," + to_string(p0.longitude) +
-                    "] to runway [" +
-                    runwayEnd.name() +
-                    "] NOT FOUND!");
+                m_host->writeLog(
+                    "CFACIL|WARNING: departure taxi path NOT FOUND from [%f,%f] to runway [%s], using direct fallback path",
+                    p0.latitude,
+                    p0.longitude,
+                    runwayEnd.name().c_str());
+
+                auto fallbackEdge = shared_ptr<TaxiEdge>(new TaxiEdge(
+                    UniPoint::fromGeo(m_host, p0),
+                    runwayEnd.centerlinePoint()
+                ));
+
+                taxiPath = shared_ptr<TaxiPath>(new TaxiPath(
+                    fallbackEdge->node1(),
+                    fallbackEdge->node2(),
+                    { fallbackEdge }
+                ));
             }
 
             GeoPoint p1 = taxiPath->edges[0]->node1()->location().geo();
@@ -151,7 +161,7 @@ namespace ai
             initClearanceHeader(
                 header, 
                 Clearance::Type::LineUpAndWait,
-                airport->localAt(flight->aircraft()->location()), 
+                resolveDepartureTowerPosition(flight), 
                 flight);
 
             return shared_ptr<LineUpAndWaitApproval>(new LineUpAndWaitApproval(
@@ -174,7 +184,7 @@ namespace ai
             initClearanceHeader(
                 header, 
                 Clearance::Type::TakeoffClearance, 
-                airport->localAt(flight->aircraft()->location()), 
+                resolveDepartureTowerPosition(flight), 
                 flight);
 
             auto departure = airport->tower()->tryFindPosition(
@@ -253,6 +263,47 @@ namespace ai
         }
 
     private:
+        shared_ptr<ControllerPosition> resolveDepartureTowerPosition(shared_ptr<Flight> flight)
+        {
+            auto airport = getDepartureAirport(flight);
+            const GeoPoint location = flight->aircraft()->location();
+
+            try
+            {
+                return airport->localAt(location);
+            }
+            catch (const exception&)
+            {
+            }
+
+            auto tower = airport->tower();
+            if (!tower)
+            {
+                throw runtime_error("ClearanceFactory::resolveDepartureTowerPosition: airport has no tower/controller facility");
+            }
+
+            const vector<ControllerPosition::Type> fallbackTypes = {
+                ControllerPosition::Type::Local,
+                ControllerPosition::Type::Departure,
+                ControllerPosition::Type::Approach
+            };
+
+            for (const auto fallbackType : fallbackTypes)
+            {
+                if (auto fallback = tower->tryFindPosition(fallbackType, location))
+                {
+                    return fallback;
+                }
+            }
+
+            if (!tower->positions().empty())
+            {
+                return tower->positions().front();
+            }
+
+            throw runtime_error("ClearanceFactory::resolveDepartureTowerPosition: no suitable controller position found");
+        }
+
         void initClearanceHeader(
             Clearance::Header& header, 
             Clearance::Type type,

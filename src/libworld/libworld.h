@@ -11,6 +11,7 @@
 #include <memory>
 #include <tuple>
 #include <vector>
+#include <algorithm>
 #include <unordered_map>
 #include <list>
 #include <queue>
@@ -76,6 +77,7 @@ namespace world
     class AIAircraftFactory;
     class TextToSpeechService;
     class AircraftObjectService;
+    class WeatherService;
     class HostServices;
 
     struct GeoPoint
@@ -649,6 +651,7 @@ namespace world
         }
     public:
         void progressTo(chrono::microseconds futureTimestamp);
+        shared_ptr<Airport> addAirport(shared_ptr<Airport> airport);
         void addFlight(shared_ptr<Flight> flight);
         void addFlightColdAndDark(shared_ptr<Flight> flight);
         void clearAllFlights();
@@ -1079,6 +1082,34 @@ namespace world
     public:
         virtual void processEvents(shared_ptr<World::ChangeSet> changeSet) = 0;
         virtual void clearAll() = 0;
+    };
+
+    struct WeatherSnapshot
+    {
+    public:
+        bool available = false;
+        bool detailed = false;
+        float temperatureC = 0.0f;
+        float dewpointC = 0.0f;
+        float pressurePa = 0.0f;
+        float visibilityMeters = 0.0f;
+        float precipitationRate = 0.0f;
+        float windDirectionTrueDegrees = 0.0f;
+        float windSpeedMetersPerSecond = 0.0f;
+        float windGustMetersPerSecond = 0.0f;
+        vector<float> windLayerAltitudesMeters;
+        vector<float> windLayerSpeedsMetersPerSecond;
+        vector<float> windLayerDirectionsTrueDegrees;
+        vector<float> cloudLayerCoverages;
+        vector<float> cloudLayerBasesMeters;
+        vector<float> cloudLayerTopsMeters;
+    };
+
+    class WeatherService
+    {
+    public:
+        virtual ~WeatherService() = default;
+        virtual WeatherSnapshot getWeatherAt(const GeoPoint& location, float altitudeMeters = 0.0f) = 0;
     };
 
     class Intent
@@ -1722,19 +1753,87 @@ namespace world
             float targetAltitude() const { return m_targetAltitude; }
             float targetSpeed() const { return m_targetSpeed; }
         };
+
+        struct RouteWaypoint
+        {
+        public:
+            string name;
+            string airway;
+            GeoPoint location;
+        public:
+            RouteWaypoint() = default;
+            RouteWaypoint(const string& _name, const string& _airway, const GeoPoint& _location) :
+                name(_name),
+                airway(_airway),
+                location(_location)
+            {
+            }
+        };
         
         class Cursor
         {
         private:
             shared_ptr<FlightPlan> m_flightPlan;
             shared_ptr<Leg> m_activeLeg;
+            int m_activeLegIndex;
         public:
             Cursor(shared_ptr<FlightPlan> _flightPlan) : 
-                m_flightPlan(_flightPlan)
+                m_flightPlan(_flightPlan),
+                m_activeLegIndex(-1)
             {
             }
         public:
-            // void activateNextLeg();
+            void reset()
+            {
+                m_activeLeg.reset();
+                m_activeLegIndex = -1;
+            }
+
+            bool hasActiveLeg() const { return !!m_activeLeg; }
+            int activeLegIndex() const { return m_activeLegIndex; }
+            shared_ptr<Leg> activeLeg() const { return m_activeLeg; }
+
+            bool activateNextLeg()
+            {
+                if (!m_flightPlan)
+                {
+                    return false;
+                }
+
+                const auto& legs = m_flightPlan->legs();
+                if (m_activeLegIndex + 1 >= static_cast<int>(legs.size()))
+                {
+                    reset();
+                    m_activeLegIndex = static_cast<int>(legs.size());
+                    return false;
+                }
+
+                m_activeLegIndex++;
+                m_activeLeg = legs.at(m_activeLegIndex);
+                return true;
+            }
+
+            bool activateNextLegOfType(LegType type)
+            {
+                if (!m_flightPlan)
+                {
+                    return false;
+                }
+
+                const auto& legs = m_flightPlan->legs();
+                for (int i = m_activeLegIndex + 1 ; i < static_cast<int>(legs.size()) ; ++i)
+                {
+                    if (legs.at(i)->type() == type)
+                    {
+                        m_activeLegIndex = i;
+                        m_activeLeg = legs.at(i);
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             // void directTo(const string& navaid);
         };
     private:
@@ -1751,7 +1850,11 @@ namespace world
         string m_starName;
         string m_starTransition;
         string m_approachName;
+        vector<RouteWaypoint> m_filedRouteWaypoints;
         vector<shared_ptr<Leg>> m_legs;
+        vector<RouteWaypoint> m_routeWaypoints;
+        vector<RouteWaypoint> m_knownWaypoints;
+        float m_cruiseAltitudeFeet = 34000.0f;
         string m_airlineIcao;
         string m_flightNo;
         string m_callsign;
@@ -1771,6 +1874,13 @@ namespace world
         {
         }
     public:
+        void rebuildProcedureLegs(shared_ptr<HostServices> host);
+
+        void rebuildProcedureLegs()
+        {
+            rebuildProcedureLegs(nullptr);
+        }
+
         time_t departureTime() const { return m_departureTime; }
         time_t arrivalTime() const { return m_arrivalTime; }
         const string& departureAirportIcao() const { return m_departureAirportIcao; }
@@ -1788,6 +1898,9 @@ namespace world
         const string& flightNo() const { return m_flightNo; }
         const string& callsign() const { return m_callsign; }
         const vector<shared_ptr<Leg>>& legs() const { return m_legs; }
+        const vector<RouteWaypoint>& routeWaypoints() const { return m_routeWaypoints; }
+        const vector<RouteWaypoint>& knownWaypoints() const { return m_knownWaypoints; }
+        float cruiseAltitudeFeet() const { return m_cruiseAltitudeFeet; }
     public:
         void setDepartureAirportIcao(const string& icao) { m_departureAirportIcao = icao; }
         void setDepartureGate(const string& name) { m_departureGate = name; }
@@ -1800,6 +1913,18 @@ namespace world
         void setArrivalRunway(const string& name) { m_arrivalRunway = name; }
         void setArrivalGate(const string& name) { m_arrivalGate = name; }
         void setArrivalAirportIcao(const string& icao) { m_arrivalAirportIcao = icao; }
+        void setRouteWaypoints(const vector<RouteWaypoint>& waypoints) {
+            m_filedRouteWaypoints = waypoints;
+            m_routeWaypoints = waypoints;
+            m_knownWaypoints = waypoints;
+        }
+        void addRouteWaypoint(const string& name, const string& airway, const GeoPoint& location) {
+            RouteWaypoint waypoint(name, airway, location);
+            m_filedRouteWaypoints.push_back(waypoint);
+            m_routeWaypoints.push_back(waypoint);
+            m_knownWaypoints.push_back(waypoint);
+        }
+        void setCruiseAltitudeFeet(float value) { m_cruiseAltitudeFeet = value; }
         void setAirlineIcao(const string& icao) { m_airlineIcao = icao; }
         void setFlightNo(const string& value) { m_flightNo = value; }
         void setCallsign(const string& name) { m_callsign = name; }
@@ -1866,7 +1991,9 @@ namespace world
         void setPilot(shared_ptr<Pilot> _pilot);
         void progressTo(chrono::microseconds timestamp);
         void addClearance(shared_ptr<Clearance> clearance);
+        void removeClearance(Clearance::Type type);
         void setPlan(shared_ptr<FlightPlan> _plan);
+        void setArrivalRunway(const string& runwayName);
         void setPhase(Phase newPhase) { m_phase = newPhase; }
     public:
         void onChanges(World::OnChangesCallback callback) { m_onChanges = callback; }
@@ -1925,6 +2052,91 @@ namespace world
         virtual void progressTo(chrono::microseconds timestamp) = 0;
     };
 
+    // Traffic flow runway usage configuration (from apt.dat 1102 lines)
+    struct TrafficFlowRunwayUse
+    {
+        string runwayName;
+        bool useForArrival;
+        bool useForDeparture;
+        
+        TrafficFlowRunwayUse(const string& name, bool arrival, bool departure)
+            : runwayName(name), useForArrival(arrival), useForDeparture(departure) {}
+    };
+
+    // Traffic flow definition (from apt.dat 1100/1101 lines)
+    class TrafficFlow
+    {
+    private:
+        friend class WorldBuilder;
+    private:
+        string m_name;
+        string m_icaoCode;
+        // Wind direction range that activates this flow (true degrees)
+        float m_windFromDegrees;
+        float m_windToDegrees;
+        float m_ceiling;
+        float m_visibility;
+        vector<TrafficFlowRunwayUse> m_runwayUses;
+    public:
+        TrafficFlow(const string& name, const string& icao, float windFrom, float windTo, 
+                    float ceiling = -1, float visibility = -1)
+            : m_name(name), m_icaoCode(icao), m_windFromDegrees(windFrom), m_windToDegrees(windTo),
+              m_ceiling(ceiling), m_visibility(visibility) {}
+        
+        const string& name() const { return m_name; }
+        const string& icaoCode() const { return m_icaoCode; }
+        float windFromDegrees() const { return m_windFromDegrees; }
+        float windToDegrees() const { return m_windToDegrees; }
+        float ceiling() const { return m_ceiling; }
+        float visibility() const { return m_visibility; }
+        
+        // Check if wind direction matches this flow
+        bool matchesWind(float windDirectionDegrees) const
+        {
+            // Handle wrap-around case (e.g., 350° to 010°)
+            if (m_windFromDegrees > m_windToDegrees)
+            {
+                return windDirectionDegrees >= m_windFromDegrees || windDirectionDegrees <= m_windToDegrees;
+            }
+            return windDirectionDegrees >= m_windFromDegrees && windDirectionDegrees <= m_windToDegrees;
+        }
+        
+        void setWindRange(float from, float to)
+        {
+            m_windFromDegrees = from;
+            m_windToDegrees = to;
+        }
+        
+        void addRunwayUse(const string& runwayName, bool arrival, bool departure)
+        {
+            m_runwayUses.push_back(TrafficFlowRunwayUse(runwayName, arrival, departure));
+        }
+        
+        vector<string> getArrivalRunways() const
+        {
+            vector<string> result;
+            for (const auto& rwy : m_runwayUses)
+            {
+                if (rwy.useForArrival)
+                    result.push_back(rwy.runwayName);
+            }
+            return result;
+        }
+        
+        vector<string> getDepartureRunways() const
+        {
+            vector<string> result;
+            for (const auto& rwy : m_runwayUses)
+            {
+                if (rwy.useForDeparture)
+                    result.push_back(rwy.runwayName);
+            }
+            return result;
+        }
+        
+        const vector<TrafficFlowRunwayUse>& allRunwayUses() const { return m_runwayUses; }
+    };
+
     class Airport
     {
     private:
@@ -1967,6 +2179,7 @@ namespace world
         shared_ptr<ControlFacility> m_tower;
         vector<vector<shared_ptr<Runway>>> m_parallelRunwayGroups;
         shared_ptr<MutableState> m_mutableState;
+        vector<shared_ptr<TrafficFlow>> m_trafficFlows;
     public:
         Airport(const Header& _header) : 
             m_header(_header),
@@ -1992,8 +2205,13 @@ namespace world
         shared_ptr<ParkingStand> tryFindParkingStand(const string& name) const;
         const vector<shared_ptr<Runway>>& getParallelRunwayGroup(int index) const { return m_parallelRunwayGroups.at(index); }
         shared_ptr<Runway> findLongestRunway() const;
+        shared_ptr<Runway> findPreferredArrivalRunway() const;
         const vector<shared_ptr<Runway>>& findLongestParallelRunwayGroup() const;
         shared_ptr<ParkingStand> findClosestParkingStand(const GeoPoint& location);
+        const vector<shared_ptr<TrafficFlow>>& trafficFlows() const { return m_trafficFlows; }
+        bool hasTrafficFlows() const { return !m_trafficFlows.empty(); }
+        // Get active flow based on wind direction, returns nullptr if no matching flow
+        shared_ptr<TrafficFlow> getActiveFlow(float windDirectionDegrees) const;
     public:
         shared_ptr<ControllerPosition> getControllerPositionOrThrow(ControllerPosition::Type type, const GeoPoint& location) const {
             return m_tower->findPositionOrThrow(type, location);
@@ -2231,6 +2449,8 @@ namespace world
             Groundway = 0,
             Taxiway = 1,
             Runway = 2,
+            HoldShort = 3,
+            RunwayActiveZone = 4,
         };
     private:
         int m_id;
@@ -2299,6 +2519,8 @@ namespace world
         int m_id;
         UniPoint m_location;
         bool m_isJunction;
+        bool m_isRouteStart;
+        bool m_isRouteEnd;
         bool m_hasTaxiway;
         bool m_hasRunway;
         vector<shared_ptr<TaxiEdge>> m_edges;
@@ -2308,6 +2530,8 @@ namespace world
             m_id(_id),
             m_location(_location),
             m_isJunction(false),
+            m_isRouteStart(false),
+            m_isRouteEnd(false),
             m_hasTaxiway(false),
             m_hasRunway(false),
             m_flightPhaseAllocation(Flight::Phase::NotAssigned)
@@ -2317,11 +2541,16 @@ namespace world
         int id() const { return m_id; }
         const UniPoint& location() const { return m_location; }
         bool isJunction() const { return m_isJunction; }
+        bool isRouteStart() const { return m_isRouteStart; }
+        bool isRouteEnd() const { return m_isRouteEnd; }
         bool hasTaxiway() const { return m_hasTaxiway; }
         bool hasRunway() const { return m_hasRunway; }
         Flight::Phase flightPhaseAllocation() const { return m_flightPhaseAllocation; }
         const vector<shared_ptr<TaxiEdge>>& edges() const { return m_edges; }
     public:
+        void setJunction(bool value) { m_isJunction = value; }
+        void setRouteStart(bool value) { m_isRouteStart = value; }
+        void setRouteEnd(bool value) { m_isRouteEnd = value; }
         shared_ptr<TaxiEdge> getEdgeTo(shared_ptr<TaxiNode> node);
         shared_ptr<TaxiEdge> tryFindEdge(function<bool(shared_ptr<TaxiEdge> edge)> predicate);
     public:
@@ -2357,6 +2586,13 @@ namespace world
             const GeoPoint& fromPoint,
             const GeoPoint& toPoint,
             CostFunction costFunction = lengthCostFunction);
+        static shared_ptr<TaxiPath> tryFind(
+            shared_ptr<TaxiNet> taxiNet,
+            const GeoPoint& fromPoint,
+            const GeoPoint& toPoint,
+            function<bool(shared_ptr<TaxiNode>)> fromNodePredicate,
+            function<bool(shared_ptr<TaxiNode>)> toNodePredicate,
+            CostFunction costFunction = lengthCostFunction);
 
         static float lengthCostFunction(shared_ptr<TaxiEdge> edge)
         {
@@ -2379,7 +2615,8 @@ namespace world
             const vector<shared_ptr<TaxiNode>>& taxiNodes,
             const vector<shared_ptr<TaxiEdge>>& taxiEdges,
             shared_ptr<ControlFacility> tower = nullptr,
-            shared_ptr<ControlledAirspace> airspace = nullptr);
+            shared_ptr<ControlledAirspace> airspace = nullptr,
+            const vector<shared_ptr<TrafficFlow>>& trafficFlows = {});
 
         static shared_ptr<ControlFacility> assembleAirportTower(
             shared_ptr<HostServices> host, 
@@ -2465,6 +2702,9 @@ namespace world
             template<class T> shared_ptr<T> getAs() { 
                 return static_pointer_cast<T>(m_ptr);
             }
+            template<class T> shared_ptr<T> getAs() const {
+                return static_pointer_cast<T>(m_ptr);
+            }
         };
         class ServiceContainer
         {
@@ -2483,6 +2723,17 @@ namespace world
                 //     return servicePtr.getAs<TService>();
                 // }
                 // throw runtime_error("Service not found in container: " + typeKey);
+            }
+            template<class TService>
+            shared_ptr<TService> tryGet() const
+            {
+                string typeKey(typeid(TService).name());
+                const auto found = m_serviceByTypeKey.find(typeKey);
+                if (found == m_serviceByTypeKey.end())
+                {
+                    return nullptr;
+                }
+                return found->second.getAs<TService>();
             }
             template<class TService>
             void use(shared_ptr<TService> service)

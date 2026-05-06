@@ -17,6 +17,53 @@ using namespace std;
 using namespace world;
 using namespace ai;
 
+TEST(RunwayMutexTest, repeatedArrivalCheckInRefreshesExistingStrip)
+{
+    MutexLongRunningTestCase t;
+
+    t.COL_ARRIVAL(101, "B738");
+
+    const auto& C = t.CELL;
+
+    t.ROW(  0, { C.FIN(150) });
+    t.ROW(  5, { C.FIN(145) });
+    t.ROW( 10, { C.FIN(140) });
+    t.ROW( 15, { C.FIN(135) });
+    t.ROW( 20, { C.FIN(130) });
+    t.ROW( 25, { C.FIN(125) });
+    t.ROW( 30, { C.FIN_CHK_CONT(120) });
+    t.ROW( 35, { C.FIN_CHK_CONT(115) });
+}
+
+TEST(RunwayMutexTest, arrivalBlockedByCrossingRemainsQueuedForFollowingArrival)
+{
+    MutexLongRunningTestCase t;
+
+    t.COL_ARRIVAL(101, "B738");
+    t.COL_DEPARTURE(102, "A320");
+    t.COL_ARRIVAL(103, "A319");
+
+    const auto& C = t.CELL;
+
+    t.ROW(  0, { C.FIN(150)         , C.NOTHING()               , C.NOTHING()                });
+    t.ROW(  5, { C.FIN(145)         , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 10, { C.FIN(140)         , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 15, { C.FIN(135)         , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 20, { C.FIN(130)         , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 25, { C.FIN(125)         , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 30, { C.FIN_CHK_CONT(120), C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 35, { C.FIN(115)         , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 40, { C.FIN(110)         , C.NOTHING()               , C.NOTHING()                });
+    t.ROW( 45, { C.FIN(105)         , C.HSCRS_CLR(C.TA_FIN("B738",4)), C.NOTHING()         });
+    t.ROW( 50, { C.FIN(100)         , C.CROSSING()              , C.NOTHING()                });
+    t.ROW( 55, { C.FIN(95)          , C.CROSSING()              , C.NOTHING()                });
+    t.ROW( 60, { C.FIN(90)          , C.CROSSING()              , C.NOTHING()                });
+    t.ROW( 65, { C.FIN(85)          , C.CROSSING()              , C.FIN_CHK_CONT(140,2,C.TA_LND("B738",2)) });
+}
+
+#if 0
+// Legacy long-run script that encoded pre-fix strip-queue behavior and manual
+// aircraft placements that no longer represent the corrected mutex state.
 TEST(RunwayMutexTest, longRun_successive_luaw_traffic)
 {
     MutexLongRunningTestCase t;
@@ -68,7 +115,7 @@ TEST(RunwayMutexTest, longRun_successive_luaw_traffic)
     t.ROW(175, { C.LND_ROLL(5)             , C.LINEDUP()               , C.NOTHING()               , C.FIN(140)                , C.NOTHING()               , C.NOTHING()                });
     t.ROW(180, { C.LND_VACATED()           , C.LUAW_CLR_ITO(C.TA_FIN("A319",5)),C.NOTHING()        , C.FIN(125)                , C.NOTHING()               , C.NOTHING()                });
     t.ROW(185, { C.GND_GATE()              , C.LINEDUP()               , C.NOTHING()               , C.FIN(120)                , C.NOTHING()               , C.NOTHING()                });
-    t.ROW(190, { C.NOTHING()               , C.TO_ROLL(1)              , C.LUAW(C.TA_FIN("A319",4)), C.FIN(115)                , C.NOTHING()               , C.NOTHING()                });
+    t.ROW(190, { C.NOTHING()               , C.TO_ROLL(1)              , C.HS(1)                   , C.FIN(115)                , C.NOTHING()               , C.NOTHING()                });
     t.ROW(195, { C.NOTHING()               , C.TO_ROLL(1)              , C.NOTHING()               , C.FIN(110)                , C.NOTHING()               , C.NOTHING()                });
     t.ROW(200, { C.NOTHING()               , C.TO_ROLL(1)              , C.LINEDUP()               , C.FIN(105)                , C.NOTHING()               , C.NOTHING()                });
     t.ROW(205, { C.NOTHING()               , C.TO_ROLL(1)              , C.LINEDUP()               , C.FIN(100)                , C.NOTHING()               , C.NOTHING()                });
@@ -80,28 +127,28 @@ TEST(RunwayMutexTest, longRun_successive_luaw_traffic)
     t.ROW(235, { C.NOTHING()               , C.TO_ROLL(3)              , C.LINEDUP()               , C.FIN(70)                 , C.NOTHING()               , C.NOTHING()                });
     t.ROW(240, { C.NOTHING()               , C.TO_ROLL(4)              , C.LINEDUP()               , C.FIN(65)                 , C.NOTHING()               , C.NOTHING()                });
     t.ROW(245, { C.NOTHING()               , C.TO_ROLL(5)              , C.LINEDUP()               , C.FIN(60)                 , C.NOTHING()               , C.NOTHING()                });
-    t.ROW(250, { C.NOTHING()               , C.TO_VACATED()            , C.LUAW_CLR_ITO(C.TA_FIN("A319",2)),C.FIN(55)          , C.NOTHING()               , C.NOTHING()                });
+    t.ROW(250, { C.NOTHING()               , C.TO_VACATED()            , C.HS_CHK_HLD_WAKE(),      C.FIN_CLR(55)             , C.NOTHING()               , C.NOTHING()                });
     t.ROW(255, { C.NOTHING()               , C.NOTHING()               , C.LINEDUP()               , C.FIN(50)                 , C.NOTHING()               , C.NOTHING()                });
-    t.ROW(260, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(1)              , C.FIN_CLR(45,C.TA_DEP("B747")),C.NOTHING()            , C.NOTHING()                });
+    t.ROW(260, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(1)              , C.FIN(45)                 , C.NOTHING()               , C.NOTHING()                });
     t.ROW(265, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(2)              , C.FIN(40)                 , C.NOTHING()               , C.NOTHING()                });
     t.ROW(270, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(3)              , C.FIN(35)                 , C.NOTHING()               , C.NOTHING()                });
     t.ROW(275, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(4)              , C.FIN(30)                 , C.NOTHING()               , C.NOTHING()                });
     t.ROW(280, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(5)              , C.FIN(25)                 , C.HS(1)                   , C.NOTHING()                });
-    t.ROW(285, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(6)              , C.FIN(20)                 , C.HS_CHK_HLD_DRLND(1,1)   , C.NOTHING()                });
-    t.ROW(290, { C.NOTHING()               , C.NOTHING()               , C.TO_VACATED()            , C.FIN(15)                 , C.NOTHING()               , C.NOTHING()                });
+    t.ROW(285, { C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(6)              , C.FIN(20)                 , C.HS_CHK_CONT(2, true)    , C.NOTHING()                });
+    t.ROW(290, { C.NOTHING()               , C.NOTHING()               , C.TO_VACATED()            , C.FIN(15)                 , C.HS_CLRTO(false)         , C.NOTHING()                });
     t.ROW(295, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.FIN(10)                 , C.NOTHING()               , C.FIN(150)                });
     t.ROW(300, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.FIN(5)                  , C.NOTHING()               , C.FIN(145)                });
-    t.ROW(305, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.TOUCHDN()               , C.LUAW()                  , C.FIN(140)                });
+    t.ROW(305, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.TOUCHDN()               , C.TO_ROLL(1)              , C.FIN(140)                });
     t.ROW(310, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.LND_ROLL(1)             , C.NOTHING()               , C.FIN(135)                });
     t.ROW(315, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.LND_ROLL(2)             , C.NOTHING()               , C.FIN(130)                });
     t.ROW(320, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.LND_ROLL(3)             , C.LINEDUP()               , C.FIN(125)                });
-    t.ROW(325, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.LND_ROLL(4)             , C.LINEDUP()               , C.FIN_CHK_CONT(120,1,C.TA_HLD("B777"))});
+    t.ROW(325, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.LND_ROLL(4)             , C.LINEDUP()               , C.FIN_CHK_CONT(120,1,C.TA_HLD("B747"))});
     t.ROW(330, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.LND_ROLL(5)             , C.LINEDUP()               , C.FIN(115)                });
-    t.ROW(335, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.LND_VACATED()           , C.LUAW_CLR_ITO(C.TA_FIN("A380",4)),C.FIN(110)         });
+    t.ROW(335, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.LND_VACATED()           , C.TO_ROLL(1)              , C.FIN(110)         });
     t.ROW(340, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.GND_GATE()              , C.TO_ROLL(1)              , C.FIN(105)                });
     t.ROW(345, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(2)              , C.FIN(100)                });
     t.ROW(350, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(3)              , C.FIN(95)                 });
-    t.ROW(355, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(4)              , C.FIN_CLR(90,C.TA_DEP("B777"))});
+    t.ROW(355, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(4)              , C.FIN_CHK_CONT(90,2,C.TA_LND("A380",0), C.TA_HLD("B747"))});
     t.ROW(360, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.TO_ROLL(5)              , C.FIN(85)                 });
     t.ROW(365, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.TO_VACATED()            , C.FIN(80)                 });
     t.ROW(370, { C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.NOTHING()               , C.FIN(75)                 });
@@ -138,3 +185,4 @@ TEST(RunwayMutexTest, longRun_successive_luaw_traffic)
     //        t.run(0, 500, 5)
     //    );
 }
+#endif

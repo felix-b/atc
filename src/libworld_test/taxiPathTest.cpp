@@ -527,6 +527,76 @@ TEST(TaxiPathTest, taxiNetFindPaths_avoidArrivalDepartureConflict)
     assertTaxiPathEdgeNames("D2:3050->1010", {"L", "BB4", "A", "A", "A", "AA1"}, departurePath2);
 }
 
+TEST(TaxiPathTest, departureTaxiPath_backtracksOnRunwayWhenNeeded)
+{
+    auto host = TestHostServices::create();
+
+    auto n_rwy_start = shared_ptr<TaxiNode>(new TaxiNode(1010, UniPoint::fromGeo(host, {30.10, 45.10})));
+    auto n_rwy_mid = shared_ptr<TaxiNode>(new TaxiNode(1030, UniPoint::fromGeo(host, {30.10, 45.30})));
+    auto n_rwy_far = shared_ptr<TaxiNode>(new TaxiNode(1060, UniPoint::fromGeo(host, {30.10, 45.60})));
+    auto n_gate = shared_ptr<TaxiNode>(new TaxiNode(2080, UniPoint::fromGeo(host, {30.20, 45.60})));
+
+    auto e_rwy_1 = shared_ptr<TaxiEdge>(new TaxiEdge(1001, "09/27", 1010, 1030, TaxiEdge::Type::Runway));
+    auto e_rwy_2 = shared_ptr<TaxiEdge>(new TaxiEdge(1002, "09/27", 1030, 1060, TaxiEdge::Type::Runway));
+    auto e_taxi = shared_ptr<TaxiEdge>(new TaxiEdge(1003, "TX1", 2080, 1060, TaxiEdge::Type::Taxiway));
+
+    auto runway = shared_ptr<Runway>(new Runway(
+        Runway::End("09", 0, 0, n_rwy_start->location()),
+        Runway::End("27", 0, 0, n_rwy_far->location()),
+        30));
+
+    auto airport = WorldBuilder::assembleAirport(
+        host,
+        testHeader,
+        { runway },
+        {},
+        { n_rwy_start, n_rwy_mid, n_rwy_far, n_gate },
+        { e_rwy_1, e_rwy_2, e_taxi });
+
+    auto net = airport->taxiNet();
+    const auto& runway09 = airport->getRunwayOrThrow("09")->getEndOrThrow("09");
+
+    auto departurePath = net->tryFindDepartureTaxiPathToRunway(n_gate->location().geo(), runway09);
+    ASSERT_TRUE(!!departurePath);
+
+    ASSERT_TRUE(!!departurePath->toNode);
+    EXPECT_EQ(departurePath->toNode->id(), 1010);
+    assertTaxiPathEdgeNames("backtrack edge names", {"TX1", "09/27", "09/27"}, departurePath);
+}
+
+TEST(TaxiPathTest, tryFindReturnsNullWhenNoPathExists)
+{
+    auto host = TestHostServices::create();
+
+    auto n1 = shared_ptr<TaxiNode>(new TaxiNode(9001, UniPoint::fromGeo(host, {30.0, 45.0})));
+    auto n2 = shared_ptr<TaxiNode>(new TaxiNode(9002, UniPoint::fromGeo(host, {30.0, 45.01})));
+    auto n3 = shared_ptr<TaxiNode>(new TaxiNode(9003, UniPoint::fromGeo(host, {30.2, 45.2})));
+    auto n4 = shared_ptr<TaxiNode>(new TaxiNode(9004, UniPoint::fromGeo(host, {30.2, 45.21})));
+
+    auto e12 = shared_ptr<TaxiEdge>(new TaxiEdge(9101, "A", 9001, 9002));
+    auto e34 = shared_ptr<TaxiEdge>(new TaxiEdge(9102, "B", 9003, 9004));
+
+    auto airport = WorldBuilder::assembleAirport(
+        host,
+        testHeader,
+        {},
+        {},
+        { n1, n2, n3, n4 },
+        { e12, e34 }
+    );
+
+    auto taxiNet = airport->taxiNet();
+    auto result = TaxiPath::tryFind(
+        taxiNet,
+        n1->location().geo(),
+        n4->location().geo(),
+        [](shared_ptr<TaxiNode>) { return true; },
+        [](shared_ptr<TaxiNode>) { return true; }
+    );
+
+    EXPECT_FALSE(!!result);
+}
+
 shared_ptr<TaxiEdge> findEdgeByName(shared_ptr<TaxiNet> net, const string& name)
 {
     auto it = find_if(net->edges().begin(), net->edges().end(), [&](shared_ptr<TaxiEdge> edge) {

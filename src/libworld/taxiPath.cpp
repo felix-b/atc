@@ -100,20 +100,95 @@ namespace world
         const GeoPoint& toPoint,
         CostFunction costFunction)
     {
+        return TaxiPath::tryFind(
+            taxiNet,
+            fromPoint,
+            toPoint,
+            function<bool(shared_ptr<TaxiNode>)>(),
+            function<bool(shared_ptr<TaxiNode>)>(),
+            costFunction);
+    }
+
+    shared_ptr<TaxiPath> TaxiPath::tryFind(
+        shared_ptr<TaxiNet> taxiNet,
+        const GeoPoint& fromPoint,
+        const GeoPoint& toPoint,
+        function<bool(shared_ptr<TaxiNode>)> fromNodePredicate,
+        function<bool(shared_ptr<TaxiNode>)> toNodePredicate,
+        CostFunction costFunction)
+    {
         const auto isTaxiEdge = [](const shared_ptr<TaxiEdge>& edge) { 
-            return (edge->type() == TaxiEdge::Type::Taxiway); 
+            return (edge->type() == TaxiEdge::Type::Taxiway || 
+                    edge->type() == TaxiEdge::Type::HoldShort);
         };
         const auto hasTaxiEdges = [isTaxiEdge](const shared_ptr<TaxiNode>& node) { 
             return hasAny<shared_ptr<TaxiEdge>>(node->edges(), isTaxiEdge);
         };
 
-        const auto fromNode = taxiNet->findClosestNode(fromPoint, hasTaxiEdges);
-        const auto toNode = taxiNet->findClosestNode(toPoint, hasTaxiEdges);
+        const auto hasPreferredPredicates = static_cast<bool>(fromNodePredicate) || static_cast<bool>(toNodePredicate);
+
+        const auto selectNode = [taxiNet, &hasTaxiEdges](
+            const GeoPoint& location,
+            const function<bool(shared_ptr<TaxiNode>)>& preferredPredicate,
+            bool allowExactMatchWithoutTaxiEdges = false)
+        {
+            if (preferredPredicate)
+            {
+                auto preferredNode = taxiNet->findClosestNode(location, [&](shared_ptr<TaxiNode> node) {
+                    return hasTaxiEdges(node) && preferredPredicate(node);
+                });
+                if (preferredNode)
+                {
+                    return preferredNode;
+                }
+
+                // For destination nodes (like runway nodes), also try to find a node that 
+                // matches just the predicate even if it doesn't have taxi edges
+                if (allowExactMatchWithoutTaxiEdges)
+                {
+                    auto exactNode = taxiNet->findClosestNode(location, preferredPredicate);
+                    if (exactNode)
+                    {
+                        return exactNode;
+                    }
+                }
+
+                auto junctionNode = taxiNet->findClosestNode(location, [&](shared_ptr<TaxiNode> node) {
+                    return hasTaxiEdges(node) && node->isJunction();
+                });
+                if (junctionNode)
+                {
+                    return junctionNode;
+                }
+            }
+
+            return taxiNet->findClosestNode(location, hasTaxiEdges);
+        };
+
+        const auto fromNode = selectNode(fromPoint, fromNodePredicate, false);
+        const auto toNode = selectNode(toPoint, toNodePredicate, true);
         
         if (fromNode && toNode)
         {
-            auto taxiPath = TaxiPath::find(taxiNet, fromNode, toNode, costFunction);
-            return taxiPath;
+            try
+            {
+                return TaxiPath::find(taxiNet, fromNode, toNode, costFunction);
+            }
+            catch (const runtime_error&)
+            {
+                if (hasPreferredPredicates)
+                {
+                    try
+                    {
+                        return TaxiPath::tryFind(taxiNet, fromPoint, toPoint, costFunction);
+                    }
+                    catch (const runtime_error&)
+                    {
+                        return nullptr;
+                    }
+                }
+                return nullptr;
+            }
         }
 
         return nullptr;
@@ -176,18 +251,37 @@ namespace world
             auto tailNode = net->getNodeById(tail.id);
             for (const auto& edge : tailNode->edges())
             {
-                if (edge->type() != TaxiEdge::Type::Taxiway) 
+                // Allow routing over taxiways, hold short edges, and runway edges
+                if (edge->type() != TaxiEdge::Type::Taxiway && 
+                    edge->type() != TaxiEdge::Type::HoldShort &&
+                    edge->type() != TaxiEdge::Type::Runway) 
                 {
                     continue;
                 }
                 
-                int nextId = edge->node2()->id();
-                bool alreadyVisited = (stepDoneById.find(nextId) != stepDoneById.end());
-                if (!alreadyVisited)
+                // Check both directions for bidirectional taxiways
+                int nextId = -1;
+                shared_ptr<TaxiEdge> traversalEdge = edge;
+                
+                if (edge->node1()->id() == tail.id)
                 {
-                    PathStep nextStep = { nextId, edge, tail.lengthToHere + costFunction(edge) };
-                    //cout << "ALG> pushing step [" << tail.id << "->" << nextId << "] cost[" << nextStep.lengthToHere << "]" << endl;
-                    frontier.push(nextStep);
+                    nextId = edge->node2()->id();
+                }
+                else if (edge->node2()->id() == tail.id && !edge->isOneWay())
+                {
+                    nextId = edge->node1()->id();
+                    traversalEdge = TaxiEdge::flipOver(edge);
+                }
+                
+                if (nextId != -1)
+                {
+                    bool alreadyVisited = (stepDoneById.find(nextId) != stepDoneById.end());
+                    if (!alreadyVisited)
+                    {
+                        PathStep nextStep = { nextId, traversalEdge, tail.lengthToHere + costFunction(traversalEdge) };
+                        //cout << "ALG> pushing step [" << tail.id << "->" << nextId << "] cost[" << nextStep.lengthToHere << "]" << endl;
+                        frontier.push(nextStep);
+                    }
                 }
             }
         }
@@ -198,7 +292,11 @@ namespace world
             //cout << "TEST> tail = {" << tail.id << "," << tail.edgeToHere->name() << "," << tail.lengthToHere << "}" << endl;
             solution.push_back(tail.edgeToHere);
             //cout << "TEST> prev id = " << tail.edgeToHere->node1()->id() << endl;
-            auto prevFind = stepDoneById.find(tail.edgeToHere->node1()->id());
+            // Find the correct previous node based on traversal direction
+            int prevNodeId = (tail.edgeToHere->node2()->id() == tail.id) 
+                ? tail.edgeToHere->node1()->id() 
+                : tail.edgeToHere->node2()->id();
+            auto prevFind = stepDoneById.find(prevNodeId);
             if (prevFind == stepDoneById.end())
             {
                 throw runtime_error("Failed to reverse construct taxi solution");

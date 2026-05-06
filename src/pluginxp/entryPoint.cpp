@@ -75,8 +75,25 @@ PLUGIN_API int XPluginEnable(void)
         "ENTRYP|XPLMGetPluginInfo(pluginId=%d) -> name=[%s] filePath=[%s] signature=[%s] description=[%s]",
         myPluginId, name, filePath, signature, description);
 
-    pInstance = new PluginInstance();
-    return 1;
+    try
+    {
+        pInstance = new PluginInstance();
+        return 1;
+    }
+    catch (const exception& e)
+    {
+        PrintDebugString("ENTRYP|XPluginEnable failed: %s", e.what());
+        Log() << Log::Error << "XPluginEnable failed: " << e.what() << Log::endl;
+        pInstance = nullptr;
+        return 0;
+    }
+    catch (...)
+    {
+        PrintDebugString("ENTRYP|XPluginEnable failed: unknown exception");
+        Log() << Log::Error << "XPluginEnable failed: unknown exception" << Log::endl;
+        pInstance = nullptr;
+        return 0;
+    }
 }
 
 PLUGIN_API void XPluginReceiveMessage(XPLMPluginID fromId, long inMsg, void*)

@@ -176,6 +176,14 @@ namespace world
             ));
         }
 
+        shared_ptr<Intent> pilotReportHoldingShort(shared_ptr<Flight> flight, const string& runway, const string& holdingPoint)
+        {
+            auto airport = flight && flight->phase() == Flight::Phase::Arrival
+                ? m_helper.getArrivalAirport(flight)
+                : m_helper.getDepartureAirport(flight);
+            return pilotReportHoldingShort(flight, airport, runway, holdingPoint);
+        }
+
         shared_ptr<Intent> groundCrossRunwayClearance(shared_ptr<RunwayCrossClearance> clearance, uint64_t replyToId)
         {
             m_host->writeLog("INTNTF|groundCrossRunwayClearance");

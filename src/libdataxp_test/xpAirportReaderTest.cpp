@@ -85,6 +85,8 @@ TEST(XPAirportReaderTest, readAptDat_singleTaxiNode) {
     EXPECT_FLOAT_EQ(taxiNet->nodes()[0]->location().z(), 3212.34);
     EXPECT_FLOAT_EQ(taxiNet->nodes()[0]->location().y(), 0);
     EXPECT_EQ(taxiNet->nodes()[0]->isJunction(), false);
+    EXPECT_TRUE(taxiNet->nodes()[0]->isRouteStart());
+    EXPECT_TRUE(taxiNet->nodes()[0]->isRouteEnd());
 }
 
 TEST(XPAirportReaderTest, readAptDat_singleTaxiEdge) {
@@ -105,11 +107,15 @@ TEST(XPAirportReaderTest, readAptDat_singleTaxiEdge) {
     EXPECT_FLOAT_EQ(taxiNet->nodes()[0]->location().x(), 3456.78);
     EXPECT_FLOAT_EQ(taxiNet->nodes()[0]->location().z(), 3212.34);
     EXPECT_FLOAT_EQ(taxiNet->nodes()[0]->location().y(), 0);
+    EXPECT_TRUE(taxiNet->nodes()[0]->isRouteStart());
+    EXPECT_FALSE(taxiNet->nodes()[0]->isRouteEnd());
     
     EXPECT_EQ(taxiNet->nodes()[1]->id(), 233);
     EXPECT_FLOAT_EQ(taxiNet->nodes()[1]->location().x(), 3567.89);
     EXPECT_FLOAT_EQ(taxiNet->nodes()[1]->location().z(), 3323.45);
     EXPECT_FLOAT_EQ(taxiNet->nodes()[1]->location().y(), 0);
+    EXPECT_FALSE(taxiNet->nodes()[1]->isRouteStart());
+    EXPECT_TRUE(taxiNet->nodes()[1]->isRouteEnd());
 
     ASSERT_EQ(taxiNet->edges().size(), 1);
     EXPECT_EQ(taxiNet->edges()[0]->id(), 1001);
@@ -120,6 +126,83 @@ TEST(XPAirportReaderTest, readAptDat_singleTaxiEdge) {
     EXPECT_EQ(taxiNet->edges()[0]->node2(), taxiNet->nodes()[1]);
 
     //writeAirportJson(airport, cout);
+}
+
+TEST(XPAirportReaderTest, routeAwareTaxiPathsPreferRouteNodes) {
+    auto host = makeHost();
+
+    auto n1 = shared_ptr<TaxiNode>(new TaxiNode(1, UniPoint::fromGeo(host, {40.00000000, -073.00000000})));
+    auto n2 = shared_ptr<TaxiNode>(new TaxiNode(2, UniPoint::fromGeo(host, {40.00000000, -073.00100000})));
+    auto n3 = shared_ptr<TaxiNode>(new TaxiNode(3, UniPoint::fromGeo(host, {40.00000000, -073.00200000})));
+    auto n4 = shared_ptr<TaxiNode>(new TaxiNode(4, UniPoint::fromGeo(host, {40.00000000, -072.99950000})));
+    auto n5 = shared_ptr<TaxiNode>(new TaxiNode(5, UniPoint::fromGeo(host, {40.00000000, -073.00450000})));
+    auto n6 = shared_ptr<TaxiNode>(new TaxiNode(6, UniPoint::fromGeo(host, {40.00000000, -073.00400000})));
+
+    n1->setRouteStart(true);
+    n2->setRouteStart(true);
+    n2->setRouteEnd(true);
+    n3->setRouteEnd(true);
+    n4->setJunction(true);
+    n5->setRouteEnd(true);
+
+    auto e12 = shared_ptr<TaxiEdge>(new TaxiEdge(12, "A1", 1, 2));
+    // e23 is the runway edge connecting taxiway to runway node n3
+    auto e23 = shared_ptr<TaxiEdge>(new TaxiEdge(23, "09", 2, 3, TaxiEdge::Type::Runway));
+    auto e42 = shared_ptr<TaxiEdge>(new TaxiEdge(42, "A3", 4, 2));
+    auto e25 = shared_ptr<TaxiEdge>(new TaxiEdge(25, "A4", 2, 5));
+    auto e26 = shared_ptr<TaxiEdge>(new TaxiEdge(26, "A5", 2, 6));
+
+    auto runway = shared_ptr<Runway>(new Runway(
+        Runway::End("09", 0, 0, n3->location()),
+        Runway::End("27", 0, 0, UniPoint::fromGeo(host, {40.00000000, -073.01000000})),
+        45.0f));
+
+    auto gate = make_shared<ParkingStand>(
+        1,
+        "Gate 6",
+        ParkingStand::Type::Gate,
+        UniPoint::fromGeo(host, {40.00000000, -073.00420000}),
+        90.0f,
+        "C",
+        Aircraft::Category::Jet,
+        Aircraft::OperationType::Airline);
+
+    auto airport = WorldBuilder::assembleAirport(
+        host,
+        Airport::Header("KRTT", "Route Taxi Test", GeoPoint(40.00000000, -073.00500000), 0),
+        { runway },
+        { gate },
+        { n1, n2, n3, n4, n5, n6 },
+        { e12, e23, e42, e25, e26 });
+
+    const auto taxiNet = airport->taxiNet();
+    const auto& runwayEnd = airport->getRunwayOrThrow("09")->getEndOrThrow("09");
+
+    EXPECT_TRUE(taxiNet->getNodeById(1)->isRouteStart());
+    EXPECT_TRUE(taxiNet->getNodeById(2)->isRouteStart());
+    EXPECT_TRUE(taxiNet->getNodeById(2)->isRouteEnd());
+    EXPECT_TRUE(taxiNet->getNodeById(3)->isRouteEnd());
+    EXPECT_TRUE(taxiNet->getNodeById(4)->isJunction());
+    EXPECT_TRUE(taxiNet->getNodeById(5)->isRouteEnd());
+
+    auto departurePath = taxiNet->tryFindDepartureTaxiPathToRunway(
+        GeoPoint(40.00000000, -072.99970000),
+        runwayEnd);
+    ASSERT_TRUE(!!departurePath);
+    ASSERT_EQ(departurePath->fromNode->id(), 1);
+    // Path ends at runway node (3) since there's no hold-short edge with active zone
+    ASSERT_EQ(departurePath->toNode->id(), 3);
+    ASSERT_EQ(departurePath->edges.size(), 2);
+    EXPECT_EQ(departurePath->edges[0]->node1()->id(), 1);
+    EXPECT_EQ(departurePath->edges[1]->node2()->id(), 3);
+
+    auto arrivalPath = taxiNet->tryFindTaxiPathToGate(
+        gate,
+        GeoPoint(40.00000000, -073.00000000));
+    ASSERT_TRUE(!!arrivalPath);
+    ASSERT_GE(arrivalPath->edges.size(), 4);
+    EXPECT_EQ(arrivalPath->fromNode->id(), 1);
+    EXPECT_EQ(arrivalPath->edges[arrivalPath->edges.size() - 3]->node2()->id(), 5);
 }
 
 TEST(XPAirportReaderTest, readAptDat_singleTaxiAndGroundEdge) {

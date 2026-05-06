@@ -19,6 +19,7 @@
 #include "aiControllerBase.hpp"
 #include "libai.hpp"
 #include "simpleRunwayMutex.hpp"
+#include "airportFlow.hpp"
 
 using namespace std;
 using namespace world;
@@ -52,28 +53,109 @@ namespace ai
                 throw runtime_error("Cannot select active runways: not a local controller or no airport");
             }
 
+            // Check if any existing runway mutex has active operations
+            // If so, don't reselect runways to avoid dropping tracked aircraft
+            for (const auto& mutexEntry : m_activeRunwayMutex)
+            {
+                if (mutexEntry.second && mutexEntry.second->hasActiveOperations())
+                {
+                    host()->writeLog(
+                        "AICONT|Skipping runway reselection - active operations on runway[%s]",
+                        mutexEntry.first.c_str());
+                    // Return current active runways instead of selecting new ones
+                    departure = airport->activeDepartureRunways();
+                    arrival = airport->activeArrivalRunways();
+                    return;
+                }
+            }
+
+            // Check for airport-specific flow configuration based on wind (from apt.dat)
+            auto weatherService = host()->services().tryGet<WeatherService>();
+            if (weatherService)
+            {
+                auto airportLocation = airport->header().datum();
+                auto weather = weatherService->getWeatherAt(airportLocation, airport->header().elevation() / FEET_IN_1_METER);
+                
+                // First try parsed traffic flows from apt.dat
+                auto flow = airport->getActiveFlow(weather.windDirectionTrueDegrees);
+                
+                if (flow)
+                {
+                    departure = flow->getDepartureRunways();
+                    arrival = flow->getArrivalRunways();
+                    
+                    host()->writeLog(
+                        "AICONT|Using apt.dat traffic flow[%s] for[%s] wind[%.0f°] departure[%zu] arrival[%zu]",
+                        flow->name().c_str(),
+                        airport->header().icao().c_str(),
+                        weather.windDirectionTrueDegrees,
+                        departure.size(),
+                        arrival.size());
+                    
+                    createActiveRunwayMutexes();
+                    return;
+                }
+                
+                // Fall back to hardcoded flows for airports without apt.dat flows
+                static AirportFlowRegistry flowRegistry = AirportFlowRegistry::createWithDefaultFlows();
+                const auto* hardcodedFlow = flowRegistry.getActiveFlow(airport->header().icao(), weather.windDirectionTrueDegrees);
+                
+                if (hardcodedFlow)
+                {
+                    departure = hardcodedFlow->getDepartureRunways();
+                    arrival = hardcodedFlow->getArrivalRunways();
+                    
+                    host()->writeLog(
+                        "AICONT|Using hardcoded flow[%s] for[%s] wind[%.0f°] departure[%zu] arrival[%zu]",
+                        hardcodedFlow->name().c_str(),
+                        airport->header().icao().c_str(),
+                        weather.windDirectionTrueDegrees,
+                        departure.size(),
+                        arrival.size());
+                    
+                    createActiveRunwayMutexes();
+                    return;
+                }
+            }
+
+            // Fall back to generic parallel runway selection
             if (airport->hasParallelRunways())
             {
+                auto preferredArrivalRunwayName = airport->findPreferredArrivalRunway()->end1().name();
                 const auto& longestGroup = airport->findLongestParallelRunwayGroup();
-
-                departure.push_back(longestGroup.at(0)->end1().name());
-                arrival.push_back(longestGroup.at(1)->end1().name());
-                if (longestGroup.size() > 2)
+                if (longestGroup.size() >= 2)
                 {
-                    arrival.push_back(longestGroup.at(longestGroup.size() - 1)->end1().name());
-                }
+                    auto departureRunwayName = longestGroup.at(0)->end1().name();
+                    if (departureRunwayName == preferredArrivalRunwayName)
+                    {
+                        departureRunwayName = longestGroup.at(1)->end1().name();
+                    }
 
-                host()->writeLog(
-                    "AICONT|Selected parallel active runways departure[%s] arrival[%s][%s]",
-                    departure.at(0).c_str(),
-                    arrival.at(0).c_str(),
-                    arrival.at(arrival.size() - 1).c_str());
+                    departure.push_back(departureRunwayName);
+                    arrival.push_back(preferredArrivalRunwayName);
+                    if (longestGroup.size() > 2)
+                    {
+                        arrival.push_back(longestGroup.at(longestGroup.size() - 1)->end1().name());
+                    }
+
+                    host()->writeLog(
+                        "AICONT|Selected parallel active runways departure[%s] arrival[%s][%s]",
+                        departure.at(0).c_str(),
+                        arrival.at(0).c_str(),
+                        arrival.at(arrival.size() - 1).c_str());
+                }
+                else
+                {
+                    arrival.push_back(preferredArrivalRunwayName);
+                    departure.push_back(preferredArrivalRunwayName);
+                    host()->writeLog("AICONT|Selected single active runway [%s]", departure.at(0).c_str());
+                }
             }
             else
             {
-                auto longestRunway = airport->findLongestRunway()->end1().name();
-                arrival.push_back(longestRunway);
-                departure.push_back(longestRunway);
+                auto preferredArrivalRunwayName = airport->findPreferredArrivalRunway()->end1().name();
+                arrival.push_back(preferredArrivalRunwayName);
+                departure.push_back(preferredArrivalRunwayName);
                 host()->writeLog("AICONT|Selected single active runway [%s]", departure.at(0).c_str());
             }
 
@@ -139,7 +221,32 @@ namespace ai
 
         shared_ptr<SimpleRunwayMutex> getRunwayMutex(const string& runwayName)
         {
-            return getValueOrThrow(m_activeRunwayMutex, runwayName);
+            auto found = m_activeRunwayMutex.find(runwayName);
+            if (found != m_activeRunwayMutex.end())
+            {
+                return found->second;
+            }
+
+            auto runway = airport()->tryFindRunway(runwayName);
+            if (runway)
+            {
+                const string keys[] = {
+                    runway->name(),
+                    runway->end1().name(),
+                    runway->end2().name()
+                };
+
+                for (const auto& key : keys)
+                {
+                    auto canonical = m_activeRunwayMutex.find(key);
+                    if (canonical != m_activeRunwayMutex.end())
+                    {
+                        return canonical->second;
+                    }
+                }
+            }
+
+            throw runtime_error("Could not resolve runway mutex for runway [" + runwayName + "]");
         }
 
         void onDeparturePilotCheckInWithTower(shared_ptr<PilotCheckInWithTowerIntent> intent)

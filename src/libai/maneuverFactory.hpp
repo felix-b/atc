@@ -3,6 +3,7 @@
 // Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
 // 
 #pragma once
+#include <initializer_list>
 #include "libworld.h"
 
 using namespace std;
@@ -66,7 +67,9 @@ namespace ai
             Clearance::Type clearanceType, 
             const string& id = "");
         shared_ptr<Maneuver> sequence(Maneuver::Type type, const string& id, const vector<shared_ptr<Maneuver>>& steps);
+        shared_ptr<Maneuver> sequence(Maneuver::Type type, const string& id, initializer_list<shared_ptr<Maneuver>> steps);
         shared_ptr<Maneuver> parallel(Maneuver::Type type, const string& id, const vector<shared_ptr<Maneuver>>& steps);
+        shared_ptr<Maneuver> parallel(Maneuver::Type type, const string& id, initializer_list<shared_ptr<Maneuver>> steps);
         shared_ptr<Maneuver> switchLights(shared_ptr<Flight> flight, Aircraft::LightBits lights);
         shared_ptr<Maneuver> tuneComRadio(shared_ptr<Flight> flight, int frequencyKhz);
         shared_ptr<Maneuver> tuneComRadio(shared_ptr<Flight> flight, shared_ptr<Frequency> frequency);
@@ -77,6 +80,10 @@ namespace ai
             int millisecondsSilence = -1,
             Frequency::CancellationQueryCallback onQueryCancel = Frequency::noopQueryCancelCallback);
         shared_ptr<Maneuver> airborneTurn(shared_ptr<Flight> flight, float fromHeading, float toHeading);
+        shared_ptr<Maneuver> repeatingAction(
+            function<void()> action,
+            chrono::microseconds interval,
+            const string& id = "");
     public:
         static shared_ptr<Maneuver> noopOnHoldingShort(shared_ptr<TaxiEdge> atEdge);
         static void calculateObstacleScanRect(

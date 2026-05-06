@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <memory>
 #include <iostream>
+#include <unordered_set>
 #include "libworld.h"
 #include "stlhelpers.h"
 
@@ -172,6 +173,167 @@ namespace world
         const GeoPoint& fromPoint,
         const Runway::End& toRunwayEnd)
     {
+        const auto hasRunwayEndEdge = [](shared_ptr<TaxiNode> node) {
+            return hasAny<shared_ptr<TaxiEdge>>(node->edges(), [](const shared_ptr<TaxiEdge>& edge) {
+                return edge->type() == TaxiEdge::Type::Runway;
+            });
+        };
+
+        const auto targetRunwayNode = findClosestNode(
+            toRunwayEnd.centerlinePoint().geo(),
+            hasRunwayEndEdge);
+
+        // Find the hold-short node just before the runway entrance
+        // This is the node that has an edge to the runway node, but is not on the runway itself
+        const auto findHoldShortNode = [this, &toRunwayEnd, targetRunwayNode, hasRunwayEndEdge]() -> shared_ptr<TaxiNode> {
+            if (!targetRunwayNode)
+            {
+                return nullptr;
+            }
+
+            // Find nodes that connect to the runway node but aren't on the runway
+            for (const auto& edge : targetRunwayNode->edges())
+            {
+                // Skip runway edges
+                if (edge->type() == TaxiEdge::Type::Runway)
+                {
+                    continue;
+                }
+
+                // Get the node on the other end of this edge
+                shared_ptr<TaxiNode> otherNode;
+                if (edge->node1() == targetRunwayNode)
+                {
+                    otherNode = edge->node2();
+                }
+                else if (edge->node2() == targetRunwayNode)
+                {
+                    otherNode = edge->node1();
+                }
+
+                // Check if this node is NOT on the runway (i.e., it's a taxiway/hold-short node)
+                if (otherNode && !hasRunwayEndEdge(otherNode))
+                {
+                    // Check if the edge has any active zone (departure/arrival/ils) for this runway end
+                    // or if it's a hold-short type edge
+                    bool hasActiveZone = edge->activeZones().hasAny();
+                    bool isHoldShortEdge = edge->type() == TaxiEdge::Type::HoldShort;
+                    
+                    if (hasActiveZone || isHoldShortEdge)
+                    {
+                        return otherNode;
+                    }
+                }
+            }
+
+            // Fallback: find any node that connects to the runway node
+            for (const auto& edge : targetRunwayNode->edges())
+            {
+                if (edge->type() == TaxiEdge::Type::Runway)
+                {
+                    continue;
+                }
+
+                if (edge->node1() == targetRunwayNode)
+                {
+                    return edge->node2();
+                }
+                else if (edge->node2() == targetRunwayNode)
+                {
+                    return edge->node1();
+                }
+            }
+
+            return nullptr;
+        };
+
+        const auto holdShortNode = findHoldShortNode();
+
+        const auto appendRunwayBacktrackIfNeeded =
+            [this, &toRunwayEnd, &targetRunwayNode, &hasRunwayEndEdge](shared_ptr<TaxiPath> path) {
+                if (!path || !targetRunwayNode)
+                {
+                    return path;
+                }
+
+                if (path->toNode == targetRunwayNode)
+                {
+                    return path;
+                }
+
+                if (!hasRunwayEndEdge(path->toNode))
+                {
+                    return path;
+                }
+
+                unordered_set<int> visited;
+                auto currentNode = path->toNode;
+                int safetyCounter = 0;
+
+                while (currentNode && currentNode != targetRunwayNode && safetyCounter++ < 64)
+                {
+                    visited.insert(currentNode->id());
+
+                    const float currentDistance = static_cast<float>(GeoMath::getDistanceMeters(
+                        currentNode->location().geo(),
+                        targetRunwayNode->location().geo()));
+
+                    shared_ptr<TaxiEdge> bestEdge;
+                    float bestDistance = currentDistance;
+
+                    for (const auto& edge : currentNode->edges())
+                    {
+                        if (edge->type() != TaxiEdge::Type::Runway)
+                        {
+                            continue;
+                        }
+
+                        shared_ptr<TaxiEdge> orientedEdge;
+                        if (edge->node1() == currentNode)
+                        {
+                            orientedEdge = edge;
+                        }
+                        else if (edge->node2() == currentNode)
+                        {
+                            if (!edge->canFlipOver())
+                            {
+                                continue;
+                            }
+                            orientedEdge = TaxiEdge::flipOver(edge);
+                        }
+                        else
+                        {
+                            continue;
+                        }
+
+                        if (!orientedEdge || visited.count(orientedEdge->node2()->id()) > 0)
+                        {
+                            continue;
+                        }
+
+                        const float candidateDistance = static_cast<float>(GeoMath::getDistanceMeters(
+                            orientedEdge->node2()->location().geo(),
+                            targetRunwayNode->location().geo()));
+
+                        if (!bestEdge || candidateDistance < bestDistance)
+                        {
+                            bestEdge = orientedEdge;
+                            bestDistance = candidateDistance;
+                        }
+                    }
+
+                    if (!bestEdge)
+                    {
+                        break;
+                    }
+
+                    path->appendEdge(bestEdge);
+                    currentNode = bestEdge->node2();
+                }
+
+                return path;
+            };
+
         const TaxiPath::CostFunction costFunc = [](shared_ptr<TaxiEdge> edge) {
             Flight::Phase allocation = edge->flightPhaseAllocation();
             float factor = (allocation == Flight::Phase::Arrival
@@ -184,7 +346,49 @@ namespace world
             return edge->lengthMeters() * factor;
         };
 
-        auto path = TaxiPath::tryFind(shared_from_this(), fromPoint, toRunwayEnd.centerlinePoint().geo(), costFunc);
+        // Use hold-short node as destination if available, otherwise fall back to runway centerline
+        auto destinationPoint = holdShortNode 
+            ? holdShortNode->location().geo() 
+            : toRunwayEnd.centerlinePoint().geo();
+        auto destinationNode = holdShortNode ? holdShortNode : targetRunwayNode;
+
+        auto path = TaxiPath::tryFind(
+            shared_from_this(),
+            fromPoint,
+            destinationPoint,
+            [](shared_ptr<TaxiNode> node) {
+                return node->isRouteStart();
+            },
+            [&destinationNode](shared_ptr<TaxiNode> node) {
+                return node == destinationNode;
+            },
+            costFunc);
+
+        path = appendRunwayBacktrackIfNeeded(path);
+
+        if (!path && targetRunwayNode)
+        {
+            // Use hold-short node as destination if available
+            auto fallbackDestPoint = holdShortNode 
+                ? holdShortNode->location().geo() 
+                : targetRunwayNode->location().geo();
+            auto fallbackDestNode = holdShortNode ? holdShortNode : targetRunwayNode;
+
+            path = TaxiPath::tryFind(
+                shared_from_this(),
+                fromPoint,
+                fallbackDestPoint,
+                [](shared_ptr<TaxiNode> node) {
+                    return node->isRouteStart();
+                },
+                [&fallbackDestNode](shared_ptr<TaxiNode> node) {
+                    return node == fallbackDestNode;
+                },
+                costFunc);
+
+            path = appendRunwayBacktrackIfNeeded(path);
+        }
+
         if (path)
         {
             assignFlightPhaseAllocation(path, Flight::Phase::Departure);
@@ -221,11 +425,24 @@ namespace world
 
         auto lastEdge = exitEdge;
         int count = 0;
-        while (lastEdge->node2()->edges().size() == 2 && count++ < 5)
+        while (lastEdge->node2()->edges().size() >= 2 && count++ < 5)
         {
             const auto& nextEdges = lastEdge->node2()->edges();
-            auto nextEdge = (nextEdges[0]->id() == lastEdge->id() ? nextEdges[1] : nextEdges[0]);
-            lastEdge = nextEdge->nodeId1() == lastEdge->nodeId2()
+            // Find the next edge that is not the one we just came from
+            shared_ptr<TaxiEdge> nextEdge = nullptr;
+            for (const auto& edge : nextEdges)
+            {
+                if (edge->id() != lastEdge->id())
+                {
+                    nextEdge = edge;
+                    break;
+                }
+            }
+            if (!nextEdge)
+            {
+                break; // No valid next edge found
+            }
+            lastEdge = nextEdge->nodeId1() == lastEdge->node2()->id()
                 ? nextEdge
                 : TaxiEdge::flipOver(nextEdge);
             path->appendEdge(lastEdge);
@@ -250,7 +467,15 @@ namespace world
             return edge->lengthMeters() * factor;
         };
 
-        auto path = TaxiPath::tryFind(shared_from_this(), fromPoint, gate->location().geo(), costFunc);
+        auto path = TaxiPath::tryFind(
+            shared_from_this(),
+            fromPoint,
+            gate->location().geo(),
+            function<bool(shared_ptr<TaxiNode>)>(),
+            [](shared_ptr<TaxiNode> node) {
+                return node->isRouteEnd();
+            },
+            costFunc);
         if (!path)
         {
             return nullptr;
@@ -310,7 +535,26 @@ namespace world
             shared_ptr<TaxiEdge> nextEdge = node->tryFindEdge([&](shared_ptr<TaxiEdge> e) {
                 return e->isRunway(runwayEnd.name());
             });
-            node = nextEdge ? nextEdge->node2() : nullptr;
+            if (nextEdge)
+            {
+                // Move in the correct direction along the runway
+                if (nextEdge->node1()->id() == node->id())
+                {
+                    node = nextEdge->node2();
+                }
+                else if (nextEdge->node2()->id() == node->id())
+                {
+                    node = nextEdge->node1();
+                }
+                else
+                {
+                    node = nullptr; // Edge doesn't connect to current node
+                }
+            }
+            else
+            {
+                node = nullptr;
+            }
         }
 
         return highSpeedExit ? highSpeedExit : regularExit;
