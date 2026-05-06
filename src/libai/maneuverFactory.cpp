@@ -39,11 +39,19 @@ namespace ai
     // }
 
     shared_ptr<Maneuver> ManeuverFactory::taxiByPath(
-        shared_ptr<Flight> flight, 
+        shared_ptr<Flight> flight,
         shared_ptr<TaxiPath> path,
         TaxiType typeOfTaxi,
         HoldingShortCallback onHoldingShort)
     {
+        if (!path)
+        {
+            m_host->writeLog(
+                "MANEUV|WARNING: taxiByPath called with null path for flight[%s], using noop",
+                flight->callSign().c_str());
+            return instantAction([]{});
+        }
+
         const auto getTurnRadius = [typeOfTaxi](float fromHeading, float toHeading) {
             bool areSameSign = (fromHeading * toHeading >= 0);
             float angle = areSameSign
@@ -124,7 +132,16 @@ namespace ai
                  << (edge->activeZones().hasAny() ? " [AZ!]" : "") << endl;
             m_host->writeLog(logstr.str().c_str());
 
-            if (edge->activeZones().hasAny() && (!prevEdge || !prevEdge->activeZones().hasAny()))
+            const bool entersActiveZone = edge->activeZones().hasAny() && (!prevEdge || !prevEdge->activeZones().hasAny());
+            // Fallback for synthetic lineup edges appended at the end of some taxi paths:
+            // trigger hold-short callback at the last real edge before synthetic extension.
+            const bool entersSyntheticLineupExtension =
+                !edge->activeZones().hasAny() &&
+                edge->id() >= 0 &&
+                nextEdge &&
+                nextEdge->id() < 0;
+
+            if (entersActiveZone || entersSyntheticLineupExtension)
             {
                 auto holdShortManeuver = onHoldingShort(edge);
                 if (holdShortManeuver)
@@ -231,10 +248,14 @@ namespace ai
                 value.longitude = from.longitude + progress * (to.longitude - from.longitude);
                 value.altitude = 0;
             },
-            [flight, heading, typeOfTaxi](const GeoPoint& value, double progress) {
+            [flight, heading, typeOfTaxi, speedFactor](const GeoPoint& value, double progress) {
                 auto aircraft = getAIAircraft(flight);
                 aircraft->setLocation(value);
                 aircraft->setAttitude(aircraft->attitude().withHeading(heading));
+                // Set ground speed for taxi (m/s to knots conversion)
+                // speedFactor is in m/s, convert to knots (1 m/s = 1.94384 knots)
+                const float speedKnots = speedFactor * 1.94384f;
+                aircraft->setGroundSpeedKt(speedKnots);
             },
             [=](Maneuver::SemaphoreState previousState, chrono::microseconds totalWaitDuration) {
                 return obstacleScanSemaphore(
@@ -289,7 +310,7 @@ namespace ai
             [deltaAngle](const double& from, const double& to, double progress, double& value) {
                 value = from + progress * deltaAngle; 
             },
-            [flight, arc, typeOfTaxi, deltaHeading](const double& value, double progress) {
+            [flight, arc, typeOfTaxi, deltaHeading, duration](const double& value, double progress) {
                 auto aircraft = getAIAircraft(flight);
                 GeoPoint newLocation(
                     arc.arcCenter.latitude + arc.arcRadius * sin(value),
@@ -308,6 +329,16 @@ namespace ai
                 //     direction * GeoMath::pi() / 2);
                 aircraft->setLocation(newLocation);
                 aircraft->setAttitude(aircraft->attitude().withHeading(newHeading));
+                
+                // Set ground speed for taxi turn (arc length / duration)
+                // duration is in microseconds, convert to seconds
+                const double durationSeconds = chrono::duration_cast<chrono::microseconds>(duration).count() / 1000000.0;
+                if (durationSeconds > 0)
+                {
+                    const double speedMetersPerSecond = arc.arcLengthMeters / durationSeconds;
+                    const float speedKnots = static_cast<float>(speedMetersPerSecond * 1.94384);
+                    aircraft->setGroundSpeedKt(speedKnots);
+                }
             },
             [=](Maneuver::SemaphoreState previousState, chrono::microseconds totalWaitDuration) {
                 return obstacleScanSemaphore(
@@ -378,6 +409,11 @@ namespace ai
             steps
         ));
     }
+
+    shared_ptr<Maneuver> ManeuverFactory::sequence(Maneuver::Type type, const string& id, initializer_list<shared_ptr<Maneuver>> steps)
+    {
+        return sequence(type, id, vector<shared_ptr<Maneuver>>(steps));
+    }
     
     shared_ptr<Maneuver> ManeuverFactory::parallel(Maneuver::Type type, const string& id, const vector<shared_ptr<Maneuver>>& steps)
     {
@@ -386,6 +422,11 @@ namespace ai
             id,
             steps
         ));
+    }
+
+    shared_ptr<Maneuver> ManeuverFactory::parallel(Maneuver::Type type, const string& id, initializer_list<shared_ptr<Maneuver>> steps)
+    {
+        return parallel(type, id, vector<shared_ptr<Maneuver>>(steps));
     }
 
     shared_ptr<Maneuver> ManeuverFactory::switchLights(shared_ptr<Flight> flight, Aircraft::LightBits lights)
@@ -670,7 +711,7 @@ namespace ai
             auto otherPhase = otherAircraft->getFlightOrThrow()->phase();
             if (ourPhase != otherPhase)
             {
-                return (ourPhase == Flight::Phase::Departure && otherPhase != Flight::Phase::TurnAround);
+                return (ourPhase != Flight::Phase::TurnAround && otherPhase != Flight::Phase::TurnAround);
             }
 
             float headingToOther = GeoMath::getHeadingFromPoints(ourAircraft->location(), otherAircraft->location());
@@ -683,7 +724,7 @@ namespace ai
 
             if (isHeadOn)
             {
-                return false;
+                return true;
             }
             if (isInFront && isSameDirection)
             {
@@ -703,5 +744,72 @@ namespace ai
     {
         int sector = (int)((heading + 22.5) / 45.0) % 8;
         return sector;
+    }
+
+    shared_ptr<Maneuver> ManeuverFactory::repeatingAction(
+        function<void()> action,
+        chrono::microseconds interval,
+        const string& id)
+    {
+        class RepeatingActionManeuver : public Maneuver
+        {
+        private:
+            function<void()> m_action;
+            chrono::microseconds m_interval;
+            chrono::microseconds m_elapsedSinceLastAction;
+            chrono::microseconds m_lastTimestamp;
+        public:
+            RepeatingActionManeuver(
+                const string& _id,
+                function<void()> action,
+                chrono::microseconds interval)
+                : Maneuver(Type::Unspecified, _id, {}),
+                  m_action(action),
+                  m_interval(interval),
+                  m_elapsedSinceLastAction(chrono::microseconds(0)),
+                  m_lastTimestamp(chrono::microseconds(0))
+            {
+            }
+
+            void progressTo(chrono::microseconds timestamp) override
+            {
+                if (m_state == State::NotStarted)
+                {
+                    m_startTimestamp = timestamp;
+                    m_state = State::InProgress;
+                    m_lastTimestamp = timestamp;
+                    // Execute action immediately on start
+                    if (m_action)
+                    {
+                        m_action();
+                    }
+                    return;
+                }
+
+                chrono::microseconds deltaTime = timestamp - m_lastTimestamp;
+                m_lastTimestamp = timestamp;
+                m_elapsedSinceLastAction += deltaTime;
+
+                // Execute action at each interval
+                while (m_elapsedSinceLastAction >= m_interval)
+                {
+                    m_elapsedSinceLastAction -= m_interval;
+                    if (m_action)
+                    {
+                        m_action();
+                    }
+                }
+
+                // This maneuver never completes on its own - it runs until cancelled by parent
+                m_finishTimestamp = timestamp;
+            }
+
+            string getStatusString() const override
+            {
+                return "RepeatingAction[" + id() + "]";
+            }
+        };
+
+        return make_shared<RepeatingActionManeuver>(id, action, interval);
     }
 }

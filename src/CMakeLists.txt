@@ -11,6 +11,7 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES "" ".a" ".lib")
 list(APPEND CMAKE_FRAMEWORK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libs/XPMP2/build/XPMP2.framework/Versions/1.0")
 list(APPEND CMAKE_FRAMEWORK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libs/XPMP2/build")
 list(APPEND CMAKE_FRAMEWORK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libs/PPL/build")
+list(APPEND CMAKE_LIBRARY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libs/PPL/lib")
 if(APPLE)
     list(APPEND CMAKE_FRAMEWORK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libs/protobuf/mac/lib")
 elseif(WIN32)
@@ -21,10 +22,22 @@ endif()
 list(APPEND CMAKE_FRAMEWORK_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../build/lib")
 
 find_library(PPL_LIBRARY NAMES PPL)
+if(NOT PPL_LIBRARY OR PPL_LIBRARY STREQUAL "PPL_LIBRARY-NOTFOUND")
+    set(PPL_LIBRARY "")
+endif()
 find_library(XPMP2_LIBRARY NAMES XPMP2)
 #find_library(XPMP2_LIBRARY libXPMP2.a "${XPMP2_LIBRARY_BUILD_DIR}")
 add_library(libXPMP2 STATIC IMPORTED GLOBAL)
 set_property(TARGET libXPMP2 PROPERTY IMPORTED_LOCATION "${XPMP2_LIBRARY}")
+if(WIN32)
+    # XPMP2's network code uses Windows socket/IP helper APIs that must be
+    # available on the final plugin link line when consuming the static archive.
+    set_property(TARGET libXPMP2 APPEND PROPERTY INTERFACE_LINK_LIBRARIES
+        wsock32
+        ws2_32
+        mswsock
+        iphlpapi)
+endif()
 
 set(OPENAL_LIBRARY_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../libs/PPL/include/openal-soft/build")
 if(APPLE)

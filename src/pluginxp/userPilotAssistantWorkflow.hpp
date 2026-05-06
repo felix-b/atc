@@ -395,7 +395,10 @@ private:
         });
 
         STATE(PilotState::CheckingInWithTower, [this]{
-            m_holdingShortRunwayName = m_flightPlan->departureRunway();
+            if (m_holdingShortRunwayName.empty())
+            {
+                m_holdingShortRunwayName = m_flightPlan->departureRunway();
+            }
             TRANSMIT(
                 H.getDepartureTower(m_flight)->frequency(),
                 I.pilotCheckInWithTower(m_flight, m_holdingShortRunwayName, "", false));

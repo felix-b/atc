@@ -51,6 +51,58 @@ TEST(AirportTest, findLongestParallelRunwayGroup)
     EXPECT_EQ(longestRunwayGroup[1]->end1().name(), "04L");
 }
 
+TEST(AirportTest, clearanceDeliveryFallsBackToGroundWhenMissing)
+{
+    auto host = TestHostServices::create();
+    Airport::Header header("ABCD", "Test", GeoPoint(30, 40), 0);
+    auto airspace = WorldBuilder::assembleSampleAirportControlZone(header);
+
+    vector<ControllerPosition::Structure> positions = {
+        { ControllerPosition::Type::Ground, 121650, GeoPolygon::empty(), "" },
+        { ControllerPosition::Type::Local, 119100, GeoPolygon::empty(), "" }
+    };
+
+    auto tower = WorldBuilder::assembleAirportTower(host, header, airspace, positions);
+    auto airport = WorldBuilder::assembleAirport(host, header, {}, {}, {}, {}, tower, airspace);
+
+    auto clearanceDelivery = airport->clearanceDeliveryAt(header.datum());
+    auto ground = airport->groundAt(header.datum());
+
+    EXPECT_EQ(clearanceDelivery, ground);
+    EXPECT_EQ(clearanceDelivery->type(), ControllerPosition::Type::Ground);
+}
+
+TEST(AirportTest, findPreferredArrivalRunwayPrefersIlsCoverage)
+{
+    auto host = TestHostServices::create();
+    Airport::Header header("ABCD", "Test", GeoPoint(30, 40), 0);
+
+    auto runwayIls = makeRunway(host, { 30.00, 40.00 }, { 30.01, 40.01 }, "04", "22");
+    auto runwayOther = makeRunway(host, { 30.02, 40.00 }, { 30.03, 40.01 }, "09", "27");
+
+    auto n1 = shared_ptr<TaxiNode>(new TaxiNode(1, UniPoint::fromGeo(host, { 30.00, 40.00 })));
+    auto n2 = shared_ptr<TaxiNode>(new TaxiNode(2, UniPoint::fromGeo(host, { 30.01, 40.01 })));
+    auto n3 = shared_ptr<TaxiNode>(new TaxiNode(3, UniPoint::fromGeo(host, { 30.02, 40.00 })));
+    auto n4 = shared_ptr<TaxiNode>(new TaxiNode(4, UniPoint::fromGeo(host, { 30.03, 40.01 })));
+
+    auto ilsEdge = shared_ptr<TaxiEdge>(new TaxiEdge(1001, "ILS", 1, 2));
+    WorldBuilder::addActiveZone(ilsEdge, "04", false, true, true);
+
+    auto airport = WorldBuilder::assembleAirport(
+        host,
+        header,
+        { runwayIls, runwayOther },
+        {},
+        { n1, n2, n3, n4 },
+        { ilsEdge });
+
+    auto preferredArrivalRunway = airport->findPreferredArrivalRunway();
+
+    ASSERT_TRUE(!!preferredArrivalRunway);
+    EXPECT_EQ(preferredArrivalRunway->end1().name(), "04");
+    EXPECT_EQ(preferredArrivalRunway->end2().name(), "22");
+}
+
 shared_ptr<Runway> makeRunway(
     shared_ptr<HostServices> host,
     const GeoPoint& p1,

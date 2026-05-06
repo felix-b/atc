@@ -3,6 +3,8 @@ project(libdataxp VERSION 0.1.0)
 
 add_library(libdataxp STATIC 
     libdataxp.h
+    xpCifpReader.hpp
+    xpNavDataReader.hpp
     xpAirportReader.cpp
     xpFmsxReader.cpp
 )

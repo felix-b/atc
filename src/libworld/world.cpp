@@ -9,6 +9,38 @@ using namespace std;
 
 namespace world
 {
+    shared_ptr<Airport> World::addAirport(shared_ptr<Airport> airport)
+    {
+        if (!airport)
+        {
+            return nullptr;
+        }
+
+        const string icao = airport->header().icao();
+        const auto found = m_airportByIcao.find(icao);
+        if (found != m_airportByIcao.end())
+        {
+            return found->second;
+        }
+
+        m_airports.push_back(airport);
+        m_airportByIcao.insert({ icao, airport });
+
+        if (airport->tower())
+        {
+            auto airspace = airport->tower()->airspace();
+            if (airspace)
+            {
+                m_airspaces.push_back(airspace);
+                m_airspaceById.insert({ airspace->id(), airspace });
+            }
+
+            m_controlFacilities.push_back(airport->tower());
+        }
+
+        return airport;
+    }
+
     void World::progressTo(chrono::microseconds futureTimestamp)
     {
         const char *lastStep = "enter";

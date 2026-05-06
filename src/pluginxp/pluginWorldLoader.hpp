@@ -8,6 +8,8 @@
 #include <chrono>
 #include <queue>
 #include <vector>
+#include <unordered_set>
+#include <stdexcept>
 
 // SDK
 #include "XPLMProcessing.h"
@@ -37,11 +39,108 @@ class PluginWorldLoader
 private:
     shared_ptr<HostServices> m_host;
     shared_ptr<World> m_world;
+
+private:
+    static string buildHostPath(shared_ptr<HostServices> host, const vector<string>& relativePathParts)
+    {
+        return host->getHostFilePath(relativePathParts);
+    }
+
+    void appendAptDatCandidatesForSceneryRoot(const string& sceneryRoot, vector<string>& candidatePaths)
+    {
+        try
+        {
+            for (const auto& sceneryPack : m_host->findFilesInHostDirectory({ sceneryRoot }))
+            {
+                if (sceneryPack.empty() || sceneryPack == "." || sceneryPack == ".." || sceneryPack == "scenery_packs.ini")
+                {
+                    continue;
+                }
+
+                candidatePaths.push_back(buildHostPath(m_host, { sceneryRoot, sceneryPack, "Earth nav data", "apt.dat" }));
+            }
+        }
+        catch(const exception& e)
+        {
+            m_host->writeLog("LWORLD|failed to enumerate %s packages: %s", sceneryRoot.c_str(), e.what());
+        }
+
+        // X-Plane 11/12 installs can place scenery packages under either root.
+        // Enumerating both keeps the loader resilient to package naming changes.
+    }
+
+    void appendAptDatCandidates(vector<string>& candidatePaths)
+    {
+        appendAptDatCandidatesForSceneryRoot("Custom Scenery", candidatePaths);
+        appendAptDatCandidatesForSceneryRoot("Global Scenery", candidatePaths);
+
+        candidatePaths.push_back(buildHostPath(m_host, { "Resources", "default scenery", "default apt dat", "Earth nav data", "apt.dat" }));
+    }
+
+    void loadAptDatFile(const string& aptDatFilePath, vector<shared_ptr<Airport>>& airports)
+    {
+        m_host->writeLog("LWORLD|trying apt.dat file path [%s]", aptDatFilePath.c_str());
+
+        try
+        {
+            auto aptDatFile = m_host->openFileForRead(aptDatFilePath);
+            XPAptDatReader aptDatReader(m_host);
+
+            const size_t airportsBefore = airports.size();
+            aptDatReader.readAptDat(
+                *aptDatFile,
+                WorldBuilder::assembleSampleAirportControlZone,
+                [](const Airport::Header&) {
+                    return true;
+                },
+                [&](shared_ptr<Airport> airport) {
+                    airports.push_back(airport);
+                }
+            );
+
+            m_host->writeLog(
+                "LWORLD|loaded apt.dat [%s] airports added[%d]",
+                aptDatFilePath.c_str(),
+                static_cast<int>(airports.size() - airportsBefore));
+        }
+        catch(const exception& e)
+        {
+            m_host->writeLog("LWORLD|skipping apt.dat [%s]: %s", aptDatFilePath.c_str(), e.what());
+        }
+    }
+
+    void loadAirports(vector<shared_ptr<Airport>>& airports)
+    {
+        m_host->writeLog("LWORLD|--- begin load airports ---");
+
+        vector<string> aptDatPathCandidates;
+        appendAptDatCandidates(aptDatPathCandidates);
+
+        unordered_set<string> seenPaths;
+        for (const auto& candidatePath : aptDatPathCandidates)
+        {
+            if (!seenPaths.insert(candidatePath).second)
+            {
+                continue;
+            }
+
+            loadAptDatFile(candidatePath, airports);
+        }
+
+        if (airports.empty())
+        {
+            throw runtime_error("PluginWorldLoader::loadAirports could not locate any readable X-Plane apt.dat file");
+        }
+
+        m_host->writeLog("LWORLD|--- end load airports ---");
+    }
+
 public:
     PluginWorldLoader(shared_ptr<HostServices> _host) :
         m_host(_host)
     {
     }
+
 public:
     void loadWorld()
     {
@@ -50,86 +149,9 @@ public:
 
         m_world = WorldBuilder::assembleSampleWorld(m_host, airports);
         m_host->writeLog("World initialized");
-
-        for (const auto& airport : airports)
-        {
-            try
-            {
-                auto runway = airport->findLongestRunway();
-                if (runway->lengthMeters() >= 2000 && !airport->hasParallelRunways() && (
-                    airport->header().icao().at(0) == 'K' ||
-                    airport->header().icao().at(0) == 'Y' ||
-                    airport->header().icao().substr(0, 2) == "EG"))
-                {
-                    m_host->writeLog(
-                        "LWORLD|FOUNDAPT [%s] rwys[%d] gates[%d] longest-rwy[%d]m name[%s]",
-                        airport->header().icao().c_str(),
-                        airport->runways().size(),
-                        airport->parkingStands().size(),
-                        (int) runway->lengthMeters(),
-                        runway->name().c_str()
-                    );
-                }
-            }
-            catch(const exception& e)
-            {
-                m_host->writeLog("LWORLD|FOUNDAPT FAILED on [%s]: %s", airport->header().icao().c_str(), e.what());
-            }
-        }
-
-        m_host->writeLog(
-            "LWORLD|Assembled world with [%d] airports, [%d] airspaces, [%d] control facilities",
-            m_world->airports().size(),
-            0, //TODO
-            m_world->controlFacilities().size());
     }
 
     shared_ptr<World> getWorld() const { return m_world; }
-//    void stop() override
-//    {
-//        m_host->writeLog("Stopping POC # 1");
-//
-//        XPLMUnregisterFlightLoopCallback(&worldFlightLoopCallback, this);
-//        m_host->writeLog("Unregistered flight loop callback");
-//
-//        m_world.reset();
-//        m_host->writeLog("World shut down");
-//    }
-//    void setTimeFactor(uint64_t factor) override
-//    {
-//        m_timeFactor = factor;
-//    }
-private:
-    void loadAirports(vector<shared_ptr<Airport>>& airports)
-    {
-        // X-Plane 11\Resources\default scenery\default apt dat\Earth nav data\apt.dat
-        string globalAptDatFilePath = m_host->getHostFilePath({
-            "Resources", "default scenery", "default apt dat", "Earth nav data", "apt.dat"
-        });
-        m_host->writeLog("LWORLD|global apt.dat file path [%s]", globalAptDatFilePath.c_str());
 
-        shared_ptr<istream> aptDatFile = m_host->openFileForRead(globalAptDatFilePath);
-        XPAptDatReader aptDatReader(m_host);
-
-        m_host->writeLog("LWORLD|--- begin load airports ---");
-
-        aptDatReader.readAptDat(
-            *aptDatFile,
-            WorldBuilder::assembleSampleAirportControlZone,
-            [&](const Airport::Header header) {
-                return true;
-//                return (
-//                    header.icao() == "KJFK" ||
-//                    header.icao() == "KMIA" ||
-//                    header.icao() == "KORD" ||
-//                    header.icao() == "YBBN"
-//                );
-            },
-            [this, &airports](shared_ptr<Airport> airport) {
-                airports.push_back(airport);
-            }
-        );
-
-        m_host->writeLog("LWORLD|--- end load airports ---");
-    }
+    shared_ptr<World> world() const { return m_world; }
 };

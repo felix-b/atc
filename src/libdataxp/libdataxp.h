@@ -12,6 +12,8 @@
 #include <unordered_set>
 #include <functional>
 #include "libworld.h"
+#include "xpCifpReader.hpp"
+#include "xpNavDataReader.hpp"
 
 using namespace std;
 using namespace world;
@@ -47,6 +49,8 @@ private:
     unordered_set<int> m_parsedFrequencyKhz;
     unordered_set<int> m_parsedFrequencyLineCodes;
     shared_ptr<ControlledAirspace> m_airspace;
+    vector<shared_ptr<TrafficFlow>> m_trafficFlows;
+    shared_ptr<TrafficFlow> m_currentFlow;
 public:
     explicit XPAirportReader(
         shared_ptr<HostServices> _host,
@@ -74,6 +78,9 @@ private:
     void parseMetadata1302(istream &input);
     void parseControlFrequency(int lineCode, istream &input);
     bool isControlFrequencyLine(int lineCode);
+    void parseTrafficFlow1100(istream &input);
+    void parseTrafficFlowRules1101(istream &input, shared_ptr<TrafficFlow> flow);
+    void parseRunwayFlow1102(istream &input, shared_ptr<TrafficFlow> flow);
     bool invokeFilterCallback();
     shared_ptr<Airport> assembleAirportOrThrow();
     string formatErrorMessage(istream &input, const streampos& position, int extractedLineCode, const char *what);

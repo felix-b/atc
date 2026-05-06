@@ -93,7 +93,7 @@ public:
         SetSpoilerRatio(0);
         SetSpeedbrakeRatio(0);
         SetWingSweepRatio(0.0f);
-        SetThrustRatio(0.0f);
+        ensureEngineRunning(source, false);
         SetYokePitchRatio(0.0f);
         SetYokeHeadingRatio(0.0f);
         SetYokeRollRatio(0.0f);
@@ -154,6 +154,7 @@ private:
         const auto& location = source->location();
         const auto& attitude = source->attitude();
         const auto& altitude = source->altitude();
+        const bool touchedDown = source->justTouchedDown(m_host->getWorld()->timestamp());
 
         float pitchAdjustment = 0.0f;
 
@@ -175,6 +176,8 @@ private:
         SetPitch(attitude.pitch() + pitchAdjustment);
         SetRoll(attitude.roll());
 
+        ensureEngineRunning(source, touchedDown);
+
         SetLightsBeacon(source->isLightsOn(world::Aircraft::LightBits::Beacon));
         SetLightsTaxi(source->isLightsOn(world::Aircraft::LightBits::Taxi)); //TODO: taxi lights not working?
         SetLightsStrobe(source->isLightsOn(world::Aircraft::LightBits::Strobe));
@@ -189,7 +192,7 @@ private:
         SetSpeedbrakeRatio(source->spoilerState());
         SetSpoilerRatio(source->spoilerState());
 
-        SetTouchDown(source->justTouchedDown(m_host->getWorld()->timestamp()));
+        SetTouchDown(touchedDown);
     }
 
     void safeClampToGround(float& groundPitch)
@@ -209,6 +212,142 @@ private:
         //     drawInfo.y += 0.4;
         //     SetPitch(-0.5);
         // }
+    }
+
+    static float clampRatio(float value)
+    {
+        return max(0.0f, min(1.0f, value));
+    }
+
+    bool isParked(const shared_ptr<world::Aircraft>& source) const
+    {
+        if (!source)
+        {
+            return false;
+        }
+
+        try
+        {
+            return source->getFlightOrThrow()->phase() == Flight::Phase::TurnAround;
+        }
+        catch (const exception&)
+        {
+            return false;
+        }
+    }
+
+    float calculateReverseRatio(const shared_ptr<world::Aircraft>& source, bool touchedDown) const
+    {
+        if (!source || isParked(source) || !source->altitude().isGroundBased())
+        {
+            return 0.0f;
+        }
+
+        if (touchedDown)
+        {
+            return 1.0f;
+        }
+
+        const float groundSpeedKt = static_cast<float>(abs(source->groundSpeedKt()));
+        const float spoilerState = source->spoilerState();
+
+        if (spoilerState > 0.2f && groundSpeedKt > 20.0f)
+        {
+            return clampRatio((groundSpeedKt - 20.0f) / 80.0f);
+        }
+
+        return 0.0f;
+    }
+
+    float calculateThrustRatio(const shared_ptr<world::Aircraft>& source, float reverseRatio) const
+    {
+        if (!source || isParked(source))
+        {
+            return 0.0f;
+        }
+
+        const bool isGroundBased = source->altitude().isGroundBased();
+        const float groundSpeedKt = static_cast<float>(abs(source->groundSpeedKt()));
+        const float verticalSpeedFpm = static_cast<float>(source->verticalSpeedFpm());
+
+        float thrustRatio = 0.18f;
+        if (isGroundBased)
+        {
+            if (groundSpeedKt > 140.0f)
+            {
+                thrustRatio = 0.92f;
+            }
+            else if (groundSpeedKt > 60.0f)
+            {
+                thrustRatio = 0.68f;
+            }
+            else if (groundSpeedKt > 15.0f)
+            {
+                thrustRatio = 0.34f;
+            }
+        }
+        else
+        {
+            if (verticalSpeedFpm > 1500.0f || groundSpeedKt > 220.0f)
+            {
+                thrustRatio = 0.95f;
+            }
+            else if (verticalSpeedFpm > 300.0f)
+            {
+                thrustRatio = 0.76f;
+            }
+            else if (verticalSpeedFpm < -1000.0f)
+            {
+                thrustRatio = 0.44f;
+            }
+            else if (groundSpeedKt > 180.0f)
+            {
+                thrustRatio = 0.62f;
+            }
+            else
+            {
+                thrustRatio = 0.52f;
+            }
+        }
+
+        if (reverseRatio > 0.0f)
+        {
+            thrustRatio *= (1.0f - (0.5f * reverseRatio));
+        }
+
+        return clampRatio(thrustRatio);
+    }
+
+    float calculateEngineRpm(const shared_ptr<world::Aircraft>& source, float thrustRatio, float reverseRatio) const
+    {
+        if (!source || isParked(source))
+        {
+            return 0.0f;
+        }
+
+        const bool isGroundBased = source->altitude().isGroundBased();
+        float engineRpm = isGroundBased
+            ? 800.0f + thrustRatio * 1700.0f
+            : 1000.0f + thrustRatio * 2200.0f;
+
+        if (reverseRatio > 0.0f)
+        {
+            engineRpm = max(engineRpm, 1200.0f + reverseRatio * 700.0f);
+        }
+
+        return engineRpm;
+    }
+
+    void ensureEngineRunning(const shared_ptr<world::Aircraft>& source, bool touchedDown)
+    {
+        const float reverseRatio = calculateReverseRatio(source, touchedDown);
+        const float thrustRatio = calculateThrustRatio(source, reverseRatio);
+        const float engineRpm = calculateEngineRpm(source, thrustRatio, reverseRatio);
+
+        SetThrustRatio(thrustRatio);
+        SetThrustReversRatio(reverseRatio);
+        SetReversDeployRatio(reverseRatio);
+        SetEngineRotRpm(engineRpm);
     }
 
 private:

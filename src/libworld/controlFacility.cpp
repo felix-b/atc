@@ -12,9 +12,35 @@ namespace world
 {
     shared_ptr<ControllerPosition> ControlFacility::tryFindPosition(ControllerPosition::Type type, const GeoPoint& location) const
     {
-        return tryFindFirst<shared_ptr<ControllerPosition>>(m_positions, [this, type](const shared_ptr<ControllerPosition>& position) {
+        auto exactMatch = tryFindFirst<shared_ptr<ControllerPosition>>(m_positions, [this, type](const shared_ptr<ControllerPosition>& position) {
             return (position->type() == type);
         });
+
+        if (exactMatch)
+        {
+            return exactMatch;
+        }
+
+        if (type == ControllerPosition::Type::ClearanceDelivery)
+        {
+            auto groundFallback = tryFindFirst<shared_ptr<ControllerPosition>>(m_positions, [](const shared_ptr<ControllerPosition>& position) {
+                return (position->type() == ControllerPosition::Type::Ground);
+            });
+            if (groundFallback)
+            {
+                return groundFallback;
+            }
+
+            auto localFallback = tryFindFirst<shared_ptr<ControllerPosition>>(m_positions, [](const shared_ptr<ControllerPosition>& position) {
+                return (position->type() == ControllerPosition::Type::Local);
+            });
+            if (localFallback)
+            {
+                return localFallback;
+            }
+        }
+
+        return nullptr;
     }
 
     shared_ptr<ControllerPosition> ControlFacility::findPositionOrThrow(ControllerPosition::Type type, const GeoPoint& location) const 

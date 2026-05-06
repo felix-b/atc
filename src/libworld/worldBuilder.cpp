@@ -27,15 +27,7 @@ namespace world
 
         for (const auto& airport : airports)
         {
-            world->m_airports.push_back(airport);
-            world->m_airportByIcao.insert({airport->header().icao(), airport});
-            if (airport->tower())
-            {
-                auto airspace = airport->tower()->airspace();
-                world->m_airspaces.push_back(airspace);
-                world->m_airspaceById.insert({airspace->id(), airspace});
-                world->m_controlFacilities.push_back(airport->tower());
-            }
+            world->addAirport(airport);
         }
 
         return world;
@@ -49,7 +41,8 @@ namespace world
         const vector<shared_ptr<TaxiNode>>& taxiNodes,
         const vector<shared_ptr<TaxiEdge>>& taxiEdges,
         shared_ptr<ControlFacility> tower,
-        shared_ptr<ControlledAirspace> airspace)
+        shared_ptr<ControlledAirspace> airspace,
+        const vector<shared_ptr<TrafficFlow>>& trafficFlows)
     {
         auto airport = make_shared<Airport>(header);
         for (auto rwy : runways)
@@ -62,6 +55,12 @@ namespace world
         {
             airport->m_parkingStands.push_back(parking);
             airport->m_parkingStandByName.insert({ parking->m_name, parking });
+        }
+
+        // Assign traffic flows from apt.dat
+        for (auto flow : trafficFlows)
+        {
+            airport->m_trafficFlows.push_back(flow);
         }
 
         fixUpEdgesAndRunways(host, airport);
@@ -91,6 +90,10 @@ namespace world
                     return tower->callSign() + " Approach";
                 case ControllerPosition::Type::Departure:
                     return tower->callSign() + " Departure";
+                case ControllerPosition::Type::Area:
+                    return tower->callSign() + " Center";
+                case ControllerPosition::Type::Oceanic:
+                    return tower->callSign() + " Oceanic";
             }
             return tower->callSign();
         };
@@ -405,6 +408,16 @@ namespace world
             case TaxiEdge::Type::Taxiway:
                 edge->m_node1->m_hasTaxiway = true;
                 edge->m_node2->m_hasTaxiway = true;
+                break;
+            case TaxiEdge::Type::HoldShort:
+                // Hold short edges are special taxiway edges marking hold positions
+                edge->m_node1->m_hasTaxiway = true;
+                edge->m_node2->m_hasTaxiway = true;
+                break;
+            case TaxiEdge::Type::RunwayActiveZone:
+                // Runway active zone edges are associated with runways for ATC calculations
+                edge->m_node1->m_hasRunway = true;
+                edge->m_node2->m_hasRunway = true;
                 break;
             }
 

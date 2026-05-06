@@ -139,7 +139,7 @@ TEST(RunwayMutexTest, A__takeoff_checkedIn_notCleared_more15sec__depBeginsRoll__
     EXPECT_TRUE(test1.type(ScenarioType::Arrival)
         .given(RunwaySituation::ClearedForTakeoff).checkedIn(true).clearedToLand(false).numberInLine(1).secsToTouchdown(16).end()
         .whenDepartureBeginsRoll()
-        .thenClearToLandAndTraffic(TrafficAdvisory::departingAhead("A320")));
+        .thenNothing());
     EXPECT_TRUE(test2.type(ScenarioType::Arrival)
         .given(RunwaySituation::ClearedForTakeoff).checkedIn(true).clearedToLand(false).numberInLine(2).secsToTouchdown(16).end()
         .whenDepartureBeginsRoll()
@@ -274,11 +274,11 @@ TEST(RunwayMutexTest, D__vacated_1stInLine_90to180sec__checkIn__clear_immediate_
     EXPECT_TRUE(test1.type(ScenarioType::Departure)
         .given(RunwaySituation::Vacated).checkedIn(false).clearedToLand(false).numberInLine(1).secsToTouchdown(91).end()
         .whenDepartureChecksIn()
-        .thenClearForTakeoffAndTraffic(true, TrafficAdvisory::onFinal("A320", 3)));
+        .thenHoldShort(DeclineReason::WakeTurbulence, true));
     EXPECT_TRUE(test2.type(ScenarioType::Departure)
         .given(RunwaySituation::Vacated).checkedIn(false).clearedToLand(true).numberInLine(1).secsToTouchdown(91).end()
         .whenDepartureChecksIn()
-        .thenClearForTakeoffAndTraffic(true, TrafficAdvisory::onFinal("A320", 3)));
+        .thenHoldShort(DeclineReason::WakeTurbulence, true));
     EXPECT_TRUE(test3.type(ScenarioType::Departure)
         .given(RunwaySituation::Vacated).checkedIn(false).clearedToLand(false).numberInLine(1).secsToTouchdown(179).end()
         .whenDepartureChecksIn()
@@ -295,11 +295,11 @@ TEST(RunwayMutexTest, D__vacated_1stInLine_less90sec__checkIn__hold_traffic)
     EXPECT_TRUE(test1.type(ScenarioType::Departure)
         .given(RunwaySituation::Vacated).checkedIn(false).clearedToLand(false).numberInLine(1).secsToTouchdown(89).end()
         .whenDepartureChecksIn()
-        .thenHoldShort(DeclineReason::TrafficLanding, true));
+        .thenHoldShort(DeclineReason::WakeTurbulence, true));
     EXPECT_TRUE(test2.type(ScenarioType::Departure)
         .given(RunwaySituation::Vacated).checkedIn(false).clearedToLand(true).numberInLine(1).secsToTouchdown(89).end()
         .whenDepartureChecksIn()
-        .thenHoldShort(DeclineReason::TrafficLanding, true));
+        .thenHoldShort(DeclineReason::WakeTurbulence, true));
 }
 
 //------

@@ -103,5 +103,6 @@
         "./libs/protobuf": true,
         "./libs/websocketpp": true,
         "./libs/xpmp2": true
-    }
+    },
+    "python-envs.defaultEnvManager": "ms-python.python:system"
 }

@@ -1051,3 +1051,63 @@ TEST(ManeuverFactoryTest, taxiByPath) {
     }
 }
 
+TEST(ManeuverFactoryTest, obstacleScanSemaphore_detectsHeadOnTraffic)
+{
+    auto host = TestHostServices::createWithWorld();
+
+    auto ourFlight = createTestFlight(host);
+    auto otherFlight = createTestFlight(host);
+    host->getWorld()->addFlight(ourFlight);
+    host->getWorld()->addFlight(otherFlight);
+
+    auto ourAircraft = dynamic_pointer_cast<AIAircraft>(ourFlight->aircraft());
+    auto otherAircraft = dynamic_pointer_cast<AIAircraft>(otherFlight->aircraft());
+
+    ourFlight->setPhase(Flight::Phase::Departure);
+    otherFlight->setPhase(Flight::Phase::Departure);
+
+    ourAircraft->setLocation({ 10.0000, 40.0000 });
+    ourAircraft->setAttitude({ 0.0, 0.0, 0.0 });
+    otherAircraft->setLocation({ 10.0002, 40.0000 });
+    otherAircraft->setAttitude({ 180.0, 0.0, 0.0 });
+
+    auto state = ManeuverFactory::obstacleScanSemaphore(
+        host->getWorld(),
+        ourFlight,
+        false,
+        Maneuver::SemaphoreState::Open,
+        chrono::microseconds(0));
+
+    EXPECT_EQ(state, Maneuver::SemaphoreState::Closed);
+}
+
+TEST(ManeuverFactoryTest, obstacleScanSemaphore_arrivalTreatsDepartureAheadAsObstacle)
+{
+    auto host = TestHostServices::createWithWorld();
+
+    auto ourFlight = createTestFlight(host);
+    auto otherFlight = createTestFlight(host);
+    host->getWorld()->addFlight(ourFlight);
+    host->getWorld()->addFlight(otherFlight);
+
+    auto ourAircraft = dynamic_pointer_cast<AIAircraft>(ourFlight->aircraft());
+    auto otherAircraft = dynamic_pointer_cast<AIAircraft>(otherFlight->aircraft());
+
+    ourFlight->setPhase(Flight::Phase::Arrival);
+    otherFlight->setPhase(Flight::Phase::Departure);
+
+    ourAircraft->setLocation({ 10.0000, 40.0000 });
+    ourAircraft->setAttitude({ 0.0, 0.0, 0.0 });
+    otherAircraft->setLocation({ 10.0002, 40.0000 });
+    otherAircraft->setAttitude({ 0.0, 0.0, 0.0 });
+
+    auto state = ManeuverFactory::obstacleScanSemaphore(
+        host->getWorld(),
+        ourFlight,
+        false,
+        Maneuver::SemaphoreState::Open,
+        chrono::microseconds(0));
+
+    EXPECT_EQ(state, Maneuver::SemaphoreState::Closed);
+}
+

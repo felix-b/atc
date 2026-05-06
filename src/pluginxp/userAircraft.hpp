@@ -17,6 +17,7 @@
 // AT&C
 #include "utils.h"
 #include "libworld.h"
+#include "airlineReferenceTable.hpp"
 
 using namespace std;
 using namespace world;
@@ -36,8 +37,18 @@ private:
     DataRef<float> m_pitchDataRef;
     DataRef<float> m_rollDataRef;
     DataRef<float> m_groundspeedDataRef;
+    DataRef<float> m_verticalSpeedDataRef;
+    DataRef<int> m_beaconLightDataRef;
+    DataRef<int> m_taxiLightDataRef;
+    DataRef<int> m_navLightDataRef;
+    DataRef<int> m_strobeLightDataRef;
+    DataRef<int> m_landingLightDataRef;
+    DataRef<int> m_gearHandleDownDataRef;
+    DataRef<float> m_flapRatioDataRef;
+    DataRef<float> m_speedbrakeRatioDataRef;
     DataRef<int> m_transponderCodeDataRef;
     DataRef<int> m_com1FrequencyKhz;
+    bool m_wasOnGround;
 public:
     UserAircraft(shared_ptr<HostServices> _host, const string& _modelIcao, const string& _airlineIcao) :
         Aircraft(
@@ -60,8 +71,18 @@ public:
         m_rollDataRef("sim/flightmodel/position/phi"),
         m_aglDataRef("sim/flightmodel/position/y_agl"),
         m_groundspeedDataRef("sim/flightmodel/position/groundspeed"),
+        m_verticalSpeedDataRef("sim/flightmodel/position/vh_ind_fpm"),
+        m_beaconLightDataRef("sim/cockpit2/switches/beacon_on"),
+        m_taxiLightDataRef("sim/cockpit2/switches/taxi_light_on"),
+        m_navLightDataRef("sim/cockpit2/switches/navigation_lights_on"),
+        m_strobeLightDataRef("sim/cockpit2/switches/strobe_lights_on"),
+        m_landingLightDataRef("sim/cockpit2/switches/landing_lights_on"),
+        m_gearHandleDownDataRef("sim/cockpit2/controls/gear_handle_down"),
+        m_flapRatioDataRef("sim/cockpit2/controls/flap_ratio"),
+        m_speedbrakeRatioDataRef("sim/cockpit2/controls/speedbrake_ratio"),
         m_transponderCodeDataRef("sim/cockpit/radios/transponder_code"),
-        m_com1FrequencyKhz("sim/cockpit2/radios/actuators/com1_frequency_hz_833", PPL::ReadWrite)
+        m_com1FrequencyKhz("sim/cockpit2/radios/actuators/com1_frequency_hz_833", PPL::ReadWrite),
+        m_wasOnGround(true)
     {
         updateFromDataRefs(true);
     }
@@ -93,7 +114,7 @@ public:
     }
     double verticalSpeedFpm() const override
     {
-        return 0; //TODO
+        return m_verticalSpeedDataRef;
     }
     const string& squawk() const override
     {
@@ -101,35 +122,63 @@ public:
     }
     LightBits lights() const override
     {
-        return LightBits::None; //TODO
+        LightBits result = LightBits::None;
+        if (m_beaconLightDataRef)
+        {
+            result = result | LightBits::Beacon;
+        }
+        if (m_taxiLightDataRef)
+        {
+            result = result | LightBits::Taxi;
+        }
+        if (m_navLightDataRef)
+        {
+            result = result | LightBits::Nav;
+        }
+        if (m_strobeLightDataRef)
+        {
+            result = result | LightBits::Strobe;
+        }
+        if (m_landingLightDataRef)
+        {
+            result = result | LightBits::Landing;
+        }
+        return result;
     }
     float gearState() const override
     {
-        return 0; //TODO
+        return m_gearHandleDownDataRef != 0 ? 1.0f : 0.0f;
     }
     float flapState() const override
     {
-        return 0; //TODO
+        return m_flapRatioDataRef;
     }
     float spoilerState() const override
     {
-        return 0; //TODO
+        return m_speedbrakeRatioDataRef;
     }
     bool isLightsOn(LightBits bits) const override
     {
-        return false; //TODO
+        return (lights() & bits) == bits;
     }
     bool justTouchedDown(chrono::microseconds timestamp) override
     {
-        return false; //TODO
+        const bool onGround = m_altitude.isGround();
+        const bool touchedDown = !m_wasOnGround && onGround;
+        m_wasOnGround = onGround;
+        return touchedDown;
     }
     void park(shared_ptr<ParkingStand> parkingStand) override
     {
-        throw runtime_error("UserAircraft::park not implemented");
+        host()->writeLog(
+            "UPILOT|UserAircraft::park ignored for live user aircraft at gate[%s]",
+            parkingStand ? parkingStand->name().c_str() : "N/A");
     }
     void setOnFinal(const Runway::End& runwayEnd) override
     {
-        throw runtime_error("UserAircraft::setOnFinal not implemented");
+        host()->writeLog(
+            "UPILOT|UserAircraft::setOnFinal ignored for live user aircraft on runway[%s]",
+            runwayEnd.name().c_str());
     }
     void notifyChanges() override
     {
@@ -138,6 +187,8 @@ public:
 private:
     void updateFromDataRefs(bool shouldLog)
     {
+        const bool wasOnGround = m_altitude.isGround();
+
         m_location = GeoPoint(m_latitudeDataRef, m_longitudeDataRef);
         m_attitude = AircraftAttitude(m_headingDataRef, m_pitchDataRef, m_rollDataRef);
 
@@ -159,6 +210,8 @@ private:
         {
             logCurrentDataRefs();
         }
+
+        m_wasOnGround = wasOnGround;
     }
     void logCurrentDataRefs()
     {
@@ -181,9 +234,54 @@ public:
 
         string icao = icaoDataRef;
         string liveryPath = liveryPathDataRef;
+        if (icao.empty())
+        {
+            icao = "B738";
+        }
 
-        host->writeLog("UPILOT|UserAircraft::create icao[%s] liveryPath[%s]", icao.c_str(), liveryPath.c_str());
+        const string airlineIcao = detectAirlineIcaoFromLiveryPath(liveryPath);
 
-        return shared_ptr<UserAircraft>(new UserAircraft(host, "B738", "UAL"));
+        host->writeLog(
+            "UPILOT|UserAircraft::create icao[%s] liveryPath[%s] airline[%s]",
+            icao.c_str(),
+            liveryPath.c_str(),
+            airlineIcao.c_str());
+
+        return shared_ptr<UserAircraft>(new UserAircraft(host, icao, airlineIcao));
+    }
+
+private:
+    static string detectAirlineIcaoFromLiveryPath(const string& liveryPath)
+    {
+        string token;
+        for (char c : liveryPath)
+        {
+            if (isalnum(static_cast<unsigned char>(c)))
+            {
+                token.push_back(static_cast<char>(toupper(static_cast<unsigned char>(c))));
+                continue;
+            }
+
+            if (token.length() == 3)
+            {
+                AirlineReferenceTable::Entry entry;
+                if (AirlineReferenceTable::tryFindByIcao(token, entry))
+                {
+                    return token;
+                }
+            }
+            token.clear();
+        }
+
+        if (token.length() == 3)
+        {
+            AirlineReferenceTable::Entry entry;
+            if (AirlineReferenceTable::tryFindByIcao(token, entry))
+            {
+                return token;
+            }
+        }
+
+        return "";
     }
 };

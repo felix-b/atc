@@ -30,6 +30,7 @@
 #include "pluginHostServices.hpp"
 #include "pluginMenu.hpp"
 #include "nativeTextToSpeechService.hpp"
+#include "xplaneWeatherService.hpp"
 #include "simplePhraseologyService.hpp"
 #include "xpmp2AircraftObjectService.hpp"
 #include "xplmSpeakStringTtsService.hpp"
@@ -482,31 +483,51 @@ private:
             auto world = m_host->getWorld();
             auto departureTime = world->currentTime() + 30 * 60; //P-30
             auto arrivalTime = departureTime + 3 * 60 * 60; //3h
+            auto userAircraft = UserAircraft::create(m_host);
+            auto destinationIcao = pickDefaultDestinationIcao();
+            auto userModelIcao = userAircraft->modelIcao().empty() ? string("B738") : userAircraft->modelIcao();
+            auto userAirlineIcao = userAircraft->airlineIcao();
+            auto userFlightNo = userModelIcao;
+            auto userCallsign = userAirlineIcao.empty() ? userFlightNo : userAirlineIcao + " " + userFlightNo;
 
             //this will be overridden by user's flight plan
             auto flightPlan = shared_ptr<FlightPlan>(new FlightPlan(
                 departureTime,
                 arrivalTime,
                 m_userAirport->header().icao(),
-                "KMIA"));
+                destinationIcao));
+
+            flightPlan->setAirlineIcao(userAirlineIcao);
+            flightPlan->setFlightNo(userFlightNo);
+            flightPlan->setCallsign(userCallsign);
 
             //some of these will be overridden by user's flight plan
             auto userFlight = shared_ptr<Flight>(new Flight(
                 m_host,
                 1,
                 Flight::RulesType::IFR,
-                "UAL",
-                "737",
-                "United 737",
+                userAirlineIcao,
+                userFlightNo,
+                userCallsign,
                 flightPlan));
 
             m_host->writeLog("initUserFlight:2");
 
-            auto userAircraft = UserAircraft::create(m_host);
             auto departureGate = m_userAirport->findClosestParkingStand(userAircraft->location());
             auto departureRunway = m_userAirport->activeDepartureRunways().at(0);
             flightPlan->setDepartureGate(departureGate ? departureGate->name() : "N/A");
             flightPlan->setDepartureRunway(departureRunway);
+
+            try
+            {
+                auto destinationAirport = m_host->getWorld()->getAirport(destinationIcao);
+                flightPlan->setArrivalAirportIcao(destinationAirport->header().icao());
+                flightPlan->setArrivalRunway(destinationAirport->findLongestRunway()->end1().name());
+            }
+            catch(const exception& e)
+            {
+                m_host->writeLog("UPILOT|INIT could not resolve destination airport [%s]: %s", destinationIcao.c_str(), e.what());
+            }
 
             m_host->writeLog(
                 "UPILOT|INIT departure gate=[%s] runway=[%s]",
@@ -532,6 +553,46 @@ private:
             m_world->addFlight(userFlight);
 
             m_host->writeLog("initUserFlight:7");
+        }
+
+        string pickDefaultDestinationIcao()
+        {
+            const auto& airports = m_host->getWorld()->airports();
+            if (airports.empty())
+            {
+                return m_userAirport->header().icao();
+            }
+
+            shared_ptr<Airport> bestAirport;
+            double bestScore = -1.0;
+            const auto referenceDatum = m_userAirport->header().datum();
+
+            for (const auto& airport : airports)
+            {
+                if (!airport || airport->header().icao() == m_userAirport->header().icao())
+                {
+                    continue;
+                }
+
+                double runwayLengthMeters = 0.0;
+                try
+                {
+                    runwayLengthMeters = airport->findLongestRunway()->lengthMeters();
+                }
+                catch(const exception&)
+                {
+                }
+
+                const double distanceMeters = GeoMath::getDistanceMeters(referenceDatum, airport->header().datum());
+                const double score = distanceMeters + runwayLengthMeters * 10.0;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestAirport = airport;
+                }
+            }
+
+            return bestAirport ? bestAirport->header().icao() : m_userAirport->header().icao();
         }
     };
 
@@ -605,6 +666,7 @@ private:
 
         auto hostServices = shared_ptr<PluginHostServices>(new PluginHostServices());
         auto configuration = make_shared<PluginConfiguration>();
+        auto weatherService = shared_ptr<WeatherService>(new XPlaneWeatherService(hostServices));
 
 #if LIN
         auto pluginTts = shared_ptr<XPLMSpeakStringTtsService>(new XPLMSpeakStringTtsService(hostServices));
@@ -618,6 +680,7 @@ private:
         auto transcriptInterface = shared_ptr<TranscriptInterface>(new MenuBasedTranscriptInterface(hostServices));
 
         hostServices->services().use<PluginConfiguration>(configuration);
+        hostServices->services().use<WeatherService>(weatherService);
         hostServices->services().use<AircraftObjectService>(aircraftObjectService);
         hostServices->services().use<TextToSpeechService>(pluginTts);
         hostServices->services().use<IntentFactory>(intentFactory);

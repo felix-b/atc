@@ -50,14 +50,82 @@ namespace world
         shared_ptr<ControllerPosition> getDepartureTower(shared_ptr<Flight> flight)
         { 
             auto airport = getDepartureAirport(flight);
-            return airport->localAt(flight->aircraft()->location());
+            const GeoPoint location = flight->aircraft()->location();
+            try
+            {
+                return airport->localAt(location);
+            }
+            catch(const exception&)
+            {
+            }
+
+            auto tower = airport->tower();
+            if (!tower)
+            {
+                throw runtime_error("WorldHelper::getDepartureTower: airport has no tower/controller facility");
+            }
+
+            const vector<ControllerPosition::Type> fallbackTypes = {
+                ControllerPosition::Type::Local,
+                ControllerPosition::Type::Departure,
+                ControllerPosition::Type::Approach
+            };
+
+            for (const auto fallbackType : fallbackTypes)
+            {
+                if (auto fallback = tower->tryFindPosition(fallbackType, location))
+                {
+                    return fallback;
+                }
+            }
+
+            if (!tower->positions().empty())
+            {
+                return tower->positions().front();
+            }
+
+            throw runtime_error("WorldHelper::getDepartureTower: no suitable controller position found");
         }
 
         shared_ptr<ControllerPosition> getArrivalTower(shared_ptr<Flight> flight, const GeoPoint& landingPoint)
         { 
             auto airport = getArrivalAirport(flight);
-            auto tower = airport->localAt(landingPoint);
-            return tower;
+            try
+            {
+                return airport->localAt(landingPoint);
+            }
+            catch(const exception&)
+            {
+            }
+
+            auto tower = airport->tower();
+            if (!tower)
+            {
+                throw runtime_error("WorldHelper::getArrivalTower: airport has no tower/controller facility");
+            }
+
+            const vector<ControllerPosition::Type> fallbackTypes = {
+                ControllerPosition::Type::Local,
+                ControllerPosition::Type::Approach,
+                ControllerPosition::Type::Ground,
+                ControllerPosition::Type::Departure,
+                ControllerPosition::Type::ClearanceDelivery
+            };
+
+            for (const auto fallbackType : fallbackTypes)
+            {
+                if (auto fallback = tower->tryFindPosition(fallbackType, landingPoint))
+                {
+                    return fallback;
+                }
+            }
+
+            if (!tower->positions().empty())
+            {
+                return tower->positions().front();
+            }
+
+            throw runtime_error("WorldHelper::getArrivalTower: no suitable controller position found");
         }
 
         shared_ptr<ControllerPosition> getArrivalGround(shared_ptr<Flight> flight, const GeoPoint& landingPoint)
@@ -93,7 +161,27 @@ namespace world
         {
             auto airport = getArrivalAirport(flight);
             auto runwayName = flight->plan()->arrivalRunway();
-            auto runway = airport->getRunwayOrThrow(runwayName);
+            auto runway = runwayName.empty() ? nullptr : airport->tryFindRunway(runwayName);
+
+            if (!runway)
+            {
+                runway = airport->findPreferredArrivalRunway();
+
+                for (const auto& activeRunwayName : airport->activeArrivalRunways())
+                {
+                    if (airport->tryFindRunway(activeRunwayName) == runway)
+                    {
+                        runwayName = activeRunwayName;
+                        break;
+                    }
+                }
+
+                if (runwayName.empty())
+                {
+                    runwayName = runway->end1().name();
+                }
+            }
+
             return runway->getEndOrThrow(runwayName);
         }
     };

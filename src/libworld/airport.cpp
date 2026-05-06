@@ -3,21 +3,70 @@
 // Code licensing terms are available at https://github.com/felix-b/atc/blob/master/LICENSE
 // 
 #include <memory>
+#include <cctype>
 #include <sstream>
 #include "libworld.h"
+
+namespace
+{
+    static std::string normalizeRunwayName(const std::string& name)
+    {
+        if (name.empty())
+        {
+            return name;
+        }
+
+        if (name.size() > 1 && name.front() == '0' && std::isdigit(static_cast<unsigned char>(name.at(1))))
+        {
+            return name.substr(1);
+        }
+
+        if (std::isdigit(static_cast<unsigned char>(name.front())))
+        {
+            if (name.size() == 1 || (name.size() == 2 && std::isalpha(static_cast<unsigned char>(name.at(1)))))
+            {
+                return std::string("0") + name;
+            }
+        }
+
+        return name;
+    }
+
+    static bool runwayHasIlsCoverage(const world::Airport& airport, const shared_ptr<world::Runway>& runway)
+    {
+        auto taxiNet = airport.taxiNet();
+        if (!taxiNet || !runway)
+        {
+            return false;
+        }
+
+        for (const auto& edge : taxiNet->edges())
+        {
+            if (edge->activeZones().ils.has(runway))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static shared_ptr<world::Runway> findLongestRunwayFrom(const vector<shared_ptr<world::Runway>>& runways)
+    {
+        const auto compareRunwayLength = [](const shared_ptr<world::Runway>& r1, const shared_ptr<world::Runway>& r2) {
+            return (r1->lengthMeters() < r2->lengthMeters());
+        };
+
+        auto it = max_element(runways.begin(), runways.end(), compareRunwayLength);
+        return it != runways.end() ? *it : nullptr;
+    }
+}
 
 namespace world
 {
     shared_ptr<Runway> Airport::findLongestRunway() const
     {
-        const auto compareRunwayLength = [](const shared_ptr<Runway>& r1, const shared_ptr<Runway>& r2) {
-            return (r1->lengthMeters() < r2->lengthMeters());
-        };
-
-        auto it = max_element(m_runways.begin(), m_runways.end(), compareRunwayLength);
-        shared_ptr<Runway> longestRunway = it != m_runways.end()
-           ? *it
-           : nullptr;
+        shared_ptr<Runway> longestRunway = findLongestRunwayFrom(m_runways);
 
         if (!longestRunway)
         {
@@ -30,6 +79,59 @@ namespace world
         }
 
         return longestRunway;
+    }
+
+    shared_ptr<Runway> Airport::findPreferredArrivalRunway() const
+    {
+        vector<shared_ptr<Runway>> candidates;
+
+        for (const auto& runwayName : m_mutableState->activeArrivalRunways)
+        {
+            auto runway = tryFindRunway(runwayName);
+            if (runway)
+            {
+                candidates.push_back(runway);
+            }
+        }
+
+        if (candidates.empty())
+        {
+            candidates = m_runways;
+        }
+
+        if (candidates.empty())
+        {
+            stringstream errorMessage;
+            errorMessage
+                << "Could not find preferred arrival runway at ["
+                << m_header.icao()
+                << "] are there any runways at this airport??";
+            throw runtime_error(errorMessage.str());
+        }
+
+        vector<shared_ptr<Runway>> ilsCandidates;
+        for (const auto& runway : candidates)
+        {
+            if (runwayHasIlsCoverage(*this, runway))
+            {
+                ilsCandidates.push_back(runway);
+            }
+        }
+
+        const auto& preferredCandidates = !ilsCandidates.empty() ? ilsCandidates : candidates;
+        auto preferredRunway = findLongestRunwayFrom(preferredCandidates);
+
+        if (!preferredRunway)
+        {
+            stringstream errorMessage;
+            errorMessage
+                << "Could not resolve preferred arrival runway at ["
+                << m_header.icao()
+                << "]";
+            throw runtime_error(errorMessage.str());
+        }
+
+        return preferredRunway;
     }
 
     const vector<shared_ptr<Runway>>& Airport::findLongestParallelRunwayGroup() const
@@ -79,7 +181,18 @@ namespace world
         auto found = m_runwayByName.find(name);
         return found != m_runwayByName.end()
             ? found->second
-            : nullptr;
+            : [&]() -> shared_ptr<Runway> {
+                const std::string normalizedName = normalizeRunwayName(name);
+                if (normalizedName != name)
+                {
+                    const auto normalizedFound = m_runwayByName.find(normalizedName);
+                    if (normalizedFound != m_runwayByName.end())
+                    {
+                        return normalizedFound->second;
+                    }
+                }
+                return nullptr;
+            }();
     }
 
     bool Airport::isRunwayActive(const string& runwayName) const
@@ -137,22 +250,71 @@ namespace world
 
     void Airport::selectActiveRunways()
     {
-        if (!m_tower)
-        {
-            return;
-        }
+        m_mutableState->activeDepartureRunways.clear();
+        m_mutableState->activeArrivalRunways.clear();
 
-        for (const auto& position : m_tower->positions())
+        bool hasSelectedRunways = false;
+
+        if (m_tower)
         {
-            if (position->type() == ControllerPosition::Type::Local)
+            for (const auto& position : m_tower->positions())
             {
-                position->selectActiveRunways(
-                    m_mutableState->activeDepartureRunways,
-                    m_mutableState->activeArrivalRunways);
+                if (position->type() == ControllerPosition::Type::Local)
+                {
+                    position->selectActiveRunways(
+                        m_mutableState->activeDepartureRunways,
+                        m_mutableState->activeArrivalRunways);
+                    hasSelectedRunways = !m_mutableState->activeDepartureRunways.empty() || !m_mutableState->activeArrivalRunways.empty();
+                }
             }
         }
 
-        calculateActiveRunwaysBounds();
+        if (!hasSelectedRunways && !m_runways.empty())
+        {
+            const auto preferredArrivalRunway = findPreferredArrivalRunway();
+
+            if (hasParallelRunways())
+            {
+                const auto& longestGroup = findLongestParallelRunwayGroup();
+                if (longestGroup.size() >= 2)
+                {
+                    auto departureRunwayName = longestGroup.at(0)->end1().name();
+                    auto preferredArrivalRunwayName = preferredArrivalRunway->end1().name();
+
+                    if (departureRunwayName == preferredArrivalRunwayName)
+                    {
+                        departureRunwayName = longestGroup.at(1)->end1().name();
+                    }
+
+                    m_mutableState->activeDepartureRunways.push_back(departureRunwayName);
+                    m_mutableState->activeArrivalRunways.push_back(preferredArrivalRunwayName);
+                    if (longestGroup.size() > 2)
+                    {
+                        m_mutableState->activeArrivalRunways.push_back(longestGroup.at(longestGroup.size() - 1)->end1().name());
+                    }
+                    hasSelectedRunways = true;
+                }
+                else
+                {
+                    const auto preferredArrivalRunwayName = preferredArrivalRunway->end1().name();
+                    m_mutableState->activeDepartureRunways.push_back(preferredArrivalRunwayName);
+                    m_mutableState->activeArrivalRunways.push_back(preferredArrivalRunwayName);
+                    hasSelectedRunways = true;
+                }
+            }
+            else
+            {
+                const auto preferredArrivalRunwayName = preferredArrivalRunway->end1().name();
+                m_mutableState->activeDepartureRunways.push_back(preferredArrivalRunwayName);
+                m_mutableState->activeArrivalRunways.push_back(preferredArrivalRunwayName);
+                hasSelectedRunways = true;
+            }
+        }
+
+        if (hasSelectedRunways)
+        {
+            calculateActiveRunwaysBounds();
+        }
     }
 
     void Airport::selectArrivalAndDepartureTaxiways()
@@ -179,5 +341,17 @@ namespace world
         {
             getRunwayOrThrow(runway)->calculateBounds();
         }
+    }
+
+    shared_ptr<TrafficFlow> Airport::getActiveFlow(float windDirectionDegrees) const
+    {
+        for (const auto& flow : m_trafficFlows)
+        {
+            if (flow->matchesWind(windDirectionDegrees))
+            {
+                return flow;
+            }
+        }
+        return nullptr;
     }
 }

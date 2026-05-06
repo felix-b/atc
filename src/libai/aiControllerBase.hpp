@@ -33,6 +33,7 @@ namespace ai
         unordered_map<int, IntentHandlerCallback> m_intentHandlerByCode;
         unordered_set<shared_ptr<Flight>> m_clearedForDepartureTaxi;
         unordered_set<shared_ptr<Flight>> m_departureTaxiHandedOffToTower;
+        unordered_set<shared_ptr<Flight>> m_departureTaxiPendingHandoffToTower;
         int m_nextSquawk = 3101;
     protected:
         IntentFactory& I;
@@ -105,6 +106,17 @@ namespace ai
 
             switch (intent->code())
             {
+            case PilotAffirmationIntent::IntentCode:
+            case PilotHandoffReadbackIntent::IntentCode:
+            case PilotDepartureTaxiReadbackIntent::IntentCode:
+            case PilotRunwayCrossReadbackIntent::IntentCode:
+            case PilotDepartureHoldShortReadbackIntent::IntentCode:
+            case PilotTakeoffClearanceReadbackIntent::IntentCode:
+            case PilotContinueApproachReadbackIntent::IntentCode:
+            case PilotLandingClearanceReadbackIntent::IntentCode:
+            case PilotArrivalTaxiReadbackIntent::IntentCode:
+            case PilotGoAroundReadbackIntent::IntentCode:
+                break;
             case PilotIfrClearanceRequestIntent::IntentCode:
                 {
                     int squawk = (m_nextSquawk++) % 4000 + 999;
@@ -279,15 +291,58 @@ namespace ai
 
         shared_ptr<Controller> findLocalControllerOrThrow(shared_ptr<Flight> flight)
         {
-            auto position = airport()->localAt(flight->aircraft()->location());
-            if (position)
+            const GeoPoint location = flight->aircraft()->location();
+            vector<shared_ptr<ControllerPosition>> candidates;
+
+            try
             {
-                auto controller = position->controller();
+                if (auto local = airport()->localAt(location))
+                {
+                    candidates.push_back(local);
+                }
+            }
+            catch (const exception&)
+            {
+            }
+
+            auto tower = airport()->tower();
+            if (tower)
+            {
+                const vector<ControllerPosition::Type> fallbackTypes = {
+                    ControllerPosition::Type::Local,
+                    ControllerPosition::Type::Departure,
+                    ControllerPosition::Type::Approach
+                };
+
+                for (const auto fallbackType : fallbackTypes)
+                {
+                    if (auto fallback = tower->tryFindPosition(fallbackType, location))
+                    {
+                        if (find(candidates.begin(), candidates.end(), fallback) == candidates.end())
+                        {
+                            candidates.push_back(fallback);
+                        }
+                    }
+                }
+
+                for (const auto& position : tower->positions())
+                {
+                    if (position && find(candidates.begin(), candidates.end(), position) == candidates.end())
+                    {
+                        candidates.push_back(position);
+                    }
+                }
+            }
+
+            for (const auto& position : candidates)
+            {
+                auto controller = position ? position->controller() : nullptr;
                 if (controller)
                 {
                     return controller;
                 }
             }
+
             throw runtime_error("Could not find local controller at airport [" + airport()->header().icao() + "]");
         }
 
@@ -302,18 +357,18 @@ namespace ai
             bool isDeparting = flight->phase() == Flight::Phase::Departure;
 
             auto departureRunway = isDeparting
-               ? airport()->getRunwayOrThrow(flightPlan->departureRunway())
+               ? airport()->tryFindRunway(flightPlan->departureRunway())
                : nullptr;
-            bool isDepartureRunway =
-                isDeparting && departureRunway && (
-                    runwayName == departureRunway->end1().name() ||
-                    runwayName == departureRunway->end2().name());
+            auto reportedRunway = runwayName.empty()
+                ? nullptr
+                : airport()->tryFindRunway(runwayName);
+            bool isDepartureRunway = isDeparting && departureRunway && reportedRunway == departureRunway;
 
             host()->writeLog(
-                "AICONT|PilotReportHoldingShortIntent, isDepartureRunway: [%s] == [%s]||[%s] ? %d",
+                "AICONT|PilotReportHoldingShortIntent, runway[%s] planned[%s] resolved[%s] ? %d",
                 runwayName.c_str(),
-                departureRunway ? departureRunway->end1().name().c_str() : "N/A",
-                departureRunway ? departureRunway->end2().name().c_str() : "N/A",
+                departureRunway ? departureRunway->name().c_str() : "N/A",
+                reportedRunway ? reportedRunway->name().c_str() : "N/A",
                 isDepartureRunway);
 
             return isDepartureRunway;
@@ -326,14 +381,37 @@ namespace ai
                 return;
             }
 
-            const Runway::End &departureEnd = airport()->getRunwayEndOrThrow(airport()->activeDepartureRunways().at(0));
-
             for (const auto &flight : m_clearedForDepartureTaxi)
             {
+                if (hasKey(m_departureTaxiPendingHandoffToTower, flight))
+                {
+                    continue;
+                }
+
+                const Runway::End* departureEnd = nullptr;
+                auto plannedRunwayName = flight->plan()->departureRunway();
+                if (!plannedRunwayName.empty())
+                {
+                    try
+                    {
+                        departureEnd = &airport()->getRunwayEndOrThrow(plannedRunwayName);
+                    }
+                    catch (const exception&)
+                    {
+                        departureEnd = nullptr;
+                    }
+                }
+
+                if (!departureEnd)
+                {
+                    const auto fallbackRunwayName = airport()->activeDepartureRunways().at(0);
+                    departureEnd = &airport()->getRunwayEndOrThrow(fallbackRunwayName);
+                }
+
                 //host()->writeLog("AICONT|handoffDeparturesToTower:1");
 
                 GeoPoint location = flight->aircraft()->location();
-                float distanceMeters = GeoMath::getDistanceMeters(location, departureEnd.centerlinePoint().geo());
+                float distanceMeters = GeoMath::getDistanceMeters(location, departureEnd->centerlinePoint().geo());
 
                 if (distanceMeters <= 200)
                 {
@@ -343,6 +421,7 @@ namespace ai
                         flight->callSign().c_str());
 
                     shared_ptr<Flight> copyOfFlightPtr = flight;
+                    m_departureTaxiPendingHandoffToTower.insert(copyOfFlightPtr);
                     transmit(
                         I.groundSwitchToTower(flight, 0),
                         [this, copyOfFlightPtr](shared_ptr<Transmission> transmission) {
@@ -369,6 +448,7 @@ namespace ai
         void moveDepartureToTower(shared_ptr<Flight> departure)
         {
             m_clearedForDepartureTaxi.erase(departure);
+            m_departureTaxiPendingHandoffToTower.erase(departure);
             m_departureTaxiHandedOffToTower.insert(departure);
         }
     };
